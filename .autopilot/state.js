@@ -11,7 +11,7 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-10-27T17:46:48+03:00",
-  "updatedAt": "2026-10-27T18:57:34+03:00",
+  "updatedAt": "2026-10-27T19:34:00+03:00",
   "finishedAt": null,
   "stages": [
     {
@@ -48,13 +48,13 @@ window.STATE =
       "id": "build",
       "status": "active",
       "startedAt": "2026-10-27T18:33:31+03:00",
-      "note": "таск 01 прошёл M/S; craft concerns сохранены"
+      "note": "2 из 5 тасков готовы; таск 03 проходит ремонт и ревью"
     },
     {
       "id": "review",
       "status": "active",
       "startedAt": "2026-10-27T18:53:25+03:00",
-      "note": "идёт независимое ревью таска 01"
+      "note": "2 из 5 тасков готовы; таск 03 проходит ремонт и ревью"
     },
     {
       "id": "final",
@@ -63,8 +63,8 @@ window.STATE =
   ],
   "requirements": {
     "total": 164,
-    "done": 0,
-    "inTicket": 164,
+    "done": 58,
+    "inTicket": 106,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
@@ -110,7 +110,7 @@ window.STATE =
         "frontend/public/",
         "frontend/vite.config.ts"
       ],
-      "status": "review",
+      "status": "done",
       "retries": 0,
       "repairs": 1,
       "repairFindings": [
@@ -122,7 +122,9 @@ window.STATE =
       "tests": {
         "passed": 51,
         "failed": 0
-      }
+      },
+      "finishedAt": "2026-10-27T18:59:00+03:00",
+      "commit": "e21d81e"
     },
     {
       "id": "02",
@@ -171,12 +173,22 @@ window.STATE =
         "frontend/src/debug/",
         "frontend/src/engine/FilmCanvas.tsx"
       ],
-      "status": "pending",
+      "status": "done",
       "retries": 0,
-      "repairs": 0,
-      "repairFindings": [],
-      "handoffs": 0,
-      "concerns": []
+      "repairs": 1,
+      "repairFindings": [
+        "Manifest+Spec review blocking: font readiness may keep prior config active while reset/import UI announces success; report that the change was not applied."
+      ],
+      "handoffs": 1,
+      "concerns": [],
+      "startedAt": "2026-10-27T18:59:00+03:00",
+      "lastHandoff": ".autopilot/2026-10-27-opening-scenes-v2--wip/handoff-02-1.md",
+      "tests": {
+        "passed": 65,
+        "failed": 0
+      },
+      "finishedAt": "2026-10-27T19:34:00+03:00",
+      "review": "Manifest+Spec repair re-review clean; Craft repair re-review clean"
     },
     {
       "id": "03",
@@ -236,12 +248,20 @@ window.STATE =
         "frontend/src/bootstrap/",
         "frontend/src/components/PersistentLight.tsx"
       ],
-      "status": "pending",
+      "status": "repair",
       "retries": 0,
-      "repairs": 0,
-      "repairFindings": [],
+      "repairs": 1,
+      "repairFindings": [
+        "Spec blocking: App.tsx styles removed the existing cinematic surface and pause-control styling without replacements; preserve the existing layout.",
+        "Manifest blocking: PreparationScreen.tsx claims gaze works autonomously while tracker is disconnected; state that gaze response is unavailable."
+      ],
       "handoffs": 0,
-      "concerns": []
+      "concerns": [],
+      "startedAt": "2026-10-27T18:59:00+03:00",
+      "tests": {
+        "passed": 63,
+        "failed": 0
+      }
     },
     {
       "id": "04",
@@ -438,11 +458,18 @@ window.STATE =
   "concerns": [
     "таск 01 · config.ts:142 — competing partial updates during font load may drop one patch; review considered nonblocking.",
     "таск 01 · vite.config.ts:78 — transient network error may prevent serving a cached optional config; review considered nonblocking.",
-    "таск 01 · fontCatalog.ts:49 — internal cmap parser/glyph data are exported and tested directly instead of remaining behind font readiness API; review considered nonblocking."
+    "таск 01 · fontCatalog.ts:49 — internal cmap parser/glyph data are exported and tested directly instead of remaining behind font readiness API; review considered nonblocking.",
+    "Таск 02 · нет физической проверки на iPad; browser viewport emulation проверена.",
+    "Таск 03 · текущий prologue seed будет удалён интеграцией таска 04, чтобы не показывать вторую точку.",
+    "Таск 03 · preparation.css: media error and recording-ready note may overlap in the same absolute position.",
+    "Таск 03 · PreparationScreen.test.ts checks absence of old inline light but not the app-level ready→prologue handoff; browser check covered center position manually.",
+    "Таск 03 · Preloader.test.ts checks glow styling but not that count/movement/collapse settings leave actual manager progress unchanged.",
+    "Таск 02 · export test asserts quality but not full nested config/schema version.",
+    "Таск 02 · JSON rejection tests omit malformed text and unsupported schema version preserving the active config; these are nonblocking coverage gaps."
   ],
   "reviewers": {
     "manifestSpec": "review_01_manifest_spec",
     "craft": "review_01_craft"
   },
   "blind": null
-}
+};

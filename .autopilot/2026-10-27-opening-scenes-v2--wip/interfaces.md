@@ -42,3 +42,16 @@ ormalizeConfig`/partial merge для JSON; чистая функция кадр�
 - `loadArtFont(id) -> Promise<boolean>` resolves local art-font readiness before the config store publishes a font change. Available ids: Marck Script, Bad Script, Caveat, Cormorant Garamond; validated glyph coverage is Cyrillic including Ё/ё.
 - `RuntimeManifest.optionalAssets` marks optional startup config for offline resource handling. Keep it optional so failure does not block actual preload.
 - Assets/store/font files from ticket 01 are uncommitted until repair, review and full checks pass. Ticket 01 is in repair; continue inside its Zone.
+## Ticket 02 — Scene Composer controls
+
+- `setComposerField(path, value)` updates a single schema-backed field.
+- `importComposerJson(source)` validates/imports partial schema v1 JSON; invalid documents preserve active config.
+- `exportComposerJson()` serializes the active config.
+- `resetComposerField(path)`, `resetComposerScope(scope)`, and `applyComposerPreset(id)` expose scoped reset and preset controls.
+- `FilmCanvas` consumes global quality/DPR values using the existing renderer.
+
+## Ticket 03 — preparation and persistent light
+
+- `PersistentLightPhase = 'hidden' | 'ready' | 'prologue'`.
+- `PersistentLight({ phase, interactive?, reducedMotion?, onActivate? })` is the single app-level center light view.
+- Preparation and preload views read scene presentation parameters from the active config store while preserving real preload progress and existing consent/media owners.
