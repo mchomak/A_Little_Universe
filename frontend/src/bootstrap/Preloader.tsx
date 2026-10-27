@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import type { AssetManager, PreparationProgress, PreparationResult } from '../systems/assets/AssetManager'
+import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import './preload.css'
 
 interface PreloaderProps {
@@ -12,9 +13,14 @@ export function Preloader({ manager, onReady }: PreloaderProps) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const progressRef = useRef(0)
   const collapseRef = useRef(false)
+  const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
+  const visual = config.scenes.preload
+  const visualRef = useRef(visual)
   const [progress, setProgress] = useState<PreparationProgress>({ phase: 'modules', completed: 0, total: 1, message: 'Создаём кое-что особенное…' })
   const [result, setResult] = useState<PreparationResult | null>(null)
   const [attempt, setAttempt] = useState(0)
+
+  useEffect(() => { visualRef.current = visual }, [visual])
 
   useEffect(() => {
     let cancelled = false
@@ -58,16 +64,20 @@ export function Preloader({ manager, onReady }: PreloaderProps) {
       }
       context.setTransform(dpr, 0, 0, dpr, 0, 0)
       context.clearRect(0, 0, width, height)
-      collapse = Math.min(1, collapse + (collapseRef.current ? delta / 0.9 : -delta * 3))
+      const settings = visualRef.current
+      if (reduced) collapse = collapseRef.current ? 1 : 0
+      else collapse = Math.min(1, collapse + (collapseRef.current
+        ? settings.collapseDuration === 0 ? 1 : delta / settings.collapseDuration
+        : -delta * 3))
       collapse = Math.max(0, collapse)
       // The fixed set of particles packs closer as mandatory work actually
       // completes; the separate ready collapse begins only after cache checking.
       const preparation = Math.max(0, Math.min(1, progressRef.current))
       const radius = Math.min(width * 0.29, height * 0.34, 135) * (1 - preparation * 0.3) * (1 - collapse) ** 2
-      const rotation = reduced ? 0 : time * 0.00011
-      for (let i = 0; i < 150; i++) {
+      const rotation = reduced ? 0 : time * 0.00011 * settings.movementSpeed
+      for (let i = 0; i < settings.particleCount; i++) {
         const angle = i * 2.399963 + rotation * (0.4 + i % 7 / 9)
-        const spread = Math.sqrt((i + 0.5) / 150)
+        const spread = Math.sqrt((i + 0.5) / settings.particleCount)
         const x = width / 2 + Math.cos(angle) * radius * spread
         const y = height / 2 + Math.sin(angle) * radius * spread * (0.62 + (i % 5) / 15)
         const alpha = (0.25 + (i % 9) / 13) * (0.55 + progressRef.current * 0.45) * (1 - collapse * 0.97)
@@ -96,7 +106,7 @@ export function Preloader({ manager, onReady }: PreloaderProps) {
   const retry = () => { setResult(null); collapseRef.current = false; setAttempt((value) => value + 1) }
   const measured = progress.phase === 'assets' || progress.phase === 'ready'
   return <main className="preloader" data-phase={progress.phase} aria-label="Подготовка подарка">
-    <canvas className="preloader-particles" ref={canvas} aria-hidden="true" />
+    <canvas className="preloader-particles" ref={canvas} style={{ '--preload-glow': visual.glow } as CSSProperties} aria-hidden="true" />
     <div className="preloader-copy">
       <p role="status" aria-live="polite">{progress.message}</p>
       <progress aria-label="Подготовка обязательных ресурсов" max={progress.total} value={measured ? progress.completed : undefined} />

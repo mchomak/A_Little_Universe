@@ -11,7 +11,7 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-10-27T17:46:48+03:00",
-  "updatedAt": "2026-10-27T19:34:00+03:00",
+  "updatedAt": "2026-10-27T19:25:36+03:00",
   "finishedAt": null,
   "stages": [
     {
@@ -48,13 +48,13 @@ window.STATE =
       "id": "build",
       "status": "active",
       "startedAt": "2026-10-27T18:33:31+03:00",
-      "note": "2 из 5 тасков готовы; таск 03 проходит ремонт и ревью"
+      "note": "3 из 5 тасков готовы; таск 04 разблокирован"
     },
     {
       "id": "review",
       "status": "active",
       "startedAt": "2026-10-27T18:53:25+03:00",
-      "note": "2 из 5 тасков готовы; таск 03 проходит ремонт и ревью"
+      "note": "3 из 5 тасков готовы; таск 04 разблокирован"
     },
     {
       "id": "final",
@@ -63,8 +63,8 @@ window.STATE =
   ],
   "requirements": {
     "total": 164,
-    "done": 58,
-    "inTicket": 106,
+    "done": 102,
+    "inTicket": 62,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
@@ -187,8 +187,9 @@ window.STATE =
         "passed": 65,
         "failed": 0
       },
-      "finishedAt": "2026-10-27T19:34:00+03:00",
-      "review": "Manifest+Spec repair re-review clean; Craft repair re-review clean"
+      "finishedAt": "2026-10-27T19:24:00+03:00",
+      "review": "Manifest+Spec repair re-review clean; Craft repair re-review clean",
+      "commit": "cda1d4a"
     },
     {
       "id": "03",
@@ -248,7 +249,7 @@ window.STATE =
         "frontend/src/bootstrap/",
         "frontend/src/components/PersistentLight.tsx"
       ],
-      "status": "repair",
+      "status": "done",
       "retries": 0,
       "repairs": 1,
       "repairFindings": [
@@ -259,9 +260,11 @@ window.STATE =
       "concerns": [],
       "startedAt": "2026-10-27T18:59:00+03:00",
       "tests": {
-        "passed": 63,
+        "passed": 65,
         "failed": 0
-      }
+      },
+      "finishedAt": "2026-10-27T19:25:36+03:00",
+      "review": "Manifest+Spec repair re-review clean; Craft repair re-review clean"
     },
     {
       "id": "04",

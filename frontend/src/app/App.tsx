@@ -4,6 +4,7 @@ import { useFilm } from '../engine/useFilm'
 import type { FilmAction } from '../engine/film'
 import { useReducedMotion } from '../engine/useReducedMotion'
 import { SceneOverlay } from '../components/SceneOverlay'
+import { PersistentLight, type PersistentLightPhase } from '../components/PersistentLight'
 import { ReadingPanel } from '../components/ReadingPanel'
 import { RecordingControls } from '../components/RecordingControls'
 import { RecoveryPanel } from '../components/RecoveryPanel'
@@ -95,6 +96,8 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   }
   const onReloadReady = useCallback((result: PreparationResult) => { setPrepared(result); setRoute('settings') }, [])
   const cinematic = state.scene === 'prologue'
+  const lightPhase: PersistentLightPhase = route === 'ready' ? 'ready' : route === 'film' && cinematic ? 'prologue' : 'hidden'
+  const lightInteractive = lightPhase === 'prologue' && state.mode === 'waiting'
 
   return <main className={`universe${cinematic ? ' cinematic' : ''}`} data-route={route} data-scene={state.scene} data-mode={state.mode} data-reading={state.reading} data-paused={state.paused}>
     {mountedFilm && <div className="film-presentation" hidden={route !== 'film'}>
@@ -107,6 +110,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
         : <footer className="page-footer" aria-label="Управление фильмом"><span className="film-status">{state.paused ? 'На паузе' : reducedMotion ? 'Уменьшенное движение' : 'Сцены 02–09 — placeholders'}</span><div className="playback-controls">{state.mode !== 'ended' && <button type="button" data-testid="pause" aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Пауза'}</button>}<label className="quality-control">Качество<select aria-label="Качество графики" value={state.quality} onChange={(event) => dispatch({ type: 'set-quality', quality: event.target.value === 'low' ? 'low' : 'standard' })}><option value="standard">Обычное</option><option value="low">Низкое</option></select></label></div></footer>}
     </div>}
     {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} onOptions={changeOptions} onPrepare={() => { void prepare() }} onContinue={() => setRoute('ready')} onWithoutMedia={withoutMedia} onEdit={edit} onStart={start} />}
+    <PersistentLight phase={lightPhase} interactive={lightInteractive} reducedMotion={reducedMotion} onActivate={() => dispatch({ type: 'interact' })} />
     <RecordingControls session={media} />
     <RecoveryPanel session={media} />
     {state.reading && route === 'film' && <ReadingPanel dispatch={dispatch} />}
