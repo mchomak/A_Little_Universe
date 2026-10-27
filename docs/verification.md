@@ -10,6 +10,7 @@
 | Backend .\\.venv\\Scripts\\python.exe -m pytest -q из backend | 3 passed; backend source не изменялся. |
 | Preparation viewport | В браузере проверены 768×1024 и 1024×768. Путь «Продолжить без разрешений» → «Открыть подарок» оставил ту же точку в центре. |
 | Composer live controls/reset | В desktop Chrome проверены live-контролы 00.1 и reset в viewport emulation 1024×768 и 768×1024. Физические iPad/Safari не использовались. |
+| Composer JSON validation/reset | В desktop Chrome частичный JSON применил валидные поля, а пропущенные сохранили defaults; malformed JSON был отклонён без изменения активных значений, затем reset восстановил defaults. |
 | Prologue browser seek | Через общий DEV seek проверены 4 с, 12 с и 21 с. Marck Script корректно отображал кириллицу; обе фразы располагались вокруг точки; после gate оставались точка и «Прикоснись к свету». |
 | WebGL | WebGL2 доступен в браузере. Это не измерение производительности iPad/GPU. |
 | Сцены 02–09 | Код и поведение сцен не менялись в этом ticket; остаются техническими placeholders. |

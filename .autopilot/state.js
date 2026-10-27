@@ -1,7 +1,7 @@
 window.STATE =
 {
   "slug": "opening-scenes-v2",
-  "dir": "2026-10-27-opening-scenes-v2--wip",
+  "dir": "2026-10-27-opening-scenes-v2",
   "title": "Сцены 00, 00.1 и 01 — художественная версия 2.0",
   "mode": "full",
   "depth": "normal",
@@ -11,8 +11,8 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-10-27T17:46:48+03:00",
-  "updatedAt": "2026-10-27T20:03:03+03:00",
-  "finishedAt": null,
+  "updatedAt": "2026-10-28T00:07:37+03:00",
+  "finishedAt": "2026-10-28T00:07:37+03:00",
   "stages": [
     {
       "id": "preflight",
@@ -42,29 +42,33 @@ window.STATE =
       "status": "done",
       "startedAt": "2026-10-27T18:23:46+03:00",
       "finishedAt": "2026-10-27T18:33:31+03:00",
-      "note": "5 тасков, ярус T2, 4 волны"
+      "note": "7 tickets; последующие дозавершения 06 и 07 после blind acceptance"
     },
     {
       "id": "build",
-      "status": "active",
+      "status": "done",
       "startedAt": "2026-10-27T18:33:31+03:00",
-      "note": "4 из 5 тасков готовы; таск 05 документации разблокирован"
+      "finishedAt": "2026-10-28T00:07:37+03:00",
+      "note": "7 из 7 tickets готовы; продуктовые изменения ограничены общей инфраструктурой и сценами 00, 00.1 и 01"
     },
     {
       "id": "review",
-      "status": "active",
+      "status": "done",
       "startedAt": "2026-10-27T18:53:25+03:00",
-      "note": "4 из 5 тасков готовы; таск 05 документации разблокирован"
+      "finishedAt": "2026-10-28T00:07:37+03:00",
+      "note": "Manifest+Spec/Craft повторно чистые; G4 находки устранены; итоговая слепая проверка выполнена"
     },
     {
       "id": "final",
-      "status": "pending"
+      "status": "done",
+      "startedAt": "2026-10-27T23:54:01+03:00",
+      "finishedAt": "2026-10-28T00:07:37+03:00"
     }
   ],
   "requirements": {
     "total": 164,
-    "done": 150,
-    "inTicket": 14,
+    "done": 164,
+    "inTicket": 0,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
@@ -182,7 +186,7 @@ window.STATE =
       "handoffs": 1,
       "concerns": [],
       "startedAt": "2026-10-27T18:59:00+03:00",
-      "lastHandoff": ".autopilot/2026-10-27-opening-scenes-v2--wip/handoff-02-1.md",
+      "lastHandoff": ".autopilot/2026-10-27-opening-scenes-v2/handoff-02-1.md",
       "tests": {
         "passed": 65,
         "failed": 0
@@ -345,13 +349,14 @@ window.STATE =
       "handoffs": 1,
       "concerns": [],
       "startedAt": "2026-10-27T19:26:08+03:00",
-      "lastHandoff": ".autopilot/2026-10-27-opening-scenes-v2--wip/handoff-04-1.md",
+      "lastHandoff": ".autopilot/2026-10-27-opening-scenes-v2/handoff-04-1.md",
       "tests": {
         "passed": 77,
         "failed": 0
       },
       "finishedAt": "2026-10-27T20:03:03+03:00",
-      "review": "Manifest+Spec final repair re-review pass; Craft repair review nonblocking only"
+      "review": "Manifest+Spec final repair re-review pass; Craft repair review nonblocking only",
+      "commit": "470ccde"
     },
     {
       "id": "05",
@@ -418,16 +423,103 @@ window.STATE =
         "README.md",
         "docs/"
       ],
-      "status": "pending",
+      "status": "done",
       "retries": 0,
       "repairs": 0,
       "repairFindings": [],
       "handoffs": 0,
-      "concerns": []
+      "concerns": [],
+      "startedAt": "2026-10-27T20:03:32+03:00",
+      "finishedAt": "2026-10-27T20:16:19+03:00",
+      "tests": {
+        "passed": 77,
+        "failed": 0
+      },
+      "review": "Manifest+Spec and Craft clean; browser viewport QA; backend 3/3",
+      "commit": "6589195"
+    },
+    {
+      "id": "06",
+      "title": "Scene Composer: параметры 00.1 и доля возврата частиц",
+      "requirements": [
+        "R90",
+        "R91",
+        "R92",
+        "R154"
+      ],
+      "blockedBy": [],
+      "wave": 4,
+      "zone": [
+        "frontend/src/systems/scene-config/",
+        "frontend/src/debug/",
+        "frontend/src/app/PreparationScreen.tsx",
+        "frontend/src/app/preparation.css",
+        "tests",
+        "storyboard and technical docs"
+      ],
+      "status": "done",
+      "retries": 0,
+      "repairs": 2,
+      "repairFindings": [
+        "Continuation fixed GraphicsFallback test props inference after first full check.",
+        "G4 repair corrected preparation spacing label, stale 77/21 report count, and missing Composer viewport record."
+      ],
+      "handoffs": 1,
+      "concerns": [
+        "T06 · DeveloperPanel.tsx particle return display scale uses 20 separately from renderer cap; review considered nonblocking."
+      ],
+      "startedAt": "2026-10-27T20:29:54+03:00",
+      "finishedAt": "2026-10-28T00:07:37+03:00",
+      "tests": {
+        "passed": 83,
+        "failed": 0
+      },
+      "review": "Manifest+Spec repair re-review all addressed; Craft repair review clean",
+      "commit": "fa9682c"
+    },
+    {
+      "id": "07",
+      "title": "Синхронизация verification отчёта после G4",
+      "requirements": [
+        "R136",
+        "R141",
+        "R142"
+      ],
+      "blockedBy": [
+        "06"
+      ],
+      "wave": 4,
+      "zone": [
+        "docs/verification.md"
+      ],
+      "status": "done",
+      "retries": 0,
+      "repairs": 0,
+      "repairFindings": [],
+      "handoffs": 0,
+      "concerns": [],
+      "startedAt": "2026-10-27T20:49:00+03:00",
+      "finishedAt": "2026-10-28T00:07:37+03:00",
+      "tests": {
+        "passed": 83,
+        "failed": 0
+      },
+      "review": "Manifest+Spec and Craft clean; documentation aligned; browser JSON validation/reset recorded",
+      "commit": "09764c2"
     }
   ],
   "singlePass": null,
-  "tests": null,
+  "tests": {
+    "passed": 83,
+    "failed": 0,
+    "files": 23,
+    "frontend": "npm run check",
+    "backend": {
+      "passed": 3,
+      "failed": 0,
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -q (from backend)"
+    }
+  },
   "debt": {
     "placeholders": [],
     "assumptions": [],
@@ -474,25 +566,62 @@ window.STATE =
     "deferred": 0
   },
   "concerns": [
-    "таск 01 · config.ts:142 — competing partial updates during font load may drop one patch; review considered nonblocking.",
-    "таск 01 · vite.config.ts:78 — transient network error may prevent serving a cached optional config; review considered nonblocking.",
-    "таск 01 · fontCatalog.ts:49 — internal cmap parser/glyph data are exported and tested directly instead of remaining behind font readiness API; review considered nonblocking.",
-    "Таск 02 · нет физической проверки на iPad; browser viewport emulation проверена.",
-    "Таск 03 · текущий prologue seed будет удалён интеграцией таска 04, чтобы не показывать вторую точку.",
-    "Таск 03 · preparation.css: media error and recording-ready note may overlap in the same absolute position.",
-    "Таск 03 · PreparationScreen.test.ts checks absence of old inline light but not the app-level ready→prologue handoff; browser check covered center position manually.",
-    "Таск 03 · Preloader.test.ts checks glow styling but not that count/movement/collapse settings leave actual manager progress unchanged.",
-    "Таск 02 · export test asserts quality but not full nested config/schema version.",
-    "Таск 02 · JSON rejection tests omit malformed text and unsupported schema version preserving the active config; these are nonblocking coverage gaps.",
-    "Таск 04 · нет физической проверки на iPad; браузерная проверка будет выполнена root после сборки пролога.",
-    "Таск 04 · any prologue config update currently rebuilds glyph mask/particle buffers even for glow/timing changes; geometry should rebuild only for geometry/text-layout inputs.",
-    "Таск 04 · lifecycle tests do not yet cover stale font-load completion or disposal of geometry after revision/unmount.",
-    "Таск 04 · overlay test verifies SSR font CSS but does not assert combined reveal/particle frame at fixed seek/replay time.",
-    "Таск 04 · layoutPrologueCopyBlocks does not clamp blocks for extremely narrow/tall text; covered portrait/landscape iPad-sized viewports, nonblocking."
+    "REPORT: No physical iPad/Safari, offline reload, repeated GPU-memory stress, or long device run; browser viewport emulation only. Validate these on the target iPad.",
+    "REPORT: rapid config updates during font readiness may race and lose one partial patch; nonblocking review concern, no reproduction in current checks.",
+    "DROP: optional startup-config fetch failure already falls back to defaults; source and tests cover this path.",
+    "DROP: exported cmap parser/glyph internals are an encapsulation concern only; font readiness and glyph coverage are tested.",
+    "DROP: obsolete pre-T04 second-point seed concern was superseded by the single persistent app-level light.",
+    "REPORT: live prologue config revisions can rebuild glyph-mask/particle buffers; monitor on iPad while tuning and consider narrowing rebuild dependencies if it stutters.",
+    "REPORT: extremely narrow/tall copy layouts beyond tested tablet viewport sizes have no explicit clamp; check on actual iPad orientations.",
+    "DROP: app-level ready-to-prologue handoff was manually verified in browser at both viewport orientations.",
+    "DROP: earlier combined reveal/particle fixed-frame test gap was covered by deterministic seek/replay assertions.",
+    "REPORT: no dedicated browser export/download round-trip or production offline reload was performed; serializer/startup paths have unit coverage, and browser import/reset was manually checked.",
+    "REPORT: the particle-return UI scale and renderer 20% ceiling are duplicated constants; they match currently and the default 15% is verified."
   ],
   "reviewers": {
-    "manifestSpec": "review_04_manifest_spec",
-    "craft": "review_04_craft"
+    "manifestSpec": "review_05_manifest_spec; tickets 06–07 re-review clean",
+    "craft": "review_05_craft; ticket 06–07 clean"
   },
-  "blind": null
+  "blind": {
+    "status": "partial",
+    "checker": "blind_acceptance_recheck",
+    "result": "No functional mismatch surfaced. Source, tests and docs support the implementation; remaining gaps are verification limits listed below.",
+    "implemented": [
+      "typography/offline asset integration",
+      "scene 00.1 and persistent center light",
+      "scene 01 timeline, glyph dissolve and deterministic replay",
+      "Composer schema/partial startup overrides/normalization",
+      "pause, seek, restart and disposal paths",
+      "storyboard v2.0; sections 02–08 match v1.1 and section 09 differs only by blank lines"
+    ],
+    "manual_browser_checks": [
+      "preparation-to-prologue center handoff at 1024x768 and 768x1024",
+      "live font selection and prologue frames at 4, 12 and 21 seconds",
+      "partial JSON import, malformed JSON rejection without config loss, and reset to defaults"
+    ],
+    "limitations": [
+      "no physical iPad/Safari or hardware GPU profiling",
+      "no repeated GPU-memory stress run",
+      "no production offline reload or browser export/download round trip",
+      "no direct pre-change source diff from the blind checker; root verified product diff paths contain no scene 02–09 module"
+    ],
+    "checks": {
+      "frontend": "npm run check: ESLint, typecheck app/node, 83 tests across 23 files, production build passed",
+      "backend": "pytest 3 passed",
+      "buildWarnings": [
+        "App chunk 687.39 kB (195.04 kB gzip)",
+        "Three.js CommonJS deprecation warning"
+      ]
+    }
+  },
+  "closeout": {
+    "result": "Сцены 00, 00.1 и 01 обновлены; Scene Composer и JSON-конфигурация завершены; создан Storyboard v2.0; 164/164 требований закрыты.",
+    "assumptions": [],
+    "deferred": [],
+    "dropped": [],
+    "additions": [],
+    "openQuestions": [
+      "Проверить на физическом iPad/Safari обе ориентации, касания, safe areas, долгий GPU/memory прогон и автономный запуск."
+    ]
+  }
 };

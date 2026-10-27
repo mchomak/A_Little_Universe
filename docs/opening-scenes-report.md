@@ -34,4 +34,4 @@ Production override — необязательный same-origin JSON в кор�
 
 Трекер взгляда, музыка, личные фотографии и защищённый upload не подключены. Запись реакции условная и хранится локально; browser storage может быть очищен, а экспорт лишь запрашивает сохранение у браузера. Сцены 02–09 не проходили художественную переработку.
 
-Production build сообщает о JavaScript chunk более 500 kB после минификации (App chunk 687.19 kB); лимит не повышался. В тестах также остаётся предупреждение Three.js о deprecated CommonJS require. WebGL context loss показывает fallback; восстановление текущего кадра не реализовано.
+Production build сообщает о JavaScript chunk более 500 kB после минификации (App chunk 687.39 kB, 195.04 kB gzip); лимит не повышался. В тестах также остаётся предупреждение Three.js о deprecated CommonJS require. WebGL context loss показывает fallback; восстановление текущего кадра не реализовано.
