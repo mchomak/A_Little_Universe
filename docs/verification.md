@@ -4,11 +4,12 @@
 
 | Проверка | Результат |
 |---|---|
-| Frontend npm run check | Passed: ESLint с max-warnings 0, 77 тестов в 21 файле, strict typecheck app и node projects, production build. |
-| Production build | Успешно; Vite вывел advisory о chunk больше 500 kB после минификации. App chunk — 687.19 kB (194.98 kB gzip); лимит не менялся. |
+| Frontend npm run check | Passed: ESLint с max-warnings 0, 83 теста в 23 файлах, strict typecheck app и node projects, production build. |
+| Production build | Успешно; Vite вывел advisory о chunk больше 500 kB после минификации. App chunk — 687.39 kB (195.04 kB gzip); лимит не менялся. |
 | Vitest runtime warning | Выведено предупреждение Three.js о deprecated CommonJS require. Тесты прошли. |
 | Backend .\\.venv\\Scripts\\python.exe -m pytest -q из backend | 3 passed; backend source не изменялся. |
 | Preparation viewport | В браузере проверены 768×1024 и 1024×768. Путь «Продолжить без разрешений» → «Открыть подарок» оставил ту же точку в центре. |
+| Composer live controls/reset | В desktop Chrome проверены live-контролы 00.1 и reset в viewport emulation 1024×768 и 768×1024. Физические iPad/Safari не использовались. |
 | Prologue browser seek | Через общий DEV seek проверены 4 с, 12 с и 21 с. Marck Script корректно отображал кириллицу; обе фразы располагались вокруг точки; после gate оставались точка и «Прикоснись к свету». |
 | WebGL | WebGL2 доступен в браузере. Это не измерение производительности iPad/GPU. |
 | Сцены 02–09 | Код и поведение сцен не менялись в этом ticket; остаются техническими placeholders. |
