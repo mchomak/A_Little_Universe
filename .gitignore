@@ -24,5 +24,13 @@ recordings/
 .idea/
 .DS_Store
 Thumbs.db
-.autopilot
+.autopilot/*
+!.autopilot/README.md
+!.autopilot/dashboard.html
+!.autopilot/index.html
+!.autopilot/state.js
+!.autopilot/sync.py
+!.autopilot/2026-10-27-opening-scenes-v2--wip/
+!.autopilot/2026-10-27-opening-scenes-v2--wip/**
+.autopilot/serve.*
 3D_models

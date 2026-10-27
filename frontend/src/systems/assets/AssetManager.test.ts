@@ -1,6 +1,32 @@
 import { expect, it, vi } from 'vitest'
 import { AssetManager, verifyRuntimeCache } from './AssetManager'
 
+it('starts the optional startup config after real preload readiness without adding progress work', async () => {
+  const events: string[] = []
+  const configFetch = vi.fn(async (input: RequestInfo | URL) => {
+    events.push(`config:${String(input)}`)
+    return new Response('', { status: 404 })
+  })
+  vi.stubGlobal('fetch', configFetch)
+  try {
+    const manager = new AssetManager({ manifest: { version: 'optional-config', assets: [{ url: '/font.ttf', kind: 'file', required: true }],
+      optionalAssets: [{ url: '/scene-composer.json', kind: 'file', required: false }] },
+      loadModules: async () => undefined, fetch: async () => new Response('font'), verifyOffline: async () => undefined,
+    })
+    let finalProgress = { completed: 0, total: 0 }
+    const result = await manager.prepare((progress) => {
+      events.push(progress.phase)
+      finalProgress = progress
+    })
+    expect(result.ready).toBe(true)
+    expect(events.indexOf('ready')).toBeLessThan(events.findIndex((event) => event.startsWith('config:')))
+    expect(configFetch).toHaveBeenCalledWith('/scene-composer.json', expect.objectContaining({ cache: 'no-cache' }))
+    expect(finalProgress).toMatchObject({ phase: 'ready', completed: 2, total: 2 })
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
 it('blocks a missing mandatory asset, then retries only unfinished work with real progress', async () => {
   let missing = true
   const fetchAsset = vi.fn(async (input: RequestInfo | URL) => new Response(
@@ -115,3 +141,4 @@ it('repairs only missing or corrupt current-build cache entries and reports quot
   expect(retry).toMatchObject({ ready: true, offline: 'unavailable' })
   expect(retry.warnings.join()).toContain('Storage quota exceeded')
 })
+

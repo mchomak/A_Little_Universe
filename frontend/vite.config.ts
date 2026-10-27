@@ -27,14 +27,16 @@ function offlineBuild(): Plugin {
           return { url: `${base}${output.fileName}`, kind, required: true, bytes: bytes.length,
             sha256: createHash('sha256').update(bytes).digest('hex'), ...(contentType ? { contentType } : {}) }
         }).sort((a, b) => a.url.localeCompare(b.url))
-        const version = createHash('sha256').update(offlineBuild.toString()).update(JSON.stringify(assets)).digest('hex').slice(0, 20)
-        const manifest = { version, assets }
+        const optionalAssets = [{ url: `${base}scene-composer.json`, kind: 'file', required: false }]
+        const version = createHash('sha256').update(offlineBuild.toString()).update(JSON.stringify({ assets, optionalAssets })).digest('hex').slice(0, 20)
+        const manifest = { version, assets, optionalAssets }
         this.emitFile({ type: 'asset', fileName: 'runtime-manifest.json', source: JSON.stringify(manifest) })
         this.emitFile({ type: 'asset', fileName: 'sw.js', source: `
 const MANIFEST = ${JSON.stringify(manifest)};
 const BASE = ${JSON.stringify(base)};
 const CACHE = 'little-universe-' + MANIFEST.version;
 const URLS = new Set(MANIFEST.assets.map(asset => new URL(asset.url, self.location.origin).href));
+const OPTIONAL_URLS = new Set((MANIFEST.optionalAssets || []).map(asset => new URL(asset.url, self.location.origin).href));
 const MANIFEST_URL = new URL(BASE + 'runtime-manifest.json', self.location.origin).href;
 self.addEventListener('install', event => event.waitUntil((async () => {
   const cache = await caches.open(CACHE);
@@ -59,13 +61,24 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
   const navigation = request.mode === 'navigate' && url.pathname.startsWith(BASE);
-  if (!navigation && request.url !== MANIFEST_URL && !URLS.has(request.url)) return;
+  if (!navigation && request.url !== MANIFEST_URL && !URLS.has(request.url) && !OPTIONAL_URLS.has(request.url)) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     if (navigation || request.url === MANIFEST_URL) {
       try { const response = await fetch(request); if (response.ok) return response; } catch { /* Offline snapshot below. */ }
       const cached = await cache.match(navigation ? BASE + 'index.html' : request.url, {ignoreVary: true});
       return cached || new Response('Offline resource unavailable', {status: 503});
+    }
+    if (OPTIONAL_URLS.has(request.url)) {
+      const cached = await cache.match(request, {ignoreVary: true});
+      try {
+        const response = await fetch(request);
+        if (response.ok) { await cache.put(request, response.clone()); return response; }
+        if (response.status === 404) await cache.delete(request, {ignoreVary: true});
+        return response;
+      } catch {
+        return cached || new Response(null, {status: 404});
+      }
     }
     // Immutable same-origin build files are byte-verified. Dev preview may add
     // Vary: Origin; module CORS headers differ from the installation fetch.

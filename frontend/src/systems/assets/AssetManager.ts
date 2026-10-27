@@ -1,3 +1,5 @@
+import { loadStartupConfig } from '../scene-config/config'
+
 export type AssetKind = 'image' | 'audio' | 'model' | 'file'
 export interface RuntimeAsset {
   url: string
@@ -7,7 +9,7 @@ export interface RuntimeAsset {
   sha256?: string
   contentType?: string
 }
-export interface RuntimeManifest { version: string; assets: RuntimeAsset[] }
+export interface RuntimeManifest { version: string; assets: RuntimeAsset[]; optionalAssets?: RuntimeAsset[] }
 export interface PreparationProgress {
   phase: 'modules' | 'assets' | 'cache' | 'ready' | 'error'
   completed: number
@@ -94,6 +96,7 @@ export class AssetManager {
       }
     }
     emit('ready', 'Твоя маленькая вселенная готова.')
+    if (!this.options.development) void loadStartupConfig()
     return { ready: true, offline, errors, warnings }
   }
   retry(onProgress?: (progress: PreparationProgress) => void) { return this.prepare(onProgress) }
@@ -106,12 +109,23 @@ async function readManifest(response: Response): Promise<RuntimeManifest> {
   const value: unknown = await response.json()
   if (!value || typeof value !== 'object' || !('version' in value) || typeof value.version !== 'string'
     || !('assets' in value) || !Array.isArray(value.assets) || !value.assets.length) throw new Error('Некорректный manifest')
-  for (const asset of value.assets as RuntimeAsset[]) {
+  const manifest = value as RuntimeManifest
+  validateAssets(manifest.assets)
+  if (manifest.optionalAssets !== undefined) {
+    if (!Array.isArray(manifest.optionalAssets) || manifest.optionalAssets.some((asset) => !asset || asset.required !== false)) {
+      throw new Error('Некорректные optional assets manifest')
+    }
+    validateAssets(manifest.optionalAssets)
+  }
+  return value as RuntimeManifest
+}
+
+function validateAssets(assets: RuntimeAsset[]) {
+  for (const asset of assets) {
     if (!asset || typeof asset.url !== 'string' || !asset.url.startsWith(import.meta.env.BASE_URL)
       || asset.url.startsWith('//') || asset.url.includes('..') || !['image', 'audio', 'model', 'file'].includes(asset.kind)
       || typeof asset.required !== 'boolean') throw new Error('Некорректный ресурс manifest')
   }
-  return value as RuntimeManifest
 }
 
 async function validateResponse(response: Response, asset: RuntimeAsset): Promise<ArrayBuffer> {
