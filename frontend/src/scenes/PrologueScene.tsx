@@ -1,18 +1,19 @@
-import { useCallback, useRef } from 'react'
-import type { Mesh } from 'three'
+import { useCallback } from 'react'
 import type { SceneProps } from '../engine/sceneTypes'
-import { TIMING } from '../engine/filmConfig'
-import { ramp, useSceneAnimation } from './shared/animation'
+import { ramp, smooth } from './shared/progress'
+import { SeedLight } from './shared/SeedLight'
 
-export function PrologueScene({ state, dispatch, runtime, reducedMotion }: SceneProps) {
-  const seed = useRef<Mesh>(null)
-  const draw = useCallback((time: number) => {
-    if (seed.current) seed.current.scale.setScalar(reducedMotion ? 1 : 0.8 + ramp(time, TIMING.prologue.seed) * 0.2 + Math.sin(time * 1.2) * 0.04)
-  }, [reducedMotion])
-  useSceneAnimation(runtime, TIMING.prologue.duration, draw)
-  const interact = () => { if (state.mode === 'waiting') dispatch({ type: 'interact' }) }
-  return <group onClick={interact}>
-    <mesh ref={seed}><sphereGeometry args={[0.035, 16, 12]} /><meshBasicMaterial color="#FFF0E8" /></mesh>
-    <mesh><sphereGeometry args={[0.3, 12, 8]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
-  </group>
+export function PrologueScene({ state, runtime, reducedMotion }: SceneProps) {
+  const pose = useCallback((time: number) => {
+    const waiting = state.mode === 'waiting'
+    const impulse = state.mode === 'transitioning' ? Math.min(1, Math.max(0, (time - 16) / 0.3)) : 0
+    const halo = smooth(ramp(time, [14, 16]))
+    const breath = reducedMotion ? 0 : Math.sin((time - 16) * Math.PI / 2) * 0.065
+    return {
+      opacity: smooth(ramp(time, [0, 3])),
+      gain: 1 + halo * 0.22 + (waiting || state.mode === 'playing' ? breath : 0) + Math.sin(impulse * Math.PI) * 2.8,
+      halo, wave: reducedMotion ? 0 : impulse,
+    }
+  }, [reducedMotion, state.mode])
+  return <SeedLight runtime={runtime} duration={20.3} pose={pose} />
 }

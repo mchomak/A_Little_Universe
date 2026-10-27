@@ -3,24 +3,15 @@ import type { FilmAction, FilmState } from '../engine/film'
 import { COPY, MEMORIES, TIMING } from '../engine/filmConfig'
 import type { FilmRuntime } from '../engine/runtime'
 import { GreetingOverlay } from './GreetingOverlay'
+import { PrologueOverlay } from './PrologueOverlay'
 
 interface Props { state: FilmState; dispatch: Dispatch<FilmAction>; runtime: FilmRuntime; reducedMotion: boolean }
 
 function cue(time: number, interval: readonly [number, number]) { return time >= interval[0] && time < interval[1] }
-function opacity(time: number, interval: readonly [number, number], reducedMotion: boolean) {
-  if (!cue(time, interval)) return 0
-  return reducedMotion ? 1 : Math.min(1, (time - interval[0]) / TIMING.transition, (interval[1] - time) / TIMING.transition)
-}
 
 export function SceneOverlay({ state, dispatch, runtime, reducedMotion }: Props) {
   const { scene, elapsed, mode } = state
-  if (scene === 'prologue') return <>
-    <div className="phrase-zone" aria-live="polite">
-      {cue(elapsed, TIMING.prologue.first) && <p className="film-phrase" style={{ opacity: opacity(elapsed, TIMING.prologue.first, reducedMotion) }}>{COPY.prologueFirst}</p>}
-      {cue(elapsed, TIMING.prologue.second) && <p className="film-phrase" style={{ opacity: opacity(elapsed, TIMING.prologue.second, reducedMotion) }}>{COPY.prologueSecond}</p>}
-    </div>
-    {mode === 'waiting' && <div className="interaction-prompt"><button type="button" data-testid="interact" onClick={() => dispatch({ type: 'interact' })}>{COPY.seedPrompt}</button></div>}
-  </>
+  if (scene === 'prologue') return <PrologueOverlay state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} />
   if (scene === 'bloom') return mode === 'waiting' ? <div className="interaction-prompt"><button type="button" data-testid="interact" onClick={() => dispatch({ type: 'interact' })}>{COPY.flowerPrompt}</button></div> : null
   if (scene === 'identity') return <div className="identity-caption" aria-live="polite">
     {cue(elapsed, TIMING.identity.name) && <p className="identity-name">{COPY.name}</p>}

@@ -24,10 +24,12 @@ function useApproximateRafFps() {
   return fps
 }
 
-export default function DeveloperPanel({ state, dispatch, reducedMotion }: {
+export default function DeveloperPanel({ state, dispatch, reducedMotion, onPreload, onPermissions }: {
   state: FilmState
   dispatch: Dispatch<FilmAction>
   reducedMotion: boolean
+  onPreload(): void
+  onPermissions(): void
 }) {
   const [selected, setSelected] = useState<SceneId>(state.scene)
   const fps = useApproximateRafFps()
@@ -37,7 +39,8 @@ export default function DeveloperPanel({ state, dispatch, reducedMotion }: {
   return (
     <aside id="developer-panel" className="developer-panel" aria-labelledby="developer-title">
       <h2 id="developer-title">Developer Mode</h2>
-      <p>Все сцены — технические placeholders.</p>
+      <p>00–01 реализованы; 02–09 — placeholders. DEV не начинает запись и не выдаёт согласия.</p>
+      <div className="dev-actions"><button type="button" data-testid="dev-preload" onClick={onPreload}>00 · Проверить загрузку</button><button type="button" data-testid="dev-permissions" onClick={onPermissions}>00.1 · Настройки заново</button></div>
       <label>Сцена<select data-testid="dev-scene" value={selected} onChange={(event) => setSelected(event.target.value as SceneId)}>{SCENE_ORDER.map((scene) => <option key={scene} value={scene}>{SCENES[scene].label}</option>)}</select></label>
       <div className="dev-actions"><button type="button" data-testid="dev-run" onClick={() => dispatch({ type: 'dev-jump', scene: selected })}>Запустить сцену</button><button type="button" onClick={() => dispatch({ type: 'dev-restart' })}>Перезапустить</button></div>
       <div className="dev-actions"><button type="button" aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Пауза'}</button><button type="button" disabled={state.scene === 'ending'} onClick={() => dispatch({ type: 'dev-skip' })}>Пропустить сцену</button></div>

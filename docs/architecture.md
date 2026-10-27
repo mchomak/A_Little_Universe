@@ -2,15 +2,20 @@
 
 ## Текущий каркас
 
-Модульный монолит: React SPA и необязательный минимальный FastAPI backend. Девять сцен — явно обозначенные технические placeholders. Они проверяют маршрут и взаимодействия, а не заменяют утверждённые keyframes. Нарративный источник: [Storyboard v1.1](../A_Little_Universe_for_Vasilisa_Storyboard_v1.1.md).
+Модульный монолит: React SPA и необязательный минимальный FastAPI backend. Сцены 00/00.1/01 реализованы по текущему брифу; 02–09 сохраняют технические placeholders. Нарративный источник: [Storyboard v1.1](../A_Little_Universe_for_Vasilisa_Storyboard_v1.1.md).
 
 ```text
-App (DOM, useFilm, reduced motion, gallery swipe)
+Bootstrap (лёгкий Preloader → AssetManager → lazy App/Three → проверка SW-кэша)
+App (settings → checking → ready → film; useFilm, reduced motion, gallery swipe)
+  ├─ MediaSession (один stream, recorder, IndexedDB, recovery)
+  ├─ AudioDirector (gesture unlock, cues, pause/speed/visibility)
+  ├─ PreparationScreen + повторяемый Preloader в DEV
   ├─ FilmCanvas (один постоянный WebGL2 Canvas)
   │   ├─ CameraDirector (единственный владелец камеры)
   │   └─ SceneDirector → один из девяти статически импортированных модулей
   ├─ SceneOverlay → prompts / gallery / GreetingOverlay / ending
   ├─ ReadingPanel (modal dialog)
+  ├─ RecordingControls + RecoveryPanel (DOM вне Canvas, вне lifetime сцен)
   └─ DeveloperPanel (lazy import и UI только в DEV)
 
 useFilm → filmReducer + createFilmClock → FilmRuntime
@@ -22,11 +27,11 @@ FastAPI → GET /health → {"status":"ok"} (фильм его не вызыва
 
 ## Управление фильмом
 
-`engine/filmConfig.ts` содержит порядок, длительности и cues, копирайт и шесть placeholder-воспоминаний. `film.ts` определяет `FilmState`, действия и чистый reducer. `mode` (`ready`, `playing`, `waiting`, `exploring`, `ended`) отделён от ручной `paused` и модального `reading`. `revision` меняется при переходе, replay, restart и seek; устаревшие callbacks reducer игнорирует.
+`engine/filmConfig.ts` содержит порядок, длительности и cues, копирайт и шесть placeholder-воспоминаний. `film.ts` определяет `FilmState`, действия и чистый reducer. `mode` (`ready`, `playing`, `transitioning`, `waiting`, `exploring`, `ended`) отделён от ручной `paused` и модального `reading`. `revision` меняется при переходе, replay, restart и seek; устаревшие callbacks reducer игнорирует.
 
 | Сцена | Поведение при обычной скорости |
 |---|---|
-| `prologue` | Стартовая кнопка запускает 16 с, затем ожидание касания точки или DOM-кнопки. |
+| `prologue` | Gift gesture запускает 16 с, затем неограниченное ожидание касания точки/keyboard activation. `transitioning` длится 0.3 с через те же часы, затем growth. |
 | `growth` | 23 с автоматически; затем закрытый бутон. |
 | `bloom` | Неограниченное ожидание касания бутона/кнопки; после него 22 с раскрытия и созерцания. |
 | `identity` | 34 с: схематичные частицы, имя в DOM, пустые карточки портрета и фотографии. |
@@ -36,7 +41,7 @@ FastAPI → GET /health → {"status":"ok"} (фильм его не вызыва
 | `greeting` | 50 с показа поздравления/титров, затем ожидание кнопки «Завершить». Чтение доступно без таймера в modal dialog. |
 | `ending` | Повтор фильма, повторный вход в галерею и чтение. Закрытие повторного просмотра возвращает сюда. |
 
-Пауза не сбрасывает playhead. Чтение замораживает часы независимо от ручной паузы; закрытие сохраняет её прежнее значение. Повтор начинает пролог сразу, сбрасывая настройки к исходным. Все состояния находятся в памяти: browser reload возвращает стартовый экран. History API и URL-маршруты сцен не используются; browser Back не является переходом между сценами.
+Пауза не сбрасывает playhead. Чтение замораживает часы независимо от ручной паузы; закрытие сохраняет её прежнее значение. Повтор начинает пролог сразу, сбрасывая film state, и не начинает запись заново. Browser reload возвращает подготовку и сбрасывает согласия; записи живут отдельно в IndexedDB. History API и URL-маршруты сцен не используются; browser Back не является переходом между сценами.
 
 ## Часы и cleanup
 
@@ -44,7 +49,7 @@ FastAPI → GET /health → {"status":"ok"} (фильм его не вызыва
 
 `useSceneTimeline` в runtime-режиме строит **paused** GSAP timeline, сразу устанавливает текущее время и scrubs его по runtime. Сцена, камера и титры используют общие часы, а не несколько независимо идущих таймеров. `useSceneAnimation` адаптирует функцию `draw(time)` к этому механизму. Смена revision отменяет старые подписки и GSAP context; `context.revert()` откатывает изменения. Hook также сохраняет прежний standalone-режим для старой foundation-сцены, которая не входит в маршрут фильма.
 
-Часы останавливаются при `paused`, `reading`, режиме вне `playing` и `document.hidden`. В галерее film clock неподвижен, поэтому `createGalleryMove` имеет отдельный короткий tween фокуса: он синхронизирован с паузой, чтением, скоростью и visibility. При следующем фокусе предыдущий tween удаляется, текущая позиция сохраняется. Его duration берётся из `TIMING.camera.gallery`.
+Часы останавливаются при `paused`, `reading`, режиме вне `playing`/`transitioning` и `document.hidden`. Waiting pulse использует тот же runtime и тоже останавливается. В галерее film clock неподвижен, поэтому `createGalleryMove` имеет отдельный короткий tween фокуса: он синхронизирован с паузой, чтением, скоростью и visibility. При следующем фокусе предыдущий tween удаляется, текущая позиция сохраняется. Его duration берётся из `TIMING.camera.gallery`.
 
 GSAP contexts, runtime subscriptions, visibility listeners, gesture listeners и debug rAF отменяются при cleanup. R3F освобождает декларативные geometry/material при размонтировании. `FilmCanvas` снимает listener потери контекста. Ошибка и context loss показывают fallback с перезагрузкой; восстановление текущего кадра после context loss не реализовано.
 
@@ -66,10 +71,16 @@ Canvas использует `frameloop="demand"`; анимации вызыва�
 
 Сначала утвердить референсы в `references/keyframes/`, сохранив оригиналы и статус draft/approved. Заменять геометрию внутри scene-модуля или `scenes/shared/Primitives.tsx`, сохраняя интерфейс `SceneProps`, cues, gates и единственный Canvas. Текущая лилия управляется именованными группами `stem`, `head`, `petal-0`…`petal-5`; при смене модели адаптировать `lilyPose`, а не полагаться на случайную иерархию объекта.
 
-Личные фото, портрет и письмо сейчас отсутствуют. Подключать только предоставленные материалы; `COPY` и `MEMORIES` — явные точки замены временного текста и списка карточек, но готового загрузчика изображений ещё нет. Runtime-ассеты размещать в build-доступной frontend-директории, ограничивать разрешение/память и предусматривать реальные загрузку, ошибки и retry. Не включать всю папку референсов в bundle. Сложные shader/particle-системы вводить по требованиям конкретного кадра и измерениям планшета.
+Личные фото, портрет и письмо сейчас отсутствуют. Подключать только предоставленные материалы; `COPY` и `MEMORIES` — точки замены временного текста и карточек. `AssetManager` проверяет и предварительно декодирует указанные images/audio/models/files; новый runtime asset должен входить в обязательный или optional manifest. Runtime-ассеты размещать в build-доступной frontend-директории, ограничивать разрешение/память. Не включать всю папку референсов в bundle. Сложные shader/particle-системы вводить по требованиям конкретного кадра и измерениям планшета.
 
 ## Сеть, звук и optional media
 
-Текущий маршрут использует локальную геометрию, системные шрифты и статические модули. Он не делает API-запросов, не требует внешних изображений/моделей/аудио и не запрашивает camera/mic permissions. Это не persistent offline cache: Service Worker и offline reload отсутствуют. Результат проверки отключения сети после загрузки указан отдельно в [verification.md](verification.md).
+Первый Canvas2D кадр рисуется до импорта Three. `AssetManager.prepare/retry` сообщает завершённые реальные единицы, проверяет HTTP/content/digest и доступную декодировку; cache verification является отдельным неизмеряемым этапом. Vite выпускает версионированные runtime manifest и Service Worker. Offline readiness требует читаемых ответов всех mandatory ресурсов текущей сборки, а не только регистрации SW. Отсутствующий ресурс блокирует обязательную готовность; cache/storage failure разрешает продолжить уже загруженный фильм с явным ограничением offline reload. Неудачный ES-module import браузер мемоизирует: после восстановления сети требуется reload. SW не кэширует камеры, записи или API.
 
-Audio director, загрузчик художественных ассетов, MediaPipe, getUserMedia, MediaRecorder, local chunks и upload не реализованы. Будущие tracking, запись и отправка требуют трёх независимых согласий. Tracking остаётся на устройстве; отказ любой optional возможности должен сохранять фильм. Backend сейчас содержит только health/configuration и не принимает видео. Не добавлять фиктивные проценты preload или сообщения об успешном сохранении.
+App владеет одним `MediaSession` и одним `AudioDirector` вне scene lifetime. Отложенный cleanup отменяется повторным StrictMode effect setup; фактическое размонтирование освобождает services. `restore()` вызывается один раз и не запрашивает permissions. Согласия только в памяти, исходно false. Settings continue — единственное место `prepare()`; отмена/смена опций инвалидирует generation, поздний getUserMedia освобождает tracks. Один video stream переиспользуется, audio добавляется лишь при recording consent. Прежде чем объявить readiness, проверяются live video/audio и MIME. MediaPipe пока нет: UI прямо сообщает о будущем трекере.
+
+Gift click вызывает `AudioDirector.unlock()` до первого await. Затем `MediaSession.start()` разрешён только consent + prepared recording status; optional failures не блокируют film start. DEV/replay не вызывают start recorder. Audio cues подключены к shared runtime, pause/speed/visibility; музыкальные buffers не предоставлены, fake playing отсутствует.
+
+IndexedDB `little-universe-reactions-v1` хранит sessions и ordered chunks. Recorder запрашивает фрагменты каждые 4 с; последовательная transaction queue ограничена 8 pending chunks / 32 МиБ. Stop ждёт финального dataavailable и всех commit перед complete. Ошибка storage, recorder или pagehide оставляет recovery/incomplete, а не fake saved. Финал завершает запись и сбрасывает optional consent, освобождая все tracks; DEV jump/restart тоже сбрасывает согласия и не начинает запись. DOM controls/recovery остаются доступными во всех сценах. Export собирает долговременные chunks, сообщает только о запросе браузерного download. Delete требует отдельного подтверждения. Сеть для локальной записи не используется. Хранилище может быть очищено браузером, последние фрагменты при закрытии не гарантированы.
+
+Backend содержит только health/configuration. Upload disabled с причиной, upload-запросов нет. Камера, запись и будущая передача — три независимых решения; кадры камеры для трекера не отправляются. Проверки и device limitations: [verification.md](verification.md).

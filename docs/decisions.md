@@ -15,11 +15,13 @@
 | Явное качество и reduced motion | Standard DPR 1–1.5 / low DPR 1 и меньше частиц. Reduced motion сокращает движение, сохраняя clock и gates. Это не обещание измеренного планшетного FPS. |
 | Локальная геометрия и системные шрифты | Нет внешних HDRI, CDN-шрифтов, подменённых фото и фиктивного preload. Художественные ассеты потребуют реальной загрузки/error handling. |
 | Developer Mode только в DEV | Vite guard исключает lazy import и UI в production. Панель открывается DEV или ?debug и показывает rAF estimate, не WebGL FPS. |
-| Без преждевременных сервисов | Audio, asset manifest, media и uploader пока отсутствуют; добавлять с реальными потребителями. |
+| Сервисы только для текущих потребителей | Добавлены preload/cache, AudioDirector и MediaSession для сцен 00–01. Uploader/MediaPipe отсутствуют до реальной защищённой инфраструктуры и художественной задачи. |
 | Минимальный FastAPI без CORS | Только health и Pydantic-конфигурация, без БД/хранилища/upload. Frontend его не вызывает; origins задавать при появлении HTTP-потребителя. |
 | Lockfiles npm и uv | npm ci и uv sync --frozen --extra dev воспроизводят зависимости; обновления — отдельная задача. |
 | Keyframes вне сборки | Оригиналы и review state остаются в references; runtime получает только выбранные оптимизированные ассеты. |
-| Persistent offline/media отложены | Отсутствие сетевых зависимостей после загрузки не означает Service Worker или offline reload. Tracking/recording/upload потребуют независимых opt-in. |
+| Проверяемая готовность автономного кэша | Native Cache API + generated SW без новой зависимости. Readiness требует чтения обязательных ответов текущей версии и проверки manifest/digest; storage limitations показываются явно. Неудачный module import восстанавливается reload. |
+| Session-scoped media и долговременные chunks | Один stream/recorder вне сцен; prepare не пишет, gift gesture может start только после отдельного согласия. Последовательные IndexedDB commits, bounded queue, incomplete recovery и явные export/delete. Reload не восстанавливает согласия и не начинает запись. |
+| Импульс пролога принадлежит film clock | `transitioning` на 0.3 с в reducer/runtime вместо отдельного таймера. Поэтому pause/speed/visibility/restart и stale revision guards действуют и на касание/вход growth. |
 
 Python-конфигурация: `ALU_APP_NAME` и `ALU_DEBUG` читаются из environment и проверяются Pydantic. `.env` подхватывает Uvicorn только с `--env-file`; debug выключен по умолчанию. `python-dotenv` нужен для этого режима Uvicorn, `httpx2` — dev dependency тестового клиента Starlette. Backend не изменялся при добавлении фильма.
 

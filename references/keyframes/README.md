@@ -1,6 +1,19 @@
 # Ключевые кадры
 
-Это материалы художественной разработки, **не runtime-ассеты**. Пользователь добавляет изображения самостоятельно. Сейчас изображений нет; Codex не генерирует их в рамках инициализации.
+Это материалы художественной разработки, **не runtime-ассеты**. Исходники текущего брифа находятся в `key_frames/`; они не перемещены, не изменены и не включены в production bundle. Ниже индекс восьми утверждённых направляющих кадров сцен 00–01. При последующей организации originals/approved сохранять существующие исходники.
+
+| Кадр | Оригинал | Статус и применение |
+|---|---|---|
+| 00.2 | [S00_0_F02_ResourceLoading.png](../../key_frames/S00_0_F02_ResourceLoading.png) | approved reference: мягкое жемчужно-лавандовое облако, глубокий фон, фактический progress |
+| 00.3 | [S00_0_F03_LoadingComplete.png](../../key_frames/S00_0_F03_LoadingComplete.png) | approved reference: сборка облака в точку после готовности |
+| 00.1.1 | [S00_1_F01_PreparationScreen.png](../../key_frames/S00_1_F01_PreparationScreen.png) | approved reference: serif заголовок, три независимые опции, pearl button |
+| 00.1.2 | [S00_1_F02_CameraCheck.png](../../key_frames/S00_1_F02_CameraCheck.png) | approved reference: диагностика; статусы только фактические, трекер честно не подключён |
+| 01.1 | [S01_F01_FirstLight.png](../../key_frames/S01_F01_FirstLight.png) | approved reference: одна тёплая точка без звёзд |
+| 01.2 | [S01_F02_FirstMessage.png](../../key_frames/S01_F02_FirstMessage.png) | approved reference: первая serif фраза, неподвижная камера |
+| 01.3 | [S01_F03_SecondMessage.png](../../key_frames/S01_F03_SecondMessage.png) | approved reference: вторая фраза, спокойная пауза |
+| 01.4 | [S01_F04_TouchTheLight.png](../../key_frames/S01_F04_TouchTheLight.png) | approved reference: более яркая точка, ореол, нижнее приглашение к касанию |
+
+Эти кадры задают композицию, палитру, свет и типографику; они не готовые 3D-модели. Ограничения фактической реализации и проверки указаны в [отчёте 00–01](../../docs/opening-scenes-report.md).
 
 Источник shot IDs: [Storyboard v1.1](../../A_Little_Universe_for_Vasilisa_Storyboard_v1.1.md). Сценарий не дублируем и не переименовываем.
 

@@ -1,0 +1,26 @@
+.preloader {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  color: #d8d3dc;
+  background: #080914;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+.preloader-particles { position: absolute; width: min(560px, 92vw); height: min(420px, 57vh); top: 43%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+.preloader-copy { position: absolute; top: 62%; width: min(600px, 88vw); text-align: center; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.preloader-copy > p { margin: 0 0 25px; font-size: clamp(17px, 2.2vw, 24px); line-height: 1.5; font-weight: 400; }
+.preloader-copy progress { display: block; appearance: none; border: 0; width: min(272px, 65vw); height: 2px; margin: 0 auto 16px; background: #34313f; color: #d4c8db; }
+.preloader-copy progress::-webkit-progress-bar { background: #34313f; }
+.preloader-copy progress::-webkit-progress-value { background: #d4c8db; }
+.preloader-copy progress::-moz-progress-bar { background: #d4c8db; }
+.preloader-copy progress:indeterminate { opacity: 0.45; }
+.preloader-copy small { display: block; margin: 12px 0; font-size: 12px; line-height: 1.6; color: #a6a0b5; }
+.preloader-recovery { padding: 8px 0 24px; }
+.preloader-recovery p { overflow-wrap: anywhere; font-size: 13px; line-height: 1.6; }
+.preloader-recovery button { min-height: 44px; margin: 5px; padding: 10px 17px; border: 1px solid #777085; border-radius: 24px; background: #181522; color: #f5f1f0; font: inherit; font-size: 13px; cursor: pointer; }
+.preloader-recovery button:focus-visible { outline: 2px solid #d5b8ec; outline-offset: 4px; }
+.preloader:has(.preloader-recovery) .preloader-copy { top: 54%; }
+@media (max-height: 500px) { .preloader:has(.preloader-recovery) .preloader-particles { opacity: 0.3; top: 30%; } .preloader:has(.preloader-recovery) .preloader-copy { top: 35%; } }
+@media (prefers-reduced-motion: reduce) { .preloader-copy progress::-webkit-progress-value { transition: none; } }

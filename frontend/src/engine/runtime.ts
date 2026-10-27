@@ -1,6 +1,5 @@
 import { gsap } from 'gsap'
-import type { FilmAction, FilmState } from './film'
-import { SCENES } from './filmConfig'
+import { filmDuration, type FilmAction, type FilmState } from './film'
 
 export interface FilmRuntime {
   readonly time: number
@@ -23,36 +22,39 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
   let completed = false
   let lastDispatch = -Infinity
   const revision = initial.revision
-  const duration = SCENES[initial.scene].duration
-  const clock = { time: 0 }
+  const waiting = initial.scene === 'prologue' && initial.mode === 'waiting'
+  const start = waiting || initial.mode === 'transitioning' ? 16 : 0
+  const duration = waiting ? 4 : filmDuration(initial) - start
+  const endpoint = start + duration
+  const clock = { time: start }
   let timeline!: gsap.core.Timeline
   const complete = () => {
-    if (disposed || completed) return
+    if (disposed || completed || waiting) return
     completed = true
-    dispatch({ type: 'timeline-update', time: duration, revision })
+    dispatch({ type: 'timeline-update', time: endpoint, revision })
     dispatch({ type: 'timeline-complete', revision })
   }
   const context = gsap.context(() => {
-    timeline = gsap.timeline({ paused: true,
+    timeline = gsap.timeline({ paused: true, repeat: waiting ? -1 : 0,
       onUpdate() {
         if (disposed) return
         runtime.publish(clock.time)
         const stamp = now()
-        if (stamp - lastDispatch >= 100 || clock.time >= duration) {
+        if (!waiting && (stamp - lastDispatch >= 100 || clock.time >= endpoint)) {
           lastDispatch = stamp
           dispatch({ type: 'timeline-update', time: clock.time, revision })
         }
       },
       onComplete: complete,
-    }).to(clock, { time: duration, duration, ease: 'none' })
+    }).to(clock, { time: endpoint, duration, ease: 'none' })
   })
-  timeline.time(initial.elapsed, true)
+  timeline.time(Math.max(0, initial.elapsed - start), true)
   runtime.publish(initial.elapsed)
   const sync = (next: FilmState) => {
     if (disposed || next.revision !== revision) return
     state = next
     timeline.timeScale(state.speed)
-    const paused = state.mode !== 'playing' || state.paused || state.reading || Boolean(visibility?.hidden)
+    const paused = (!waiting && state.mode !== 'playing' && state.mode !== 'transitioning') || state.paused || state.reading || Boolean(visibility?.hidden)
     timeline.paused(paused)
     if (!paused && timeline.time() >= duration) complete()
   }

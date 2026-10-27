@@ -1,0 +1,27 @@
+.recording-controls {
+  position: fixed;
+  z-index: 30;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 24px);
+  padding: 6px 8px 6px 12px;
+  border: 1px solid #f4cdd940;
+  border-radius: 12px;
+  background: #080914ed;
+  color: #f5f1f0;
+  font: 13px/1.4 system-ui, sans-serif;
+}
+.recording-dot { display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: #f4a6b8; }
+.recording-controls button, .recovery-panel button { min-height: 44px; padding: 8px 12px; border: 1px solid #f4cdd955; border-radius: 8px; background: #f4cdd918; color: #f5f1f0; cursor: pointer; font: inherit; }
+.recording-controls button:focus-visible, .recovery-panel button:focus-visible, .recovery-panel summary:focus-visible { outline: 2px solid #b9a4e8; outline-offset: 3px; }
+.recording-controls button:disabled, .recovery-panel button:disabled { opacity: .55; cursor: default; }
+.recovery-panel { position: fixed; z-index: 30; right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); max-width: min(440px, calc(100vw - 24px)); max-height: 55dvh; overflow: auto; padding: 4px 12px; border: 1px solid #f4cdd930; border-radius: 10px; background: #080914f5; color: #f5f1f0; font: 13px/1.5 system-ui, sans-serif; }
+.recovery-panel summary { min-height: 44px; display: list-item; align-content: center; cursor: pointer; }
+.recovery-entry { border-top: 1px solid #f4cdd930; padding-block: 8px; }
+.recovery-entry p { margin-block: 4px 8px; }
+.media-note { color: #d5cfdf; }
+.media-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 560px) { .recording-controls { font-size: 11px; gap: 6px; } .recording-controls button { max-width: 115px; flex-shrink: 0; } }

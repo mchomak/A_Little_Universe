@@ -1,10 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { App } from './app/App'
+import { Bootstrap } from './bootstrap/Bootstrap'
 import './app/styles.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <Bootstrap />
   </StrictMode>,
 )

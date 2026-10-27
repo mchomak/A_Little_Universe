@@ -7,9 +7,10 @@
     <meta name="description" content="A Little Universe for You — технический прототип интерактивного поздравления для Василисы." />
     <link rel="icon" href="data:," />
     <title>A Little Universe for You</title>
+    <style>html,body{margin:0;background:#080914;color:#d8d3dc} .first-frame{position:fixed;inset:0;display:grid;place-items:center;font:18px system-ui,sans-serif;text-align:center} .first-frame p{position:absolute;top:62%;padding:0 24px} .first-frame i{width:5px;height:5px;border-radius:50%;background:#fff0e8;box-shadow:0 0 24px #b9a4e8;position:absolute;top:43%}</style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><main class="first-frame"><i aria-hidden="true"></i><p role="status">Создаём кое-что особенное…</p></main></div>
     <noscript>Для запуска 3D-представления включите JavaScript в настройках браузера.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>

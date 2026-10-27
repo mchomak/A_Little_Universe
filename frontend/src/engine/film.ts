@@ -4,7 +4,7 @@ export type SceneId = 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' |
 export type Quality = 'standard' | 'low'
 export interface FilmState {
   scene: SceneId
-  mode: 'ready' | 'playing' | 'waiting' | 'exploring' | 'ended'
+  mode: 'ready' | 'playing' | 'transitioning' | 'waiting' | 'exploring' | 'ended'
   elapsed: number
   paused: boolean
   speed: number
@@ -31,6 +31,10 @@ export const initialFilmState: FilmState = {
   revision: 0, galleryIndex: 0, reading: false, quality: 'standard', returnToEnding: false,
 }
 
+export function filmDuration(state: FilmState) {
+  return SCENES[state.scene].duration + (state.scene === 'prologue' && state.mode === 'transitioning' ? 0.3 : 0)
+}
+
 function enter(state: FilmState, scene: SceneId): FilmState {
   return { ...state, scene, mode: SCENES[scene].entryMode, elapsed: 0, revision: state.revision + 1, reading: false }
 }
@@ -52,7 +56,7 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
       const closedBud = state.scene === 'bloom' && state.mode === 'waiting'
       const elapsed = closedBud ? 0 : Math.max(0, Math.min(action.time, duration))
       const resumeTimed = !closedBud && duration > 0 && (state.mode === 'waiting' || state.mode === 'ready')
-      return { ...state, elapsed, mode: resumeTimed ? 'playing' : state.mode, revision: state.revision + 1 }
+      return { ...state, elapsed, mode: resumeTimed || state.mode === 'transitioning' ? 'playing' : state.mode, revision: state.revision + 1 }
     }
     case 'set-speed':
       return Number.isFinite(action.speed) && action.speed >= 0.25 && action.speed <= 4 ? { ...state, speed: action.speed } : state
@@ -73,18 +77,19 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
     case 'start':
       return state.mode === 'ready' ? enter(state, 'prologue') : state
     case 'interact':
-      if (state.mode !== 'waiting') return state
-      if (state.scene === 'prologue') return enter(state, 'growth')
+      if (state.mode !== 'waiting' || state.paused || state.reading) return state
+      if (state.scene === 'prologue') return { ...state, mode: 'transitioning', elapsed: 16, revision: state.revision + 1 }
       if (state.scene === 'bloom') return { ...state, elapsed: 0, mode: 'playing', revision: state.revision + 1 }
       return state
     case 'timeline-update':
-      if (state.mode !== 'playing' || state.paused || state.reading || action.revision !== state.revision || !Number.isFinite(action.time)) return state
-      return { ...state, elapsed: Math.max(0, Math.min(action.time, SCENES[state.scene].duration)) }
+      if ((state.mode !== 'playing' && state.mode !== 'transitioning') || state.paused || state.reading || action.revision !== state.revision || !Number.isFinite(action.time)) return state
+      return { ...state, elapsed: Math.max(0, Math.min(action.time, filmDuration(state))) }
     case 'timeline-complete': {
-      if (state.mode !== 'playing' || state.paused || state.reading || action.revision !== state.revision || state.elapsed < SCENES[state.scene].duration) return state
+      if ((state.mode !== 'playing' && state.mode !== 'transitioning') || state.paused || state.reading || action.revision !== state.revision || state.elapsed < filmDuration(state)) return state
+      if (state.scene === 'prologue' && state.mode === 'transitioning') return enter(state, 'growth')
       const next = { growth: 'bloom', bloom: 'identity', identity: 'gallery', eye: 'cosmos', cosmos: 'greeting' } as const
       if (state.scene in next) return enter(state, next[state.scene as keyof typeof next])
-      return { ...state, mode: 'waiting' }
+      return { ...state, mode: 'waiting', revision: state.scene === 'prologue' ? state.revision + 1 : state.revision }
     }
     case 'gallery-focus':
       return state.scene === 'gallery' && Number.isInteger(action.index) && action.index >= 0 && action.index < MEMORIES.length ? { ...state, galleryIndex: action.index } : state

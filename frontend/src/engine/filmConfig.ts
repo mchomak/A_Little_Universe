@@ -38,7 +38,7 @@ export const SCENES: Record<SceneId, SceneConfig> = {
 export const COPY = {
   prologueFirst: 'Я долго думал, что тебе подарить…',
   prologueSecond: 'И решил, что ты заслуживаешь чего-то особенного:',
-  seedPrompt: 'Прикоснись к точке', flowerPrompt: 'Прикоснись к бутону', name: 'ВАСИЛИСА',
+  seedPrompt: 'Прикоснись к свету', flowerPrompt: 'Прикоснись к бутону', name: 'ВАСИЛИСА',
   portrait: 'Портрет — временный placeholder', photo: 'Фотография — временный placeholder',
   photoCaption: 'С этого всё началось', greetingTitle: 'С днём рождения, Василиса!',
   greetingWish: 'Пусть в твоей жизни всегда будет место для чего-то по-настоящему волшебного',

@@ -24,3 +24,5 @@ recordings/
 .idea/
 .DS_Store
 Thumbs.db
+.autopilot
+3D_models

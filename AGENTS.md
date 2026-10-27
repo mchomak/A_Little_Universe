@@ -213,3 +213,20 @@ Priority order when instructions conflict:
 4. general conventions.
 
 When the task introduces a durable rule that will matter across future work, update this file only if explicitly asked or if the repository workflow clearly expects it. Preserve established working principles and avoid unrelated rewrites.
+
+<!-- autopilot:start -->
+## Implemented foundation (opening scenes)
+- Navigation/workflow: `README.md`; module/scene guidance: `docs/architecture.md`; delivery scope and validation limits: `docs/opening-scenes-report.md`. Scenes 00/00.1/01 have dedicated preload/preparation/prologue implementations; 02-09 remain explicitly labeled placeholders.
+- Frontend commands run in `frontend/`: `npm ci`, `npm run dev` (127.0.0.1:5173), `npm run check` (lint + Vitest + typechecked build), `npm test -- src/...test.ts`, `npm run preview` (127.0.0.1:4173). Node requires ^22.12.0 or >=24; Vite ports are strict.
+- Optional backend commands run in `backend/` with its existing environment: `.venv/Scripts/python.exe -m pytest`; `.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000`. It implements only `/health`, no upload/auth/storage API; cross-platform setup is in `README.md`.
+- `bootstrap/` paints Canvas2D preload before importing App/Three. `systems/assets/AssetManager.ts` owns module/resource readiness; failed module imports require reload after network restoration, ordinary resource failures allow retry. Source paths in these bullets are relative to `frontend/src/` unless stated otherwise.
+- `app/App.tsx` owns preparation/film routes and application-lifetime MediaSession/AudioDirector outside scenes. FilmCanvas mounts on gift opening and persists across scenes; `engine/CameraDirector.tsx` owns camera choreography. Canvas uses demand rendering and bounded DPR.
+- `engine/film.ts` owns gates/revisions; `runtime.ts` is the shared GSAP clock; `useSceneTimeline.ts` scrubs scene timelines and reverts contexts on cleanup. Pause, visibility, reading and speed belong to this shared control path; do not add independent scene clocks.
+- Prologue runs to the touch gate at 16 s; accepted touch enters a pausable 0.3 s `transitioning` impulse before growth. Waiting remains indefinite; stale revision callbacks and repeated touches are guarded by the reducer.
+- `app/openGift.ts` unlocks audio synchronously from the deliberate start gesture and starts recording only when opted in and prepared; service failures still allow film start. Replay/dev jumps do not implicitly restart recording. Ending stops recording and resets options.
+- `systems/media/MediaSession.ts` owns shared tracks, consent, recorder and recovery; `prepare()` requests permissions but never records, `restore()` requests no permissions. Camera and recording are optional; secure context is required. No MediaPipe tracker is connected; upload is forced off.
+- `systems/media/RecordingStore.ts` commits ordered four-second chunks in IndexedDB `little-universe-reactions-v1` before reporting saved; stop drains the final chunk/queue. Recovery/export/delete use committed data; interrupted sessions are incomplete, storage failures stop recording and retain earlier chunks. Browser eviction and abrupt closure can still lose data.
+- `systems/audio/AudioDirector.ts` owns AudioContext/cues and follows film pause/visibility/speed; missing buffers mean silence. Runtime has no registered music buffers; do not represent cue infrastructure as supplied music.
+- `frontend/vite.config.ts` emits production-only `runtime-manifest.json`/`sw.js` with versioned same-origin build snapshots and byte/SHA-256 validation. AssetManager verifies cached required entries before claiming offline readiness; dev does not verify offline launch. Offline failure warns without blocking a loaded film; worker upgrades may require closing old tabs.
+- DeveloperPanel is DEV-only and lazy. Real camera permission behavior, recording playback and physical tablet/Safari performance require device validation; synthetic media tests do not establish these.
+<!-- autopilot:end -->

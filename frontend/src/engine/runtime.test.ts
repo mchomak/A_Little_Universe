@@ -3,6 +3,36 @@ import { expect, it, vi } from 'vitest'
 import { filmReducer, initialFilmState, type FilmAction } from './film'
 import { createFilmClock, createFilmRuntime } from './runtime'
 
+it('keeps waiting pulse on the shared clock, freezes it on pause and times the touch impulse at playback speed', () => {
+  const runtime = createFilmRuntime()
+  const actions: FilmAction[] = []
+  let state = filmReducer(initialFilmState, { type: 'start' })
+  state = filmReducer(state, { type: 'timeline-update', time: 16, revision: state.revision })
+  state = filmReducer(state, { type: 'timeline-complete', revision: state.revision })
+  const waiting = createFilmClock({ state, runtime, dispatch: (action) => actions.push(action) })
+  expect(waiting.timeline.paused()).toBe(false)
+  waiting.timeline.time(2)
+  expect(runtime.time).toBe(18)
+  expect(actions).toEqual([])
+  waiting.sync({ ...state, paused: true, speed: 2 })
+  expect(waiting.timeline.paused()).toBe(true)
+  expect(waiting.timeline.timeScale()).toBe(2)
+  waiting.dispose()
+  state = filmReducer(state, { type: 'interact' })
+  const impulse = createFilmClock({ state: { ...state, speed: 2 }, runtime, dispatch: (action) => actions.push(action) })
+  expect(impulse.timeline.duration()).toBeCloseTo(0.3)
+  expect(impulse.timeline.timeScale()).toBe(2)
+  impulse.timeline.time(0.2)
+  expect(runtime.time).toBeCloseTo(16.2)
+  impulse.sync({ ...state, paused: true })
+  expect(impulse.timeline.paused()).toBe(true)
+  impulse.sync(state)
+  impulse.timeline.time(0.3)
+  expect(actions.at(-1)).toEqual({ type: 'timeline-complete', revision: state.revision })
+  expect(runtime.time).toBeCloseTo(16.3)
+  impulse.dispose()
+})
+
 it('completes an endpoint seek after explicit resume and keeps old revisions inert', () => {
   const runtime = createFilmRuntime()
   let state = { ...initialFilmState, scene: 'eye' as const, mode: 'playing' as const, elapsed: 18, paused: true, revision: 7 }

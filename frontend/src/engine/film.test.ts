@@ -8,6 +8,26 @@ const complete = (state: FilmState) => filmReducer(
 )
 
 describe('film navigation', () => {
+  it('waits indefinitely, accepts one touch and runs a pausable 0.3 second impulse before growth', () => {
+    let state = complete(filmReducer(initialFilmState, { type: 'start' }))
+    expect(filmReducer(state, { type: 'timeline-update', time: 900, revision: state.revision })).toBe(state)
+    state = filmReducer(state, { type: 'toggle-pause' })
+    expect(filmReducer(state, { type: 'interact' })).toBe(state)
+    state = filmReducer(state, { type: 'toggle-pause' })
+    state = filmReducer(state, { type: 'interact' })
+    expect([state.scene, state.mode, state.elapsed]).toEqual(['prologue', 'transitioning', 16])
+    expect(filmReducer(state, { type: 'interact' })).toBe(state)
+    const revision = state.revision
+    state = filmReducer(state, { type: 'timeline-update', time: 16.2, revision })
+    expect(filmReducer(state, { type: 'timeline-complete', revision })).toBe(state)
+    state = filmReducer(state, { type: 'toggle-pause' })
+    expect(filmReducer(state, { type: 'timeline-update', time: 16.3, revision })).toBe(state)
+    state = filmReducer(state, { type: 'toggle-pause' })
+    state = filmReducer(state, { type: 'timeline-update', time: 16.3, revision })
+    state = filmReducer(state, { type: 'timeline-complete', revision })
+    expect([state.scene, state.elapsed]).toEqual(['growth', 0])
+    expect(filmReducer(state, { type: 'timeline-complete', revision })).toBe(state)
+  })
   it('seeks backwards into timed playback without bypassing the closed-bud gate', () => {
     let state = complete(filmReducer(initialFilmState, { type: 'start' }))
     state = filmReducer(state, { type: 'dev-seek', time: 4 }, true)
@@ -88,6 +108,8 @@ describe('film navigation', () => {
     expect([state.scene, state.mode, state.elapsed]).toEqual(['prologue', 'waiting', 16])
     expect(complete(state)).toBe(state)
     state = filmReducer(state, { type: 'interact' })
+    state = filmReducer(state, { type: 'timeline-update', time: 16.3, revision: state.revision })
+    state = filmReducer(state, { type: 'timeline-complete', revision: state.revision })
     expect(state.scene).toBe('growth')
     state = complete(state)
     expect([state.scene, state.mode, state.elapsed]).toEqual(['bloom', 'waiting', 0])
