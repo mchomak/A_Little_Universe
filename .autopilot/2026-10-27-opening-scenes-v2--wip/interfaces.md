@@ -41,7 +41,7 @@ ormalizeConfig`/partial merge для JSON; чистая функция кадр�
 - `loadStartupConfig() -> Promise<void>` reads the optional same-origin `/scene-composer.json`; missing/invalid resource falls back to defaults. `getConfig()`, `subscribeConfig(listener)`, `updateConfig(patch) -> Promise<SceneComposerConfig>`, and `resetConfig(scope) -> Promise<SceneComposerConfig>` form the active store contract.
 - `loadArtFont(id) -> Promise<boolean>` resolves local art-font readiness before the config store publishes a font change. Available ids: Marck Script, Bad Script, Caveat, Cormorant Garamond; validated glyph coverage is Cyrillic including Ё/ё.
 - `RuntimeManifest.optionalAssets` marks optional startup config for offline resource handling. Keep it optional so failure does not block actual preload.
-- Assets/store/font files from ticket 01 are uncommitted until repair, review and full checks pass. Ticket 01 is in repair; continue inside its Zone.
+- Ticket 01 is complete and committed as `e21d81e`; the config/font APIs above are ready for downstream tickets.
 ## Ticket 02 — Scene Composer controls
 
 - `setComposerField(path, value)` updates a single schema-backed field.
@@ -55,3 +55,18 @@ ormalizeConfig`/partial merge для JSON; чистая функция кадр�
 - `PersistentLightPhase = 'hidden' | 'ready' | 'prologue'`.
 - `PersistentLight({ phase, interactive?, reducedMotion?, onActivate? })` is the single app-level center light view.
 - Preparation and preload views read scene presentation parameters from the active config store while preserving real preload progress and existing consent/media owners.
+
+## Ticket 04 — prologue light ownership addition
+
+- `PersistentLight` consumes the active prologue glow/pulse settings from the shared config store and applies them internally; `PrologueOverlay` does not target its CSS classes.
+- Ticket 04 owns the small extension to `PersistentLight.tsx` and its focused tests so the one app-level light remains the only light object across ready→prologue.
+
+## Ticket 04 — prologue and timeline seams
+
+- `getPrologueFrames(settings): PrologueFrames` resolves schema-backed frame boundaries within the 21s gate.
+- `createHandwritingSchedule(text, duration, rhythm): HandwritingStep[]` exposes deterministic per-glyph reveal timing.
+- `sampleGlyphParticlePixels(alpha, width, height, count, seed): Float32Array` samples text-mask pixels deterministically for one points layer.
+- `PersistentLight` reads prologue glow/pulse config internally; overlays must not style its CSS classes.
+- `getPrologueParticleOpacity(time, frames, reducedMotion): number` resolves the after-dissolve/wait visibility gate.
+- `createPrologueOverlayTimeline(targets, frames, rhythm, reducedMotion)` creates deterministic reveal state used by seek/replay.
+- `layoutPrologueCopyBlocks(input): PrologueCopyLayout` places phrase blocks relative to the measured light bounds with an orientation-safe gap.

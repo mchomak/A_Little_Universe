@@ -11,7 +11,7 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-10-27T17:46:48+03:00",
-  "updatedAt": "2026-10-27T19:25:36+03:00",
+  "updatedAt": "2026-10-27T20:03:03+03:00",
   "finishedAt": null,
   "stages": [
     {
@@ -48,13 +48,13 @@ window.STATE =
       "id": "build",
       "status": "active",
       "startedAt": "2026-10-27T18:33:31+03:00",
-      "note": "3 из 5 тасков готовы; таск 04 разблокирован"
+      "note": "4 из 5 тасков готовы; таск 05 документации разблокирован"
     },
     {
       "id": "review",
       "status": "active",
       "startedAt": "2026-10-27T18:53:25+03:00",
-      "note": "3 из 5 тасков готовы; таск 04 разблокирован"
+      "note": "4 из 5 тасков готовы; таск 05 документации разблокирован"
     },
     {
       "id": "final",
@@ -63,8 +63,8 @@ window.STATE =
   ],
   "requirements": {
     "total": 164,
-    "done": 102,
-    "inTicket": 62,
+    "done": 150,
+    "inTicket": 14,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
@@ -264,7 +264,8 @@ window.STATE =
         "failed": 0
       },
       "finishedAt": "2026-10-27T19:25:36+03:00",
-      "review": "Manifest+Spec repair re-review clean; Craft repair re-review clean"
+      "review": "Manifest+Spec repair re-review clean; Craft repair re-review clean",
+      "commit": "56b78c7"
     },
     {
       "id": "04",
@@ -329,14 +330,28 @@ window.STATE =
         "frontend/src/components/PrologueOverlay.tsx",
         "frontend/src/engine/film.ts",
         "frontend/src/engine/runtime.ts",
-        "frontend/src/engine/filmConfig.ts"
+        "frontend/src/engine/filmConfig.ts",
+        "frontend/src/components/PersistentLight.tsx",
+        "frontend/src/components/PersistentLight.test.tsx"
       ],
-      "status": "pending",
+      "status": "done",
       "retries": 0,
-      "repairs": 0,
-      "repairFindings": [],
-      "handoffs": 0,
-      "concerns": []
+      "repairs": 2,
+      "repairFindings": [
+        "Manifest+Spec blocking: particles stay at opacity 1 after dissolve into infinite wait; only the central point may remain.",
+        "Manifest+Spec blocking: add a public-seam test proving seek/replay cannot expose partial reveal or dissolve state.",
+        "Root browser QA blocking: at portrait 768×1024 and landscape 1024×768 around t=12s, the second phrase intersects the central light, so the light is not visually between the text blocks; restore a responsive clear gap and add a layout seam assertion."
+      ],
+      "handoffs": 1,
+      "concerns": [],
+      "startedAt": "2026-10-27T19:26:08+03:00",
+      "lastHandoff": ".autopilot/2026-10-27-opening-scenes-v2--wip/handoff-04-1.md",
+      "tests": {
+        "passed": 77,
+        "failed": 0
+      },
+      "finishedAt": "2026-10-27T20:03:03+03:00",
+      "review": "Manifest+Spec final repair re-review pass; Craft repair review nonblocking only"
     },
     {
       "id": "05",
@@ -468,11 +483,16 @@ window.STATE =
     "Таск 03 · PreparationScreen.test.ts checks absence of old inline light but not the app-level ready→prologue handoff; browser check covered center position manually.",
     "Таск 03 · Preloader.test.ts checks glow styling but not that count/movement/collapse settings leave actual manager progress unchanged.",
     "Таск 02 · export test asserts quality but not full nested config/schema version.",
-    "Таск 02 · JSON rejection tests omit malformed text and unsupported schema version preserving the active config; these are nonblocking coverage gaps."
+    "Таск 02 · JSON rejection tests omit malformed text and unsupported schema version preserving the active config; these are nonblocking coverage gaps.",
+    "Таск 04 · нет физической проверки на iPad; браузерная проверка будет выполнена root после сборки пролога.",
+    "Таск 04 · any prologue config update currently rebuilds glyph mask/particle buffers even for glow/timing changes; geometry should rebuild only for geometry/text-layout inputs.",
+    "Таск 04 · lifecycle tests do not yet cover stale font-load completion or disposal of geometry after revision/unmount.",
+    "Таск 04 · overlay test verifies SSR font CSS but does not assert combined reveal/particle frame at fixed seek/replay time.",
+    "Таск 04 · layoutPrologueCopyBlocks does not clamp blocks for extremely narrow/tall text; covered portrait/landscape iPad-sized viewports, nonblocking."
   ],
   "reviewers": {
-    "manifestSpec": "review_01_manifest_spec",
-    "craft": "review_01_craft"
+    "manifestSpec": "review_04_manifest_spec",
+    "craft": "review_04_craft"
   },
   "blind": null
 };

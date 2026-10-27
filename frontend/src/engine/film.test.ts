@@ -1,11 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { filmReducer, initialFilmState, type FilmAction, type FilmState } from './film'
+import { filmDuration, filmReducer, initialFilmState, type FilmAction, type FilmState } from './film'
 
-const duration = { prologue: 16, growth: 23, bloom: 22, identity: 34, gallery: 0, eye: 18, cosmos: 26, greeting: 50, ending: 0 }
+const duration = { prologue: 21, growth: 23, bloom: 22, identity: 34, gallery: 0, eye: 18, cosmos: 26, greeting: 50, ending: 0 }
 const complete = (state: FilmState) => filmReducer(
   filmReducer(state, { type: 'timeline-update', time: duration[state.scene], revision: state.revision }),
   { type: 'timeline-complete', revision: state.revision },
 )
+
+it('keeps the prologue playing through 21 seconds and preserves the 0.3 second touch passage', () => {
+  let state = filmReducer(initialFilmState, { type: 'start' })
+  expect(filmDuration(state)).toBe(21)
+
+  state = filmReducer(state, { type: 'timeline-update', time: 20.999, revision: state.revision })
+  expect(state.mode).toBe('playing')
+  expect(filmReducer(state, { type: 'timeline-complete', revision: state.revision })).toBe(state)
+
+  state = filmReducer(state, { type: 'timeline-update', time: 21, revision: state.revision })
+  state = filmReducer(state, { type: 'timeline-complete', revision: state.revision })
+  expect([state.mode, state.elapsed]).toEqual(['waiting', 21])
+
+  state = filmReducer(state, { type: 'interact' })
+  expect([state.mode, state.elapsed, filmDuration(state)]).toEqual(['transitioning', 21, 21.3])
+})
 
 describe('film navigation', () => {
   it('waits indefinitely, accepts one touch and runs a pausable 0.3 second impulse before growth', () => {
@@ -15,15 +31,15 @@ describe('film navigation', () => {
     expect(filmReducer(state, { type: 'interact' })).toBe(state)
     state = filmReducer(state, { type: 'toggle-pause' })
     state = filmReducer(state, { type: 'interact' })
-    expect([state.scene, state.mode, state.elapsed]).toEqual(['prologue', 'transitioning', 16])
+    expect([state.scene, state.mode, state.elapsed]).toEqual(['prologue', 'transitioning', 21])
     expect(filmReducer(state, { type: 'interact' })).toBe(state)
     const revision = state.revision
-    state = filmReducer(state, { type: 'timeline-update', time: 16.2, revision })
+    state = filmReducer(state, { type: 'timeline-update', time: 21.2, revision })
     expect(filmReducer(state, { type: 'timeline-complete', revision })).toBe(state)
     state = filmReducer(state, { type: 'toggle-pause' })
-    expect(filmReducer(state, { type: 'timeline-update', time: 16.3, revision })).toBe(state)
+    expect(filmReducer(state, { type: 'timeline-update', time: 21.3, revision })).toBe(state)
     state = filmReducer(state, { type: 'toggle-pause' })
-    state = filmReducer(state, { type: 'timeline-update', time: 16.3, revision })
+    state = filmReducer(state, { type: 'timeline-update', time: 21.3, revision })
     state = filmReducer(state, { type: 'timeline-complete', revision })
     expect([state.scene, state.elapsed]).toEqual(['growth', 0])
     expect(filmReducer(state, { type: 'timeline-complete', revision })).toBe(state)
@@ -105,10 +121,10 @@ describe('film navigation', () => {
     let state = filmReducer(initialFilmState, { type: 'start' })
     expect(state.mode).toBe('playing')
     state = complete(state)
-    expect([state.scene, state.mode, state.elapsed]).toEqual(['prologue', 'waiting', 16])
+    expect([state.scene, state.mode, state.elapsed]).toEqual(['prologue', 'waiting', 21])
     expect(complete(state)).toBe(state)
     state = filmReducer(state, { type: 'interact' })
-    state = filmReducer(state, { type: 'timeline-update', time: 16.3, revision: state.revision })
+    state = filmReducer(state, { type: 'timeline-update', time: 21.3, revision: state.revision })
     state = filmReducer(state, { type: 'timeline-complete', revision: state.revision })
     expect(state.scene).toBe('growth')
     state = complete(state)

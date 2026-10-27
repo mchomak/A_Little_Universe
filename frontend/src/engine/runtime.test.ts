@@ -3,16 +3,15 @@ import { expect, it, vi } from 'vitest'
 import { filmReducer, initialFilmState, type FilmAction } from './film'
 import { createFilmClock, createFilmRuntime } from './runtime'
 
-it('keeps waiting pulse on the shared clock, freezes it on pause and times the touch impulse at playback speed', () => {
+it('holds the wait clock at 21 seconds and times the 0.3 second touch impulse at playback speed', () => {
   const runtime = createFilmRuntime()
   const actions: FilmAction[] = []
   let state = filmReducer(initialFilmState, { type: 'start' })
-  state = filmReducer(state, { type: 'timeline-update', time: 16, revision: state.revision })
+  state = filmReducer(state, { type: 'timeline-update', time: 21, revision: state.revision })
   state = filmReducer(state, { type: 'timeline-complete', revision: state.revision })
   const waiting = createFilmClock({ state, runtime, dispatch: (action) => actions.push(action) })
-  expect(waiting.timeline.paused()).toBe(false)
-  waiting.timeline.time(2)
-  expect(runtime.time).toBe(18)
+  expect(waiting.timeline.paused()).toBe(true)
+  expect(runtime.time).toBe(21)
   expect(actions).toEqual([])
   waiting.sync({ ...state, paused: true, speed: 2 })
   expect(waiting.timeline.paused()).toBe(true)
@@ -23,13 +22,13 @@ it('keeps waiting pulse on the shared clock, freezes it on pause and times the t
   expect(impulse.timeline.duration()).toBeCloseTo(0.3)
   expect(impulse.timeline.timeScale()).toBe(2)
   impulse.timeline.time(0.2)
-  expect(runtime.time).toBeCloseTo(16.2)
+  expect(runtime.time).toBeCloseTo(21.2)
   impulse.sync({ ...state, paused: true })
   expect(impulse.timeline.paused()).toBe(true)
   impulse.sync(state)
   impulse.timeline.time(0.3)
   expect(actions.at(-1)).toEqual({ type: 'timeline-complete', revision: state.revision })
-  expect(runtime.time).toBeCloseTo(16.3)
+  expect(runtime.time).toBeCloseTo(21.3)
   impulse.dispose()
 })
 
@@ -86,9 +85,9 @@ it('uses one GSAP clock for every frame, throttles state, pauses for hidden/read
   expect(clock.timeline.paused()).toBe(true)
   clock.sync(state)
   expect(clock.timeline.paused()).toBe(false)
-  clock.timeline.time(16)
+  clock.timeline.time(21)
   expect(actions.at(-1)).toEqual({ type: 'timeline-complete', revision: state.revision })
-  expect(actions.at(-2)).toEqual({ type: 'timeline-update', time: 16, revision: state.revision })
+  expect(actions.at(-2)).toEqual({ type: 'timeline-update', time: 21, revision: state.revision })
   clock.dispose()
   clock.dispose()
   expect(removed).toHaveBeenCalledTimes(1)

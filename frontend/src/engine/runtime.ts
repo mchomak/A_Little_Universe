@@ -23,8 +23,8 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
   let lastDispatch = -Infinity
   const revision = initial.revision
   const waiting = initial.scene === 'prologue' && initial.mode === 'waiting'
-  const start = waiting || initial.mode === 'transitioning' ? 16 : 0
-  const duration = waiting ? 4 : filmDuration(initial) - start
+  const start = waiting ? filmDuration(initial) : initial.mode === 'transitioning' ? initial.elapsed : 0
+  const duration = waiting ? 0 : filmDuration(initial) - start
   const endpoint = start + duration
   const clock = { time: start }
   let timeline!: gsap.core.Timeline
@@ -35,7 +35,7 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
     dispatch({ type: 'timeline-complete', revision })
   }
   const context = gsap.context(() => {
-    timeline = gsap.timeline({ paused: true, repeat: waiting ? -1 : 0,
+    timeline = gsap.timeline({ paused: true,
       onUpdate() {
         if (disposed) return
         runtime.publish(clock.time)
@@ -46,7 +46,8 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
         }
       },
       onComplete: complete,
-    }).to(clock, { time: endpoint, duration, ease: 'none' })
+    })
+    if (!waiting) timeline.to(clock, { time: endpoint, duration, ease: 'none' })
   })
   timeline.time(Math.max(0, initial.elapsed - start), true)
   runtime.publish(initial.elapsed)
@@ -54,7 +55,7 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
     if (disposed || next.revision !== revision) return
     state = next
     timeline.timeScale(state.speed)
-    const paused = (!waiting && state.mode !== 'playing' && state.mode !== 'transitioning') || state.paused || state.reading || Boolean(visibility?.hidden)
+    const paused = waiting || (state.mode !== 'playing' && state.mode !== 'transitioning') || state.paused || state.reading || Boolean(visibility?.hidden)
     timeline.paused(paused)
     if (!paused && timeline.time() >= duration) complete()
   }

@@ -1,4 +1,4 @@
-import { MEMORIES, SCENES, SCENE_ORDER } from './filmConfig'
+import { MEMORIES, SCENES, SCENE_ORDER, TIMING } from './filmConfig'
 
 export type SceneId = 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'eye' | 'cosmos' | 'greeting' | 'ending'
 export type Quality = 'standard' | 'low'
@@ -78,7 +78,7 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
       return state.mode === 'ready' ? enter(state, 'prologue') : state
     case 'interact':
       if (state.mode !== 'waiting' || state.paused || state.reading) return state
-      if (state.scene === 'prologue') return { ...state, mode: 'transitioning', elapsed: 16, revision: state.revision + 1 }
+      if (state.scene === 'prologue') return { ...state, mode: 'transitioning', elapsed: TIMING.prologue.duration, revision: state.revision + 1 }
       if (state.scene === 'bloom') return { ...state, elapsed: 0, mode: 'playing', revision: state.revision + 1 }
       return state
     case 'timeline-update':

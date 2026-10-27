@@ -1,10 +1,11 @@
 import type { FilmState, SceneId } from './film'
+import { DEFAULT_SCENE_COMPOSER_CONFIG, type SceneComposerConfig } from '../systems/scene-config/config'
 export type { SceneId } from './film'
 
 export const SCENE_ORDER = ['prologue', 'growth', 'bloom', 'identity', 'gallery', 'eye', 'cosmos', 'greeting', 'ending'] as const satisfies readonly SceneId[]
 
 export const TIMING = {
-  prologue: { duration: 16, seed: [0, 3], first: [3, 8], second: [8.7, 14.7], prompt: 16 },
+  prologue: { duration: 21, seed: [0, 3], first: [3, 7], second: [10, 15], hold: [15, 16], dissolve: [16, 21], prompt: 21 },
   growth: { duration: 23, seed: [0, 4], fall: [4, 7], awakening: [7, 11], stem: [11, 18], settle: [18, 23] },
   bloom: { duration: 22, opening: [0, 16], contemplate: [16, 22] },
   identity: { duration: 34, flower: [0, 4], particles: [4, 8], name: [8, 13], morph: [13, 17], portrait: [17, 23], photo: [23, 34], caption: [28, 34] },
@@ -15,6 +16,91 @@ export const TIMING = {
   ending: { duration: 0 }, transition: 0.7,
   camera: { bloom: 16, gallery: 1.2, eye: 3, cosmos: 26 },
 } as const
+
+export type PrologueFrameSettings = Pick<SceneComposerConfig['scenes']['prologue'],
+  'handwritingDuration' | 'interphraseInterval' | 'readableHold' | 'particleDuration'>
+
+export interface PrologueFrames {
+  duration: number
+  seed: readonly [number, number]
+  first: readonly [number, number]
+  second: readonly [number, number]
+  hold: readonly [number, number]
+  dissolve: readonly [number, number]
+  prompt: number
+  particleTravelDuration: number
+}
+
+export interface HandwritingStep {
+  glyph: string
+  start: number
+  duration: number
+}
+
+/** Stable per-grapheme beats give glyphs a drawn-on rhythm without a typewriter cursor. */
+export function createHandwritingSchedule(text: string, duration: number, rhythm: number): HandwritingStep[] {
+  const glyphs = Array.from(text)
+  if (glyphs.length === 0) return []
+
+  const variation = Math.min(3, Math.max(0.1, Number.isFinite(rhythm) ? rhythm : 1))
+  const weights = glyphs.map((glyph, index) => {
+    const contour = ((index * 7) % 5 - 2) / 2
+    const kindWeight = /^\s$/u.test(glyph) ? 0.42
+      : /[.,:;!?…—]/u.test(glyph) ? 1.8
+        : /[ЖжЗзШшЩщЧчЦцФф]/u.test(glyph) ? 1.14 : 1
+    return kindWeight * (1 + contour * 0.12 * variation)
+  })
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0)
+  const totalDuration = Number.isFinite(duration) ? Math.max(0, duration) : 0
+  let start = 0
+  return glyphs.map((glyph, index) => {
+    const beat = totalWeight === 0 ? 0 : totalDuration * (weights[index] ?? 0) / totalWeight
+    const step = { glyph, start, duration: beat }
+    start += beat
+    return step
+  })
+}
+
+/** Fits configured reveal beats inside the fixed scene gate and its seek bounds. */
+export function getPrologueFrames(settings: PrologueFrameSettings): PrologueFrames {
+  const duration = TIMING.prologue.duration
+  const firstStart = TIMING.prologue.first[0]
+  const firstWrite = Math.min(settings.handwritingDuration, TIMING.prologue.first[1] - firstStart)
+  const firstEnd = firstStart + firstWrite
+  const defaultInterval = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.interphraseInterval
+  const storyboardGap = TIMING.prologue.second[0] - TIMING.prologue.first[1]
+  const desiredSecondStart = firstEnd + storyboardGap + settings.interphraseInterval - defaultInterval
+  const secondStart = Math.min(
+    Math.max(firstEnd + settings.interphraseInterval, desiredSecondStart),
+    TIMING.prologue.second[1] - 0.5,
+  )
+  const secondWrite = Math.min(settings.handwritingDuration,
+    TIMING.prologue.second[1] - TIMING.prologue.second[0], TIMING.prologue.second[1] - secondStart)
+  const secondEnd = secondStart + secondWrite
+  const particleTravelDuration = Math.min(settings.particleDuration, TIMING.prologue.dissolve[1] - TIMING.prologue.dissolve[0])
+  const latestDissolveStart = duration - particleTravelDuration
+  const storyboardHold = TIMING.prologue.hold[1] - TIMING.prologue.hold[0]
+  const configBaselineOffset = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.readableHold - storyboardHold
+  const desiredDissolveStart = TIMING.prologue.hold[0] + Math.max(0, settings.readableHold - configBaselineOffset)
+  const dissolveStart = Math.max(secondEnd, Math.min(desiredDissolveStart, latestDissolveStart))
+
+  return {
+    duration,
+    seed: TIMING.prologue.seed,
+    first: [firstStart, firstEnd],
+    second: [secondStart, secondEnd],
+    hold: [secondEnd, dissolveStart],
+    dissolve: [dissolveStart, duration],
+    prompt: TIMING.prologue.prompt,
+    particleTravelDuration,
+  }
+}
+
+/** Keeps the shared points layer visible only while the configured dissolve is in flight. */
+export function getPrologueParticleOpacity(time: number, frames: PrologueFrames, reducedMotion: boolean): number {
+  if (!Number.isFinite(time) || reducedMotion || time < frames.dissolve[0] || time >= frames.duration) return 0
+  return Math.min(1, Math.max(0, (time - frames.dissolve[0]) * 4))
+}
 
 export interface SceneConfig {
   id: SceneId
