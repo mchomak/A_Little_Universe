@@ -2,14 +2,16 @@
 
 ## Текущий каркас
 
-Модульный монолит: React SPA и необязательный минимальный FastAPI backend. Сцены 00/00.1/01 реализованы по текущему брифу; 02–09 сохраняют технические placeholders. Нарративный источник: [Storyboard v1.1](../A_Little_Universe_for_Vasilisa_Storyboard_v1.1.md).
+Модульный монолит: React SPA и необязательный минимальный FastAPI backend. Сцены 00/00.1/01 реализованы по текущему брифу; 02–09 сохраняют технические placeholders. Нарративный источник — [Storyboard v2.0](../A_Little_Universe_for_Vasilisa_Storyboard_v2.0.md); главы 02–09 сохранены из [v1.1](../A_Little_Universe_for_Vasilisa_Storyboard_v1.1.md).
 
 ```text
 Bootstrap (лёгкий Preloader → AssetManager → lazy App/Three → проверка SW-кэша)
 App (settings → checking → ready → film; useFilm, reduced motion, gallery swipe)
   ├─ MediaSession (один stream, recorder, IndexedDB, recovery)
   ├─ AudioDirector (gesture unlock, cues, pause/speed/visibility)
+  ├─ PersistentLight (один центр ready → prologue)
   ├─ PreparationScreen + повторяемый Preloader в DEV
+  ├─ SceneComposerConfig (schema/defaults/store; optional startup JSON)
   ├─ FilmCanvas (один постоянный WebGL2 Canvas)
   │   ├─ CameraDirector (единственный владелец камеры)
   │   └─ SceneDirector → один из девяти статически импортированных модулей
@@ -25,13 +27,17 @@ FastAPI → GET /health → {"status":"ok"} (фильм его не вызыва
 
 `FilmCanvas` не имеет ключа сцены и остаётся смонтированным при переходах, replay и dev seek. `SceneDirector` меняет только содержимое по `scene:revision`; все девять модулей импортированы заранее. Камера, renderer и контекст принадлежат engine, не scene-модулям. Фон и общий свет заданы в `SceneDirector`.
 
+## Конфигурация и Scene Composer
+
+SceneComposerConfig schema v1 хранит defaults и валидированные overrides в systems/scene-config/config.ts. Компоненты подписываются на общий store; DEV Composer меняет тот же объект и использует существующие film controls. Production читает optional same-origin /scene-composer.json после успешной готовности AssetManager. Его отсутствие, ошибка сети или malformed JSON не блокирует фильм. Локальные art-font assets входят в production manifest; смена face ждёт document.fonts load/check, затем обновляет config. Composer не создаёт второй clock, renderer или Canvas.
+
 ## Управление фильмом
 
 `engine/filmConfig.ts` содержит порядок, длительности и cues, копирайт и шесть placeholder-воспоминаний. `film.ts` определяет `FilmState`, действия и чистый reducer. `mode` (`ready`, `playing`, `transitioning`, `waiting`, `exploring`, `ended`) отделён от ручной `paused` и модального `reading`. `revision` меняется при переходе, replay, restart и seek; устаревшие callbacks reducer игнорирует.
 
 | Сцена | Поведение при обычной скорости |
 |---|---|
-| `prologue` | Gift gesture запускает 16 с, затем неограниченное ожидание касания точки/keyboard activation. `transitioning` длится 0.3 с через те же часы, затем growth. |
+| prologue | 21 с, затем бесконечное ожидание касания точки/keyboard activation. Текущие default окна: свет 0–3, первая фраза 3–7, вторая 10–14,8, совместное удержание до 16, dissolve 16–21. Touch запускает 0,3 с transition по общим часам, затем growth. |
 | `growth` | 23 с автоматически; затем закрытый бутон. |
 | `bloom` | Неограниченное ожидание касания бутона/кнопки; после него 22 с раскрытия и созерцания. |
 | `identity` | 34 с: схематичные частицы, имя в DOM, пустые карточки портрета и фотографии. |

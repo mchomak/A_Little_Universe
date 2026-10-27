@@ -13,8 +13,9 @@
 | Централизованная камера | CameraDirector управляет существующей R3F-камерой, aspect ratio и хореографией; scene-модули не создают камер/OrbitControls. |
 | GSAP context и demand rendering | Timeline cleanup через revert и unsubscribe; кадр запрашивается invalidate. Нет React state для отдельных частиц. |
 | Явное качество и reduced motion | Standard DPR 1–1.5 / low DPR 1 и меньше частиц. Reduced motion сокращает движение, сохраняя clock и gates. Это не обещание измеренного планшетного FPS. |
-| Локальная геометрия и системные шрифты | Нет внешних HDRI, CDN-шрифтов, подменённых фото и фиктивного preload. Художественные ассеты потребуют реальной загрузки/error handling. |
-| Developer Mode только в DEV | Vite guard исключает lazy import и UI в production. Панель открывается DEV или ?debug и показывает rAF estimate, не WebGL FPS. |
+| Локальная геометрия, bundled art fonts и system UI fonts | Нет внешних HDRI, CDN-шрифтов, подменённых фото и фиктивного preload. Художественные fonts поставляются с приложением; UI сохраняет системный sans stack. Реальные фото и звук потребуют предоставленных материалов. |
+| Developer Mode только в DEV | Vite guard исключает lazy import и UI в production; панель управляет только согласованными параметрами. |
+| Единая версия Scene Composer config | Schema v1 отделяет кодовые defaults от частичного same-origin /scene-composer.json override. Ошибка optional JSON не задерживает preload; config store разделяют DEV panel и production scenes. |
 | Сервисы только для текущих потребителей | Добавлены preload/cache, AudioDirector и MediaSession для сцен 00–01. Uploader/MediaPipe отсутствуют до реальной защищённой инфраструктуры и художественной задачи. |
 | Минимальный FastAPI без CORS | Только health и Pydantic-конфигурация, без БД/хранилища/upload. Frontend его не вызывает; origins задавать при появлении HTTP-потребителя. |
 | Lockfiles npm и uv | npm ci и uv sync --frozen --extra dev воспроизводят зависимости; обновления — отдельная задача. |
