@@ -1,0 +1,32 @@
+{
+  "prologue_touch_gate": true,
+  "pause_freezes_webgl": true,
+  "growth_bloom_identity_auto_route": true,
+  "gallery_no_timer_exit": true,
+  "gallery_swipe_and_cancel": true,
+  "gallery_buttons_and_explicit_exit": true,
+  "eye_and_cosmos_auto_offline": true,
+  "reading_escape_focus_manual_pause": true,
+  "credits_touch_pause_and_manual_finish": true,
+  "full_scene_sequence": [
+    "prologue:playing",
+    "prologue:waiting",
+    "growth:playing",
+    "bloom:waiting",
+    "bloom:playing",
+    "identity:playing",
+    "gallery:exploring",
+    "eye:playing",
+    "cosmos:playing",
+    "greeting:playing",
+    "greeting:waiting",
+    "ending:ended"
+  ],
+  "one_persistent_canvas": true,
+  "ending_revisits_and_replay_offline": true,
+  "dev_all_scene_jump_restart_seek": true,
+  "quality_control": "low",
+  "reduced_motion_clock_and_gates": true,
+  "page_errors": [],
+  "external_requests": []
+}

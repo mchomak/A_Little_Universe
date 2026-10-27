@@ -1,0 +1,26 @@
+# Dependencies and generated output
+node_modules/
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+
+# Local configuration and recordings
+.env
+.env.*
+!.env.example
+*.log
+recordings/
+.playwright-mcp/
+
+# Editors and OS
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,119 @@
+import { describe, expect, it } from 'vitest'
+import { filmReducer, initialFilmState, type FilmAction, type FilmState } from './film'
+
+const duration = { prologue: 16, growth: 23, bloom: 22, identity: 34, gallery: 0, eye: 18, cosmos: 26, greeting: 50, ending: 0 }
+const complete = (state: FilmState) => filmReducer(
+  filmReducer(state, { type: 'timeline-update', time: duration[state.scene], revision: state.revision }),
+  { type: 'timeline-complete', revision: state.revision },
+)
+
+describe('film navigation', () => {
+  it('seeks backwards into timed playback without bypassing the closed-bud gate', () => {
+    let state = complete(filmReducer(initialFilmState, { type: 'start' }))
+    state = filmReducer(state, { type: 'dev-seek', time: 4 }, true)
+    expect([state.mode, state.elapsed]).toEqual(['playing', 4])
+    state = filmReducer(state, { type: 'dev-jump', scene: 'bloom' }, true)
+    state = filmReducer(state, { type: 'dev-seek', time: 22 }, true)
+    expect([state.mode, state.elapsed]).toEqual(['waiting', 0])
+    state = filmReducer(state, { type: 'interact' })
+    expect([state.mode, state.elapsed]).toEqual(['playing', 0])
+    state = complete(state)
+    expect(state.scene).toBe('identity')
+  })
+  it('allows deliberate developer navigation, bounded seeking and speed, and rejects stale or invalid input', () => {
+    let state = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'eye' }, true)
+    expect([state.scene, state.elapsed, state.mode]).toEqual(['eye', 0, 'playing'])
+    expect(filmReducer(state, { type: 'dev-jump', scene: 'cosmos' })).toBe(state)
+    expect(filmReducer(state, { type: 'timeline-complete', revision: state.revision })).toBe(state)
+    const oldRevision = state.revision
+    state = filmReducer(state, { type: 'dev-seek', time: 9 }, true)
+    expect(state.elapsed).toBe(9)
+    expect(state.revision).toBeGreaterThan(oldRevision)
+    for (const action of [
+      { type: 'timeline-update', time: 18, revision: oldRevision },
+      { type: 'timeline-complete', revision: oldRevision },
+      { type: 'timeline-update', time: Infinity, revision: state.revision },
+      { type: 'dev-seek', time: NaN }, { type: 'set-speed', speed: 0 },
+      { type: 'set-speed', speed: -1 }, { type: 'set-speed', speed: Infinity },
+      { type: 'set-speed', speed: 1000 },
+    ] satisfies FilmAction[]) expect(filmReducer(state, action, true)).toBe(state)
+    state = filmReducer(state, { type: 'set-speed', speed: 4 })
+    expect(state.speed).toBe(4)
+    state = filmReducer(state, { type: 'dev-seek', time: 999 }, true)
+    expect(state.elapsed).toBe(18)
+    state = filmReducer(state, { type: 'dev-seek', time: -9 }, true)
+    expect(state.elapsed).toBe(0)
+    state = filmReducer(state, { type: 'dev-jump', scene: 'gallery' }, true)
+    for (const index of [-1, 6, NaN, Infinity, 1.5]) expect(filmReducer(state, { type: 'gallery-focus', index })).toBe(state)
+    expect(filmReducer(state, { type: 'gallery-step', direction: -1 })).toBe(state)
+    state = filmReducer(state, { type: 'gallery-step', direction: 1 })
+    expect(state.galleryIndex).toBe(1)
+    state = filmReducer(state, { type: 'set-quality', quality: 'low' })
+    expect(state.quality).toBe('low')
+    state = filmReducer(state, { type: 'dev-skip' }, true)
+    expect(state.scene).toBe('eye')
+    state = filmReducer(state, { type: 'dev-restart' }, true)
+    expect([state.scene, state.elapsed, state.paused]).toEqual(['eye', 0, false])
+  })
+  it('freezes reading independently of manual pause and returns revisits to ending', () => {
+    let state: FilmState = { ...initialFilmState, scene: 'greeting', mode: 'playing', elapsed: 21 }
+    state = filmReducer(state, { type: 'toggle-pause' })
+    expect(state.paused).toBe(true)
+    state = filmReducer(state, { type: 'open-reading' })
+    expect(state.reading).toBe(true)
+    expect(filmReducer(state, { type: 'timeline-update', time: 40, revision: state.revision })).toBe(state)
+    state = filmReducer(state, { type: 'close-reading' })
+    expect([state.reading, state.paused, state.elapsed]).toEqual([false, true, 21])
+    state = filmReducer(state, { type: 'toggle-pause' })
+    expect(state.paused).toBe(false)
+    state = filmReducer(state, { type: 'open-reading' })
+    state = filmReducer(state, { type: 'close-reading' })
+    expect(state.paused).toBe(false)
+    const ending: FilmState = { ...state, scene: 'ending', mode: 'ended' }
+    state = filmReducer(ending, { type: 'open-reading' })
+    expect([state.scene, state.reading, state.returnToEnding]).toEqual(['greeting', true, true])
+    state = filmReducer(state, { type: 'close-reading' })
+    expect([state.scene, state.mode]).toEqual(['ending', 'ended'])
+    state = filmReducer(state, { type: 'open-gallery' })
+    expect([state.scene, state.galleryIndex, state.returnToEnding]).toEqual(['gallery', 0, true])
+    state = filmReducer(state, { type: 'gallery-exit' })
+    expect(state.scene).toBe('ending')
+    state = filmReducer({ ...state, paused: true, reading: true, galleryIndex: 5 }, { type: 'replay' })
+    expect(state).toEqual({ ...initialFilmState, mode: 'playing', revision: state.revision })
+  })
+  it('runs the full film while preserving touch, gallery and finish gates', () => {
+    let state = filmReducer(initialFilmState, { type: 'start' })
+    expect(state.mode).toBe('playing')
+    state = complete(state)
+    expect([state.scene, state.mode, state.elapsed]).toEqual(['prologue', 'waiting', 16])
+    expect(complete(state)).toBe(state)
+    state = filmReducer(state, { type: 'interact' })
+    expect(state.scene).toBe('growth')
+    state = complete(state)
+    expect([state.scene, state.mode, state.elapsed]).toEqual(['bloom', 'waiting', 0])
+    expect(complete(state)).toBe(state)
+    state = filmReducer(state, { type: 'interact' })
+    expect([state.scene, state.mode]).toEqual(['bloom', 'playing'])
+    state = complete(state)
+    expect(state.scene).toBe('identity')
+    state = complete(state)
+    expect([state.scene, state.mode]).toEqual(['gallery', 'exploring'])
+    expect(complete(state)).toBe(state)
+    expect(filmReducer(state, { type: 'gallery-exit' })).toBe(state)
+    state = filmReducer(state, { type: 'gallery-focus', index: 5 })
+    expect(state.galleryIndex).toBe(5)
+    expect(complete(state)).toBe(state)
+    state = filmReducer(state, { type: 'gallery-exit' })
+    expect(state.scene).toBe('eye')
+    state = complete(state)
+    expect(state.scene).toBe('cosmos')
+    state = complete(state)
+    expect(state.scene).toBe('greeting')
+    expect(filmReducer(state, { type: 'finish' })).toBe(state)
+    state = complete(state)
+    expect([state.scene, state.mode, state.elapsed]).toEqual(['greeting', 'waiting', 50])
+    expect(complete(state)).toBe(state)
+    state = filmReducer(state, { type: 'finish' })
+    expect([state.scene, state.mode]).toEqual(['ending', 'ended'])
+  })
+})

@@ -1,0 +1,10 @@
+{
+  "3d_bud_touch": true,
+  "3d_seed_touch": true,
+  "quality_actual_dpr": {
+    "standard": 1.5,
+    "low": 1
+  },
+  "production_no_debug_with_query": true,
+  "page_errors": []
+}
