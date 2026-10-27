@@ -19,10 +19,16 @@ The optional production file can contain only the values that should differ from
 {
   "schemaVersion": 1,
   "scenes": {
+    "preparation": {
+      "typeScale": 1.05,
+      "lineHeight": 1.2,
+      "cardOpacity": 0.9
+    },
     "prologue": {
       "fontFamily": "marck-script",
       "fontSize": 52,
-      "particleCount": 2100
+      "particleCount": 2100,
+      "particleReturnFraction": 0.75
     }
   }
 }
@@ -38,9 +44,14 @@ The only accepted art font IDs are `marck-script`, `bad-script`, `caveat`, and `
 | Global | Playback speed | 0.25–4 |
 | Preload | Glow, particle count, movement speed, collapse duration | 0–2, 40–300 integer, 0.1–4, 0–4 |
 | Preparation | Spacing, entrance duration | 0–64, 0–5 |
+| Preparation | Heading scale, line height, card opacity | 0.9–1.1, 0.9–1.5, 0.85–1 |
 | Prologue | Font size, line height, position Y | 16–160, 0.8–2.5, 10–80 |
 | Prologue | Handwriting duration/rhythm, phrase interval, readable hold | 0.5–20, 0.1–3, 0–8, 0–30 |
 | Prologue | Particle count/speed/duration/spread/return fraction | 100–6000 integer, 0.1–10, 0.1–20, 0–2, 0–1 |
 | Prologue | Glow, pulse amplitude/frequency, seed | 0–2, 0–1, 0–5, integer 0–2147483647 |
+
+The preparation defaults keep the existing composition: heading scale `1`, heading line height `1.08`, and card surface opacity `1`. These settings are applied live through `--preparation-type-scale`, `--preparation-line-height`, and `--preparation-card-opacity`; reset restores those defaults.
+
+`scenes.prologue.particleReturnFraction` is a normalized coefficient from `0` to `1` of the renderer's `20%` return cap. The code default `0.75` therefore means an effective renderer share of `0.75 × 20% = 15%`. The Composer displays the effective share as `0–20%` and maps it back to the coefficient on input; the JSON field remains a coefficient, not a percentage.
 
 `SCENE_CONFIG_PRESETS` exposes the `moonlit-letter` and `stardust` partial presets. The store does not create its own playback clock or canvas.

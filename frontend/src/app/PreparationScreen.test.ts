@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import type { MediaSession } from '../systems/media/MediaSession'
+import { resetConfig, updateConfig } from '../systems/scene-config/config'
 import { PreparationScreen } from './PreparationScreen'
 
 function renderPreparation(step: 'settings' | 'checking' | 'ready' = 'settings') {
@@ -52,4 +53,23 @@ it('does not create a second point inside the ready screen', () => {
   const markup = renderPreparation('ready')
 
   expect(markup).not.toContain('class="ready-light"')
+})
+
+it('applies the active preparation typography and card values as live CSS variables', async () => {
+  await updateConfig({ scenes: { preparation: { typeScale: 1.1, lineHeight: 1.2, cardOpacity: 0.9 } } })
+  try {
+    const markup = renderPreparation()
+
+    expect(markup).toContain('--preparation-type-scale:1.1')
+    expect(markup).toContain('--preparation-line-height:1.2')
+    expect(markup).toContain('--preparation-card-opacity:0.9')
+
+    await resetConfig('preparation')
+    const resetMarkup = renderPreparation()
+    expect(resetMarkup).toContain('--preparation-type-scale:1')
+    expect(resetMarkup).toContain('--preparation-line-height:1.08')
+    expect(resetMarkup).toContain('--preparation-card-opacity:1')
+  } finally {
+    await resetConfig('preparation')
+  }
 })

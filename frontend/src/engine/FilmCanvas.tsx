@@ -47,7 +47,7 @@ export function FilmCanvas(props: SceneProps) {
         camera={{ position: [0, 0, 5.6], fov: 38, near: 0.05, far: 100 }}
         gl={{ antialias: true, alpha: true, powerPreference: 'default' }}
         onCreated={({ gl }) => setCanvas(gl.domElement)}
-        fallback={<GraphicsFallback />}
+        fallback={<GraphicsFallback hidden={canvas !== null} />}
       >
         <CameraDirector {...props} />
         <SceneDirector {...props} />

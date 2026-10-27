@@ -70,3 +70,10 @@ ormalizeConfig`/partial merge для JSON; чистая функция кадр�
 - `getPrologueParticleOpacity(time, frames, reducedMotion): number` resolves the after-dissolve/wait visibility gate.
 - `createPrologueOverlayTimeline(targets, frames, rhythm, reducedMotion)` creates deterministic reveal state used by seek/replay.
 - `layoutPrologueCopyBlocks(input): PrologueCopyLayout` places phrase blocks relative to the measured light bounds with an orientation-safe gap.
+
+## Ticket 06 — preparation visuals and Composer percentages
+
+- `SceneComposerConfig.scenes.preparation` adds `typeScale` (`0.9–1.1`, default `1`), `lineHeight` (`0.9–1.5`, default `1.08`), and `cardOpacity` (`0.85–1`, default `1`) without changing schema v1.
+- `PreparationScreen` publishes `--preparation-type-scale`, `--preparation-line-height`, and `--preparation-card-opacity` from the active config; these update through the existing config subscription and scoped reset.
+- `particleReturnFraction` remains a `0–1` coefficient of the renderer's `20%` cap. Composer displays `particleReturnFraction × 20` as `0–20%` (default `.75` → `15%`) and converts slider input back to the coefficient.
+- `GraphicsFallback({ hidden?: boolean })` hides its fallback subtree from accessibility after FilmCanvas reports an initialized canvas; the default failure state remains a visible `role="alert"`.

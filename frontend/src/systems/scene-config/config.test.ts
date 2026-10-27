@@ -17,6 +17,13 @@ it('merges a known partial override into defaults field by field', () => {
     } })
 })
 
+it('keeps preparation typography and card style defaults when JSON provides a partial override', () => {
+  const config = normalizeConfig({ schemaVersion: 1, scenes: { preparation: { typeScale: 1.05 } } })
+
+  expect(config.scenes.preparation).toMatchObject({ typeScale: 1.05, lineHeight: 1.08, cardOpacity: 1 })
+  expect(config.scenes.preparation.fontFamily).toBe('marck-script')
+})
+
 it('falls back per field, drops unknown keys, and rejects unsupported versions', () => {
   const malformed = normalizeConfig({ schemaVersion: 1, unexpected: 'value', global: { quality: 'ultra', playbackSpeed: 99 },
     scenes: { prologue: { fontFamily: 'remote-font', fontSize: 'large', particleCount: 9000, extra: true }, futureScene: { enabled: true } } })

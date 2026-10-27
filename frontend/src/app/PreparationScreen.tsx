@@ -40,6 +40,9 @@ export function PreparationScreen({ step, session, preparation, checked, startin
     '--preparation-spacing': `${visual.spacing}px`,
     '--preparation-entrance-duration': `${visual.entranceDuration}s`,
     '--preparation-font-family': `"${fontFamily}", var(--serif)`,
+    '--preparation-type-scale': String(visual.typeScale),
+    '--preparation-line-height': String(visual.lineHeight),
+    '--preparation-card-opacity': String(visual.cardOpacity),
   } as CSSProperties
   const title = step === 'settings' ? 'Почти всё готово' : step === 'checking' ? 'Проверка камеры' : 'Всё готово. Это для тебя.'
   return <section className={`preparation preparation-${step}`} style={style} aria-labelledby="preparation-title" data-testid="preparation" data-step={step}>

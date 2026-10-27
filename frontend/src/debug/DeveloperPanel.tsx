@@ -28,6 +28,7 @@ type NumericControl = {
   min: number
   max: number
   step: number
+  displayScale?: number
 }
 
 type ComposerSectionId = 'global' | 'preload' | 'preparation' | 'prologue'
@@ -40,8 +41,11 @@ const PRELOAD_CONTROLS: readonly NumericControl[] = [
 ]
 
 const PREPARATION_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.preparation.spacing', label: 'Межбуквенный интервал', unit: 'px', min: 0, max: 64, step: 1 },
+  { path: 'scenes.preparation.spacing', label: 'Отступы карточек', unit: 'px', min: 0, max: 64, step: 1 },
   { path: 'scenes.preparation.entranceDuration', label: 'Появление интерфейса', unit: 'с', min: 0, max: 5, step: 0.1 },
+  { path: 'scenes.preparation.typeScale', label: 'Масштаб заголовка', unit: '%', min: 90, max: 110, step: 5, displayScale: 100 },
+  { path: 'scenes.preparation.lineHeight', label: 'Межстрочный интервал заголовка', unit: '×', min: 0.9, max: 1.5, step: 0.01 },
+  { path: 'scenes.preparation.cardOpacity', label: 'Непрозрачность поверхности', unit: '%', min: 85, max: 100, step: 1, displayScale: 100 },
 ]
 
 const PROLOGUE_CONTROLS: readonly NumericControl[] = [
@@ -56,7 +60,7 @@ const PROLOGUE_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.prologue.particleSpeed', label: 'Скорость частиц', unit: '×', min: 0.1, max: 10, step: 0.1 },
   { path: 'scenes.prologue.particleDuration', label: 'Длительность распада', unit: 'с', min: 0.1, max: 20, step: 0.1 },
   { path: 'scenes.prologue.particleSpread', label: 'Разлёт частиц', unit: '×', min: 0, max: 2, step: 0.05 },
-  { path: 'scenes.prologue.particleReturnFraction', label: 'Возврат частиц', unit: '%', min: 0, max: 100, step: 1 },
+  { path: 'scenes.prologue.particleReturnFraction', label: 'Возврат частиц', unit: '%', min: 0, max: 20, step: 1, displayScale: 20 },
   { path: 'scenes.prologue.glow', label: 'Свечение', unit: '×', min: 0, max: 2, step: 0.05 },
   { path: 'scenes.prologue.pulseAmplitude', label: 'Амплитуда пульсации', unit: '×', min: 0, max: 1, step: 0.01 },
   { path: 'scenes.prologue.pulseFrequency', label: 'Частота пульсации', unit: 'Гц', min: 0, max: 5, step: 0.1 },
@@ -121,7 +125,7 @@ function ConfigRange({ control, config, onChange, onReset }: {
   onReset(path: ComposerFieldPath): void
 }) {
   const value = valueAtPath(config, control.path)
-  const scale = control.path === 'scenes.prologue.particleReturnFraction' ? 100 : 1
+  const scale = control.displayScale ?? 1
   return <RangeControl control={control} value={typeof value === 'number' ? value * scale : control.min} onChange={(next) => onChange(control.path, next / scale)} onReset={() => onReset(control.path)} />
 }
 

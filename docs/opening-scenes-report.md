@@ -17,16 +17,17 @@
 
 ## Scene Composer и конфигурация
 
-DEV-панель содержит Global controls и группы 00, 00.1, 01; общие controls позволяют выбрать/запустить сцену, restart, pause и seek. Для художественных параметров доступны reset, два пресета, import/export JSON. В production интерфейс Scene Composer отсутствует.
+DEV-панель содержит Global controls и группы 00, 00.1, 01; в 00.1 доступны live масштаб и межстрочный интервал заголовка, а также непрозрачность карточек. Общие controls позволяют выбрать/запустить сцену, restart, pause и seek. Для художественных параметров доступны reset, два пресета, import/export JSON. В production интерфейс Scene Composer отсутствует.
 
-Production override — необязательный same-origin JSON в корне сайта: /scene-composer.json. Schema version 1 хранит только отличия от defaults. Если файла нет или он невалиден, фильм использует defaults и preload не блокируется. Локальные шрифты Marck Script, Bad Script, Caveat и Cormorant Garamond включены в сборку; набор требуемых кириллических глифов содержит Ё/ё. Подробности и пример формата — в [README](../README.md) и [архитектуре](architecture.md).
+Production override — необязательный same-origin JSON в корне сайта: /scene-composer.json. Schema version 1 хранит только отличия от defaults. `particleReturnFraction` — коэффициент `0–1` от лимита renderer `20%`; default `.75` соответствует фактическим `15%`, которые Composer показывает как проценты `0–20`. Если файла нет или он невалиден, фильм использует defaults и preload не блокируется. Локальные шрифты Marck Script, Bad Script, Caveat и Cormorant Garamond включены в сборку; набор требуемых кириллических глифов содержит Ё/ё. Подробности и пример формата — в [README](../README.md) и [архитектуре](architecture.md).
 
 ## Проверки
 
-- Frontend npm run check: ESLint, 77 Vitest tests в 21 test file, оба TypeScript typecheck и production build прошли.
+- Frontend npm run check: ESLint, 83 Vitest tests в 23 test files, оба TypeScript typecheck и production build прошли.
 - Backend backend/.venv/Scripts/python.exe -m pytest -q: 3 passed. Backend source не изменялся.
 - Браузерная проверка подготовки выполнена в viewport 768×1024 и 1024×768. С явным «Продолжить без разрешений» и последующим «Открыть подарок» центральная точка сохранила положение.
 - В прологе использован общий DEV seek на 4 с, 12 с и 21 с. Кириллица в Marck Script отображалась; оба текстовых блока оставались вокруг центра; после gate были видны только точка и prompt. WebGL2 был доступен.
+- Live-контролы Composer 00.1 и их сброс проверены в desktop Chrome с эмуляцией viewport 1024×768 и 768×1024; это не физическое тестирование iPad.
 - Это эмуляция браузерных размеров, не физический iPad. Дополнительные проверки на целевом iPad/Safari всё ещё нужны.
 
 ## Ограничения

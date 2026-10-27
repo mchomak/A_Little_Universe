@@ -18,7 +18,14 @@ export interface SceneComposerConfig {
   }>
   readonly scenes: Readonly<{
     preload: Readonly<{ glow: number; particleCount: number; movementSpeed: number; collapseDuration: number }>
-    preparation: Readonly<{ fontFamily: ArtFontId; spacing: number; entranceDuration: number }>
+    preparation: Readonly<{
+      fontFamily: ArtFontId
+      spacing: number
+      entranceDuration: number
+      typeScale: number
+      lineHeight: number
+      cardOpacity: number
+    }>
     prologue: Readonly<{
       fontFamily: ArtFontId
       fontSize: number
@@ -47,7 +54,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
-    preparation: { fontFamily: 'marck-script', spacing: 24, entranceDuration: 0.8 },
+    preparation: { fontFamily: 'marck-script', spacing: 24, entranceDuration: 0.8, typeScale: 1, lineHeight: 1.08, cardOpacity: 1 },
     prologue: {
       fontFamily: 'marck-script', fontSize: 48, lineHeight: 1.3, positionY: 40,
       handwritingDuration: 4.8, handwritingRhythm: 0.82, interphraseInterval: 1.2, readableHold: 2,
@@ -105,6 +112,9 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       fontFamily: fontValue(preparationInput?.fontFamily, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.fontFamily),
       spacing: numberValue(preparationInput?.spacing, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.spacing, 0, 64),
       entranceDuration: numberValue(preparationInput?.entranceDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.entranceDuration, 0, 5),
+      typeScale: numberValue(preparationInput?.typeScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.typeScale, 0.9, 1.1),
+      lineHeight: numberValue(preparationInput?.lineHeight, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.lineHeight, 0.9, 1.5),
+      cardOpacity: numberValue(preparationInput?.cardOpacity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.cardOpacity, 0.85, 1),
     },
     prologue: {
       fontFamily: fontValue(prologueInput?.fontFamily, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily),
