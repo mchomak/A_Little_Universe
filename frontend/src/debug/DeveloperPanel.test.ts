@@ -4,7 +4,7 @@ import { expect, it } from 'vitest'
 import { initialFilmState } from '../engine/film'
 import DeveloperPanel from './DeveloperPanel'
 
-it('shows particle return as the renderer effective percentage and matching range', () => {
+it('shows bounded ash-motion controls and does not expose the removed return setting', () => {
   const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
     state: initialFilmState,
     dispatch: () => undefined,
@@ -13,8 +13,19 @@ it('shows particle return as the renderer effective percentage and matching rang
     onPermissions: () => undefined,
   }))
 
-  expect(markup).toContain('Возврат частиц · 15 %')
-  expect(markup).toMatch(/id="composer-scenes-prologue-particleReturnFraction"[^>]*min="0" max="20" step="1" value="15"/)
+  expect(markup).toContain('Ветер · 1,15 ×')
+  expect(markup).toMatch(/id="composer-scenes-prologue-windStrength"[^>]*min="0.2" max="3" step="0.05" value="1.15"/)
+  expect(markup).toContain('Турбулентность · 0,3 ×')
+  expect(markup).toMatch(/id="composer-scenes-prologue-turbulence"[^>]*min="0" max="1" step="0.05" value="0.3"/)
+  expect(markup).toContain('Ширина фронта · 8 %')
+  expect(markup).toMatch(/id="composer-scenes-prologue-fractureWidth"[^>]*min="0" max="18" step="1" value="8"/)
+  expect(markup).toContain('Длительность фронта · 2,6 с')
+  expect(markup).toContain('Длительность движения частиц · 4 с')
+  expect(markup).toMatch(/id="composer-scenes-prologue-particleDuration"[^>]*min="0.1" max="20" step="0.1" value="4"/)
+  expect(markup).toContain('Длительность затухания пепла · 2,4 с')
+  expect(markup).toMatch(/id="composer-scenes-prologue-particleFadeDuration"[^>]*min="0.5" max="4" step="0.1" value="2.4"/)
+  expect(markup).toContain('Рукописное появление подсказки · 0,65 с')
+  expect(markup).not.toContain('particleReturnFraction')
 })
 
 it('renders bounded typography and surface controls for preparation', () => {

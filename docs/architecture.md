@@ -29,7 +29,19 @@ FastAPI → GET /health → {"status":"ok"} (фильм его не вызыва
 
 ## Конфигурация и Scene Composer
 
-SceneComposerConfig schema v1 хранит defaults и валидированные overrides в systems/scene-config/config.ts. Компоненты подписываются на общий store; DEV Composer меняет тот же объект и использует существующие film controls. Production читает optional same-origin /scene-composer.json после успешной готовности AssetManager. Его отсутствие, ошибка сети или malformed JSON не блокирует фильм. Локальные art-font assets входят в production manifest; смена face ждёт document.fonts load/check, затем обновляет config. Composer не создаёт второй clock, renderer или Canvas.
+SceneComposerConfig публикует immutable schema v2 в `systems/scene-config/config.ts`; `normalizeConfig` по-прежнему принимает schema v1 и переносит совместимые поля, не пропуская неизвестные значения. Компоненты подписываются на общий store; DEV Composer меняет тот же объект и использует существующие film controls. Production читает optional same-origin `/scene-composer.json` после успешной готовности AssetManager. Его отсутствие, ошибка сети или malformed JSON не блокирует фильм. Локальные art-font assets входят в production manifest; смена face ждёт `document.fonts` load/check, затем обновляет config. Composer не создаёт второй clock, renderer или Canvas.
+
+Для пролога schema v2 управляет локальным шрифтом и композицией текста, count, wind, turbulence, шириной и длительностью шумного фронта, длительностью travel и отдельным затуханием частиц, быстрым письмом prompt и glow. Текущие defaults: 1 800 точек, wind 1,15, turbulence 0,3, fracture width 0,08, fracture 2,6 с, travel 4 с, fade 2,4 с, prompt writing 0,65 с и glow 0,45. Старые JSON остаются читаемыми; старый возврат частиц к центру не применяется.
+
+## Пролог: текст и пепельный распад
+
+Четырёхкадровый art-direction reference — `key_frames/splitting the text.png`; он задаёт визуальную последовательность письма и распада, но не включается в runtime assets и не отображается как изображение фильма.
+
+`PrologueOverlay` держит фразы и touch prompt в доступном DOM-слое вокруг неизменной центральной точки. Цельная строка раскрывается горизонтальной CSS-маской, а не отдельными глифами. Prompt использует тот же выбранный каталоговый script font и короткое письмо в финальном окне. `createPrologueOverlayTimeline` строит paused GSAP timeline, а `useSceneTimeline` привязывает его к общему `FilmRuntime`: pause, seek, playback speed, replay и hidden-tab pause используют то же время. `getPrologueFrames` сохраняет 21-секундный пролог, текущие окна фраз, удержание и touch gate.
+
+`PrologueScene` остаётся внутри смонтированного `FilmCanvas` и добавляет один `THREE.Points` с `BufferGeometry` и `ShaderMaterial`. Временный offscreen Canvas2D растрирует локальный выбранный шрифт; сразу после `getImageData()` его backing store освобождается сбросом размеров, поэтому он не живёт до выхода из сцены. Canvas служит только readback-источником координат, а не вторым видимым Canvas или animation loop. Переносы DOM-текста измеряются по фактическим line fragments браузера и растрируются построчно с соответствующими origins. Particle birth, noisy fracture front, seed, движение вверх-влево, разделение на мелкую пыль и fade вычисляются детерминированно из текста и общего времени. Шейдер двигает точки весь 4-секундный travel, затухает каждую частицу на последних 2,4 секунды и гасит общий слой к 21-секундному gate. `BufferGeometry` очищается при пересборке на config change, а текущие geometry и declarative `ShaderMaterial` освобождаются R3F при выходе из сцены.
+
+Low quality, высокий DPR и компактные/coarse-pointer экраны снижают количество точек; `prefers-reduced-motion` показывает текст сразу и скрывает пепельный слой, не меняя gate или переход. Цвета, consent flow, offline cache и код сцен 02–09 этим изменением не меняются.
 
 ## Управление фильмом
 

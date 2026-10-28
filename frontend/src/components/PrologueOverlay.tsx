@@ -1,17 +1,16 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { gsap } from 'gsap'
 import type { SceneProps } from '../engine/sceneTypes'
-import { COPY, createHandwritingSchedule, getPrologueFrames } from '../engine/filmConfig'
+import { COPY, getPrologueFrames } from '../engine/filmConfig'
 import { useSceneTimeline } from '../engine/useSceneTimeline'
+import { getFractureFront } from '../scenes/prologue/particleMath'
 import { ART_FONT_CATALOG } from '../systems/scene-config/fontCatalog'
-import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, subscribeConfig } from '../systems/scene-config/config'
+import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, subscribeConfig, type SceneComposerConfig } from '../systems/scene-config/config'
 import './prologue.css'
 
 export interface PrologueOverlayTimelineTargets {
   first: HTMLParagraphElement | null
-  firstGlyphs: readonly HTMLElement[]
   second: HTMLParagraphElement | null
-  secondGlyphs: readonly HTMLElement[]
   prompt: HTMLParagraphElement | null
 }
 
@@ -20,43 +19,86 @@ export interface PrologueOverlayTimelineTargets {
 export function createPrologueOverlayTimeline(
   targets: PrologueOverlayTimelineTargets,
   frames: ReturnType<typeof getPrologueFrames>,
-  rhythm: number,
+  settings: SceneComposerConfig['scenes']['prologue'],
   reducedMotion: boolean,
 ) {
   const timeline = gsap.timeline({ paused: true })
-  const reveal = (target: HTMLParagraphElement | null, glyphs: readonly HTMLElement[], text: string, timeWindow: readonly [number, number]) => {
+  const fractureFronts: { target: HTMLParagraphElement; start: number; duration: number; width: number; seed: number }[] = []
+  const reveal = (target: HTMLParagraphElement | null, timeWindow: readonly [number, number]) => {
     if (!target) return
-    const schedule = createHandwritingSchedule(text, timeWindow[1] - timeWindow[0], rhythm)
+    target.style.setProperty('--write-progress', '0%')
+    target.style.setProperty('--fracture-progress', '0%')
+    target.style.setProperty('--fracture-clip', 'none')
+    timeline.set(target, { opacity: 0 }, 0)
     if (reducedMotion) {
       timeline.set(target, { opacity: 1 }, timeWindow[0])
-      timeline.set(glyphs, { opacity: 1, clipPath: 'none', filter: 'none' }, timeWindow[0])
+      timeline.call(() => target.style.setProperty('--write-progress', '104%'), [], timeWindow[0])
       return
     }
     timeline.set(target, { opacity: 1 }, timeWindow[0])
-    schedule.forEach((step, index) => {
-      const glyph = glyphs[index]
-      if (!glyph) return
-      timeline.fromTo(glyph,
-        { opacity: 0, clipPath: 'inset(0 100% 0 0)', filter: 'blur(1.4px)' },
-        { opacity: 1, clipPath: 'inset(0 -8% 0 0)', filter: 'blur(0px)', duration: step.duration, ease: 'sine.out' },
-        timeWindow[0] + step.start,
-      )
-    })
+    const write = { progress: 0 }
+    timeline.fromTo(write, { progress: 0 }, {
+      progress: 104,
+      duration: timeWindow[1] - timeWindow[0],
+      ease: 'sine.inOut',
+      onUpdate: () => target.style.setProperty('--write-progress', `${write.progress}%`),
+      immediateRender: false,
+    }, timeWindow[0])
   }
 
-  reveal(targets.first, targets.firstGlyphs, COPY.prologueFirst, frames.first)
-  reveal(targets.second, targets.secondGlyphs, COPY.prologueSecond, frames.second)
-  timeline.to([targets.first, targets.second], {
-    opacity: 0,
-    duration: reducedMotion ? 0 : frames.dissolve[1] - frames.dissolve[0],
-    ease: reducedMotion ? 'none' : 'sine.inOut',
-  }, frames.dissolve[0])
-  timeline.fromTo(targets.prompt,
-    { opacity: 0, y: reducedMotion ? 0 : 5 },
-    { opacity: 1, y: 0, duration: reducedMotion ? 0 : 0.8, ease: 'sine.out' },
-    frames.prompt - (reducedMotion ? 0 : 0.8),
-  )
+  const fracture = (target: HTMLParagraphElement | null, seed: number) => {
+    if (!target) return
+    if (reducedMotion) {
+      timeline.set(target, { opacity: 0 }, frames.dissolve[0])
+      return
+    }
+    const duration = Math.min(settings.fractureDuration, frames.dissolve[1] - frames.dissolve[0])
+    fractureFronts.push({ target, start: frames.dissolve[0], duration, width: settings.fractureWidth, seed })
+    timeline.set(target, { opacity: 0 }, frames.dissolve[0] + duration)
+  }
+
+  reveal(targets.first, frames.first)
+  reveal(targets.second, frames.second)
+  fracture(targets.first, 37)
+  fracture(targets.second, 71)
+  timeline.eventCallback('onUpdate', () => {
+    const time = timeline.time()
+    fractureFronts.forEach(({ target, start, duration, width, seed }) => {
+      const progress = time < start ? 0 : duration <= 0 ? 1 : Math.min(1, (time - start) / duration)
+      target.style.setProperty('--fracture-progress', `${progress * 100}%`)
+      target.style.setProperty('--fracture-clip', time < start ? 'none' : createFractureClip(progress, width, seed))
+    })
+  })
+
+  if (targets.prompt) {
+    const promptStart = Math.max(0, frames.prompt - settings.promptHandwritingDuration)
+    targets.prompt.style.setProperty('--write-progress', '0%')
+    targets.prompt.style.setProperty('--fracture-clip', 'none')
+    timeline.set(targets.prompt, { opacity: 1 }, reducedMotion ? frames.prompt : promptStart)
+    if (reducedMotion) {
+      timeline.call(() => targets.prompt?.style.setProperty('--write-progress', '104%'), [], frames.prompt)
+    } else {
+      const promptWrite = { progress: 0 }
+      timeline.fromTo(promptWrite, { progress: 0 }, {
+        progress: 104,
+        duration: settings.promptHandwritingDuration,
+        ease: 'sine.inOut',
+        onUpdate: () => targets.prompt?.style.setProperty('--write-progress', `${promptWrite.progress}%`),
+        immediateRender: false,
+      }, promptStart)
+    }
+  }
   return timeline
+}
+
+function createFractureClip(progress: number, width: number, seed: number): string {
+  const slices = 16
+  const edge = Array.from({ length: slices + 1 }, (_, index) => {
+    const y = index / slices
+    const x = Math.min(1, Math.max(0, getFractureFront(progress, y, width, seed)))
+    return `${formatNumber(x * 100)}% ${formatNumber(y * 100)}%`
+  })
+  return `polygon(${[edge[0], '100% 0%', '100% 100%', ...edge.slice(1).reverse()].join(', ')})`
 }
 
 export interface PrologueCopyLayoutInput {
@@ -104,8 +146,13 @@ export function PrologueOverlay({ state, runtime, reducedMotion }: SceneProps) {
     fontFamily: `"${fontFamily}"`, fontSize: `clamp(16px, ${viewportFontSize}vw, ${prologue.fontSize}px)`,
     lineHeight: prologue.lineHeight, letterSpacing: 'normal',
     textShadow: `0 0 ${Math.max(2, prologue.glow * 14)}px rgba(255, 240, 232, ${Math.min(0.55, prologue.glow * 0.18)})`,
-  })
-
+    '--write-progress': '0%', '--fracture-progress': '0%', '--fracture-clip': 'none',
+  } as CSSProperties)
+  const promptStyle: CSSProperties = {
+    fontFamily: `"${fontFamily}"`, fontSize: 'clamp(18px, 2.4vw, 32px)',
+    textShadow: `0 0 ${Math.max(2, prologue.glow * 12)}px rgba(255, 240, 232, ${Math.min(0.5, prologue.glow * 0.16)})`,
+    '--write-progress': '0%', '--fracture-clip': 'none',
+  } as CSSProperties
   useLayoutEffect(() => {
     const overlay = document.querySelector<HTMLElement>('.prologue-overlay')
     const light = document.querySelector<HTMLElement>('.persistent-light[data-phase="prologue"]')
@@ -143,16 +190,11 @@ export function PrologueOverlay({ state, runtime, reducedMotion }: SceneProps) {
     }
   }, [prologue.fontFamily, prologue.fontSize, prologue.lineHeight, prologue.positionY])
 
-  const renderGlyphs = (text: string) => Array.from(text).map((glyph, index) => (
-    <span key={`${index}-${glyph}`} className="prologue-glyph" data-glyph={glyph} aria-hidden="true" style={{ display: 'inline-block', whiteSpace: 'pre' }}>{glyph}</span>
-  ))
   const build = useCallback(() => createPrologueOverlayTimeline({
     first: first.current,
-    firstGlyphs: Array.from(first.current?.querySelectorAll<HTMLElement>('.prologue-glyph') ?? []),
     second: second.current,
-    secondGlyphs: Array.from(second.current?.querySelectorAll<HTMLElement>('.prologue-glyph') ?? []),
     prompt: prompt.current,
-  }, frames, prologue.handwritingRhythm, reducedMotion), [frames, prologue.handwritingRhythm, reducedMotion])
+  }, frames, prologue, reducedMotion), [frames, prologue, reducedMotion])
   useSceneTimeline(build, { runtime })
 
   const firstVisible = state.elapsed >= frames.first[1] && state.elapsed < frames.dissolve[0]
@@ -162,14 +204,14 @@ export function PrologueOverlay({ state, runtime, reducedMotion }: SceneProps) {
   return <section className="prologue-overlay" aria-label="Пролог">
     <div className="prologue-phrases" aria-live="polite" style={phrasesStyle}>
       <p ref={first} data-prologue-line="first" aria-label={COPY.prologueFirst} aria-hidden={!firstVisible} style={copyStyle(copyLayout ? `${copyLayout.firstTop}px` : `${prologue.positionY}%`, copyLayout ? 'none' : 'translateY(-50%)')}>
-        {renderGlyphs(COPY.prologueFirst)}
+        {COPY.prologueFirst}
       </p>
       <p ref={second} data-prologue-line="second" aria-label={COPY.prologueSecond} aria-hidden={!secondVisible} style={copyStyle(copyLayout ? `${copyLayout.secondTop}px` : 'calc(50% + 56px)', 'none')}>
-        {renderGlyphs(COPY.prologueSecond)}
+        {COPY.prologueSecond}
       </p>
     </div>
-    <p ref={prompt} className="prologue-prompt" aria-hidden={!waiting}>
-      Прикоснись к свету
+    <p ref={prompt} className="prologue-prompt" aria-label={COPY.seedPrompt} aria-hidden={!waiting} style={promptStyle}>
+      {COPY.seedPrompt}
     </p>
   </section>
 }

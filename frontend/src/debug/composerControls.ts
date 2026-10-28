@@ -47,7 +47,7 @@ export async function importComposerJson(source: string): Promise<ComposerImport
     return { ok: false, reason: 'json' }
   }
   if (document === null || typeof document !== 'object' || Array.isArray(document)) return { ok: false, reason: 'document' }
-  if (!('schemaVersion' in document) || document.schemaVersion !== 1) return { ok: false, reason: 'version' }
+  if (!('schemaVersion' in document) || (document.schemaVersion !== 1 && document.schemaVersion !== 2)) return { ok: false, reason: 'version' }
   const root = document as Record<string, unknown>
   if ('global' in root && !isRecord(root.global)) return { ok: false, reason: 'document' }
   if ('scenes' in root && !isRecord(root.scenes)) return { ok: false, reason: 'document' }
@@ -66,7 +66,13 @@ export async function importComposerJson(source: string): Promise<ComposerImport
 }
 
 export function exportComposerJson() {
-  return JSON.stringify(getConfig(), null, 2)
+  const config = getConfig()
+  const prologue: Record<string, unknown> = { ...config.scenes.prologue }
+  delete prologue.particleSpeed
+  delete prologue.particleSpread
+  delete prologue.particleReturnFraction
+  const scenes = { ...config.scenes, prologue }
+  return JSON.stringify({ ...config, scenes }, null, 2)
 }
 
 export function resetComposerField(path: ComposerFieldPath) {

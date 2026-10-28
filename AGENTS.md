@@ -216,40 +216,46 @@ When the task introduces a durable rule that will matter across future work, upd
 
 <!-- autopilot:start -->
 ## Current implementation
-A Little Universe for You is a private, tablet-first cinematic React/Three.js birthday experience. The preload (00), preparation (00.1), and prologue (01) are implemented; scenes 02–09 remain navigable procedural placeholders. Personal photos, portrait, music, gaze tracking, and upload are not connected. The current storyboard is A_Little_Universe_for_Vasilisa_Storyboard_v2.0.md.
+
+A Little Universe for You is a private, tablet-first cinematic React/Three.js birthday film. Preload (00), preparation (00.1), and prologue (01) are implemented; scenes 02–09 remain navigable procedural placeholders. Personal photos, portrait, music, gaze tracking, and video upload are not connected. The storyboard is A_Little_Universe_for_Vasilisa_Storyboard_v2.0.md; key_frames/splitting the text.png is an art reference, not a runtime texture.
 
 ### Working commands
-Run frontend commands from frontend/ (Node.js ^22.12.0 or >=24); Vite binds 127.0.0.1 and both ports are strict:
-- npm ci; npm run dev (127.0.0.1:5173); npm run preview (127.0.0.1:4173).
-- npm run check runs ESLint, Vitest, strict TypeScript and production build. Verified 2026-10-27: 83 tests in 23 files, lint/typecheck/build passed.
-- Focused test: npm test -- src/systems/scene-config/config.test.ts.
+
+Run frontend commands from frontend/ with Node.js ^22.12.0 or >=24:
+- npm ci; npm run dev (127.0.0.1:5173); npm run preview (127.0.0.1:4173). Both Vite ports are strict; reuse or stop an existing server if a port is occupied.
+- npm run check runs ESLint, Vitest, strict TypeScript and production build. Verified 2026-10-28: 99 tests in 24 files passed; lint, typecheck and build passed. Build output still warns about deprecated THREE.Clock and an App chunk above 500 kB.
+- Focused prologue tests: npm test -- src/engine/filmConfig.test.ts, npm test -- src/components/PrologueOverlay.test.ts, or npm test -- src/scenes/PrologueScene.test.ts.
+
+The dev page was confirmed in Chrome at http://127.0.0.1:5173/; a start attempt reported port 5173 already in use because the server was already running.
+
 Run optional backend commands from backend/:
-- .venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000.
-- .venv/Scripts/python.exe -m pytest; focused test: .venv/Scripts/python.exe -m pytest tests/test_health.py. Verified 2026-10-27: 3 tests passed.
+- .venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+- .venv/Scripts/python.exe -m pytest; focused: .venv/Scripts/python.exe -m pytest tests/test_health.py. Three tests passed 2026-10-27.
 
 ### Structure and key files
-- Top-level: frontend/ (React/Vite), backend/ (optional FastAPI), docs/ (architecture, verification and decisions), references/keyframes/ (keyframe index); runtime scenes live in frontend/src/scenes/.
-- README.md covers commands and workflows; docs/architecture.md covers scene and module boundaries.
-- frontend/src/app/ coordinates preparation, film route, and app-lifetime services; frontend/src/app/openGift.ts handles the deliberate start gesture.
-- frontend/src/bootstrap/ paints the lightweight Canvas2D preload; frontend/src/systems/assets/AssetManager.ts owns module/resource readiness.
-- frontend/src/engine/ owns film state, timing, the persistent Canvas, and scene/camera directors. frontend/src/engine/film.ts is the reducer; frontend/src/engine/filmConfig.ts holds order, copy, timing and prologue frame math; frontend/src/engine/runtime.ts is the shared GSAP clock.
-- frontend/src/scenes/ contains nine scene modules and shared procedural geometry/animation; frontend/src/components/ contains DOM overlays, gallery, reading, recording and recovery UI; frontend/src/debug/ contains the DEV-only composer.
-- frontend/src/systems/scene-config/ owns schema/defaults/store and local font readiness; frontend/src/systems/media/ owns consent, shared tracks, recording and recovery; frontend/src/systems/audio/ owns cues and playback response.
-- Main edit points: frontend/src/app/App.tsx, frontend/src/engine/FilmCanvas.tsx, frontend/src/engine/SceneDirector.tsx and frontend/src/engine/CameraDirector.tsx, frontend/src/scenes/PrologueScene.tsx, frontend/src/components/PersistentLight.tsx, frontend/src/debug/composerControls.ts.
-- frontend/vite.config.ts builds the production offline manifest and service worker. backend/app/main.py exposes only GET /health; backend/app/config.py reads backend settings. Tests live beside frontend modules as *.test.ts and in backend/tests/.
 
-### Architecture and durable interfaces
-Bootstrap loads film modules and required resources before mounting App/Three. FilmCanvas stays mounted across scene changes; SceneDirector selects among statically imported scenes, while CameraDirector owns camera choreography. Scenes receive shared film time and use the common runtime/revision for seek, pause, replay and cleanup; do not add scene-local clocks. After onCreated confirms an initialized WebGL canvas, FilmCanvas marks the fallback aria-hidden and removes its role=alert; failed initialization leaves the accessible alert visible. Prologue waits at its touch gate after 21 seconds; activation runs a 0.3-second shared transition into growth. The single PersistentLight spans ready and prologue, and owns its configured glow/pulse treatment.
+- frontend/ is the React/Vite app; backend/ is optional FastAPI with only GET /health; docs/ holds architecture and verification; references/keyframes/ indexes approved references.
+- frontend/src/app/App.tsx owns preparation/film routing and app-lifetime media/audio services; openGift.ts handles the deliberate start gesture. bootstrap/ draws the lightweight Canvas2D preload; systems/assets/AssetManager.ts loads film modules/resources and optional startup config.
+- frontend/src/engine/ owns film state, the shared GSAP clock, persistent FilmCanvas, and scene/camera directors. film.ts is the reducer; filmConfig.ts owns order, copy and timing; runtime.ts, useSceneTimeline.ts, and scenes/shared/animation.ts bind scene animation to shared film time.
+- frontend/src/scenes/ contains the nine scene modules and shared geometry. Prologue work centers on scenes/PrologueScene.tsx, scenes/prologue/particleMath.ts, components/PrologueOverlay.tsx, and components/prologue.css.
+- systems/scene-config/ owns schema, normalization, shared config and local font readiness; debug/DeveloperPanel.tsx and composerControls.ts provide the DEV-only composer. systems/media/ owns consent, tracks, recording and recovery; systems/audio/ owns cues and playback response.
+- Frontend tests are colocated as src/**/*.test.ts; backend tests are in backend/tests/. docs/architecture.md describes scene boundaries and commands.
 
-SceneComposerConfig is immutable schema v1 in frontend/src/systems/scene-config/config.ts. normalizeConfig(input: unknown) returns validated fields over defaults and drops unknown fields; loadStartupConfig() fetches an optional same-origin startup JSON after preload; failure leaves defaults active. getConfig(), subscribeConfig(), updateConfig(patch), and resetConfig(scope) are the shared store API; font changes wait for local face readiness before publication. frontend/src/systems/scene-config/fontCatalog.ts exposes loadArtFont(id): Promise<boolean> for Marck Script, Bad Script, Caveat, and Cormorant Garamond, with checked Cyrillic glyph coverage. frontend/src/debug/composerControls.ts owns setComposerField, importComposerJson, exportComposerJson, resetComposerField, resetComposerScope, and applyComposerPreset. Its panel is DEV-only; production configuration comes from the optional JSON resource. For 00.1, schema v1 preparation fields are typeScale (0.9–1.1, default 1), lineHeight (0.9–1.5, default 1.08), and cardOpacity (0.85–1, default 1). Composer displays prologue particleReturnFraction as an effective 0–20%; schema v1 stores a 0–1 coefficient applied to the 20% renderer cap (default 0.75 displays as 15%). Schema sections are global, preload, preparation, and prologue; presets are moonlit-letter and stardust.
+### Architecture and prologue
 
-frontend/src/engine/filmConfig.ts exports getPrologueFrames(settings) and createHandwritingSchedule(text, duration, rhythm); frontend/src/scenes/PrologueScene.tsx exports deterministic sampleGlyphParticlePixels(alpha, width, height, count, seed). Prologue timings are bounded by the fixed 21-second gate. Scene UI reads config but does not own preload progress or media/consent state.
+Bootstrap prepares film modules and required resources before mounting the app. FilmCanvas remains mounted across scene changes; SceneDirector selects statically imported scenes and CameraDirector owns camera choreography. createFilmClock publishes exact time through FilmRuntime; runtime-bound GSAP timelines scrub from that clock and clean up their subscriptions/contexts on disposal. Keep scene updates in callbacks, refs, GPU buffers and shader uniforms rather than React state per frame. The canvas uses demand rendering and animations invalidate it.
 
-frontend/src/app/App.tsx owns one MediaSession and AudioDirector outside scene lifetimes. MediaSession.prepare() requests only selected optional permissions; restore() requests none. Recording starts only after explicit opt-in and the separate gift gesture; it commits ordered chunks to IndexedDB database little-universe-reactions-v1 about every four seconds and drains the final queue on stop. Browser eviction or abrupt closure can lose data. Audio unlocks on the gift gesture; no music buffers are registered.
+SceneComposerConfig is immutable schema v2 in systems/scene-config/config.ts. normalizeConfig(input) accepts v1/v2, drops unknown fields and applies v2 defaults; v1 particleSpeed/particleSpread migrate to wind/turbulence, and obsolete particleReturnFraction is ignored. loadStartupConfig() fetches optional same-origin scene-composer.json after preload; failure leaves current defaults. Font changes publish only after local font readiness. Shared APIs are getConfig, subscribeConfig, updateConfig, and resetConfig; presets are moonlit-letter and stardust.
 
-Production builds create a same-origin runtime manifest and service worker; required cached assets are checked by byte count and SHA-256. Development does not establish offline readiness. Failed module imports require reload after network restoration; ordinary resource failures can be retried. Worker upgrades may require closing old tabs. Camera and recording need a secure context; physical tablet/Safari behavior remains unverified.
+The prologue gate remains 21 seconds. getPrologueFrames(settings) derives the phrase, hold, dissolve and particle-travel windows within that cap. createHandwritingSchedule() is a pure, tested helper; the production overlay currently reveals each measured DOM line with one GSAP-driven horizontal CSS mask, and the prompt has its own shorter mask animation. The configurable handwritingRhythm is not consumed by that overlay.
 
-### Environment and tests
-Environment variable names only: frontend/.env.example defines VITE_APP_TITLE (public, bundled); backend/.env.example defines ALU_APP_NAME and ALU_DEBUG. Never put secrets in VITE_* values.
-Frontend tests use Vitest and are colocated in frontend/src/**/*.test.ts; backend tests use pytest in backend/tests/. Run one file with the commands above. The optional backend is a health-only API and is not called by the film. There is no upload or authentication endpoint.
+The overlay and particles share the deterministic fracture front in scenes/prologue/particleMath.ts. PrologueScene.tsx waits for the selected local font, groups browser-measured glyph fragments into wrapped lines, samples a 2× Canvas alpha mask with a seeded sampler, converts samples into world-space buffers, and draws one THREE.Points field with custom vertex/fragment shaders. Each sampled shard is a parent point plus three ash points; CPU code assigns birth times from the dissolve front, and the shader applies wind/turbulence drift. particleDuration is the travel window (default 4 s); particleFadeDuration is its separate fade setting (default 2.4 s). The field opacity reaches zero at the fixed 21 s gate. Shared runtime.time drives shader uniforms through useSceneAnimation; no scene-local clock or per-frame React state is added. Font-load effects guard late completion and dispose/reset geometry on cleanup. Reduced motion omits the particle field and simplifies the overlay.
+
+### Services, offline behavior and environment
+
+App.tsx owns one MediaSession and AudioDirector outside scene lifetimes. restore() requests no permissions; prepare() is called from the explicit settings action. Recording requires separate consent and the gift gesture; ordered chunks are stored locally in IndexedDB little-universe-reactions-v1. The backend has no upload or authentication route, and the film does not call it.
+
+Production builds emit a same-origin runtime manifest and service worker; required assets are byte-count/SHA-256 checked. Development does not establish offline readiness. Failed module imports require reload after network recovery; ordinary resource failures can be retried. Camera and recording need a secure context. Physical tablet/Safari performance and behavior remain unverified.
+
+Environment variable names only: frontend/.env.example defines public VITE_APP_TITLE; backend/.env.example defines ALU_APP_NAME and ALU_DEBUG. Never place secrets in VITE_* values.
 <!-- autopilot:end -->

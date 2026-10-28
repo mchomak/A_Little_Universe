@@ -1,46 +1,63 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { useThree } from '@react-three/fiber'
-import { AdditiveBlending, BufferGeometry, Color, Float32BufferAttribute, Vector3, type Camera, type ShaderMaterial } from 'three'
+import { AdditiveBlending, BufferGeometry, Float32BufferAttribute, Vector3, type Camera, type ShaderMaterial } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
-import { getPrologueFrames, getPrologueParticleOpacity } from '../engine/filmConfig'
+import { getPrologueFrames } from '../engine/filmConfig'
 import { useSceneAnimation } from './shared/animation'
+import {
+  getParticleBirthTime,
+  getParticleFadeStart,
+  getParticleSceneOpacity,
+  getPrologueParticleVertexCount,
+  groupGlyphFragmentsByLine,
+  resolvePrologueParticleCount,
+  type GlyphTextFragment,
+} from './prologue/particleMath'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { loadArtFont } from '../systems/scene-config/fontCatalog'
 
 const particleVertexShader = `
 attribute vec3 aVelocity;
-attribute float aReturning;
+attribute float aBirth;
 attribute float aSize;
-attribute vec3 aTint;
-uniform float uProgress;
-uniform float uSpeed;
-uniform float uSpread;
+attribute float aKind;
+attribute float aTint;
+uniform float uTime;
+uniform float uTravelDuration;
+uniform float uFadeStart;
+uniform float uWindStrength;
+uniform float uTurbulence;
 uniform float uGlow;
 uniform float uOpacity;
-uniform vec3 uReturnPoint;
+uniform float uPixelRatio;
 varying float vAlpha;
-varying vec3 vTint;
 void main() {
-  float progress = clamp(uProgress, 0.0, 1.0);
-  float eased = progress * progress * (3.0 - 2.0 * progress);
-  vec3 scattered = position + aVelocity * uSpeed * uSpread * progress;
-  vec3 particle = mix(scattered, uReturnPoint, eased * aReturning);
+  float age = uTime - aBirth;
+  float travelProgress = clamp(age / max(0.1, uTravelDuration), 0.0, 1.0);
+  float split = smoothstep(0.05, 0.3, age);
+  float parentFade = 1.0 - smoothstep(0.1, 0.34, age);
+  float ashAppear = smoothstep(0.12, 0.34, age);
+  float roleAlpha = aKind < 0.5 ? parentFade : ashAppear;
+  float fade = 1.0 - smoothstep(uFadeStart, uTravelDuration, age);
+  float alive = step(0.0, age) * step(age, uTravelDuration);
+  vec2 baseDrift = vec2(-0.44, 0.24) * uWindStrength * uTravelDuration * travelProgress;
+  vec2 variation = vec2(-abs(aVelocity.x), abs(aVelocity.y)) * uTurbulence * 0.2 * uTravelDuration * travelProgress;
+  vec2 ashSplit = vec2(-abs(aVelocity.x), abs(aVelocity.y)) * uTurbulence * split * 0.035;
+  vec3 particle = position + vec3(baseDrift + variation + ashSplit, 0.0);
   vec4 viewPosition = modelViewMatrix * vec4(particle, 1.0);
   gl_Position = projectionMatrix * viewPosition;
-  gl_PointSize = (2.2 + aSize * 2.2 + uGlow * 1.2) * (5.6 / max(1.0, -viewPosition.z));
-  vAlpha = (0.58 + aSize * 0.3) * uOpacity;
-  vTint = aTint;
+  gl_PointSize = (0.9 + aSize * 1.6 + uGlow * 0.24) * uPixelRatio * (5.6 / max(1.0, -viewPosition.z));
+  vAlpha = alive * roleAlpha * fade * aTint * uOpacity;
 }`
 
 const particleFragmentShader = `
 varying float vAlpha;
-varying vec3 vTint;
 void main() {
   float radius = length(gl_PointCoord - 0.5) * 2.0;
-  float softness = exp(-radius * radius * 4.8) * (1.0 - smoothstep(0.28, 1.0, radius));
+  float softness = exp(-radius * radius * 4.2) * (1.0 - smoothstep(0.2, 1.0, radius));
   float alpha = softness * vAlpha;
   if (alpha < 0.012) discard;
-  gl_FragColor = vec4(vTint, alpha);
+  gl_FragColor = vec4(vec3(1.0), alpha);
   #include <colorspace_fragment>
 }`
 
@@ -74,18 +91,59 @@ function createSeededRandom(seed: number) {
   }
 }
 
+interface GlyphLineBounds {
+  element: HTMLElement
+  elementRect: DOMRect
+}
+
 interface GlyphSampleOptions {
   canvasRect: DOMRect
   camera: Camera
   count: number
   seed: number
-  returnFraction: number
-  quality: 'standard' | 'low'
+  fractureWidth: number
+  fractureDuration: number
+  dissolveStart: number
+}
+
+function createEmptyParticleGeometry() {
+  const geometry = new BufferGeometry()
+  geometry.setAttribute('position', new Float32BufferAttribute(new Float32Array(0), 3))
+  return geometry
+}
+
+function getGlyphTextFragments(element: HTMLElement): GlyphTextFragment[] {
+  const fragments: GlyphTextFragment[] = []
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT)
+  const range = document.createRange()
+  let node = walker.nextNode()
+
+  while (node) {
+    const value = node.textContent ?? ''
+    for (let offset = 0; offset < value.length;) {
+      const codePoint = value.codePointAt(offset)
+      if (codePoint === undefined) break
+      const text = String.fromCodePoint(codePoint)
+      range.setStart(node, offset)
+      range.setEnd(node, offset + text.length)
+      const rect = range.getBoundingClientRect()
+      if (rect.width > 0 && rect.height > 0) {
+        fragments.push({ text, left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom })
+      }
+      offset += text.length
+    }
+    node = walker.nextNode()
+  }
+
+  range.detach()
+  return fragments
 }
 
 function buildGlyphParticleGeometry(options: GlyphSampleOptions): BufferGeometry {
-  const { canvasRect, camera, count, seed, returnFraction, quality } = options
-  const geometry = new BufferGeometry()
+  const { canvasRect, camera, count, seed, fractureWidth, fractureDuration, dissolveStart } = options
+  const geometry = createEmptyParticleGeometry()
+  const requestedParticleCount = getPrologueParticleVertexCount(count)
+  if (requestedParticleCount < 4) return geometry
   const scale = 2
   const maskCanvas = document.createElement('canvas')
   const width = Math.max(1, Math.ceil(canvasRect.width * scale))
@@ -101,73 +159,89 @@ function buildGlyphParticleGeometry(options: GlyphSampleOptions): BufferGeometry
   context.scale(scale, scale)
   context.fillStyle = '#fff'
   context.textBaseline = 'alphabetic'
+  context.textAlign = 'left'
 
-  const lines = document.querySelectorAll<HTMLElement>('[data-prologue-line]')
-  for (const line of lines) {
+  const lines: GlyphLineBounds[] = []
+  for (const line of document.querySelectorAll<HTMLElement>('[data-prologue-line]')) {
+    const text = line.textContent?.trim()
+    if (!text) continue
+    const elementRect = line.getBoundingClientRect()
+    const range = document.createRange()
+    range.selectNodeContents(line)
+    const lineRects = Array.from(range.getClientRects()).filter(({ width, height }) => width > 0 && height > 0)
+    range.detach()
+    if (lineRects.length === 0) continue
     const style = getComputedStyle(line)
     const fontSize = Number.parseFloat(style.fontSize) || 48
-    const lineHeight = Number.parseFloat(style.lineHeight) || fontSize * 1.3
     context.font = style.font || `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
-    for (const glyph of line.querySelectorAll<HTMLElement>('[data-glyph]')) {
-      const value = glyph.dataset.glyph ?? glyph.textContent ?? ''
-      if (!value.trim()) continue
-      const range = document.createRange()
-      range.selectNodeContents(glyph)
-      const rect = range.getBoundingClientRect()
-      if (rect.width <= 0 || rect.height <= 0) continue
-      const baseline = rect.top - canvasRect.top + (lineHeight - fontSize) / 2 + fontSize * 0.81
-      context.fillText(value, rect.left - canvasRect.left, baseline)
-      range.detach()
+    const glyphLines = groupGlyphFragmentsByLine(
+      getGlyphTextFragments(line),
+      lineRects.map(({ left, top, right, bottom }) => ({ left, top, right, bottom })),
+    )
+    for (const glyphLine of glyphLines) {
+      const metrics = context.measureText(glyphLine.text)
+      const ascent = metrics.actualBoundingBoxAscent || fontSize * 0.75
+      const baseline = glyphLine.top - canvasRect.top + ascent
+      context.fillText(glyphLine.text, glyphLine.left - canvasRect.left, baseline)
     }
+    if (glyphLines.length === 0) continue
+    lines.push({ element: line, elementRect })
   }
 
-  const pixels = context.getImageData(0, 0, width, height).data
-  const alpha = new Uint8Array(width * height)
-  for (let pixel = 0; pixel < alpha.length; pixel++) alpha[pixel] = pixels[pixel * 4 + 3] ?? 0
-  maskCanvas.width = 0
-  maskCanvas.height = 0
-  const particleCount = alpha.some((value) => value > 0)
-    ? quality === 'low' ? Math.floor(count * 0.5) : count
-    : 0
-  const sampled = sampleGlyphParticlePixels(alpha, width, height, particleCount, seed)
+  let alpha: Uint8Array
+  try {
+    const pixels = context.getImageData(0, 0, width, height).data
+    alpha = new Uint8Array(width * height)
+    for (let pixel = 0; pixel < alpha.length; pixel++) alpha[pixel] = pixels[pixel * 4 + 3] ?? 0
+  } finally {
+    maskCanvas.width = 0
+    maskCanvas.height = 0
+  }
+  const shardCount = alpha.some((value) => value > 0) && lines.length > 0 ? requestedParticleCount / 4 : 0
+  const particleCount = shardCount * 4
+  const sampled = sampleGlyphParticlePixels(alpha, width, height, shardCount, seed)
 
   const positions = new Float32Array(particleCount * 3)
   const velocities = new Float32Array(particleCount * 3)
-  const returns = new Float32Array(particleCount)
+  const birthTimes = new Float32Array(particleCount)
   const sizes = new Float32Array(particleCount)
-  const tints = new Float32Array(particleCount * 3)
-  const light = document.querySelector<HTMLElement>('.persistent-light-core')?.getBoundingClientRect()
-  const lightX = light ? light.left + light.width / 2 : canvasRect.left + canvasRect.width / 2
-  const lightY = light ? light.top + light.height / 2 : canvasRect.top + canvasRect.height / 2
-  const returnPoint = screenToWorld(lightX, lightY, canvasRect, camera)
+  const kinds = new Float32Array(particleCount)
+  const tints = new Float32Array(particleCount)
   const random = createSeededRandom(seed ^ 0x4f1bbcdc)
-  // The config field is normalized; the artwork caps returns at the brief's 20% ceiling.
-  const returningCount = Math.round(particleCount * Math.min(0.2, Math.max(0, returnFraction * 0.2)))
-  const ivory = new Color('#fff0e8')
-  const white = new Color('#ffffff')
-  const lilac = new Color('#cfc4ff')
 
-  for (let index = 0; index < particleCount; index++) {
-    const x = canvasRect.left + (sampled[index * 2] ?? 0) / scale
-    const y = canvasRect.top + (sampled[index * 2 + 1] ?? 0) / scale
-    const point = screenToWorld(x, y, canvasRect, camera)
-    positions.set([point.x, point.y, point.z], index * 3)
-    const angle = random() * Math.PI * 2
-    const magnitude = 0.18 + random() * 0.9
-    velocities.set([Math.cos(angle) * magnitude, Math.sin(angle) * magnitude, (random() - 0.5) * 0.18], index * 3)
-    returns[index] = index < returningCount ? 1 : 0
-    sizes[index] = random()
-    const tint = ivory.clone().lerp(random() < 0.74 ? white : lilac, 0.15 + random() * 0.68)
-    tints.set([tint.r, tint.g, tint.b], index * 3)
+  for (let shard = 0; shard < shardCount; shard++) {
+    const pixelX = (sampled[shard * 2] ?? 0) / scale
+    const pixelY = (sampled[shard * 2 + 1] ?? 0) / scale
+    const screenX = canvasRect.left + pixelX
+    const screenY = canvasRect.top + pixelY
+    const line = lines.find(({ elementRect }) => screenX >= elementRect.left && screenX <= elementRect.right && screenY >= elementRect.top && screenY <= elementRect.bottom) ?? lines[0]
+    if (!line) continue
+    const lineX = (screenX - line.elementRect.left) / Math.max(1, line.elementRect.width)
+    const lineY = (screenY - line.elementRect.top) / Math.max(1, line.elementRect.height)
+    const lineSeed = line.element.dataset.prologueLine === 'first' ? 37 : 71
+    const birthTime = getParticleBirthTime({
+      xNormalized: lineX, yNormalized: lineY, fractureWidth, dissolveStart, fractureDuration, seed: lineSeed,
+    })
+    const point = screenToWorld(screenX, screenY, canvasRect, camera)
+
+    for (let child = 0; child < 4; child++) {
+      const index = shard * 4 + child
+      positions.set([point.x, point.y, point.z], index * 3)
+      velocities.set([random() * 2 - 1, random() * 2 - 1, 0], index * 3)
+      birthTimes[index] = birthTime
+      kinds[index] = child === 0 ? 0 : 1
+      sizes[index] = child === 0 ? 0.8 + random() * 0.35 : 0.18 + random() * 0.38
+      tints[index] = child === 0 ? 0.55 + random() * 0.12 : 0.34 + random() * 0.2
+    }
   }
 
   geometry.setAttribute('position', new Float32BufferAttribute(positions, 3))
   geometry.setAttribute('aVelocity', new Float32BufferAttribute(velocities, 3))
-  geometry.setAttribute('aReturning', new Float32BufferAttribute(returns, 1))
+  geometry.setAttribute('aBirth', new Float32BufferAttribute(birthTimes, 1))
   geometry.setAttribute('aSize', new Float32BufferAttribute(sizes, 1))
-  geometry.setAttribute('aTint', new Float32BufferAttribute(tints, 3))
-  geometry.userData.returnPoint = returnPoint
-  geometry.computeBoundingSphere()
+  geometry.setAttribute('aKind', new Float32BufferAttribute(kinds, 1))
+  geometry.setAttribute('aTint', new Float32BufferAttribute(tints, 1))
+  if (particleCount > 0) geometry.computeBoundingSphere()
   return geometry
 }
 
@@ -187,16 +261,25 @@ export function PrologueScene({ runtime, state, reducedMotion }: SceneProps) {
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const prologue = config.scenes.prologue
   const frames = useMemo(() => getPrologueFrames(prologue), [prologue])
-  const geometry = useMemo(() => new BufferGeometry(), [])
+  const geometry = useMemo(() => createEmptyParticleGeometry(), [])
   const material = useRef<ShaderMaterial>(null)
   const camera = useThree((three) => three.camera)
   const gl = useThree((three) => three.gl)
   const size = useThree((three) => three.size)
   const invalidate = useThree((three) => three.invalidate)
+  const pixelRatio = useThree((three) => three.gl.getPixelRatio())
+  const compact = size.width < 820 || (typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true)
+  const particleCount = reducedMotion ? 0 : resolvePrologueParticleCount(prologue.particleCount, state.quality, pixelRatio, compact)
   const uniforms = useMemo(() => ({
-    uProgress: { value: 0 }, uSpeed: { value: prologue.particleSpeed }, uSpread: { value: prologue.particleSpread },
-    uGlow: { value: prologue.glow }, uOpacity: { value: 0 }, uReturnPoint: { value: new Vector3() },
-  }), [prologue.glow, prologue.particleSpeed, prologue.particleSpread])
+    uTime: { value: 0 },
+    uTravelDuration: { value: frames.particleTravelDuration },
+    uFadeStart: { value: getParticleFadeStart(frames.particleTravelDuration, prologue.particleFadeDuration) },
+    uWindStrength: { value: prologue.windStrength },
+    uTurbulence: { value: prologue.turbulence },
+    uGlow: { value: prologue.glow },
+    uOpacity: { value: 0 },
+    uPixelRatio: { value: pixelRatio },
+  }), [frames.particleTravelDuration, pixelRatio, prologue.glow, prologue.particleFadeDuration, prologue.turbulence, prologue.windStrength])
 
   useLayoutEffect(() => {
     let disposed = false
@@ -204,11 +287,14 @@ export function PrologueScene({ runtime, state, reducedMotion }: SceneProps) {
       if (disposed) return
       const canvasRect = gl.domElement.getBoundingClientRect()
       const next = buildGlyphParticleGeometry({
-        canvasRect, camera, count: prologue.particleCount, seed: prologue.seed,
-        returnFraction: prologue.particleReturnFraction, quality: state.quality,
+        canvasRect,
+        camera,
+        count: particleCount,
+        seed: prologue.seed,
+        fractureWidth: prologue.fractureWidth,
+        fractureDuration: prologue.fractureDuration,
+        dissolveStart: frames.dissolve[0],
       })
-      const returnPoint = next.userData.returnPoint as Vector3 | undefined
-      if (returnPoint) uniforms.uReturnPoint.value.copy(returnPoint)
       geometry.copy(next)
       next.dispose()
       invalidate()
@@ -216,25 +302,34 @@ export function PrologueScene({ runtime, state, reducedMotion }: SceneProps) {
     return () => {
       disposed = true
       geometry.dispose()
-      geometry.deleteAttribute('position')
+      geometry.setAttribute('position', new Float32BufferAttribute(new Float32Array(0), 3))
       geometry.deleteAttribute('aVelocity')
-      geometry.deleteAttribute('aReturning')
+      geometry.deleteAttribute('aBirth')
       geometry.deleteAttribute('aSize')
+      geometry.deleteAttribute('aKind')
       geometry.deleteAttribute('aTint')
     }
-  }, [camera, geometry, gl, invalidate, prologue, size.height, size.width, state.quality, uniforms])
+  }, [camera, frames.dissolve, frames.particleTravelDuration, geometry, gl, invalidate, particleCount, prologue, size.height, size.width])
 
   const draw = useCallback((time: number) => {
     const shader = material.current
     if (!shader) return
-    const progress = Math.max(0, Math.min(1, (time - frames.dissolve[0]) / Math.max(0.1, frames.particleTravelDuration)))
     const live = shader.uniforms as typeof uniforms
-    live.uProgress.value = progress
-    live.uOpacity.value = getPrologueParticleOpacity(time, frames, reducedMotion)
-    live.uSpeed.value = prologue.particleSpeed
-    live.uSpread.value = prologue.particleSpread
+    live.uTime.value = time
+    live.uTravelDuration.value = Math.max(0.1, frames.particleTravelDuration)
+    live.uFadeStart.value = getParticleFadeStart(frames.particleTravelDuration, prologue.particleFadeDuration)
+    live.uWindStrength.value = prologue.windStrength
+    live.uTurbulence.value = prologue.turbulence
     live.uGlow.value = prologue.glow
-  }, [frames, prologue.glow, prologue.particleSpeed, prologue.particleSpread, reducedMotion])
+    live.uOpacity.value = getParticleSceneOpacity(
+      time,
+      frames.dissolve[0],
+      frames.duration,
+      prologue.particleFadeDuration,
+      reducedMotion,
+    )
+    live.uPixelRatio.value = pixelRatio
+  }, [frames, pixelRatio, prologue.glow, prologue.particleFadeDuration, prologue.turbulence, prologue.windStrength, reducedMotion])
   useSceneAnimation(runtime, frames.duration, draw)
 
   return <points geometry={geometry} frustumCulled={false} renderOrder={3}>

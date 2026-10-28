@@ -28,6 +28,19 @@ describe('Scene Composer controls', () => {
     expect(getConfig().scenes.prologue.fontSize).toBe(72)
   })
 
+  it('imports schema v2 particle controls through the shared config store', async () => {
+    const result = await importComposerJson(JSON.stringify({ schemaVersion: 2, scenes: { prologue: {
+      particleCount: 2200, windStrength: 2, turbulence: 0.6, fractureWidth: 0.12,
+      fractureDuration: 3, particleDuration: 3.5, particleFadeDuration: 3.2, promptHandwritingDuration: 0.4, glow: 0.9,
+    } } }))
+
+    expect(result.ok).toBe(true)
+    expect(getConfig().scenes.prologue).toMatchObject({
+      particleCount: 2200, windStrength: 2, turbulence: 0.6, fractureWidth: 0.12,
+      fractureDuration: 3, particleDuration: 3.5, particleFadeDuration: 3.2, promptHandwritingDuration: 0.4, glow: 0.9,
+    })
+  })
+
   it('rejects import when the requested font is not ready and preserves the active config', async () => {
     await setComposerField('scenes.prologue.fontSize', 72)
     const before = getConfig()
@@ -65,9 +78,17 @@ describe('Scene Composer controls', () => {
   it('exports the active config snapshot as JSON', async () => {
     await setComposerField('global.quality', 'low')
 
-    const exported = JSON.parse(exportComposerJson()) as { global: { quality: string } }
+    const exported = JSON.parse(exportComposerJson()) as {
+      schemaVersion: number
+      global: { quality: string }
+      scenes: { prologue: Record<string, unknown> }
+    }
 
+    expect(exported.schemaVersion).toBe(2)
     expect(exported.global.quality).toBe('low')
+    expect(exported.scenes.prologue).not.toHaveProperty('particleSpeed')
+    expect(exported.scenes.prologue).not.toHaveProperty('particleSpread')
+    expect(exported.scenes.prologue).not.toHaveProperty('particleReturnFraction')
   })
 
   it('resets one control to its field default', async () => {
@@ -76,6 +97,18 @@ describe('Scene Composer controls', () => {
     await resetComposerField('scenes.prologue.fontSize')
 
     expect(getConfig().scenes.prologue.fontSize).toBe(48)
+  })
+
+  it('updates and resets the new ash motion settings through Composer controls', async () => {
+    await setComposerField('scenes.prologue.windStrength', 2.1)
+    await setComposerField('scenes.prologue.fractureWidth', 0.12)
+    await setComposerField('scenes.prologue.promptHandwritingDuration', 0.4)
+    expect(getConfig().scenes.prologue).toMatchObject({ windStrength: 2.1, fractureWidth: 0.12, promptHandwritingDuration: 0.4 })
+
+    await resetComposerField('scenes.prologue.windStrength')
+    await resetComposerScope('prologue')
+
+    expect(getConfig().scenes.prologue).toMatchObject({ windStrength: 1.15, fractureWidth: 0.08, promptHandwritingDuration: 0.65 })
   })
 
   it('resets one scene group to its defaults', async () => {

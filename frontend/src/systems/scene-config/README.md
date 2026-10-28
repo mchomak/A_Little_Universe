@@ -1,6 +1,6 @@
 # Scene Composer configuration
 
-`SceneComposerConfig` is schema version 1. Defaults live in `config.ts`; JSON is treated as a partial override. Missing fields use defaults, known invalid fields use their field default, unsupported explicit schema versions reset to the defaults, and unknown fields are discarded.
+`SceneComposerConfig` is an immutable schema version 2. `normalizeConfig(input)` accepts partial schema v2 and older schema v1 JSON; unknown keys are discarded and missing or invalid values use the v2 defaults. The store publishes font changes only after the selected local font is ready.
 
 The public store is:
 
@@ -11,13 +11,16 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`updateConfig` waits for newly selected local font faces before publishing the new immutable snapshot. `loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after the real preload has emitted `ready`; its rejection or malformed JSON leaves the current snapshot intact.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v2.
 
-The optional production file can contain only the values that should differ from defaults:
+Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its existing 0.1–20 second travel-window meaning and default of 4 seconds; the new `particleFadeDuration` controls ash fade and defaults to 2.4 seconds. `particleReturnFraction` is ignored because the ash effect no longer returns particles to the center. Missing v2 fields receive v2 defaults.
+
+An optional production override can contain only values that differ from the defaults:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "global": { "quality": "low" },
   "scenes": {
     "preparation": {
       "typeScale": 1.05,
@@ -26,19 +29,23 @@ The optional production file can contain only the values that should differ from
     },
     "prologue": {
       "fontFamily": "marck-script",
-      "fontSize": 52,
       "particleCount": 2100,
-      "particleReturnFraction": 0.75
+      "windStrength": 1.4,
+      "turbulence": 0.35,
+      "fractureWidth": 0.08,
+      "fractureDuration": 2.6,
+      "particleDuration": 4,
+      "particleFadeDuration": 2.4,
+      "promptHandwritingDuration": 0.65,
+      "glow": 0.45
     }
   }
 }
 ```
 
-The only accepted art font IDs are `marck-script`, `bad-script`, `caveat`, and `cormorant-garamond`. They are declared in `fontIds.ts`; `fontCatalog.ts` defines the corresponding local CSS family, readiness call, and checked Russian glyph set. All four files use SIL Open Font License 1.1; see `src/assets/typography/` for the full license texts and attribution.
-
 ## Normalization ranges
 
-| Section | Field | Accepted range |
+| Section | Field | Accepted range / default |
 |---|---|---:|
 | Global | DPR min / max | 0.5–1.5 / 1–2, with min ≤ max |
 | Global | Playback speed | 0.25–4 |
@@ -47,11 +54,16 @@ The only accepted art font IDs are `marck-script`, `bad-script`, `caveat`, and `
 | Preparation | Heading scale, line height, card opacity | 0.9–1.1, 0.9–1.5, 0.85–1 |
 | Prologue | Font size, line height, position Y | 16–160, 0.8–2.5, 10–80 |
 | Prologue | Handwriting duration/rhythm, phrase interval, readable hold | 0.5–20, 0.1–3, 0–8, 0–30 |
-| Prologue | Particle count/speed/duration/spread/return fraction | 100–6000 integer, 0.1–10, 0.1–20, 0–2, 0–1 |
-| Prologue | Glow, pulse amplitude/frequency, seed | 0–2, 0–1, 0–5, integer 0–2147483647 |
+| Prologue | Particle count | 300–6000 integer; default 1800 |
+| Prologue | Wind strength, turbulence | 0.2–3 (default 1.15), 0–1 (default 0.3) |
+| Prologue | Fracture width | 0–0.18 of text width; default 0.08 |
+| Prologue | Fracture and ash fade duration | 0.8–4 s (default 2.6), 0.5–4 s (default 2.4) |
+| Prologue | Particle travel-window duration | 0.1–20 s; default 4 |
+| Prologue | Prompt handwriting duration | 0.2–0.8 s; default 0.65 |
+| Prologue | Glow, pulse amplitude/frequency, seed | 0–2 (default 0.45), 0–1, 0–5, integer 0–2147483647 |
 
-The preparation defaults keep the existing composition: heading scale `1`, heading line height `1.08`, and card surface opacity `1`. These settings are applied live through `--preparation-type-scale`, `--preparation-line-height`, and `--preparation-card-opacity`; reset restores those defaults.
+The existing `Moonlit Letter` and `Stardust` presets remain available. Global quality, DPR and playback settings remain global and are not changed by prologue-specific controls. The store owns neither a playback clock nor a canvas.
 
-`scenes.prologue.particleReturnFraction` is a normalized coefficient from `0` to `1` of the renderer's `20%` return cap. The code default `0.75` therefore means an effective renderer share of `0.75 × 20% = 15%`. The Composer displays the effective share as `0–20%` and maps it back to the coefficient on input; the JSON field remains a coefficient, not a percentage.
+The preparation defaults keep the existing composition: heading scale `1`, heading line height `1.08`, and card surface opacity `1`. These settings use `--preparation-type-scale`, `--preparation-line-height`, and `--preparation-card-opacity`; reset restores the defaults.
 
-`SCENE_CONFIG_PRESETS` exposes the `moonlit-letter` and `stardust` partial presets. The store does not create its own playback clock or canvas.
+The only accepted art font IDs are `marck-script`, `bad-script`, `caveat`, and `cormorant-garamond`. They are declared in `fontIds.ts`; `fontCatalog.ts` defines the corresponding local CSS family, readiness call, and checked Russian glyph set. Font files use SIL Open Font License 1.1; see `src/assets/typography/` for license texts and attribution.

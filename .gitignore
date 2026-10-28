@@ -34,3 +34,6 @@ Thumbs.db
 !.autopilot/2026-10-27-opening-scenes-v2--wip/**
 .autopilot/serve.*
 3D_models
+
+!.autopilot/2026-10-28-prologue-handwriting-ash--wip/
+!.autopilot/2026-10-28-prologue-handwriting-ash--wip/**

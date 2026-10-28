@@ -5,7 +5,6 @@ import { initialFilmState } from '../engine/film'
 import { createFilmRuntime } from '../engine/runtime'
 import { createSceneTimeline } from '../engine/useSceneTimeline'
 import * as filmConfig from '../engine/filmConfig'
-import { COPY } from '../engine/filmConfig'
 import { getConfig, updateConfig } from '../systems/scene-config/config'
 import * as prologueOverlay from './PrologueOverlay'
 import { PrologueOverlay } from './PrologueOverlay'
@@ -24,6 +23,16 @@ it('scales the configured prologue font size into the responsive text rule', asy
   }
 })
 
+it('renders each handwritten phrase as one connected line and gives the touch prompt the same script face', async () => {
+  const markup = renderToStaticMarkup(createElement(PrologueOverlay, {
+    state: initialFilmState, dispatch: () => undefined, runtime: createFilmRuntime(), reducedMotion: false,
+  }))
+  const prompt = markup.match(/<p class="prologue-prompt"[^>]*>/)?.[0] ?? ''
+
+  expect(markup).not.toContain('prologue-glyph')
+  expect(prompt).toContain('Marck Script')
+})
+
 it('keeps sampled particles hidden after the dissolve reaches the wait gate', () => {
   const opacityAt = Reflect.get(filmConfig, 'getPrologueParticleOpacity') as
     ((time: number, frames: ReturnType<typeof filmConfig.getPrologueFrames>, reducedMotion: boolean) => number) | undefined
@@ -36,74 +45,136 @@ it('keeps sampled particles hidden after the dissolve reaches the wait gate', ()
   expect(opacityAt(frames.duration + 50, frames, false)).toBe(0)
 })
 
-it('replays reveal and dissolve frames deterministically through the shared scene runtime', () => {
-  type Target = { opacity: number; clipPath?: string; filter?: string; y?: number }
-  type Targets = {
-    first: Target
-    firstGlyphs: Target[]
-    second: Target
-    secondGlyphs: Target[]
-    prompt: Target
+it('replays continuous writing, hold, noisy dissolve and the faster prompt through the shared runtime', () => {
+  type Target = {
+    opacity: number
+    style: { setProperty: (name: string, value: string) => void; getPropertyValue: (name: string) => string }
   }
+  type Targets = { first: Target; second: Target; prompt: Target }
   type BuildTimeline = (
     targets: Targets,
     frames: ReturnType<typeof filmConfig.getPrologueFrames>,
-    rhythm: number,
+    settings: ReturnType<typeof getConfig>['scenes']['prologue'],
     reducedMotion: boolean,
   ) => ReturnType<typeof createSceneTimeline>['timeline']
   const createTimeline = Reflect.get(prologueOverlay, 'createPrologueOverlayTimeline') as unknown as BuildTimeline | undefined
   expect(createTimeline).toBeTypeOf('function')
   if (!createTimeline) return
 
-  const targets: Targets = {
-    first: { opacity: 0 }, firstGlyphs: Array.from({ length: Array.from(COPY.prologueFirst).length }, () => ({ opacity: 0 })),
-    second: { opacity: 0 }, secondGlyphs: Array.from({ length: Array.from(COPY.prologueSecond).length }, () => ({ opacity: 0 })),
-    prompt: { opacity: 0, y: 5 },
+  const makeTarget = (): Target => {
+    const values = new Map<string, string>()
+    return {
+      opacity: 0,
+      style: {
+        setProperty: (name, value) => values.set(name, value),
+        getPropertyValue: (name) => values.get(name) ?? '',
+      },
+    }
   }
-  const frames = filmConfig.getPrologueFrames(getConfig().scenes.prologue)
+  const targets: Targets = { first: makeTarget(), second: makeTarget(), prompt: makeTarget() }
+  const settings = getConfig().scenes.prologue
+  const frames = filmConfig.getPrologueFrames(settings)
   const runtime = createFilmRuntime()
-  const scene = createSceneTimeline(() => createTimeline(targets, frames, 0.82, false), runtime)
+  const scene = createSceneTimeline(() => createTimeline(targets, frames, settings, false), runtime)
+  const progress = (target: Target, name: string) => Number.parseFloat(target.style.getPropertyValue(name))
   const snapshot = () => JSON.stringify([
-    targets.first.opacity, ...targets.firstGlyphs.map((glyph) => glyph.opacity),
-    targets.second.opacity, ...targets.secondGlyphs.map((glyph) => glyph.opacity),
-    targets.prompt.opacity, targets.prompt.y,
+    targets.first.opacity, progress(targets.first, '--write-progress'), progress(targets.first, '--fracture-progress'), targets.first.style.getPropertyValue('--fracture-clip'),
+    targets.second.opacity, progress(targets.second, '--write-progress'), progress(targets.second, '--fracture-progress'), targets.second.style.getPropertyValue('--fracture-clip'),
+    targets.prompt.opacity, progress(targets.prompt, '--write-progress'),
   ])
 
   runtime.publish(5.5)
   const reveal = snapshot()
-  runtime.publish(18)
-  const dissolve = snapshot()
-  expect(targets.first.opacity).toBeGreaterThan(0)
-  expect(targets.second.opacity).toBeGreaterThan(0)
+  expect(progress(targets.first, '--write-progress')).toBeGreaterThan(0)
+  expect(progress(targets.first, '--write-progress')).toBeLessThan(104)
+  expect(targets.second.opacity).toBe(0)
 
-  runtime.publish(5.5)
-  expect(snapshot()).toBe(reveal)
-  runtime.publish(18)
+  runtime.publish(15.5)
+  const hold = snapshot()
+  expect(progress(targets.first, '--write-progress')).toBe(104)
+  expect(progress(targets.second, '--write-progress')).toBe(104)
+  expect(targets.first.opacity).toBe(1)
+  expect(targets.second.opacity).toBe(1)
+
+  runtime.publish(17.3)
+  const dissolve = snapshot()
+  expect(progress(targets.first, '--fracture-progress')).toBeCloseTo(50, 0)
+  expect(targets.first.style.getPropertyValue('--fracture-clip')).toContain('polygon(')
+  expect(targets.first.opacity).toBe(1)
+  runtime.publish(15.5)
+  expect(snapshot()).toBe(hold)
+  runtime.publish(17.3)
   expect(snapshot()).toBe(dissolve)
+
+  runtime.publish(20.675)
+  const promptWriting = snapshot()
+  expect(progress(targets.prompt, '--write-progress')).toBeGreaterThan(0)
+  expect(progress(targets.prompt, '--write-progress')).toBeLessThan(104)
   runtime.publish(frames.duration)
+  const gate = snapshot()
   expect([targets.first.opacity, targets.second.opacity, targets.prompt.opacity]).toEqual([0, 0, 1])
-  const waitFrame = snapshot()
+  expect(progress(targets.prompt, '--write-progress')).toBe(104)
   scene.dispose()
 
-  const replayTargets: Targets = {
-    first: { opacity: 0 }, firstGlyphs: Array.from({ length: Array.from(COPY.prologueFirst).length }, () => ({ opacity: 0 })),
-    second: { opacity: 0 }, secondGlyphs: Array.from({ length: Array.from(COPY.prologueSecond).length }, () => ({ opacity: 0 })),
-    prompt: { opacity: 0, y: 5 },
-  }
+  const replayTargets: Targets = { first: makeTarget(), second: makeTarget(), prompt: makeTarget() }
   runtime.publish(5.5)
-  const replay = createSceneTimeline(() => createTimeline(replayTargets, frames, 0.82, false), runtime)
+  const replay = createSceneTimeline(() => createTimeline(replayTargets, frames, settings, false), runtime)
   const replaySnapshot = () => JSON.stringify([
-    replayTargets.first.opacity, ...replayTargets.firstGlyphs.map((glyph) => glyph.opacity),
-    replayTargets.second.opacity, ...replayTargets.secondGlyphs.map((glyph) => glyph.opacity),
-    replayTargets.prompt.opacity, replayTargets.prompt.y,
+    replayTargets.first.opacity, progress(replayTargets.first, '--write-progress'), progress(replayTargets.first, '--fracture-progress'), replayTargets.first.style.getPropertyValue('--fracture-clip'),
+    replayTargets.second.opacity, progress(replayTargets.second, '--write-progress'), progress(replayTargets.second, '--fracture-progress'), replayTargets.second.style.getPropertyValue('--fracture-clip'),
+    replayTargets.prompt.opacity, progress(replayTargets.prompt, '--write-progress'),
   ])
   expect(replaySnapshot()).toBe(reveal)
-  runtime.publish(18)
+  runtime.publish(15.5)
+  expect(replaySnapshot()).toBe(hold)
+  runtime.publish(17.3)
   expect(replaySnapshot()).toBe(dissolve)
+  runtime.publish(20.675)
+  expect(replaySnapshot()).toBe(promptWriting)
   runtime.publish(frames.duration)
-  expect([replayTargets.first.opacity, replayTargets.second.opacity, replayTargets.prompt.opacity]).toEqual([0, 0, 1])
-  expect(replaySnapshot()).toBe(waitFrame)
+  expect(replaySnapshot()).toBe(gate)
+  runtime.publish(20.675)
+  expect(replaySnapshot()).toBe(promptWriting)
   replay.dispose()
+})
+
+it('keeps reduced-motion text static while preserving the touch gate timing', () => {
+  type Target = {
+    opacity: number
+    style: { setProperty: (name: string, value: string) => void; getPropertyValue: (name: string) => string }
+  }
+  type Targets = { first: Target; second: Target; prompt: Target }
+  type BuildTimeline = (
+    targets: Targets,
+    frames: ReturnType<typeof filmConfig.getPrologueFrames>,
+    settings: ReturnType<typeof getConfig>['scenes']['prologue'],
+    reducedMotion: boolean,
+  ) => ReturnType<typeof createSceneTimeline>['timeline']
+  const createTimeline = Reflect.get(prologueOverlay, 'createPrologueOverlayTimeline') as unknown as BuildTimeline | undefined
+  expect(createTimeline).toBeTypeOf('function')
+  if (!createTimeline) return
+
+  const makeTarget = (): Target => {
+    const values = new Map<string, string>()
+    return { opacity: 0, style: { setProperty: (name, value) => values.set(name, value), getPropertyValue: (name) => values.get(name) ?? '' } }
+  }
+  const targets: Targets = { first: makeTarget(), second: makeTarget(), prompt: makeTarget() }
+  const settings = getConfig().scenes.prologue
+  const frames = filmConfig.getPrologueFrames(settings)
+  const runtime = createFilmRuntime()
+  const scene = createSceneTimeline(() => createTimeline(targets, frames, settings, true), runtime)
+
+  runtime.publish(frames.first[0])
+  expect([targets.first.opacity, targets.first.style.getPropertyValue('--write-progress')]).toEqual([1, '104%'])
+  runtime.publish(frames.second[0])
+  expect([targets.second.opacity, targets.second.style.getPropertyValue('--write-progress')]).toEqual([1, '104%'])
+  runtime.publish(frames.dissolve[0])
+  expect([targets.first.opacity, targets.second.opacity]).toEqual([0, 0])
+  runtime.publish(frames.prompt - settings.promptHandwritingDuration)
+  expect(targets.prompt.opacity).toBe(0)
+  runtime.publish(frames.prompt)
+  expect([targets.prompt.opacity, targets.prompt.style.getPropertyValue('--write-progress')]).toEqual([1, '104%'])
+  scene.dispose()
 })
 
 it.each([

@@ -9,7 +9,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 1
+  readonly schemaVersion: 2
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -36,10 +36,13 @@ export interface SceneComposerConfig {
       interphraseInterval: number
       readableHold: number
       particleCount: number
-      particleSpeed: number
+      windStrength: number
+      turbulence: number
+      fractureWidth: number
+      fractureDuration: number
+      promptHandwritingDuration: number
+      particleFadeDuration: number
       particleDuration: number
-      particleSpread: number
-      particleReturnFraction: number
       glow: number
       pulseAmplitude: number
       pulseFrequency: number
@@ -50,7 +53,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 1,
+  schemaVersion: 2,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
@@ -58,8 +61,9 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
     prologue: {
       fontFamily: 'marck-script', fontSize: 48, lineHeight: 1.3, positionY: 40,
       handwritingDuration: 4.8, handwritingRhythm: 0.82, interphraseInterval: 1.2, readableHold: 2,
-      particleCount: 1800, particleSpeed: 1, particleDuration: 4, particleSpread: 1,
-      particleReturnFraction: 0.75, glow: 1, pulseAmplitude: 0.08, pulseFrequency: 0.8, seed: 1420577,
+      particleCount: 1800, windStrength: 1.15, turbulence: 0.3, fractureWidth: 0.08,
+      fractureDuration: 2.6, particleDuration: 4, particleFadeDuration: 2.4, promptHandwritingDuration: 0.65,
+      glow: 0.45, pulseAmplitude: 0.08, pulseFrequency: 0.8, seed: 1420577,
     },
   },
   preset: 'moonlit-letter',
@@ -68,11 +72,11 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
 export const SCENE_CONFIG_PRESETS = deepFreeze({
   'moonlit-letter': {
     label: 'Moonlit Letter',
-    patch: { preset: 'moonlit-letter', scenes: { prologue: { glow: 0.9, pulseAmplitude: 0.07, particleSpread: 0.95 } } },
+    patch: { preset: 'moonlit-letter', scenes: { prologue: { glow: 0.9, pulseAmplitude: 0.07, turbulence: 0.29 } } },
   },
   stardust: {
     label: 'Stardust',
-    patch: { preset: 'stardust', scenes: { prologue: { glow: 1.25, particleCount: 2600, particleSpread: 1.25 } } },
+    patch: { preset: 'stardust', scenes: { prologue: { glow: 1.25, particleCount: 2600, turbulence: 0.38 } } },
   },
 })
 
@@ -83,12 +87,24 @@ const configListeners = new Set<(config: SceneComposerConfig) => void>()
 
 export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
-  if (!root || (root.schemaVersion !== undefined && root.schemaVersion !== 1)) return DEFAULT_SCENE_COMPOSER_CONFIG
+  const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
+  if (!root || (inputVersion !== 1 && inputVersion !== 2)) return DEFAULT_SCENE_COMPOSER_CONFIG
+  const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
   const preloadInput = asRecord(scenesInput?.preload)
   const preparationInput = asRecord(scenesInput?.preparation)
   const prologueInput = asRecord(scenesInput?.prologue)
+  const legacyParticleSpeed = numberValue(prologueInput?.particleSpeed, 1, 0.1, 10)
+  const legacyParticleSpread = numberValue(prologueInput?.particleSpread, 1, 0, 2)
+  const windStrength = numberValue(
+    prologueInput?.windStrength ?? (migratingV1 ? clamp(legacyParticleSpeed * 1.15, 0.2, 3) : undefined),
+    DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.windStrength, 0.2, 3,
+  )
+  const turbulence = numberValue(
+    prologueInput?.turbulence ?? (migratingV1 ? legacyParticleSpread * 0.3 : undefined),
+    DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.turbulence, 0, 1,
+  )
 
   const global = {
     quality: enumValue(globalInput?.quality, ['standard', 'low'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.global.quality),
@@ -125,11 +141,16 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       handwritingRhythm: numberValue(prologueInput?.handwritingRhythm, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.handwritingRhythm, 0.1, 3),
       interphraseInterval: numberValue(prologueInput?.interphraseInterval, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.interphraseInterval, 0, 8),
       readableHold: numberValue(prologueInput?.readableHold, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.readableHold, 0, 30),
-      particleCount: numberValue(prologueInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.particleCount, 100, 6000, true),
-      particleSpeed: numberValue(prologueInput?.particleSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.particleSpeed, 0.1, 10),
+      particleCount: migratingV1
+        ? migrateLegacyNumber(prologueInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.particleCount, 100, 6000, 300, 6000, true)
+        : numberValue(prologueInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.particleCount, 300, 6000, true),
+      windStrength,
+      turbulence,
+      fractureWidth: numberValue(prologueInput?.fractureWidth, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fractureWidth, 0, 0.18),
+      fractureDuration: numberValue(prologueInput?.fractureDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fractureDuration, 0.8, 4),
+      promptHandwritingDuration: numberValue(prologueInput?.promptHandwritingDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.promptHandwritingDuration, 0.2, 0.8),
+      particleFadeDuration: numberValue(prologueInput?.particleFadeDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.particleFadeDuration, 0.5, 4),
       particleDuration: numberValue(prologueInput?.particleDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.particleDuration, 0.1, 20),
-      particleSpread: numberValue(prologueInput?.particleSpread, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.particleSpread, 0, 2),
-      particleReturnFraction: numberValue(prologueInput?.particleReturnFraction, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.particleReturnFraction, 0, 1),
       glow: numberValue(prologueInput?.glow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.glow, 0, 2),
       pulseAmplitude: numberValue(prologueInput?.pulseAmplitude, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.pulseAmplitude, 0, 1),
       pulseFrequency: numberValue(prologueInput?.pulseFrequency, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.pulseFrequency, 0, 5),
@@ -138,7 +159,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 1, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 2, global, scenes, preset })
 }
 export function getConfig(): SceneComposerConfig { return activeConfig }
 
@@ -240,6 +261,15 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 function numberValue(value: unknown, fallback: number, min: number, max: number, integer = false) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max || (integer && !Number.isInteger(value))) return fallback
   return value
+}
+
+function migrateLegacyNumber(value: unknown, fallback: number, legacyMin: number, legacyMax: number, min: number, max: number, integer = false) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < legacyMin || value > legacyMax || (integer && !Number.isInteger(value))) return fallback
+  return clamp(value, min, max)
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
 }
 
 function enumValue<const Values extends readonly string[]>(value: unknown, allowed: Values, fallback: Values[number]): Values[number] {
