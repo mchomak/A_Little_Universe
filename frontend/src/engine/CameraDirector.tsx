@@ -65,7 +65,11 @@ export function CameraDirector({ state, runtime, reducedMotion }: SceneProps) {
     if (scene !== 'gallery') return
     const [x, y, z] = galleryPosition(galleryIndex)
     const currentPose = pose.current
-    const move = createGalleryMove(currentPose, { x, y, z: z + 4.8, tx: x, ty: y, tz: z }, render,
+    // The first photograph keeps the exact final identity camera framing at the handoff.
+    const target = galleryIndex === 0
+      ? { x: 0, y: 0, z: 5.6, tx: 0, ty: 0, tz: 0 }
+      : { x, y, z: z + 4.8, tx: x, ty: y, tz: z }
+    const move = createGalleryMove(currentPose, target, render,
       { paused, reading, speed }, reducedMotion ? 0 : TIMING.camera.gallery, document)
     gallery.current = move
     return () => {

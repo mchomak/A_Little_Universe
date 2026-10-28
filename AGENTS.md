@@ -217,13 +217,13 @@ When the task introduces a durable rule that will matter across future work, upd
 <!-- autopilot:start -->
 ## Current implementation
 
-A Little Universe for You is a private, tablet-first cinematic React/Three.js birthday film. Preload (00), preparation (00.1), and prologue (01) are implemented; scenes 02–09 remain navigable procedural placeholders. Personal photos, portrait, music, gaze tracking, and video upload are not connected. The storyboard is A_Little_Universe_for_Vasilisa_Storyboard_v2.0.md; key_frames/splitting the text.png is an art reference, not a runtime texture.
+A Little Universe for You is a private, tablet-first cinematic React/Three.js birthday film. Preload (00), preparation (00.1), prologue (01), and the particle-to-first-memory sequence (04.2–04.7) are implemented. The 04.1 lily is procedural; scenes 02–03 and 05–09 remain navigable placeholders except for the first real gallery photo. The first photo and its ASCII portrait are connected; other photos, music, gaze tracking, and video upload are not. The storyboard is A_Little_Universe_for_Vasilisa_Storyboard_v2.0.md; key_frames/splitting the text.png is an art reference, not a runtime texture.
 
 ### Working commands
 
 Run frontend commands from frontend/ with Node.js ^22.12.0 or >=24:
 - npm ci; npm run dev (127.0.0.1:5173); npm run preview (127.0.0.1:4173). Both Vite ports are strict; reuse or stop an existing server if a port is occupied.
-- npm run check runs ESLint, Vitest, strict TypeScript and production build. Verified 2026-10-28: 99 tests in 24 files passed; lint, typecheck and build passed. Build output still warns about deprecated THREE.Clock and an App chunk above 500 kB.
+- npm run check runs ESLint, Vitest, strict TypeScript and production build. Verified after integration 2026-10-28: 104 tests in 26 files passed; lint, typecheck and build passed. Build output still warns about deprecated Three.js CommonJS usage and an App chunk above 500 kB.
 - Focused prologue tests: npm test -- src/engine/filmConfig.test.ts, npm test -- src/components/PrologueOverlay.test.ts, or npm test -- src/scenes/PrologueScene.test.ts.
 
 The dev page was confirmed in Chrome at http://127.0.0.1:5173/; a start attempt reported port 5173 already in use because the server was already running.
@@ -238,6 +238,7 @@ Run optional backend commands from backend/:
 - frontend/src/app/App.tsx owns preparation/film routing and app-lifetime media/audio services; openGift.ts handles the deliberate start gesture. bootstrap/ draws the lightweight Canvas2D preload; systems/assets/AssetManager.ts loads film modules/resources and optional startup config.
 - frontend/src/engine/ owns film state, the shared GSAP clock, persistent FilmCanvas, and scene/camera directors. film.ts is the reducer; filmConfig.ts owns order, copy and timing; runtime.ts, useSceneTimeline.ts, and scenes/shared/animation.ts bind scene animation to shared film time.
 - frontend/src/scenes/ contains the nine scene modules and shared geometry. Prologue work centers on scenes/PrologueScene.tsx, scenes/prologue/particleMath.ts, components/PrologueOverlay.tsx, and components/prologue.css.
+- Scene 04 uses scenes/IdentityScene.tsx and shared/identityFrame.ts, identityParticles.ts, IdentityAtmosphere.tsx, FirstMemoryCard.tsx and layout.ts. The runtime photo is frontend/src/assets/start_img.jpg, copied from images/start_img.jpg.
 - systems/scene-config/ owns schema, normalization, shared config and local font readiness; debug/DeveloperPanel.tsx and composerControls.ts provide the DEV-only composer. systems/media/ owns consent, tracks, recording and recovery; systems/audio/ owns cues and playback response.
 - Frontend tests are colocated as src/**/*.test.ts; backend tests are in backend/tests/. docs/architecture.md describes scene boundaries and commands.
 
@@ -250,6 +251,8 @@ SceneComposerConfig is immutable schema v2 in systems/scene-config/config.ts. no
 The prologue gate remains 21 seconds. getPrologueFrames(settings) derives the phrase, hold, dissolve and particle-travel windows within that cap. createHandwritingSchedule() is a pure, tested helper; the production overlay currently reveals each measured DOM line with one GSAP-driven horizontal CSS mask, and the prompt has its own shorter mask animation. The configurable handwritingRhythm is not consumed by that overlay.
 
 The overlay and particles share the deterministic fracture front in scenes/prologue/particleMath.ts. PrologueScene.tsx waits for the selected local font, groups browser-measured glyph fragments into wrapped lines, samples a 2× Canvas alpha mask with a seeded sampler, converts samples into world-space buffers, and draws one THREE.Points field with custom vertex/fragment shaders. Each sampled shard is a parent point plus three ash points; CPU code assigns birth times from the dissolve front, and the shader applies wind/turbulence drift. particleDuration is the travel window (default 4 s); particleFadeDuration is its separate fade setting (default 2.4 s). The field opacity reaches zero at the fixed 21 s gate. Shared runtime.time drives shader uniforms through useSceneAnimation; no scene-local clock or per-frame React state is added. Font-load effects guard late completion and dispose/reset geometry on cleanup. Reduced motion omits the particle field and simplifies the overlay.
+
+IdentityScene uses a GPU particle set for lily-source → spiral → name → symbol field, a glyph atlas and a detailed ASCII texture with an original-photo underlay. IdentityAtmosphere adds quality-scaled dust and haze; the first photo and its camera pose are shared with GalleryScene. LilyParticleSource.sample(index, count) supplies deterministic scene-04 positions; wire a real source through SceneDirector when replacing the mock. It carries positions only, not velocities or a live GPU buffer; see docs/architecture.md for the contract and limitations. Physical iPad/Safari performance, recording concurrency and offline behavior are unverified.
 
 ### Services, offline behavior and environment
 
