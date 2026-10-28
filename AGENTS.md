@@ -216,13 +216,13 @@ When the task introduces a durable rule that will matter across future work, upd
 
 <!-- autopilot:start -->
 ## Current implementation
-A Little Universe for You is a private, tablet-first cinematic React/Three.js birthday experience. The preload (00), preparation (00.1), and prologue (01) are implemented; scenes 02–09 remain navigable procedural placeholders. Personal photos, portrait, music, gaze tracking, and upload are not connected. The current storyboard is A_Little_Universe_for_Vasilisa_Storyboard_v2.0.md.
+A Little Universe for You is a private, tablet-first cinematic React/Three.js birthday experience. Preload (00), preparation (00.1), prologue (01), and the particle-to-first-memory sequence (04.2–04.7) are implemented. The 04.1 lily remains procedural; scenes 02–03 and 05–09 remain navigable placeholders except for the first real gallery photo. The first photo and its ASCII portrait are connected; other photos, music, gaze tracking, and upload are not. The current storyboard is A_Little_Universe_for_Vasilisa_Storyboard_v2.0.md.
 
 ### Working commands
 Run frontend commands from frontend/ (Node.js ^22.12.0 or >=24); Vite binds 127.0.0.1 and both ports are strict:
 - npm ci; npm run dev (127.0.0.1:5173); npm run preview (127.0.0.1:4173).
-- npm run check runs ESLint, Vitest, strict TypeScript and production build. Verified 2026-10-27: 83 tests in 23 files, lint/typecheck/build passed.
-- Focused test: npm test -- src/systems/scene-config/config.test.ts.
+- npm run check runs ESLint, Vitest, strict TypeScript and production build.
+- Focused tests: npm test -- src/systems/scene-config/config.test.ts; npm test -- src/scenes/shared/identityRuntime.test.ts src/scenes/shared/identityFrame.test.ts.
 Run optional backend commands from backend/:
 - .venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000.
 - .venv/Scripts/python.exe -m pytest; focused test: .venv/Scripts/python.exe -m pytest tests/test_health.py. Verified 2026-10-27: 3 tests passed.
@@ -236,6 +236,7 @@ Run optional backend commands from backend/:
 - frontend/src/scenes/ contains nine scene modules and shared procedural geometry/animation; frontend/src/components/ contains DOM overlays, gallery, reading, recording and recovery UI; frontend/src/debug/ contains the DEV-only composer.
 - frontend/src/systems/scene-config/ owns schema/defaults/store and local font readiness; frontend/src/systems/media/ owns consent, shared tracks, recording and recovery; frontend/src/systems/audio/ owns cues and playback response.
 - Main edit points: frontend/src/app/App.tsx, frontend/src/engine/FilmCanvas.tsx, frontend/src/engine/SceneDirector.tsx and frontend/src/engine/CameraDirector.tsx, frontend/src/scenes/PrologueScene.tsx, frontend/src/components/PersistentLight.tsx, frontend/src/debug/composerControls.ts.
+- Scene 04: frontend/src/scenes/IdentityScene.tsx and shared/identityFrame.ts, identityParticles.ts, IdentityAtmosphere.tsx, FirstMemoryCard.tsx, and layout.ts. Runtime photo is frontend/src/assets/start_img.jpg, copied without modification from images/start_img.jpg.
 - frontend/vite.config.ts builds the production offline manifest and service worker. backend/app/main.py exposes only GET /health; backend/app/config.py reads backend settings. Tests live beside frontend modules as *.test.ts and in backend/tests/.
 
 ### Architecture and durable interfaces
@@ -245,9 +246,11 @@ SceneComposerConfig is immutable schema v1 in frontend/src/systems/scene-config/
 
 frontend/src/engine/filmConfig.ts exports getPrologueFrames(settings) and createHandwritingSchedule(text, duration, rhythm); frontend/src/scenes/PrologueScene.tsx exports deterministic sampleGlyphParticlePixels(alpha, width, height, count, seed). Prologue timings are bounded by the fixed 21-second gate. Scene UI reads config but does not own preload progress or media/consent state.
 
+IdentityScene uses one GPU particle set for lily-source → spiral → name → symbol field, a glyph atlas and a detailed ASCII texture with a soft original-photo underlay; the shared runtime drives all scene animation. IdentityAtmosphere adds a quality-scaled GPU dust layer and haze. The first photo and its final camera pose are shared with GalleryScene; other cards are placeholders. LilyParticleSource.sample(index, count) supplies deterministic positions in scene-04 coordinates; pass a source to IdentityScene and wire that prop in SceneDirector when replacing the mock. It currently carries positions only, not velocities or a live GPU buffer; details and resampling requirements are in docs/architecture.md. Standard/low use 16,000/7,000 identity particles and 4,800/2,400 ambient particles. This is not an automatic device benchmark.
+
 frontend/src/app/App.tsx owns one MediaSession and AudioDirector outside scene lifetimes. MediaSession.prepare() requests only selected optional permissions; restore() requests none. Recording starts only after explicit opt-in and the separate gift gesture; it commits ordered chunks to IndexedDB database little-universe-reactions-v1 about every four seconds and drains the final queue on stop. Browser eviction or abrupt closure can lose data. Audio unlocks on the gift gesture; no music buffers are registered.
 
-Production builds create a same-origin runtime manifest and service worker; required cached assets are checked by byte count and SHA-256. Development does not establish offline readiness. Failed module imports require reload after network restoration; ordinary resource failures can be retried. Worker upgrades may require closing old tabs. Camera and recording need a secure context; physical tablet/Safari behavior remains unverified.
+Production builds create a same-origin runtime manifest and service worker; required cached assets, including the first photo, are checked by byte count and SHA-256. Development does not establish offline readiness. Failed module imports require reload after network restoration; ordinary resource failures can be retried. Worker upgrades may require closing old tabs. Camera and recording need a secure context; physical iPad/Safari performance, recording concurrency, and offline behavior remain unverified. Scene 04 is a procedural interpretation of the references; real lily geometry and remaining gallery art are still outstanding.
 
 ### Environment and tests
 Environment variable names only: frontend/.env.example defines VITE_APP_TITLE (public, bundled); backend/.env.example defines ALU_APP_NAME and ALU_DEBUG. Never put secrets in VITE_* values.
