@@ -115,4 +115,4 @@ references/        арт-референсы вне runtime bundle
 
 Первая фотография и созданный из неё ASCII-портрет подключены в сцене 04 и галерее; остальные фотографии, письмо, музыка, MediaPipe-трекер и защищённая отправка отсутствуют. Backend содержит только `/health`; frontend не отправляет ему видео или camera frames. Отказ optional функций сохраняет фильм. Лилия и сцены 02–03, 05–09 остаются временными материалами.
 
-Подробнее: [отчёт сцен 00–01](docs/opening-scenes-report.md), [архитектура](docs/architecture.md), [дорожная карта](docs/development-roadmap.md), [решения](docs/decisions.md), [проверки и ограничения](docs/verification.md).
+Подробнее: [отчёт сцен 00–01](docs/opening-scenes-report.md), [VFX кадра 04.2 и визуальная проверка](docs/scene-04-2-vfx.md), [архитектура](docs/architecture.md), [дорожная карта](docs/development-roadmap.md), [решения](docs/decisions.md), [проверки и ограничения](docs/verification.md).

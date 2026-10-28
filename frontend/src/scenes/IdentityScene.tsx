@@ -9,6 +9,8 @@ import { poseLily } from './shared/lilyPose'
 import { galleryPosition } from './shared/layout'
 import { identityFrame } from './shared/identityFrame'
 import { mockLilyParticles, type LilyParticleSource } from './shared/identityParticles'
+import { createVortexAttributes, identityVortexGLSL } from './shared/identityVortex'
+import { IdentityTrails } from './shared/IdentityTrails'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
 import { IdentityAtmosphere } from './shared/IdentityAtmosphere'
 import photoUrl from '../assets/start_img.jpg'
@@ -20,25 +22,32 @@ attribute vec3 aName;
 attribute vec3 aField;
 attribute float aSeed;
 attribute float aGlyph;
+attribute vec4 aVortex;
+attribute vec4 aImpulse;
 uniform float uTime;
 uniform float uMotion;
 uniform float uNameScale;
+uniform float uVortexScale;
 varying float vSeed;
 varying float vGlyph;
+varying float vVortexLight;
+${identityVortexGLSL}
 void main() {
-  float spiral = smoothstep(1.0, 5.3, uTime);
   float name = smoothstep(7.5, 10.3, uTime);
   float field = smoothstep(13.0, 17.0, uTime);
-  float angle = (uTime - 4.0) * 0.13 * uMotion;
-  vec3 s = aSpiral;
-  s.xy = mat2(cos(angle), -sin(angle), sin(angle), cos(angle)) * s.xy;
-  vec3 p = mix(aOrigin, s, spiral);
+  vec3 p = identityVortexPosition(aOrigin, aSpiral, aVortex, aImpulse, aSeed, uTime, uMotion);
+  p *= mix(1.0, uVortexScale, identityVortexEnvelope(uTime));
   p = mix(p, aName * vec3(uNameScale, 1.0, 1.0), name);
   p = mix(p, aField, field);
   p.z += sin(uTime * 0.8 + aSeed * 25.0) * 0.035 * uMotion;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mv;
-  gl_PointSize = mix(2.0 + aSeed * 3.4, 5.5, smoothstep(14.0, 19.0, uTime)) * (5.6 / -mv.z);
+  float shot = identityVortexEnvelope(uTime);
+  float dust = 1.0 - step(.5, aVortex.w);
+  float fast = step(1.5, aVortex.w);
+  float size = mix(2.0 + aSeed * 3.4, 1.6 + pow(aSeed, 4.0) * 3.5 + fast * 1.7, shot);
+  gl_PointSize = mix(size, 5.5, smoothstep(14.0, 19.0, uTime)) * (5.6 / -mv.z);
+  vVortexLight = mix(1.0, mix(.3, 1.12, 1.0 - dust) + fast * .3, shot);
   vSeed = aSeed;
   vGlyph = aGlyph;
 }`
@@ -47,6 +56,7 @@ uniform float uTime;
 uniform sampler2D uGlyphs;
 varying float vSeed;
 varying float vGlyph;
+varying float vVortexLight;
 void main() {
   float r = length(gl_PointCoord - vec2(0.5));
   float glow = exp(-r * 7.0) + (1.0 - smoothstep(0.0, 0.19, r)) * 0.8;
@@ -54,7 +64,7 @@ void main() {
   float glyphBlend = smoothstep(14.0, 19.0, uTime);
   float opacity = (1.0 - smoothstep(23.0, 28.0, uTime));
   vec3 color = mix(vec3(1.0, 0.66, 0.75), vec3(1.0, 0.94, 0.89), vSeed);
-  gl_FragColor = vec4(color, mix(glow * .9, glyph * .65, glyphBlend) * opacity);
+  gl_FragColor = vec4(color, mix(glow * .9, glyph * .65, glyphBlend) * opacity * vVortexLight);
 }`
 
 function random(i: number) { const x = Math.sin(i * 127.1 + 19.19) * 43758.5453; return x - Math.floor(x) }
@@ -101,6 +111,9 @@ function particleGeometry(count: number, source: LilyParticleSource, image: HTML
   g.setAttribute('aField', new BufferAttribute(field, 3))
   g.setAttribute('aSeed', new BufferAttribute(seeds, 1))
   g.setAttribute('aGlyph', new BufferAttribute(glyphs, 1))
+  const vortex = createVortexAttributes(count)
+  g.setAttribute('aVortex', new BufferAttribute(vortex.orbit, 4))
+  g.setAttribute('aImpulse', new BufferAttribute(vortex.impulse, 4))
   return g
 }
 
@@ -151,13 +164,15 @@ export function IdentityScene({ state, runtime, reducedMotion, particleSource = 
   const texture = useLoader(TextureLoader, photoUrl)
   const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height))
   const fit = aspect < 1 ? Math.min(2.5, 1 / Math.max(.3, aspect)) : 1
-  const nameScale = Math.min(1, 5.6 * 2 * Math.tan((aspect < 1 ? 42 : 38) * Math.PI / 360) * fit * aspect * .92 / 5.3)
+  const visibleWidth = 5.6 * 2 * Math.tan((aspect < 1 ? 42 : 38) * Math.PI / 360) * fit * aspect
+  const nameScale = Math.min(1, visibleWidth * .92 / 5.3)
+  const vortexScale = Math.min(1, visibleWidth * .94 / 6.5)
   const asciiTexture = useMemo(() => makeAscii(texture.image as HTMLImageElement), [texture])
   const glyphAtlas = useMemo(() => makeGlyphAtlas(), [])
   const geometry = useMemo(() => particleGeometry(state.quality === 'low' ? 7000 : 16000, particleSource, texture.image as HTMLImageElement), [state.quality, particleSource, texture])
   const orbits = useMemo(() => orbitGeometry(), [])
   const orbitArrays = useMemo(() => Array.from({ length: 5 }, (_, i) => (orbits.getAttribute('position').array as Float32Array).slice(i * 480, (i + 1) * 480)), [orbits])
-  const material = useMemo(() => new ShaderMaterial({ vertexShader: vertex, fragmentShader: fragment, transparent: true, depthWrite: false, blending: AdditiveBlending, uniforms: { uTime: { value: 0 }, uMotion: { value: reducedMotion ? 0 : 1 }, uNameScale: { value: 1 }, uGlyphs: { value: glyphAtlas } } }), [reducedMotion, glyphAtlas])
+  const material = useMemo(() => new ShaderMaterial({ vertexShader: vertex, fragmentShader: fragment, transparent: true, depthWrite: false, blending: AdditiveBlending, uniforms: { uTime: { value: 0 }, uMotion: { value: reducedMotion ? 0 : 1 }, uNameScale: { value: 1 }, uVortexScale: { value: 1 }, uGlyphs: { value: glyphAtlas } } }), [reducedMotion, glyphAtlas])
   const materialRef = useRef<ShaderMaterial>(null)
   useEffect(() => () => geometry.dispose(), [geometry])
   useEffect(() => () => orbits.dispose(), [orbits])
@@ -167,12 +182,20 @@ export function IdentityScene({ state, runtime, reducedMotion, particleSource = 
   const draw = useCallback((time: number) => {
     const frameValues = identityFrame(time)
     poseLily(lily.current, 1, 1); fade(lily.current, frameValues.lily)
-    if (materialRef.current) { materialRef.current.uniforms.uTime!.value = time; materialRef.current.uniforms.uNameScale!.value = nameScale }
+    if (materialRef.current) {
+      materialRef.current.uniforms.uTime!.value = time
+      materialRef.current.uniforms.uNameScale!.value = nameScale
+      materialRef.current.uniforms.uVortexScale!.value = vortexScale
+      materialRef.current.uniforms.uMotion!.value = reducedMotion ? 0 : 1
+    }
     fade(ascii.current, frameValues.ascii)
     fade(photo.current, frameValues.photo)
     fade(frame.current, frameValues.frame)
     fade(cards.current, frameValues.gallery)
-    orbitGroup.current?.traverse((object) => { if (object instanceof Line && object.material instanceof LineBasicMaterial) object.material.opacity = frameValues.orbit })
+    // Retire the old wire rings at the 04.2 handoff; never flash them back over the name.
+    const orbitOpacity = frameValues.orbit * (1 - ramp(time, [4, 4.35]))
+    if (orbitGroup.current) orbitGroup.current.visible = orbitOpacity > .001
+    orbitGroup.current?.traverse((object) => { if (object instanceof Line && object.material instanceof LineBasicMaterial) object.material.opacity = orbitOpacity })
     const scale = frameValues.scale
     if (ascii.current) ascii.current.scale.setScalar(scale)
     if (photo.current?.parent) photo.current.parent.scale.setScalar(scale)
@@ -184,12 +207,13 @@ export function IdentityScene({ state, runtime, reducedMotion, particleSource = 
       const z = .35 - .25 * end
       spark.current.position.set(.1 + (x - .1) * start, .16 + (y - .16) * start, .1 + (z - .1) * start)
     }
-  }, [nameScale])
+  }, [nameScale, vortexScale, reducedMotion])
   useSceneAnimation(runtime, TIMING.identity.duration, draw)
   return <>
     <IdentityAtmosphere runtime={runtime} low={state.quality === 'low'} reducedMotion={reducedMotion} />
     <Lily groupRef={lily} />
     <points geometry={geometry} frustumCulled={false}><primitive object={material} ref={materialRef} attach="material" /></points>
+    <IdentityTrails geometry={geometry} runtime={runtime} low={state.quality === 'low'} reducedMotion={reducedMotion} scale={vortexScale} />
     <group ref={orbitGroup}>{Array.from({ length: 5 }, (_, i) => <line key={i}><bufferGeometry attach="geometry"><bufferAttribute attach="attributes-position" args={[orbitArrays[i]!, 3]} /></bufferGeometry><lineBasicMaterial color={new Color('#dca8bd')} transparent opacity={0.24} depthWrite={false} /></line>)}</group>
     <group position={[0, .08, 0]}>
       <group ref={ascii} position={[0, 0, .01]}><mesh><planeGeometry args={[2.15, 2.15]} /><meshBasicMaterial map={asciiTexture} transparent depthWrite={false} /></mesh></group>
