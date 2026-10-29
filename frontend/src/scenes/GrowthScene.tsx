@@ -1,148 +1,126 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef, type RefObject } from 'react'
 import { useThree } from '@react-three/fiber'
-import { Color, Group, MeshBasicMaterial, PointsMaterial, ShaderMaterial, type ColorRepresentation, type Mesh } from 'three'
+import { AdditiveBlending, DoubleSide, Group, Vector2, type Mesh, type MeshStandardMaterial, type ShaderMaterial, type SpotLight } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
 import { TIMING } from '../engine/filmConfig'
 import { useSceneAnimation } from './shared/animation'
 import { Lily } from './shared/Primitives'
-import { getGrowthViewportHeight, getSeedPose, sampleSeedParticles, SEED_ROOT } from './growth/seedProcedure'
+import { getGrowthViewportHeight, getSeedPose, sampleSeedParticleSeeds, SEED_ROOT } from './growth/seedProcedure'
+import { coreFragment, groundFragment, haloFragment, moonFragment, particleFragment, particleVertex, seedFragment, surfaceVertex } from './growth/seedShaders'
 
-const SEED_COLORS: [ColorRepresentation, ColorRepresentation] = ['#FFF0E8', '#F4CDD9']
-const TRAIL_COUNT = 9
-const seedVertexShader = `
-  attribute vec3 color;
-  varying vec3 vColor;
-  void main() {
-    vColor = color;
-    vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
-    gl_Position = projectionMatrix * viewPosition;
-    gl_PointSize = 2.7;
-  }
-`
-const seedFragmentShader = `
-  uniform float opacity;
-  varying vec3 vColor;
-  void main() {
-    vec2 centered = gl_PointCoord - vec2(0.5);
-    float radius = length(centered) * 2.0;
-    float falloff = exp(-radius * radius * 5.0);
-    float edge = 1.0 - smoothstep(0.42, 0.98, radius);
-    float alpha = opacity * edge * (0.72 + 0.28 * falloff);
-    vec3 color = vColor * (1.0 + falloff * 0.16);
-    gl_FragColor = vec4(color, alpha);
-  }
-`
-
-function makeSeedAttributes(count: number, low: boolean) {
-  const particles = sampleSeedParticles(count, low ? 'low' : 'standard')
-  const positions = new Float32Array(particles.length * 3)
-  const colors = new Float32Array(particles.length * 3)
-  const color = new Color()
-  particles.forEach((point, index) => {
-    positions.set([point.x, point.y, point.z], index * 3)
-    color.set(SEED_COLORS[point.pink ? 1 : 0])
-    colors.set([color.r, color.g, color.b], index * 3)
-  })
-  return { positions, colors }
+/** Analytic GPU trajectories: no particle histories, React frame updates or timers. */
+function SeedParticles({ mode, count, materialRef }: {
+  mode: number; count: number; materialRef: RefObject<ShaderMaterial | null>
+}) {
+  const positions = useMemo(() => sampleSeedParticleSeeds(count), [count])
+  const uniforms = useMemo(() => ({ time: { value: 0 }, opacity: { value: 0 }, mode: { value: mode }, height: { value: 1 }, reduced: { value: 0 }, dpr: { value: 1 }, fallRange: { value: new Vector2(...TIMING.growth.fall) } }), [mode])
+  return <points frustumCulled={false}>
+    <bufferGeometry><bufferAttribute attach="attributes-position" args={[positions, 3]} /></bufferGeometry>
+    <shaderMaterial ref={materialRef} vertexShader={particleVertex} fragmentShader={particleFragment} uniforms={uniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+  </points>
 }
 
-function makeTrailGeometry(count = TRAIL_COUNT) {
-  const positions = new Float32Array(count * 3)
-  for (let index = 0; index < count; index++) {
-    const angle = index * 2.399963229728653
-    const radius = 0.012 + (index % 3) * 0.008
-    positions.set([Math.cos(angle) * radius, index * 0.04, Math.sin(angle) * radius * 0.5], index * 3)
-  }
-  return positions
-}
-
-/** Scene 02 seed pass. The root at SEED_ROOT is the provisional future GLB anchor. */
+/** Scene 02. The unchanged world root is also the future flower-model anchor. */
 export function GrowthScene({ state, runtime, reducedMotion }: SceneProps) {
-  const viewportHeight = useThree(({ size }) => getGrowthViewportHeight(size.width, size.height))
-  const root = useRef<Group>(null)
+  const height = useThree(({ size }) => getGrowthViewportHeight(size.width, size.height))
+  const dpr = useThree(({ viewport }) => viewport.dpr)
   const plant = useRef<Group>(null)
   const seed = useRef<Group>(null)
-  const trailGroup = useRef<Group>(null)
-  const core = useRef<Mesh>(null)
-  const coreMaterial = useRef<MeshBasicMaterial>(null)
-  const seedMaterial = useRef<ShaderMaterial>(null)
-  const trail = useRef<PointsMaterial>(null)
-  const pulse = useRef<MeshBasicMaterial>(null)
-  const pulseMesh = useRef<Mesh>(null)
-  const seedAttributes = useMemo(() => makeSeedAttributes(22, state.quality === 'low'), [state.quality])
-  const seedUniforms = useMemo(() => ({ opacity: { value: 0 } }), [])
-  const trailPositions = useMemo(() => makeTrailGeometry(state.quality === 'low' ? 5 : TRAIL_COUNT), [state.quality])
+  const shell = useRef<ShaderMaterial>(null)
+  const core = useRef<ShaderMaterial>(null)
+  const halo = useRef<ShaderMaterial>(null)
+  const mound = useRef<Mesh>(null)
+  const moundMaterial = useRef<MeshStandardMaterial>(null)
+  const moon = useRef<SpotLight>(null)
+  const target = useRef<Group>(null)
+  const orbit = useRef<ShaderMaterial>(null)
+  const trail = useRef<ShaderMaterial>(null)
+  const sparks = useRef<ShaderMaterial>(null)
+  const ground = useRef<ShaderMaterial>(null)
+  const moonBeam = useRef<ShaderMaterial>(null)
+  // Stable uniform cells survive paused quality/viewport changes.
+  const shellUniforms = useMemo(() => ({ opacity: { value: 0 }, time: { value: 0 } }), [])
+  const haloUniforms = useMemo(() => ({ opacity: { value: 0 } }), [])
+  const coreUniforms = useMemo(() => ({ opacity: { value: 0 } }), [])
+  const groundUniforms = useMemo(() => ({ opacity: { value: 0 }, impact: { value: 0 }, moonlight: { value: 0 } }), [])
+  const moonUniforms = useMemo(() => ({ opacity: { value: 0 } }), [])
+  const profile = useMemo(() => Array.from({ length: 49 }, (_, i) => {
+    const v = i / 48
+    return new Vector2(0.36 * Math.sin(v * Math.PI) ** 0.85 * (1 + 0.12 * Math.cos(v * Math.PI)), (v * 2 - 1) * 0.84)
+  }), [])
+  const low = state.quality === 'low'
 
   const draw = useCallback((time: number) => {
-    const pose = getSeedPose(time, viewportHeight, reducedMotion)
-    root.current?.position.set(...pose.anchor)
-    if (seed.current) {
-      seed.current.position.set(0, pose.seedY, 0)
-      const seedSize = Math.max(0.001, viewportHeight * 0.01)
-      seed.current.scale.setScalar(seedSize * (2.15 - pose.formation * 1.15))
-      seed.current.visible = time < TIMING.growth.handoff[1] + 0.45
-    }
-    if (core.current) {
-      core.current.scale.setScalar(0.11)
-    }
-    if (seedMaterial.current) {
-      const alpha = seedMaterial.current.uniforms.opacity
-      if (alpha) {
-        alpha.value = 0.86 * pose.formation * (1 - Math.max(0, pose.handoff))
-        seedMaterial.current.visible = alpha.value > 0.001
+    const pose = getSeedPose(time, height, reducedMotion)
+    for (const [material, opacity] of [[orbit.current, 0.95], [trail.current, pose.trailOpacity], [sparks.current, pose.sparkOpacity]] as const) {
+      if (material) {
+        material.uniforms.time!.value = time
+        material.uniforms.opacity!.value = opacity
+        material.uniforms.height!.value = height
+        material.uniforms.reduced!.value = +reducedMotion
+        material.uniforms.dpr!.value = dpr
       }
     }
-    if (coreMaterial.current) {
-      const sproutMix = Math.min(1, pose.growthWeight / 0.065)
-      coreMaterial.current.opacity = pose.lightTransfer * (1 - sproutMix)
+    if (seed.current) {
+      seed.current.position.set(0, pose.seedY + pose.seedSize * 0.84 * pose.fall, 0)
+      seed.current.scale.setScalar(pose.seedSize)
+      seed.current.rotation.set(0, reducedMotion ? 0 : time * 0.24, reducedMotion ? 0 : Math.sin(time * 1.8) * 0.035 * (1 - pose.fall))
+      seed.current.visible = pose.seedOpacity > 0
     }
-    if (trail.current) {
-      trail.current.opacity = pose.trailOpacity
-      trail.current.visible = pose.trailOpacity > 0.001
+    if (shell.current) { shell.current.uniforms.opacity!.value = pose.formation * pose.seedOpacity * 0.9; shell.current.uniforms.time!.value = time }
+    if (core.current) core.current.uniforms.opacity!.value = pose.lightTransfer * pose.seedOpacity
+    if (halo.current) halo.current.uniforms.opacity!.value = pose.lightTransfer * pose.seedOpacity * (0.4 + pose.formation * 0.5)
+    if (ground.current) {
+      ground.current.uniforms.opacity!.value = pose.ringOpacity
+      ground.current.uniforms.impact!.value = pose.impact
+      ground.current.uniforms.moonlight!.value = pose.moonlight
     }
-    if (trailGroup.current) trailGroup.current.position.set(0, pose.seedY, 0)
-    if (plant.current) plant.current.scale.setScalar(Math.max(0.001, pose.growthWeight))
-    if (pulse.current && pulseMesh.current) {
-      pulse.current.opacity = pose.pulseOpacity
-      pulse.current.visible = pose.pulseOpacity > 0.001
-      pulseMesh.current.scale.setScalar(pose.pulseScale)
+    if (moonBeam.current) moonBeam.current.uniforms.opacity!.value = pose.moonlight
+    if (mound.current) {
+      mound.current.visible = pose.mound > 0
+      mound.current.scale.set(0.09, Math.max(0.0001, pose.mound * 0.045), 0.09)
     }
-  }, [reducedMotion, viewportHeight])
+    if (moundMaterial.current) moundMaterial.current.emissiveIntensity = 0.08 + (1 - pose.moonlight) * 0.25
+    if (moon.current) { moon.current.intensity = pose.moonlight * 4; if (target.current) moon.current.target = target.current }
+    if (plant.current) plant.current.scale.setScalar(Math.max(0.00001, pose.growthWeight))
+  }, [height, dpr, reducedMotion])
 
   useSceneAnimation(runtime, TIMING.growth.duration, draw)
-  return <group ref={root} position={SEED_ROOT}>
+  return <group position={SEED_ROOT}>
+    <SeedParticles mode={0} count={low ? 28 : 76} materialRef={orbit} />
+    {!reducedMotion && <>
+      <SeedParticles mode={1} count={low ? 12 : 30} materialRef={trail} />
+      <SeedParticles mode={2} count={low ? 38 : 110} materialRef={sparks} />
+    </>}
     <group ref={seed}>
-      <points>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[seedAttributes.positions, 3]} />
-          <bufferAttribute attach="attributes-color" args={[seedAttributes.colors, 3]} />
-        </bufferGeometry>
-        <shaderMaterial
-          ref={seedMaterial}
-          vertexShader={seedVertexShader}
-          fragmentShader={seedFragmentShader}
-          uniforms={seedUniforms}
-          transparent
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </points>
-      <mesh ref={core}>
-        <sphereGeometry args={[1, 12, 8]} />
-        <meshBasicMaterial ref={coreMaterial} color="#FFF0E8" transparent opacity={0} toneMapped={false} />
+      <mesh>
+        <latheGeometry args={[profile, low ? 32 : 64]} />
+        <shaderMaterial ref={shell} vertexShader={surfaceVertex} fragmentShader={seedFragment} uniforms={shellUniforms} transparent blending={AdditiveBlending} depthWrite={false} side={DoubleSide} toneMapped={false} />
+      </mesh>
+      <mesh scale={[0.62, 1.6, 1]} position={[0, -0.05, 0.02]}>
+        <planeGeometry />
+        <shaderMaterial ref={core} vertexShader={surfaceVertex} fragmentShader={coreFragment} uniforms={coreUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+      </mesh>
+      <mesh scale={[2.5, 3.5, 1]}>
+        <planeGeometry />
+        <shaderMaterial ref={halo} vertexShader={surfaceVertex} fragmentShader={haloFragment} uniforms={haloUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
       </mesh>
     </group>
-    <group ref={trailGroup}>
-      <points>
-        <bufferGeometry><bufferAttribute attach="attributes-position" args={[trailPositions, 3]} /></bufferGeometry>
-        <pointsMaterial ref={trail} color="#F7E3E8" size={1.8} sizeAttenuation={false} transparent opacity={0} depthWrite={false} toneMapped={false} />
-      </points>
-    </group>
-    <mesh ref={pulseMesh} position={[0, 0, 0.01]} rotation={[0, 0, 0]}>
-      <ringGeometry args={[0.075, 0.083, 40]} />
-      <meshBasicMaterial ref={pulse} color="#F4CDD9" transparent opacity={0} depthWrite={false} toneMapped={false} />
+    <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[3.4, 3.4]} />
+      <shaderMaterial ref={ground} vertexShader={surfaceVertex} fragmentShader={groundFragment} uniforms={groundUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} side={DoubleSide} />
     </mesh>
-    <group ref={plant}>
+    <mesh ref={mound} position={[0, 0, 0]} scale={[0.115, 0.0001, 0.115]}>
+      <sphereGeometry args={[1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
+      <meshStandardMaterial ref={moundMaterial} color="#6B5B4C" emissive="#B9803E" emissiveIntensity={0.3} roughness={0.75} metalness={0.18} />
+    </mesh>
+    <group ref={target} />
+    <spotLight ref={moon} position={[-0.65, 5.5, 1.0]} color="#BDCEFF" intensity={0} angle={0.24} penumbra={1} decay={0} />
+    <mesh position={[-0.15, 2.6, -0.35]} rotation={[0, 0, -0.06]}>
+      <planeGeometry args={[3.4, 5.7]} />
+      <shaderMaterial ref={moonBeam} vertexShader={surfaceVertex} fragmentShader={moonFragment} uniforms={moonUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+    </mesh>
+    <group ref={plant} scale={0.00001}>
       <group position={[0, -SEED_ROOT[1], 0]}><Lily /></group>
     </group>
   </group>

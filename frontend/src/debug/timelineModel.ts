@@ -16,7 +16,8 @@ export function timelineFrames(scene: SceneId, config: SceneComposerConfig): Tim
     case 'growth': return [
       { label: '02.1 Формирование семечка', start: TIMING.growth.formation[0] },
       { label: '02.2 Падение', start: TIMING.growth.fall[0] },
-      { label: '02.3 Остановка и импульс', start: TIMING.growth.landing[0] },
+      { label: '02.3 Удар и искры', start: TIMING.growth.landing[0] },
+      { label: '02.3 Лунный свет', start: TIMING.growth.moonlight[0] },
       { label: '02.4 Рост и передача', start: TIMING.growth.handoff[0] },
       { label: '02.5 Завершение роста', start: TIMING.growth.settle[0] },
     ]

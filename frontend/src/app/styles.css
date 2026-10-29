@@ -30,6 +30,8 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.7rem); line-height: 1.08; letter-spacing:
 .viewport > div { height: 100%; }
 .universe[data-scene='gallery'] .film-surface { touch-action: none; }
 .page-header { position: absolute; inset: max(20px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) auto max(24px, env(safe-area-inset-left)); display: flex; justify-content: space-between; gap: 1rem; font-size: 0.875rem; pointer-events: none; }
+.universe[data-scene="growth"] .page-header, .universe[data-scene="growth"] .film-status { visibility: hidden; }
+.universe[data-scene="growth"] .page-footer { background: transparent; }
 .dedication { color: #f4cdd9; }
 .build-label, .prototype-note, .film-status, .gesture-hint, .simulation-note { color: var(--muted); font-size: 0.875rem; }
 .start-screen { position: absolute; left: max(6vw, env(safe-area-inset-left)); top: 50%; transform: translateY(-50%); width: min(47%, 43rem); }

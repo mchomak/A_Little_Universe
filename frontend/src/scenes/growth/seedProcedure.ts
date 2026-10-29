@@ -1,7 +1,7 @@
 import { TIMING } from '../../engine/filmConfig'
+import type { CameraPose } from '../shared/galleryMotion'
 
 export type SeedStage = 'forming' | 'falling' | 'landed' | 'handoff' | 'growth'
-export type SeedQuality = 'low' | 'standard'
 export const SEED_ROOT = [0, -1.45, 0] as const
 
 /** Front camera framing while the seed is on screen; mirrors CameraDirector's fit/fov. */
@@ -23,10 +23,14 @@ export interface SeedPose {
   growthWeight: number
   seedY: number
   trailOpacity: number
-  pulseOpacity: number
-  pulseScale: number
+  impact: number
   growthTime: number
   seedSize: number
+  seedOpacity: number
+  ringOpacity: number
+  sparkOpacity: number
+  mound: number
+  moonlight: number
 }
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
@@ -43,12 +47,13 @@ const progress = (time: number, range: readonly [number, number]) => {
 export function getSeedPose(time: number, viewportHeight: number, reducedMotion: boolean): SeedPose {
   const { formation, fall, landing, handoff } = TIMING.growth
   const forming = progress(time, formation)
-  const falling = progress(time, fall)
+  // Ballistic descent: velocity keeps increasing right up to contact, never eases to a stop.
+  const fallTime = clamp01((time - fall[0]) / (fall[1] - fall[0]))
+  const falling = fallTime * fallTime
   const transfer = progress(time, handoff)
   const lightTransfer = progress(time, [0, 1.15])
   const sproutStart = transfer * 0.065
   const growthWeight = sproutStart + 0.935 * progress(time, [handoff[1], TIMING.growth.sprout[1]])
-  const inLanding = time >= landing[0] && time < landing[1]
   const stage: SeedStage = time < formation[1] ? 'forming'
     : time < fall[1] ? 'falling'
       : time < handoff[0] ? 'landed'
@@ -63,12 +68,26 @@ export function getSeedPose(time: number, viewportHeight: number, reducedMotion:
     lightTransfer,
     growthWeight,
     seedY: 1.45 * (1 - falling),
-    trailOpacity: reducedMotion || time < fall[0] || time >= landing[0] ? 0 : (1 - progress(time, [fall[1] - 0.2, landing[0]])) * 0.16,
-    pulseOpacity: reducedMotion || !inLanding ? 0 : Math.sin(Math.PI * progress(time, landing)) * 0.13,
-    pulseScale: 0.65 + progress(time, landing) * 0.45,
+    trailOpacity: reducedMotion ? 0 : progress(time, [fall[0], fall[0] + 0.25]) * (1 - progress(time, [landing[0], landing[0] + 0.35])) * 0.75,
+    impact: reducedMotion ? 1 : clamp01((time - landing[0]) / (landing[1] - landing[0])),
     growthTime: Math.max(0, time - handoff[0]),
     anchor: SEED_ROOT,
-    seedSize: Math.max(0.001, viewportHeight * 0.01),
+    seedSize: Math.max(0.001, viewportHeight * (0.004 + 0.061 * forming)),
+    seedOpacity: 1 - progress(time, [landing[0], landing[0] + 0.12]),
+    ringOpacity: progress(time, [0.5, 1.8]) * (0.36 + 0.24 * progress(time, fall)),
+    sparkOpacity: reducedMotion || time < landing[0] ? 0 : 1 - progress(time, [landing[0] + 0.08, landing[0] + 0.85]),
+    mound: progress(time, [landing[0], landing[0] + 0.28]),
+    moonlight: progress(time, TIMING.growth.moonlight),
+  }
+}
+
+/** Delayed pursuit preserves downward screen motion; returns to the existing bloom framing. */
+export function getGrowthCameraPose(time: number, reducedMotion: boolean): CameraPose {
+  const follow = reducedMotion ? 0 : progress(time, [TIMING.growth.fall[0] + 0.32, TIMING.growth.landing[1]])
+  const settle = reducedMotion ? 0 : progress(time, [TIMING.growth.handoff[1], TIMING.growth.duration])
+  return {
+    x: 0, y: -0.42 * follow * (1 - settle) + 0.2 * settle, z: 5.6,
+    tx: 0, ty: -0.42 * follow * (1 - settle) + 0.1 * settle, tz: 0,
   }
 }
 
@@ -85,20 +104,7 @@ export function getGrowthHandoff(time: number, viewportHeight = 1, reducedMotion
   return { anchor: pose.anchor, stage: pose.stage, localTime: pose.growthTime, weight: pose.growthWeight }
 }
 
-export interface SeedParticle { x: number; y: number; z: number; pink: boolean }
-
-/** Fixed, symmetric samples; a shorter prefix is used at low quality. */
-export function sampleSeedParticles(count = 22, quality: SeedQuality = 'standard'): SeedParticle[] {
-  const amount = quality === 'low' ? Math.max(4, Math.ceil(count / 3)) : count
-  return Array.from({ length: amount }, (_, index) => {
-    const along = (index + 0.5) / amount
-    const angle = index * 2.399963229728653
-    const fullness = Math.sin(Math.PI * along) ** 0.55
-    return {
-      x: Math.sin(angle) * 0.36 * fullness,
-      y: (along * 2 - 1) * 0.84 + Math.sin(angle * 0.5) * 0.04,
-      z: Math.cos(angle) * 0.25 * fullness,
-      pink: index % 4 === 1,
-    }
-  })
+/** Fixed GPU seeds [index, radial variation, birth/color variation]; low quality uses a prefix. */
+export function sampleSeedParticleSeeds(count: number): Float32Array {
+  return Float32Array.from(Array.from({ length: count }, (_, i) => [i, ((i * 73 + 19) % 127) / 127, ((i * 41 + 7) % 113) / 113]).flat())
 }

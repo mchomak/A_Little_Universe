@@ -15,9 +15,10 @@ describe('scene editor timeline', () => {
     const frames = timelineFrames('growth', DEFAULT_SCENE_COMPOSER_CONFIG)
     expect(frames.map(({ label, start }) => [label, start])).toEqual([
       ['02.1 Формирование семечка', 0],
-      ['02.2 Падение', 2.2],
-      ['02.3 Остановка и импульс', 3.45],
-      ['02.4 Рост и передача', 3.65],
+      ['02.2 Падение', 2.8],
+      ['02.3 Удар и искры', 4.45],
+      ['02.3 Лунный свет', 4.95],
+      ['02.4 Рост и передача', 5.65],
       ['02.5 Завершение роста', 18],
     ])
     expect(TIMING.growth.duration).toBe(23)

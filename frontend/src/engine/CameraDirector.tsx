@@ -11,6 +11,7 @@ import { advanceGallery, galleryMotion, gallerySnapshot } from '../scenes/galler
 import { focusCamera } from '../scenes/gallery/camera'
 import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
+import { getGrowthCameraPose } from '../scenes/growth/seedProcedure'
 
 /** Camera settings belong here, never inside an artistic scene module. */
 export function CameraDirector({ state, dispatch, runtime, reducedMotion }: SceneProps) {
@@ -53,12 +54,16 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       : scene === 'greeting' || scene === 'ending' ? { ...front, x: 1, y: 1.1, z: 8.5 } : front
     Object.assign(p, reducedMotion ? front : initial)
     render()
+    if (scene === 'growth') {
+      const cursor = { time: 0 }
+      timeline.eventCallback('onUpdate', () => {
+        Object.assign(p, getGrowthCameraPose(cursor.time, reducedMotion))
+        render()
+      })
+      Object.assign(p, getGrowthCameraPose(0, reducedMotion))
+      return timeline.to(cursor, { time: TIMING.growth.duration, duration: TIMING.growth.duration, ease: 'none' })
+    }
     if (reducedMotion) return timeline
-    if (scene === 'growth') timeline.to(p, {
-      ...flowerSide,
-      duration: TIMING.growth.duration - TIMING.growth.handoff[1],
-      ease: 'sine.inOut',
-    }, TIMING.growth.handoff[1])
     if (scene === 'bloom') timeline.to(p, { ...flowerTop, duration: TIMING.camera.bloom, ease: 'sine.inOut' })
     if (scene === 'identity') timeline.to(p, { ...front, duration: TIMING.identity.particles[1], ease: 'sine.inOut' })
       .to(p, { ...firstMemoryCamera(34), duration: 3, ease: (t: number) => t * t * (3 - 2 * t) }, 31)
