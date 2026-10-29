@@ -40,7 +40,8 @@
                                      "README.md",
                                      "docs/architecture.md",
                                      "AGENTS.md"
-                                 ]
+                                 ],
+                       "commit":  "4b6cf60"
                    },
     "skillDir":  "C:/Users/McHomak/.agents/skills/autopilot",
     "memoryFile":  "AGENTS.md",
@@ -113,7 +114,7 @@
                   "docWeight":  "corrected"
               },
     "polish":  null,
-    "updatedAt":  "2026-10-29T22:22:12.8495771+03:00",
+    "updatedAt":  "2026-10-29T22:23:17.7175731+03:00",
     "reviewers":  {
 
                   },
