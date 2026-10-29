@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type Dispatch, type ReactNode } from 'react'
+﻿import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type Dispatch } from 'react'
 import type { FilmAction, FilmState } from '../engine/film'
-import { MEMORIES, SCENES, SCENE_ORDER, type SceneId } from '../engine/filmConfig'
+import type { FilmRuntime } from '../engine/runtime'
+import { SCENES, type SceneId } from '../engine/filmConfig'
 import {
   DEFAULT_SCENE_COMPOSER_CONFIG,
   SCENE_CONFIG_PRESETS,
   getConfig,
   subscribeConfig,
+  updateConfig,
   type QualityProfile,
   type SceneComposerConfig,
+  type SceneComposerConfigPatch,
   type ScenePresetId,
 } from '../systems/scene-config/config'
 import { type ArtFontId } from '../systems/scene-config/fontIds'
@@ -20,6 +23,8 @@ import {
   setComposerField,
   type ComposerFieldPath,
 } from './composerControls'
+import { createInspectorHistory, type InspectorScope } from './inspectorHistory'
+import { comparisonPointValid, type ComparisonPoint } from './inspectorCompare'
 
 type NumericControl = {
   path: ComposerFieldPath
@@ -31,7 +36,7 @@ type NumericControl = {
   displayScale?: number
 }
 
-type ComposerSectionId = 'global' | 'preload' | 'preparation' | 'prologue'
+type InspectorScene = SceneId | 'preload' | 'preparation'
 
 const PRELOAD_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.preload.glow', label: 'Свечение', unit: '×', min: 0, max: 2, step: 0.05 },
@@ -48,26 +53,54 @@ const PREPARATION_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.preparation.cardOpacity', label: 'Непрозрачность поверхности', unit: '%', min: 85, max: 100, step: 1, displayScale: 100 },
 ]
 
-const PROLOGUE_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.prologue.fontSize', label: 'Размер шрифта', unit: 'px', min: 16, max: 160, step: 1 },
-  { path: 'scenes.prologue.lineHeight', label: 'Высота строки', unit: '×', min: 0.8, max: 2.5, step: 0.05 },
-  { path: 'scenes.prologue.positionY', label: 'Положение текста', unit: '%', min: 10, max: 80, step: 1 },
-  { path: 'scenes.prologue.handwritingDuration', label: 'Рукописное появление', unit: 'с', min: 0.5, max: 20, step: 0.1 },
-  { path: 'scenes.prologue.promptHandwritingDuration', label: 'Рукописное появление подсказки', unit: 'с', min: 0.2, max: 0.8, step: 0.05 },
-  { path: 'scenes.prologue.handwritingRhythm', label: 'Ритм письма', unit: '×', min: 0.1, max: 3, step: 0.1 },
-  { path: 'scenes.prologue.interphraseInterval', label: 'Пауза между фразами', unit: 'с', min: 0, max: 8, step: 0.1 },
-  { path: 'scenes.prologue.readableHold', label: 'Время на чтение', unit: 'с', min: 0, max: 30, step: 0.1 },
-  { path: 'scenes.prologue.particleCount', label: 'Частицы пепла', unit: 'шт.', min: 300, max: 6000, step: 1 },
-  { path: 'scenes.prologue.windStrength', label: 'Ветер', unit: '×', min: 0.2, max: 3, step: 0.05 },
-  { path: 'scenes.prologue.turbulence', label: 'Турбулентность', unit: '×', min: 0, max: 1, step: 0.05 },
-  { path: 'scenes.prologue.fractureWidth', label: 'Ширина фронта', unit: '%', min: 0, max: 18, step: 1, displayScale: 100 },
-  { path: 'scenes.prologue.fractureDuration', label: 'Длительность фронта', unit: 'с', min: 0.8, max: 4, step: 0.1 },
-  { path: 'scenes.prologue.particleDuration', label: 'Длительность движения частиц', unit: 'с', min: 0.1, max: 20, step: 0.1 },
-  { path: 'scenes.prologue.particleFadeDuration', label: 'Длительность затухания пепла', unit: 'с', min: 0.5, max: 4, step: 0.1 },
-  { path: 'scenes.prologue.glow', label: 'Свечение', unit: '×', min: 0, max: 2, step: 0.05 },
-  { path: 'scenes.prologue.pulseAmplitude', label: 'Амплитуда пульсации', unit: '×', min: 0, max: 1, step: 0.01 },
-  { path: 'scenes.prologue.pulseFrequency', label: 'Частота пульсации', unit: 'Гц', min: 0, max: 5, step: 0.1 },
-  { path: 'scenes.prologue.seed', label: 'Seed частиц', unit: '', min: 0, max: 2_147_483_647, step: 1 },
+const PROLOGUE_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
+  { name: 'Typography', controls: [
+    { path: 'scenes.prologue.fontSize', label: 'Размер первой фразы', unit: 'px', min: 16, max: 160, step: 1 },
+    { path: 'scenes.prologue.secondFontScale', label: 'Размер второй фразы', unit: '×', min: 0.6, max: 1.2, step: 0.01 },
+    { path: 'scenes.prologue.lineHeight', label: 'Высота строки', unit: '×', min: 0.8, max: 2.5, step: 0.05 },
+    { path: 'scenes.prologue.positionY', label: 'Положение текста', unit: '%', min: 10, max: 80, step: 1 },
+    { path: 'scenes.prologue.textGap', label: 'Отступ от света', unit: 'px', min: 20, max: 100, step: 1 },
+    { path: 'scenes.prologue.textGlow', label: 'Свечение текста', unit: '×', min: 0, max: 1, step: 0.02 },
+    { path: 'scenes.prologue.handwritingDuration', label: 'Рукописное появление', unit: 'с', min: 0.5, max: 20, step: 0.1 },
+    { path: 'scenes.prologue.handwritingRhythm', label: 'Ритм письма', unit: '×', min: 0.1, max: 3, step: 0.05 },
+    { path: 'scenes.prologue.promptHandwritingDuration', label: 'Рукописное появление подсказки', unit: 'с', min: 0.2, max: 0.8, step: 0.05 },
+    { path: 'scenes.prologue.interphraseInterval', label: 'Пауза между фразами', unit: 'с', min: 0, max: 8, step: 0.1 },
+    { path: 'scenes.prologue.readableHold', label: 'Время на чтение', unit: 'с', min: 0, max: 30, step: 0.1 },
+  ] },
+  { name: 'Light', controls: [
+    { path: 'scenes.prologue.coreIntensity', label: 'Яркость ядра', unit: '×', min: 0.2, max: 2, step: 0.05 },
+    { path: 'scenes.prologue.innerGlowRadius', label: 'Радиус внутреннего свечения', unit: 'px', min: 6, max: 40, step: 1 },
+    { path: 'scenes.prologue.outerGlowRadius', label: 'Радиус рассеивания', unit: 'px', min: 40, max: 160, step: 1 },
+    { path: 'scenes.prologue.glow', label: 'Сила ореола', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.prologue.pulseAmplitude', label: 'Амплитуда дыхания', unit: '×', min: 0, max: 0.3, step: 0.005 },
+    { path: 'scenes.prologue.pulseFrequency', label: 'Частота дыхания', unit: 'Гц', min: 0, max: 1, step: 0.01 },
+    { path: 'scenes.prologue.phraseResponse', label: 'Отклик на фразу', unit: '×', min: 0, max: 0.5, step: 0.01 },
+  ] },
+  { name: 'Atmosphere', controls: [
+    { path: 'scenes.prologue.atmosphereDensity', label: 'Фоновые пылинки', unit: 'шт.', min: 0, max: 120, step: 1 },
+    { path: 'scenes.prologue.hazeIntensity', label: 'Дымка', unit: '×', min: 0, max: 0.12, step: 0.005 },
+    { path: 'scenes.prologue.spaceDepth', label: 'Глубина пространства', unit: '×', min: 0, max: 1, step: 0.05 },
+    { path: 'scenes.prologue.driftSpeed', label: 'Дрейф фона', unit: '×', min: 0, max: 0.15, step: 0.005 },
+  ] },
+  { name: 'Dissolve', controls: [
+    { path: 'scenes.prologue.particleCount', label: 'Световая пыль', unit: 'шт.', min: 300, max: 6000, step: 1 },
+    { path: 'scenes.prologue.particleSizeMin', label: 'Минимальный размер', unit: 'px', min: 0.3, max: 2, step: 0.05 },
+    { path: 'scenes.prologue.particleSizeMax', label: 'Максимальный размер', unit: 'px', min: 0.5, max: 4, step: 0.05 },
+    { path: 'scenes.prologue.particleGlow', label: 'Свечение пыли', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.prologue.windStrength', label: 'Ветер', unit: '×', min: 0.2, max: 3, step: 0.05 },
+    { path: 'scenes.prologue.turbulence', label: 'Турбулентность', unit: '×', min: 0, max: 1, step: 0.05 },
+    { path: 'scenes.prologue.fractureWidth', label: 'Ширина фронта', unit: '%', min: 0, max: 18, step: 1, displayScale: 100 },
+    { path: 'scenes.prologue.fractureDuration', label: 'Длительность фронта', unit: 'с', min: 0.8, max: 4, step: 0.1 },
+    { path: 'scenes.prologue.particleDuration', label: 'Длительность движения частиц', unit: 'с', min: 0.1, max: 20, step: 0.1 },
+    { path: 'scenes.prologue.particleFadeDuration', label: 'Длительность затухания пыли', unit: 'с', min: 0.5, max: 4, step: 0.1 },
+    { path: 'scenes.prologue.seed', label: 'Seed частиц', unit: '', min: 0, max: 2147483647, step: 1 },
+  ] },
+  { name: 'Interaction', controls: [
+    { path: 'scenes.prologue.touchIntensity', label: 'Отклик касания', unit: '×', min: 0, max: 1.5, step: 0.05 },
+    { path: 'scenes.prologue.touchDuration', label: 'Длительность отклика', unit: 'с', min: 0.7, max: 1, step: 0.05 },
+    { path: 'scenes.prologue.waveStrength', label: 'Сила световой волны', unit: '×', min: 0, max: 0.4, step: 0.01 },
+    { path: 'scenes.prologue.waveRadius', label: 'Радиус световой волны', unit: 'px', min: 30, max: 120, step: 1 },
+  ] },
 ]
 
 function useApproximateRafFps() {
@@ -104,19 +137,18 @@ function formatted(value: number) {
   return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value)
 }
 
-function RangeControl({ control, value, onChange, onReset }: {
+function RangeControl({ control, value, onChange, onReset, changed }: {
   control: NumericControl
   value: number
   onChange(value: number): void
   onReset(): void
+  changed: boolean
 }) {
   const id = `composer-${control.path.replaceAll('.', '-')}`
   return (
     <div className="composer-control">
-      <label htmlFor={id}>{control.label} · {formatted(value)} {control.unit}</label>
+      <div className="inspector-control-heading"><label htmlFor={id}>{control.label} · {formatted(value)} {control.unit}</label>{changed && <button type="button" className="inspector-reset" aria-label={`Reset ${control.label}`} title="Reset" onClick={onReset}>↺</button>}</div>
       <input id={id} data-testid={id} type="range" min={control.min} max={control.max} step={control.step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
-      <small>Допустимый диапазон: {formatted(control.min)}–{formatted(control.max)} {control.unit}</small>
-      <button type="button" onClick={onReset}>Сбросить параметр</button>
     </div>
   )
 }
@@ -129,7 +161,7 @@ function ConfigRange({ control, config, onChange, onReset }: {
 }) {
   const value = valueAtPath(config, control.path)
   const scale = control.displayScale ?? 1
-  return <RangeControl control={control} value={typeof value === 'number' ? value * scale : control.min} onChange={(next) => onChange(control.path, next / scale)} onReset={() => onReset(control.path)} />
+  return <RangeControl control={control} value={typeof value === 'number' ? value * scale : control.min} onChange={(next) => onChange(control.path, next / scale)} onReset={() => onReset(control.path)} changed={value !== defaultAtPath(control.path)} />
 }
 
 function FontControl({ path, label, value, onChange, onReset }: {
@@ -142,48 +174,70 @@ function FontControl({ path, label, value, onChange, onReset }: {
   const id = `composer-${path.replaceAll('.', '-')}`
   return (
     <div className="composer-control">
-      <label htmlFor={id}>{label}</label>
+      <div className="inspector-control-heading"><label htmlFor={id}>{label}</label>{value !== defaultAtPath(path) && <button type="button" className="inspector-reset" aria-label={`Сбросить ${label}`} title="Сбросить" onClick={() => onReset(path)}>↺</button>}</div>
       <select id={id} data-testid={id} value={value} onChange={(event) => onChange(path, event.target.value as ArtFontId)}>
         {ART_FONT_CATALOG.map((font) => <option key={font.id} value={font.id}>{font.label}</option>)}
       </select>
-      <button type="button" onClick={() => onReset(path)}>Сбросить параметр</button>
     </div>
   )
 }
 
-function ComposerSection({ sectionId, title, open, onToggle, children }: {
-  sectionId: ComposerSectionId
-  title: string
-  open: boolean
-  onToggle(sectionId: string, open: boolean): void
-  children: ReactNode
-}) {
-  return <details open={open} onToggle={(event) => onToggle(sectionId, event.currentTarget.open)}><summary>{title}</summary>{children}</details>
-}
-
-export default function DeveloperPanel({ state, dispatch, reducedMotion, onPreload, onPermissions }: {
+export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion, onPreload, onPermissions, route = 'film' }: {
   state: FilmState
   dispatch: Dispatch<FilmAction>
+  runtime?: FilmRuntime
   reducedMotion: boolean
   onPreload(): void
   onPermissions(): void
+  route?: string
 }) {
-  const [selected, setSelected] = useState<SceneId>(state.scene)
+  const active: InspectorScene = route === 'loading' ? 'preload' : route === 'film' ? state.scene : 'preparation'
+  const [pinned, setPinned] = useState<InspectorScene | null>(null)
+  const selected = pinned ?? active
   const [selectedPreset, setSelectedPreset] = useState<ScenePresetId>(() => getConfig().preset)
   const [notice, setNotice] = useState('')
   const [fontLoading, setFontLoading] = useState(false)
   const fontRequest = useRef(0)
-  const [openSections, setOpenSections] = useState<Record<ComposerSectionId, boolean>>(() => ({
-    global: true,
-    preload: state.scene === 'prologue',
-    preparation: false,
-    prologue: state.scene === 'prologue',
-  }))
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const fps = useApproximateRafFps()
-  const duration = SCENES[state.scene].duration
-  const canInteract = state.mode === 'waiting' && (state.scene === 'bloom' || state.scene === 'prologue')
-  const canSeek = duration > 0 && !(state.scene === 'bloom' && state.mode === 'waiting')
+  const [history] = useState(createInspectorHistory)
+  const [historyRevision, setHistoryRevision] = useState(0)
+  const compareBusy = useRef(false)
+  const [comparing, setComparing] = useState(false)
+  const [snapshots, setSnapshots] = useState<Partial<Record<InspectorScope, { A?: object; B?: object; active?: 'A' | 'B'; point?: ComparisonPoint }>>>({})
+  const isHistoryScope = (scope: InspectorScene): scope is Exclude<InspectorScope, 'global'> => scope === 'preload' || scope === 'preparation' || scope === 'prologue'
+  const section = (value: SceneComposerConfig, scope: InspectorScope): object => scope === 'global' ? value.global : value.scenes[scope]
+  const recordChange = (scope: InspectorScope, before: SceneComposerConfig, after: SceneComposerConfig) => {
+    history.record(scope, section(before, scope), section(after, scope))
+    setHistoryRevision(value => value + 1)
+  }
+  const recordFieldChange = (scope: InspectorScope, path: ComposerFieldPath, before: SceneComposerConfig, after: SceneComposerConfig) => {
+    const key = path.split('.').at(-1)!
+    const keys = key === 'dprMin' || key === 'dprMax' ? ['dprMin', 'dprMax'] : [key]
+    const pick = (config: SceneComposerConfig) => {
+      const values = section(config, scope) as Record<string, unknown>
+      return Object.fromEntries(keys.map(name => [name, values[name]]))
+    }
+    history.record(scope, pick(before), pick(after))
+    setHistoryRevision(value => value + 1)
+  }
+  const patchSection = (scope: InspectorScope, value: object) => updateConfig((scope === 'global' ? { global: value } : { scenes: { [scope]: value } }) as SceneComposerConfigPatch)
+  const matchesPatch = (result: object, patch: object) => Object.entries(patch).every(([key, value]) => Object.is((result as Record<string, unknown>)[key], value))
+
+  const travelHistory = async (scope: InspectorScope, direction: 'undo' | 'redo') => {
+    const patch = history[direction](scope)
+    if (!patch) return
+    try {
+      const next = await patchSection(scope, patch)
+      if (!matchesPatch(section(next, scope), patch)) throw new Error('Settings were not applied')
+      if (scope === 'global') syncFilmGlobals(next)
+      setNotice(direction === 'undo' ? 'Изменение отменено.' : 'Изменение возвращено.')
+    } catch {
+      history[direction === 'undo' ? 'redo' : 'undo'](scope)
+      setNotice('Не удалось восстановить настройки; история сохранена.')
+    }
+    setHistoryRevision(value => value + 1)
+  }
 
   const syncFilmGlobals = (next: SceneComposerConfig) => {
     dispatch({ type: 'set-speed', speed: next.global.playbackSpeed })
@@ -191,12 +245,15 @@ export default function DeveloperPanel({ state, dispatch, reducedMotion, onPrelo
   }
 
   const changeField = async (path: ComposerFieldPath, value: unknown) => {
+    const scope = (path.startsWith('global.') ? 'global' : path.split('.')[1]) as InspectorScope
+    const before = getConfig()
     const isFont = path === 'scenes.preparation.fontFamily' || path === 'scenes.prologue.fontFamily'
     const requestId = isFont ? ++fontRequest.current : 0
     if (isFont) setFontLoading(true)
     setNotice('')
     try {
       const next = await setComposerField(path, value)
+      recordFieldChange(scope, path, before, next)
       if (path === 'global.playbackSpeed') dispatch({ type: 'set-speed', speed: Number(value) })
       if (path === 'global.quality') dispatch({ type: 'set-quality', quality: value as QualityProfile })
       if (isFont) {
@@ -213,20 +270,25 @@ export default function DeveloperPanel({ state, dispatch, reducedMotion, onPrelo
   const resetField = async (path: ComposerFieldPath) => changeField(path, defaultAtPath(path))
 
   const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue') => {
+    const before = getConfig()
     const result = await resetComposerScope(scope)
     if (!result.ok) {
       setNotice('Шрифт не загрузился; сброс не применён. Текущие настройки сохранены.')
       return
     }
     const next = result.config
+    recordChange(scope, before, next)
     if (scope === 'global') syncFilmGlobals(next)
     setNotice('Параметры сброшены.')
   }
 
   const applyPreset = async () => {
     const next = await applyComposerPreset(selectedPreset)
+    history.clear()
+    setHistoryRevision(value => value + 1)
+    setSnapshots({})
     setSelectedPreset(next.preset)
-    setNotice(`Применён пресет «${SCENE_CONFIG_PRESETS[next.preset].label}».`)
+    setNotice(`Применён пресет «${SCENE_CONFIG_PRESETS[next.preset].label}». История и A/B очищены.`)
   }
 
   const downloadConfig = () => {
@@ -256,103 +318,131 @@ export default function DeveloperPanel({ state, dispatch, reducedMotion, onPrelo
         return
       }
       syncFilmGlobals(result.config)
+      history.clear()
+      setHistoryRevision(value => value + 1)
+      setSnapshots({})
       setSelectedPreset(result.config.preset)
-      setNotice('Настройки из JSON применены.')
+      setNotice('Настройки из JSON применены. История и A/B очищены.')
     } catch {
       setNotice('Не удалось прочитать файл. Текущие настройки сохранены.')
     }
   }
 
-  const launchSelected = () => dispatch({ type: 'dev-jump', scene: selected })
-  const restartSelected = () => dispatch(selected === state.scene ? { type: 'dev-restart' } : { type: 'dev-jump', scene: selected })
-  const toggleSection = (sectionId: ComposerSectionId, open: boolean) => setOpenSections((current) => ({ ...current, [sectionId]: open }))
+  const range = (control: NumericControl) => <ConfigRange key={control.path} control={control} config={config} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
+  const font = (scene: 'preparation' | 'prologue', label: string) => <FontControl path={`scenes.${scene}.fontFamily`} label={label} value={config.scenes[scene].fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
+  const title = selected === 'preload' ? '00 · Загрузка' : selected === 'preparation' ? '00.1 · Подготовка' : SCENES[selected].label
+  const hasSceneControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue'
+  const currentScope = isHistoryScope(selected) ? selected : undefined
+  const currentSnapshots = currentScope ? snapshots[currentScope] : undefined
+  const remember = (slot: 'A' | 'B') => {
+    if (!currentScope) return
+    const snapshot = section(getConfig(), currentScope)
+    setSnapshots(previous => ({ ...previous, [currentScope]: { ...previous[currentScope], [slot]: snapshot, active: undefined } }))
+    setNotice(`Снимок ${slot} сохранён для сцены.`)
+  }
+  const compare = async (slot: 'A' | 'B') => {
+    if (!currentScope || selected !== active || compareBusy.current) return
+    if (route !== 'film') { setNotice('Сравнение недоступно: у загрузки и подготовки нет управляемого времени фильма.'); return }
+    const snapshot = snapshots[currentScope]?.[slot]
+    if (!snapshot) return
+    let point = snapshots[currentScope]?.point
+    if (route === 'film') {
+      if (!runtime || state.reading || (state.mode !== 'playing' && state.mode !== 'waiting')) { setNotice('Сравнение недоступно во время перехода или чтения.'); return }
+      const time = state.mode === 'playing' ? runtime.time : state.elapsed
+      point ??= { scene: state.scene, mode: state.mode, time, revision: state.revision }
+      if (!comparisonPointValid(point, state, SCENES[state.scene].duration)) {
+        setNotice('Эта точка больше недоступна. Выберите новую точку сравнения.')
+        return
+      }
+    }
+    compareBusy.current = true
+    setComparing(true)
+    const before = getConfig()
+    try {
+      if (point?.mode === 'playing') { dispatch({ type: 'dev-seek', time: point.time }); point = { ...point, revision: state.revision + 1 } }
+      if (!state.paused) dispatch({ type: 'toggle-pause' })
+      const next = await patchSection(currentScope, snapshot)
+      if (!matchesPatch(section(next, currentScope), snapshot)) throw new Error('Settings were not applied')
+      recordChange(currentScope, before, next)
+      setSnapshots(previous => ({ ...previous, [currentScope]: { ...previous[currentScope], active: slot, point } }))
+      setNotice(route === 'film' ? `Снимок ${slot} применён. Фильм остановлен в точке ${point!.time.toFixed(2)} с.` : `Снимок ${slot} применён.`)
+    } catch { setNotice('Не удалось применить снимок; текущие параметры сохранены.') }
+    finally { compareBusy.current = false; setComparing(false) }
+  }
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || target?.isContentEditable || target?.closest('[role="dialog"]') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return
+      const key = event.key.toLowerCase()
+      const direction = key === 'y' || (key === 'z' && event.shiftKey) ? 'redo' : key === 'z' ? 'undo' : null
+      if (!direction || !currentScope) return
+      event.preventDefault()
+      void travelHistory(currentScope, direction)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+  const historyButtons = (scope: InspectorScope) => <div className="inspector-history" data-history-revision={historyRevision}>
+    <button type="button" disabled={!history.canUndo(scope)} onClick={() => { void travelHistory(scope, 'undo') }}>Отменить</button>
+    <button type="button" disabled={!history.canRedo(scope)} onClick={() => { void travelHistory(scope, 'redo') }}>Повторить</button>
+  </div>
 
   return (
     <aside id="developer-panel" className="developer-panel" aria-labelledby="developer-title">
-      <h2 id="developer-title">Scene Composer</h2>
-      <p>Настройки 00, 00.1 и 01 используют общее время фильма. Для сцен 02–09 доступны только воспроизведение и переход.</p>
-      <div className="dev-actions">
-        <button type="button" data-testid="dev-preload" onClick={onPreload}>00 · Проверить загрузку</button>
-        <button type="button" data-testid="dev-permissions" onClick={onPermissions}>00.1 · Настройки заново</button>
-      </div>
+      <div className="inspector-heading"><h2 id="developer-title">Scene Inspector</h2><button type="button" aria-pressed={pinned !== null} onClick={() => setPinned(pinned === null ? active : null)}>{pinned === null ? 'Auto' : 'Pin'}</button></div>
+      <p className="inspector-follow">{pinned === null ? 'Следует за активной сценой' : 'Панель закреплена'} · {title}</p>
       {fontLoading && <p role="status">Загружаем локальный шрифт…</p>}
       {notice && <p role="status" aria-live="polite">{notice}</p>}
-
-      <ComposerSection sectionId="global" title="Global · общие параметры" open={openSections.global} onToggle={toggleSection}>
-        <label>Профиль качества
-          <select aria-label="Профиль качества" value={config.global.quality} onChange={(event) => { void changeField('global.quality', event.target.value) }}>
-            <option value="standard">Обычное</option><option value="low">Низкое</option>
-          </select>
-        </label>
-        <button type="button" onClick={() => { void resetField('global.quality') }}>Сбросить параметр</button>
-        <RangeControl control={{ path: 'global.playbackSpeed', label: 'Скорость фильма', unit: '×', min: 0.25, max: 4, step: 0.25 }} value={state.speed} onChange={(value) => { void changeField('global.playbackSpeed', value) }} onReset={() => { void resetField('global.playbackSpeed') }} />
-        <ConfigRange control={{ path: 'global.dprMin', label: 'Минимум DPR', unit: '×', min: 0.5, max: 1.5, step: 0.05 }} config={config} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
-        <ConfigRange control={{ path: 'global.dprMax', label: 'Максимум DPR', unit: '×', min: 1, max: 2, step: 0.05 }} config={config} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
-        <div className="composer-presets">
-          <label htmlFor="composer-preset">Художественный пресет</label>
-          <select id="composer-preset" data-testid="composer-preset" value={selectedPreset} onChange={(event) => setSelectedPreset(event.target.value as ScenePresetId)}>
-            {Object.entries(SCENE_CONFIG_PRESETS).map(([id, preset]) => <option key={id} value={id}>{preset.label}</option>)}
-          </select>
-          <p>Сравнение: Moonlit Letter — мягкое свечение, 1 800 частиц; Stardust — яркое свечение, 2 600 частиц.</p>
+      <details className="inspector-section">
+        <summary>Global · общие параметры</summary>
+        {historyButtons('global')}
+        <div className="inspector-control-heading"><label htmlFor="inspector-quality">Профиль качества</label>{config.global.quality !== defaultAtPath('global.quality') && <button type="button" className="inspector-reset" aria-label="Сбросить качество" onClick={() => { void resetField('global.quality') }}>↺</button>}</div>
+        <select id="inspector-quality" value={config.global.quality} onChange={(event) => { void changeField('global.quality', event.target.value) }}><option value="standard">Обычное</option><option value="low">Низкое</option></select>
+        {range({ path: 'global.playbackSpeed', label: 'Скорость фильма', unit: '×', min: 0.25, max: 4, step: 0.25 })}
+        {range({ path: 'global.dprMin', label: 'Минимум DPR', unit: '×', min: 0.5, max: 1.5, step: 0.05 })}
+        {range({ path: 'global.dprMax', label: 'Максимум DPR', unit: '×', min: 1, max: 2, step: 0.05 })}
+        <details><summary>Пресеты и конфигурация</summary>
+          <label htmlFor="composer-preset">Художественный пресет</label><select id="composer-preset" data-testid="composer-preset" value={selectedPreset} onChange={(event) => setSelectedPreset(event.target.value as ScenePresetId)}>{Object.entries(SCENE_CONFIG_PRESETS).map(([id, preset]) => <option key={id} value={id}>{preset.label}</option>)}</select>
           <button type="button" onClick={() => { void applyPreset() }}>Применить пресет</button>
-        </div>
-        <div className="composer-files">
-          <button type="button" onClick={downloadConfig}>Экспорт JSON</button>
-          <label>Импорт JSON
-            <input data-testid="composer-import" type="file" accept="application/json,.json" onChange={(event) => { void handleImport(event) }} />
-          </label>
-        </div>
+          <div className="composer-files"><button type="button" onClick={downloadConfig}>Экспорт JSON</button><label>Импорт JSON<input data-testid="composer-import" type="file" accept="application/json,.json" onChange={(event) => { void handleImport(event) }} /></label></div>
+        </details>
         <button type="button" onClick={() => { void resetScope('global') }}>Сбросить Global</button>
-      </ComposerSection>
-
-      <ComposerSection sectionId="preload" title="00 · Загрузка" open={openSections.preload} onToggle={toggleSection}>
-        {PRELOAD_CONTROLS.map((control) => <ConfigRange key={control.path} control={control} config={config} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />)}
-        <button type="button" onClick={() => { void resetScope('preload') }}>Сбросить параметры 00</button>
-      </ComposerSection>
-
-      <ComposerSection sectionId="preparation" title="00.1 · Подготовка" open={openSections.preparation} onToggle={toggleSection}>
-        <FontControl path="scenes.preparation.fontFamily" label="Художественный шрифт" value={config.scenes.preparation.fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
-        {PREPARATION_CONTROLS.map((control) => <ConfigRange key={control.path} control={control} config={config} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />)}
-        <button type="button" onClick={() => { void resetScope('preparation') }}>Сбросить параметры 00.1</button>
-      </ComposerSection>
-
-      <ComposerSection sectionId="prologue" title="01 · Пролог" open={openSections.prologue} onToggle={toggleSection}>
-        <FontControl path="scenes.prologue.fontFamily" label="Шрифт рукописного текста" value={config.scenes.prologue.fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
-        {PROLOGUE_CONTROLS.map((control) => <ConfigRange key={control.path} control={control} config={config} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />)}
-        <button type="button" onClick={() => { void resetScope('prologue') }}>Сбросить параметры 01</button>
-      </ComposerSection>
-
-      <section aria-labelledby="dev-playback-title">
-        <h3 id="dev-playback-title">Воспроизведение</h3>
-        <label htmlFor="dev-scene">Сцена</label>
-        <select id="dev-scene" data-testid="dev-scene" value={selected} onChange={(event) => setSelected(event.target.value as SceneId)}>
-          {SCENE_ORDER.map((scene) => <option key={scene} value={scene}>{SCENES[scene].label}</option>)}
-        </select>
-        <div className="dev-actions">
-          <button type="button" data-testid="dev-run" onClick={launchSelected}>Запустить сцену</button>
-          <button type="button" data-testid="dev-restart" onClick={restartSelected}>Перезапустить выбранную</button>
-        </div>
-        <div className="dev-actions">
-          <button type="button" aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Пауза'}</button>
-          <button type="button" disabled={state.scene === 'ending'} onClick={() => dispatch({ type: 'dev-skip' })}>Пропустить сцену</button>
-        </div>
-        <label htmlFor="dev-seek">Время · {state.elapsed.toFixed(1)} / {duration} с</label>
-        <input id="dev-seek" data-testid="dev-seek" aria-label="Время сцены" type="range" min="0" max={duration || 1} step="0.1" value={state.elapsed} disabled={!canSeek} onChange={(event) => dispatch({ type: 'dev-seek', time: Number(event.target.value) })} />
-        <button type="button" disabled={!canInteract} onClick={() => dispatch({ type: 'interact' })}>Имитировать прикосновение</button>
-        <div className="dev-actions">
-          <button type="button" disabled={state.scene !== 'gallery' || state.galleryIndex === 0} onClick={() => dispatch({ type: 'gallery-step', direction: -1 })}>Фото назад</button>
-          <button type="button" disabled={state.scene !== 'gallery' || state.galleryIndex === MEMORIES.length - 1} onClick={() => dispatch({ type: 'gallery-step', direction: 1 })}>Фото вперёд</button>
-        </div>
+      </details>
+      <section aria-labelledby="inspector-scene-title" className="inspector-scene">
+        <h3 id="inspector-scene-title">{title}</h3>
+        {currentScope && <details className="inspector-compare"><summary>История и сравнение A/B</summary>
+          {historyButtons(currentScope)}
+          <p>Снимки временные и относятся к этой сцене. Сравнение останавливает фильм в текущем кадре.</p>
+          <div className="inspector-history"><button type="button" onClick={() => remember('A')}>Сохранить A</button><button type="button" onClick={() => remember('B')}>Сохранить B</button></div>
+          <div className="inspector-history"><button type="button" aria-pressed={currentSnapshots?.active === 'A' && !!currentSnapshots.A && matchesPatch(section(config, currentScope), currentSnapshots.A)} disabled={comparing || !currentSnapshots?.A || selected !== active || route !== 'film'} onClick={() => { void compare('A') }}>Показать A</button><button type="button" aria-pressed={currentSnapshots?.active === 'B' && !!currentSnapshots.B && matchesPatch(section(config, currentScope), currentSnapshots.B)} disabled={comparing || !currentSnapshots?.B || selected !== active || route !== 'film'} onClick={() => { void compare('B') }}>Показать B</button></div>
+          {comparing && <p role="status">Применяем снимок…</p>}
+          {route !== 'film' && <p>Сравнение недоступно: у загрузки и подготовки нет управляемого времени фильма.</p>}
+          {route === 'film' && currentSnapshots?.point && <p>Точка: {currentSnapshots.point.time.toFixed(2)} с <button type="button" onClick={() => setSnapshots(previous => ({ ...previous, [currentScope]: { ...previous[currentScope], point: undefined, active: undefined } }))}>Новая точка</button></p>}
+          {selected !== active && <p>Перейдите в эту сцену для сравнения.</p>}
+        </details>}
+        {selected === 'preload' && <details open><summary>Свечение и движение</summary>{PRELOAD_CONTROLS.map(range)}</details>}
+        {selected === 'preparation' && <>
+          <details open><summary>Типографика</summary>{font('preparation', 'Художественный шрифт')}{PREPARATION_CONTROLS.filter((c) => ['typeScale', 'lineHeight'].some((field) => c.path.endsWith(field))).map(range)}</details>
+          <details><summary>Интерфейс</summary>{PREPARATION_CONTROLS.filter((c) => !['typeScale', 'lineHeight'].some((field) => c.path.endsWith(field))).map(range)}</details>
+        </>}
+        {selected === 'prologue' && PROLOGUE_GROUPS.map(group => <details key={group.name} open={group.name === 'Typography'}>
+          <summary>{group.name}</summary>
+          {group.name === 'Typography' && <>
+            {font('prologue', 'Шрифт рукописного текста')}
+            <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-prologue-copyVariant">Вторая фраза</label>{config.scenes.prologue.copyVariant !== 'awakening' && <button type="button" className="inspector-reset" aria-label="Сбросить вторую фразу" onClick={() => { void resetField('scenes.prologue.copyVariant') }}>↺</button>}</div>
+              <select id="composer-scenes-prologue-copyVariant" value={config.scenes.prologue.copyVariant} onChange={event => { void changeField('scenes.prologue.copyVariant', event.target.value) }}><option value="awakening">Начать с одной маленькой искры</option><option value="legacy">Прежняя формулировка</option></select>
+            </div>
+          </>}
+          {group.controls.map(range)}
+        </details>)}
+        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected as 'preload' | 'preparation' | 'prologue') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
       </section>
-
-      <dl>
-        <dt>Сцена / режим</dt><dd>{state.scene} / {state.mode}</dd>
-        <dt>Пауза / чтение</dt><dd>{String(state.paused)} / {String(state.reading)}</dd>
-        <dt>Revision / карточка</dt><dd>{state.revision} / {state.galleryIndex + 1}</dd>
-        <dt>Качество / движение</dt><dd>{state.quality} / {config.global.quality} / {reducedMotion ? 'reduced' : 'normal'}</dd>
-        <dt>Примерный rAF FPS</dt><dd>{fps ?? 'измеряется…'}</dd>
-      </dl>
-      <p>rAF FPS — частота кадров браузера, не WebGL. Физический планшет не тестировался.</p>
+      <details className="inspector-section"><summary>Диагностика</summary>
+        <div className="dev-actions"><button type="button" data-testid="dev-preload" onClick={onPreload}>Проверить загрузку</button><button type="button" data-testid="dev-permissions" onClick={onPermissions}>Настройки заново</button></div>
+        <dl><dt>Сцена / режим</dt><dd>{state.scene} / {state.mode}</dd><dt>Пауза / чтение</dt><dd>{String(state.paused)} / {String(state.reading)}</dd><dt>Revision / карточка</dt><dd>{state.revision} / {state.galleryIndex + 1}</dd><dt>Качество / движение</dt><dd>{state.quality} / {reducedMotion ? 'reduced' : 'normal'}</dd><dt>Примерный rAF FPS</dt><dd>{fps ?? 'измеряется…'}</dd></dl><p>rAF FPS — частота кадров браузера, не WebGL.</p>
+      </details>
     </aside>
   )
 }
+
+

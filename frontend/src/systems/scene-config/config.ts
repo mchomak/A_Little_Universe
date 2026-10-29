@@ -46,6 +46,25 @@ export interface SceneComposerConfig {
       glow: number
       pulseAmplitude: number
       pulseFrequency: number
+      coreIntensity: number
+      innerGlowRadius: number
+      outerGlowRadius: number
+      phraseResponse: number
+      touchIntensity: number
+      touchDuration: number
+      waveStrength: number
+      waveRadius: number
+      atmosphereDensity: number
+      hazeIntensity: number
+      spaceDepth: number
+      driftSpeed: number
+      secondFontScale: number
+      textGap: number
+      textGlow: number
+      copyVariant: 'awakening' | 'legacy'
+      particleSizeMin: number
+      particleSizeMax: number
+      particleGlow: number
       seed: number
     }>
   }>
@@ -60,10 +79,15 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
     preparation: { fontFamily: 'marck-script', spacing: 24, entranceDuration: 0.8, typeScale: 1, lineHeight: 1.08, cardOpacity: 1 },
     prologue: {
       fontFamily: 'marck-script', fontSize: 48, lineHeight: 1.3, positionY: 40,
-      handwritingDuration: 4.8, handwritingRhythm: 0.82, interphraseInterval: 1.2, readableHold: 2,
+      handwritingDuration: 3.5, handwritingRhythm: 0.82, interphraseInterval: 1.5, readableHold: 2,
       particleCount: 1800, windStrength: 1.15, turbulence: 0.3, fractureWidth: 0.08,
-      fractureDuration: 2.6, particleDuration: 4, particleFadeDuration: 2.4, promptHandwritingDuration: 0.65,
-      glow: 0.45, pulseAmplitude: 0.08, pulseFrequency: 0.8, seed: 1420577,
+      fractureDuration: 1.5, particleDuration: 2.2, particleFadeDuration: 1.2, promptHandwritingDuration: 0.65,
+      glow: 0.45, pulseAmplitude: 0.035, pulseFrequency: 0.22, seed: 1420577,
+      coreIntensity: 1, innerGlowRadius: 16, outerGlowRadius: 95, phraseResponse: 0.12,
+      touchIntensity: 0.55, touchDuration: 0.85, waveStrength: 0.14, waveRadius: 70,
+      atmosphereDensity: 42, hazeIntensity: 0.035, spaceDepth: 0.35, driftSpeed: 0.035,
+      secondFontScale: 0.86, textGap: 34, textGlow: 0.22, copyVariant: 'awakening',
+      particleSizeMin: 0.6, particleSizeMax: 1.8, particleGlow: 0.95,
     },
   },
   preset: 'moonlit-letter',
@@ -154,8 +178,30 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       glow: numberValue(prologueInput?.glow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.glow, 0, 2),
       pulseAmplitude: numberValue(prologueInput?.pulseAmplitude, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.pulseAmplitude, 0, 1),
       pulseFrequency: numberValue(prologueInput?.pulseFrequency, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.pulseFrequency, 0, 5),
+      coreIntensity: numberValue(prologueInput?.coreIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.coreIntensity, 0.2, 2),
+      innerGlowRadius: numberValue(prologueInput?.innerGlowRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.innerGlowRadius, 6, 40),
+      outerGlowRadius: numberValue(prologueInput?.outerGlowRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.outerGlowRadius, 40, 160),
+      phraseResponse: numberValue(prologueInput?.phraseResponse, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.phraseResponse, 0, 0.6),
+      touchIntensity: numberValue(prologueInput?.touchIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.touchIntensity, 0, 1.5),
+      touchDuration: numberValue(prologueInput?.touchDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.touchDuration, 0.7, 1),
+      waveStrength: numberValue(prologueInput?.waveStrength, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.waveStrength, 0, 0.5),
+      waveRadius: numberValue(prologueInput?.waveRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.waveRadius, 30, 120),
+      atmosphereDensity: numberValue(prologueInput?.atmosphereDensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.atmosphereDensity, 0, 120, true),
+      hazeIntensity: numberValue(prologueInput?.hazeIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.hazeIntensity, 0, 0.12),
+      spaceDepth: numberValue(prologueInput?.spaceDepth, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.spaceDepth, 0, 1),
+      driftSpeed: numberValue(prologueInput?.driftSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.driftSpeed, 0, 0.2),
+      secondFontScale: numberValue(prologueInput?.secondFontScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.secondFontScale, 0.6, 1.2),
+      textGap: numberValue(prologueInput?.textGap, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.textGap, 20, 100),
+      textGlow: numberValue(prologueInput?.textGlow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.textGlow, 0, 1),
+      copyVariant: enumValue(prologueInput?.copyVariant, ['awakening', 'legacy'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.copyVariant),
+      particleSizeMin: numberValue(prologueInput?.particleSizeMin, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.particleSizeMin, 0.25, 2.5),
+      particleSizeMax: numberValue(prologueInput?.particleSizeMax, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.particleSizeMax, 0.5, 4),
+      particleGlow: numberValue(prologueInput?.particleGlow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.particleGlow, 0, 2),
       seed: numberValue(prologueInput?.seed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.seed, 0, 2_147_483_647, true),
     },
+  }
+  if (scenes.prologue.particleSizeMin > scenes.prologue.particleSizeMax) {
+    scenes.prologue.particleSizeMax = scenes.prologue.particleSizeMin
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.

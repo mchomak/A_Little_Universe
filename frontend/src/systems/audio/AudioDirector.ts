@@ -1,4 +1,4 @@
-export type AudioCue = 'prologue-intro' | 'prologue-second' | 'prologue-touch' | 'growth'
+export type AudioCue = 'prologue-intro' | 'prologue-first' | 'prologue-second' | 'prologue-dissolve' | 'prologue-touch' | 'growth'
 
 export class AudioDirector {
   private context: AudioContext | null = null

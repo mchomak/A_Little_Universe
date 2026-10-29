@@ -1,0 +1,17 @@
+﻿.review-capturing .scene-timeline, .review-capturing #developer-panel, .review-capturing .debug-toggle, .review-capturing .review-modal, .review-capturing .review-error { visibility: hidden !important; }
+.review-modal { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; background: #0009; color: #f6efed; font: 14px/1.4 system-ui,sans-serif; }
+.review-dialog { width: min(680px, 94vw); max-height: 90vh; overflow: auto; background: #25242e; border: 1px solid #8c7275; border-radius: 8px; padding: 16px; box-shadow: 0 10px 40px #0009; }
+.review-dialog header, .review-dialog footer, .review-filters, .review-entry { display: flex; gap: 8px; align-items: center; }
+.review-dialog header strong { flex: 1; }.review-dialog button, .review-dialog select, .review-dialog textarea, .review-error button { color: inherit; background: #34333f; border: 1px solid #816b70; border-radius: 4px; padding: 8px; }
+.review-dialog label { display: grid; gap: 4px; margin: 10px 0; }.review-dialog textarea { min-height: 72px; resize: vertical; }.review-dialog footer { justify-content: flex-end; }
+.review-capture-actions { display: grid; justify-items: start; gap: 6px; margin: 8px 0; }.review-capture-actions small { color: #c7bfc4; }
+.review-preview { display: block; width: 100%; max-height: 34vh; object-fit: contain; background: #000; }.review-entry { margin: 8px 0; flex-wrap: wrap; }.review-entry > button:first-of-type { flex: 1; text-align: left; }.review-dialog-error, .review-error { color: #ffb4ad; }.review-error { position: fixed; bottom: 160px; right: 10px; z-index: 301; background: #2c2027; padding: 8px; }
+.review-export { margin-top: 16px; border-top: 1px solid #816b70; padding-top: 10px; }.review-export summary { cursor: pointer; }.review-export > div { display: flex; gap: 8px; flex-wrap: wrap; }.review-entry input[type="checkbox"] { width: 24px; height: 24px; }
+.timeline-notes { position: absolute; left: auto; right: 20px; width: calc(max(28%, 120px) - 16px); bottom: 35px; height: 14px; pointer-events: none; }.timeline-notes button { position: absolute; pointer-events: auto; width: 20px; height: 20px; transform: translateX(-50%); padding: 0; border: 0; border-radius: 50%; background: #f1bd72; color: #201623; cursor: pointer; }
+.frame-export-progress, .frame-export-result { position: fixed; z-index: 500; right: 16px; top: 16px; display: flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 32px)); padding: 10px 12px; border: 1px solid #8c7275; border-radius: 6px; background: #25242e; color: #f6efed; box-shadow: 0 4px 24px #0008; font: 14px/1.4 system-ui, sans-serif; }
+.frame-export-progress small { color: #d5cfdd; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.frame-export-progress button, .frame-export-result button { color: inherit; background: #34333f; border: 1px solid #816b70; border-radius: 4px; padding: 6px 9px; cursor: pointer; }
+.frame-export-result { top: auto; bottom: 16px; }
+.review-capturing .scene-timeline .frame-export-progress { visibility: visible !important; }
+.review-frame-capturing .frame-export-progress { visibility: hidden !important; }
+@media (max-width: 640px) { .frame-export-progress, .frame-export-result { right: 8px; left: 8px; top: 8px; max-width: none; flex-wrap: wrap; gap: 6px 10px; font-size: 13px; } .frame-export-result { top: auto; bottom: 8px; } }

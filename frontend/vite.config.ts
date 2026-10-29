@@ -1,8 +1,34 @@
-import react from '@vitejs/plugin-react'
+﻿import react from '@vitejs/plugin-react'
+import { reviewNotesPlugin } from './dev-review-store'
 import { defineConfig } from 'vitest/config'
 import { createHash } from 'node:crypto'
 import type { Plugin } from 'vite'
+import { createReadStream, realpathSync, statSync } from 'node:fs'
+import { resolve, sep } from 'node:path'
 
+
+/** Private reconstruction derivatives are served only by the local dev server. */
+function irisLabAssets(): Plugin {
+  return {
+    name: 'iris-lab-assets',
+    apply: 'serve',
+    configureServer(server) {
+      const directory = resolve(server.config.root, 'dev-assets/iris/vasilisa')
+      server.middlewares.use('/__iris-assets/vasilisa/', (request, response, next) => {
+        const name = (request.url ?? '').split('?')[0] ?? ''
+        if (!/^\/[A-Za-z0-9_-]+\.(?:json|png|bin)$/.test(name)) { response.statusCode = 404; response.end(); return }
+        try {
+          const root = realpathSync(directory)
+          const file = realpathSync(resolve(directory, name.slice(1)))
+          if (!file.startsWith(root + sep) || !statSync(file).isFile()) { response.statusCode = 404; response.end(); return }
+          response.setHeader('Content-Type', name.endsWith('.json') ? 'application/json' : name.endsWith('.png') ? 'image/png' : 'application/octet-stream')
+          response.setHeader('Cache-Control', 'no-store')
+          createReadStream(file).on('error', next).pipe(response)
+        } catch { response.statusCode = 404; response.end('Iris asset not found') }
+      })
+    },
+  }
+}
 /** Every emitted runtime file belongs to one immutable, versioned offline snapshot. */
 function offlineBuild(): Plugin {
   let base = '/'
@@ -92,8 +118,10 @@ self.addEventListener('fetch', event => {
 }
 
 export default defineConfig({
-  plugins: [react(), offlineBuild()],
+  plugins: [react(), reviewNotesPlugin(), irisLabAssets(), offlineBuild()],
   server: { port: 5173, strictPort: true },
   preview: { port: 4173, strictPort: true },
   test: { environment: 'node', include: ['src/**/*.test.ts'] },
 })
+
+

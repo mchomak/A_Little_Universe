@@ -1,0 +1,71 @@
+.scene-timeline {
+  position: fixed;
+  z-index: 120;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  color: #efe7e3;
+  background: rgba(21, 21, 30, .96);
+  border-top: 1px solid rgba(229, 204, 195, .3);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, .26);
+  font: 12px/1.2 system-ui, sans-serif;
+}
+.timeline-summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.timeline-summary-title { margin-right: auto; font-weight: 700; }
+.timeline-progress { position: absolute; bottom: 0; left: 0; height: 2px; background: #e9b8ad; pointer-events: none; }
+.timeline-expanded { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .2s ease; }
+.scene-timeline.is-open .timeline-expanded { grid-template-rows: 1fr; }
+.timeline-expanded-inner { min-height: 0; overflow: hidden; }
+.timeline-unavailable { height: 58px; padding: 10px 12px; color: #cbbeb9; }
+.timeline-toolbar { display: flex; align-items: center; gap: 4px; height: 46px; padding: 1px 12px; }
+.timeline-toolbar button, .timeline-segments button {
+  min-height: 44px;
+  border: 1px solid rgba(238, 217, 208, .18);
+  border-radius: 4px;
+  color: inherit;
+  background: #30303b;
+  cursor: pointer;
+}
+.timeline-toolbar button { padding: 0 11px; }
+.timeline-toolbar button[aria-pressed="true"], .timeline-segments button.is-active { border-color: #e9b8ad; background: #59454b; }
+.timeline-toolbar button:disabled, .timeline-segments button:disabled { cursor: default; opacity: .45; }
+.timeline-toolbar button:focus-visible, .timeline-segments button:focus-visible, .timeline-summary:focus-visible, .timeline-frame-track input:focus-visible { outline: 2px solid #f3c4b9; outline-offset: -2px; }
+.timeline-divider { width: 1px; height: 25px; margin: 0 4px; background: #6b5a60; }
+.timeline-hint { margin-left: auto; color: #cbbeb9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.timeline-segments { display: flex; gap: 2px; height: 50px; padding: 0 12px; overflow-x: auto; scrollbar-width: thin; }
+.timeline-segments button { flex: 1 0 auto; padding: 0 10px; white-space: nowrap; text-align: left; }
+.timeline-segments button span { color: #f0bbaf; }
+.timeline-frame-track { display: flex; align-items: center; min-width: 0; }
+.timeline-frame-track .timeline-segments { flex: 1 1 auto; min-width: 0; }
+.timeline-frame-track input { display: block; flex: 0 0 28%; width: 28%; min-width: 120px; height: 44px; margin: 0 12px 0 0; accent-color: #e9b8ad; cursor: pointer; touch-action: none; }
+.timeline-gate { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media (max-width: 650px) {
+  .timeline-summary { gap: 8px; padding: 0 10px; }
+  .timeline-summary span:nth-child(2) { display: none; }
+  .timeline-hint { display: none; }
+  .timeline-toolbar button { min-width: 44px; min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { .timeline-expanded { transition: none; } }
+.timeline-toolbar { overflow-x: auto; }
+.timeline-toolbar .timeline-tools { flex: 0 0 auto; }
+.timeline-tools summary { display: flex; align-items: center; min-height: 44px; padding: 0 10px; border: 1px solid #816b70; border-radius: 4px; background: #30303b; cursor: pointer; white-space: nowrap; }
+.timeline-tools-menu { position: fixed; z-index: 130; bottom: 140px; right: 12px; width: min(440px, calc(100vw - 24px)); max-height: min(65vh, 450px); overflow: auto; padding: 12px; border: 1px solid #816b70; border-radius: 7px; background: #25242e; box-shadow: 0 4px 24px #0008; }
+.timeline-tools-menu p { margin: 6px 0; }
+.timeline-tool-row { display: flex; align-items: end; gap: 5px; margin: 6px 0; flex-wrap: wrap; }
+.timeline-tool-row label { display: grid; gap: 2px; }
+.timeline-tool-row input { width: 75px; min-height: 44px; padding: 6px; border: 1px solid #816b70; border-radius: 4px; background: #161620; color: inherit; }
+.timeline-preview { position: fixed; z-index: 130; left: 12px; bottom: 140px; display: grid; gap: 4px; width: 220px; padding: 9px; border: 1px solid #816b70; border-radius: 6px; background: #25242e; box-shadow: 0 4px 24px #0008; pointer-events: none; }
+.timeline-preview img { width: 100%; max-height: 115px; object-fit: contain; background: #000; }

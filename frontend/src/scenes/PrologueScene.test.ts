@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { sampleGlyphParticlePixels } from './PrologueScene'
 
 describe('prologue glyph particles', () => {
+  it('allocates light matter by stroke coverage rather than treating antialiased edges as solid ink', () => {
+    const samples = sampleGlyphParticlePixels(new Uint8Array([255, 16]), 2, 1, 1000, 91)
+    let solid = 0
+    for (let i = 0; i < samples.length; i += 2) if (samples[i] === 0.5) solid++
+    expect(solid).toBeGreaterThan(900)
+    expect(solid).toBeLessThan(990)
+  })
   it('samples only glyph pixels and reproduces the same seeded positions', () => {
     const mask = new Uint8Array([
       0, 255, 255, 0,

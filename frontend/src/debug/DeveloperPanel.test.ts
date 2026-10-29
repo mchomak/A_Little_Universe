@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+﻿import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import { initialFilmState } from '../engine/film'
@@ -19,11 +19,11 @@ it('shows bounded ash-motion controls and does not expose the removed return set
   expect(markup).toMatch(/id="composer-scenes-prologue-turbulence"[^>]*min="0" max="1" step="0.05" value="0.3"/)
   expect(markup).toContain('Ширина фронта · 8 %')
   expect(markup).toMatch(/id="composer-scenes-prologue-fractureWidth"[^>]*min="0" max="18" step="1" value="8"/)
-  expect(markup).toContain('Длительность фронта · 2,6 с')
-  expect(markup).toContain('Длительность движения частиц · 4 с')
-  expect(markup).toMatch(/id="composer-scenes-prologue-particleDuration"[^>]*min="0.1" max="20" step="0.1" value="4"/)
-  expect(markup).toContain('Длительность затухания пепла · 2,4 с')
-  expect(markup).toMatch(/id="composer-scenes-prologue-particleFadeDuration"[^>]*min="0.5" max="4" step="0.1" value="2.4"/)
+  expect(markup).toContain('Длительность фронта · 1,5 с')
+  expect(markup).toContain('Длительность движения частиц · 2,2 с')
+  expect(markup).toMatch(/id="composer-scenes-prologue-particleDuration"[^>]*min="0.1" max="20" step="0.1" value="2.2"/)
+  expect(markup).toContain('Длительность затухания пыли · 1,2 с')
+  expect(markup).toMatch(/id="composer-scenes-prologue-particleFadeDuration"[^>]*min="0.5" max="4" step="0.1" value="1.2"/)
   expect(markup).toContain('Рукописное появление подсказки · 0,65 с')
   expect(markup).not.toContain('particleReturnFraction')
 })
@@ -35,6 +35,7 @@ it('renders bounded typography and surface controls for preparation', () => {
     reducedMotion: false,
     onPreload: () => undefined,
     onPermissions: () => undefined,
+    route: 'settings',
   }))
 
   expect(markup).toContain('Масштаб заголовка · 100 %')
@@ -44,3 +45,20 @@ it('renders bounded typography and surface controls for preparation', () => {
   expect(markup).toContain('Непрозрачность поверхности · 100 %')
   expect(markup).toMatch(/id="composer-scenes-preparation-cardOpacity"[^>]*min="85" max="100" step="1" value="100"/)
 })
+
+it('shows only the active scene controls and keeps playback in the timeline', () => {
+  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'growth' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    onPermissions: () => undefined,
+    route: 'film',
+  }))
+  expect(markup).toContain('Для этой сцены пока нет связанных параметров')
+  expect(markup).not.toContain('composer-scenes-prologue-windStrength')
+  expect(markup).not.toContain('composer-scenes-preparation-typeScale')
+  expect(markup).not.toContain('dev-seek')
+  expect(markup).toContain('Auto')
+})
+

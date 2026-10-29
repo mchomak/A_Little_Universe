@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iris-reconstruction-kit"
+version = "1.3.0"
+description = "Offline artistic iris/eye asset baking for Three.js / WebGL2"
+readme = "README_RU.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.26,<3",
+  "Pillow>=10,<14",
+  "pillow-heif>=0.18,<2",
+  "opencv-python>=4.8,<5"
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10"]
+
+[project.scripts]
+iris-bake = "iris_baker.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["iris_baker*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

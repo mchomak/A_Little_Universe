@@ -4,46 +4,65 @@ import type { FilmRuntime } from '../../engine/runtime'
 import { useSceneAnimation } from './animation'
 import { TIMING } from '../../engine/filmConfig'
 import { identityVortexGLSL } from './identityVortex'
+import { nameFocus } from './identityName'
+import { portraitPresence } from './identityPortrait'
+import { restorationFrame } from './identityRestoration'
 
 const dustVertex = `
+uniform float uPhotoQuiet;
 attribute float aSeed;
 attribute vec3 aSpace;
 uniform float uTime;
+uniform float uNameFocus;
 uniform float uMotion;
 varying float vSeed;
 varying float vShot;
+varying float vPortraitClear;
 ${identityVortexGLSL}
 void main() {
   vec3 p = position;
-  float angle = (uTime - 4.0) * .045 * uMotion;
+  float quietTime = mix(uTime, 8.0 + (uTime - 8.0) * .12, uNameFocus);
+  quietTime = mix(quietTime, 23.0 + (uTime - 23.0) * .12, uPhotoQuiet);
+  float angle = (quietTime - 4.0) * .045 * uMotion;
   p.xy = mat2(cos(angle), -sin(angle), sin(angle), cos(angle)) * p.xy;
-  p.z += sin(uTime * .35 + aSeed * 31.0) * .06 * uMotion;
+  p.z += sin(quietTime * .35 + aSeed * 31.0) * .06 * uMotion;
   float shot = identityVortexEnvelope(uTime);
   vec3 space = aSpace + vec3(sin(aSeed * 31.0), cos(aSeed * 17.0), 0.0) * (uTime - 4.0) * .018 * uMotion;
   p = mix(p, space, shot);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  vec2 portraitPlane = mv.xy * (5.6 / -mv.z);
+  vPortraitClear = smoothstep(.3, .75, length((portraitPlane - vec2(.46, .35)) / vec2(.8, 1.1)));
   gl_Position = projectionMatrix * mv;
   gl_PointSize = mix(mix(1.8, 8.5, pow(aSeed, 6.0)), mix(1.3, 11.0, pow(aSeed, 18.0)), shot) * (5.6 / -mv.z);
   vSeed = aSeed;
   vShot = shot;
 }`
 const dustFragment = `
+uniform float uPhotoQuiet;
 uniform float uTime;
+uniform float uPortraitPresence;
+uniform float uNameFocus;
 uniform float uMotion;
 varying float vSeed;
 varying float vShot;
+varying float vPortraitClear;
 void main() {
   float r = length(gl_PointCoord - .5);
   float halo = exp(-r * 8.0) * .75 + (1.0 - smoothstep(.0, .15, r)) * .75;
   float visible = smoothstep(.2, 3.0, uTime) * (1.0 - .72 * smoothstep(13.0, 20.0, uTime) - .28 * smoothstep(28.0, 34.0, uTime));
-  float twinkle = .7 + .3 * sin(uTime * uMotion * (1.0 + vSeed) + vSeed * 40.0);
+  float quietTime = mix(uTime, 8.0 + (uTime - 8.0) * .12, uNameFocus);
+  quietTime = mix(quietTime, 23.0 + (uTime - 23.0) * .12, uPhotoQuiet);
+  float twinkle = .7 + .3 * sin(quietTime * uMotion * (1.0 + vSeed) + vSeed * 40.0);
   vec3 color = mix(vec3(1.0, .42, .58), vec3(1.0, .88, .75), vSeed);
   color = mix(color, mix(vec3(.53, .58, .85), vec3(1.0, .85, .77), vSeed), vShot);
-  gl_FragColor = vec4(color, halo * visible * twinkle * mix(.9, .58, vShot));
+  float sparse = mix(1.0, step(.92, vSeed) * .45, uPhotoQuiet);
+  gl_FragColor = vec4(color, halo * visible * twinkle * mix(.9, .58, vShot) * (1.0 - .78 * uNameFocus) * mix(1.0, vPortraitClear, uPortraitPresence) * sparse);
 }`
 const hazeVertex = `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`
 const hazeFragment = `
+uniform float uPhotoQuiet;
 uniform float uTime;
+uniform float uNameFocus;
 uniform float uMotion;
 varying vec2 vUv;
 ${identityVortexGLSL}
@@ -53,10 +72,11 @@ void main() {
   float nucleus = exp(-dot(p * vec2(4.0, 5.0), p * vec2(4.0, 5.0)) * 12.0) * (1.0 - smoothstep(7.0, 10.0, uTime));
   float waves = .65 + .35 * sin(p.x * 13.0 + sin(p.y * 15.0) + uTime * .08 * uMotion);
   float visible = smoothstep(.0, 3.0, uTime) * (1.0 - .72 * smoothstep(13.0, 20.0, uTime) - .28 * smoothstep(28.0, 34.0, uTime));
-  gl_FragColor = vec4(mix(vec3(.45, .12, .25), vec3(1.0, .68, .52), nucleus), (core * waves * .22 + nucleus * .9) * visible * (1.0 - identityVortexEnvelope(uTime)));
+  gl_FragColor = vec4(mix(vec3(.45, .12, .25), vec3(1.0, .68, .52), nucleus), (core * waves * .22 + nucleus * .9) * visible * (1.0 - identityVortexEnvelope(uTime)) * (1.0 - .7 * uNameFocus) * (1.0 - uPhotoQuiet));
 }`
 const nebulaFragment = `
 uniform float uTime;
+uniform float uNameFocus;
 uniform float uMotion;
 uniform float uLayer;
 uniform sampler2D uCloudNoise;
@@ -79,11 +99,12 @@ void main() {
   float opacity = filaments * veil * lane * .21;
   color = mix(color, vec3(1.0, .76, .62), nucleus);
   opacity += nucleus * .56 * smoothstep(4.6, 6.7, uTime);
-  gl_FragColor = vec4(color, opacity * identityVortexEnvelope(uTime));
+  gl_FragColor = vec4(color, opacity * identityVortexEnvelope(uTime) * (1.0 - .7 * uNameFocus));
 }`
 const petalVertex = `
 attribute float aSeed;
 uniform float uTime;
+uniform float uNameFocus;
 uniform float uMotion;
 varying float vSeed;
 ${identityVortexGLSL}
@@ -104,6 +125,7 @@ void main() {
 }`
 const petalFragment = `
 uniform float uTime;
+uniform float uNameFocus;
 varying float vSeed;
 void main() {
   vec2 p = gl_PointCoord - .5;
@@ -113,7 +135,7 @@ void main() {
   float shape = (1.0 - smoothstep(.26, .48, d));
   float halo = exp(-d * 7.0) * .5;
   float visible = smoothstep(2.0, 4.0, uTime) * (1.0 - smoothstep(8.0, 12.0, uTime));
-  gl_FragColor = vec4(1.0, .66 + .18 * vSeed, .78, (shape * .55 + halo) * visible);
+  gl_FragColor = vec4(1.0, .66 + .18 * vSeed, .78, (shape * .55 + halo) * visible * (1.0 - .8 * uNameFocus));
 }`
 function random(index: number) { const x = Math.sin(index * 127.1 + 91.7) * 43758.5453; return x - Math.floor(x) }
 
@@ -175,13 +197,13 @@ export function IdentityAtmosphere({ runtime, low, reducedMotion }: { runtime: F
   const group = useRef<Group>(null)
   const geometry = useMemo(() => dustGeometry(low ? 2400 : 4800), [low])
   const petals = useMemo(() => petalGeometry(low ? 24 : 40), [low])
-  const dust = useMemo(() => new ShaderMaterial({ vertexShader: dustVertex, fragmentShader: dustFragment, transparent: true, depthWrite: false, blending: AdditiveBlending, uniforms: { uTime: { value: 0 }, uMotion: { value: reducedMotion ? 0 : 1 } } }), [reducedMotion])
-  const haze = useMemo(() => new ShaderMaterial({ vertexShader: hazeVertex, fragmentShader: hazeFragment, transparent: true, depthWrite: false, blending: AdditiveBlending, uniforms: { uTime: { value: 0 }, uMotion: { value: reducedMotion ? 0 : 1 } } }), [reducedMotion])
-  const petalMaterial = useMemo(() => new ShaderMaterial({ vertexShader: petalVertex, fragmentShader: petalFragment, transparent: true, depthWrite: false, blending: AdditiveBlending, uniforms: { uTime: { value: 0 }, uMotion: { value: reducedMotion ? 0 : 1 } } }), [reducedMotion])
+  const dust = useMemo(() => new ShaderMaterial({ vertexShader: dustVertex, fragmentShader: dustFragment, transparent: true, depthWrite: false, blending: AdditiveBlending, uniforms: { uTime: { value: 0 }, uPhotoQuiet: { value: 0 }, uPortraitPresence: { value: 0 }, uNameFocus: { value: 0 }, uMotion: { value: reducedMotion ? 0 : 1 } } }), [reducedMotion])
+  const haze = useMemo(() => new ShaderMaterial({ vertexShader: hazeVertex, fragmentShader: hazeFragment, transparent: true, depthWrite: false, blending: AdditiveBlending, uniforms: { uTime: { value: 0 }, uPhotoQuiet: { value: 0 }, uNameFocus: { value: 0 }, uMotion: { value: reducedMotion ? 0 : 1 } } }), [reducedMotion])
+  const petalMaterial = useMemo(() => new ShaderMaterial({ vertexShader: petalVertex, fragmentShader: petalFragment, transparent: true, depthWrite: false, blending: AdditiveBlending, uniforms: { uTime: { value: 0 }, uNameFocus: { value: 0 }, uMotion: { value: reducedMotion ? 0 : 1 } } }), [reducedMotion])
   const cloudNoise = useMemo(() => cloudNoiseTexture(), [])
   const nebulae = useMemo(() => [0, 1].map((layer) => new ShaderMaterial({ vertexShader: hazeVertex, fragmentShader: nebulaFragment,
     transparent: true, depthWrite: false, blending: AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uMotion: { value: reducedMotion ? 0 : 1 }, uLayer: { value: layer }, uCloudNoise: { value: cloudNoise } } })), [reducedMotion, cloudNoise])
+    uniforms: { uTime: { value: 0 }, uNameFocus: { value: 0 }, uMotion: { value: reducedMotion ? 0 : 1 }, uLayer: { value: layer }, uCloudNoise: { value: cloudNoise } } })), [reducedMotion, cloudNoise])
   const clouds = useRef<Group>(null)
   const nearCloud = useRef<ShaderMaterial>(null)
   const farCloud = useRef<ShaderMaterial>(null)
@@ -196,14 +218,32 @@ export function IdentityAtmosphere({ runtime, low, reducedMotion }: { runtime: F
   useEffect(() => () => nebulae.forEach((material) => material.dispose()), [nebulae])
   useEffect(() => () => cloudNoise.dispose(), [cloudNoise])
   const draw = useCallback((time: number) => {
+    const focus = nameFocus(time)
+    const quiet = restorationFrame(time).quiet
     if (dustRef.current) {
       dustRef.current.uniforms.uTime!.value = time
+      dustRef.current.uniforms.uPortraitPresence!.value = Math.max(portraitPresence(time), quiet)
+      dustRef.current.uniforms.uPhotoQuiet!.value = quiet
+      dustRef.current.uniforms.uNameFocus!.value = focus
       dustRef.current.uniforms.uMotion!.value = reducedMotion ? 0 : 1
     }
-    if (hazeRef.current) hazeRef.current.uniforms.uTime!.value = time
-    if (petalRef.current) petalRef.current.uniforms.uTime!.value = time
-    if (nearCloud.current) nearCloud.current.uniforms.uTime!.value = time
-    if (farCloud.current && !low) farCloud.current.uniforms.uTime!.value = time
+    if (hazeRef.current) {
+      hazeRef.current.uniforms.uTime!.value = time
+      hazeRef.current.uniforms.uNameFocus!.value = focus
+      hazeRef.current.uniforms.uPhotoQuiet!.value = quiet
+    }
+    if (petalRef.current) {
+      petalRef.current.uniforms.uTime!.value = time
+      petalRef.current.uniforms.uNameFocus!.value = focus
+    }
+    if (nearCloud.current) {
+      nearCloud.current.uniforms.uTime!.value = time
+      nearCloud.current.uniforms.uNameFocus!.value = focus
+    }
+    if (farCloud.current && !low) {
+      farCloud.current.uniforms.uTime!.value = time
+      farCloud.current.uniforms.uNameFocus!.value = focus
+    }
     if (clouds.current) clouds.current.visible = time > 4 && time < 10.3
     if (group.current) group.current.visible = time > 0 && time < 34
   }, [low, reducedMotion])

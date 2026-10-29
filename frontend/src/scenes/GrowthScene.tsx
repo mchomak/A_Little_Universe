@@ -1,4 +1,4 @@
-import { poseGrowingLily } from './shared/lilyPose'
+﻿import { poseGrowingLily } from './shared/lilyPose'
 import { useCallback, useRef } from 'react'
 import { MeshBasicMaterial, type Group, type Mesh } from 'three'
 import { useThree } from '@react-three/fiber'
@@ -6,7 +6,8 @@ import type { SceneProps } from '../engine/sceneTypes'
 import { TIMING } from '../engine/filmConfig'
 import { fade, ramp, smooth, useSceneAnimation } from './shared/animation'
 import { Lily, ParticleCloud, Spark } from './shared/Primitives'
-import { SeedLight } from './shared/SeedLight'
+import { getPrologueLightPose } from './prologue/lightPose'
+import { getConfig } from '../systems/scene-config/config'
 
 export function GrowthScene({ state, runtime, reducedMotion }: SceneProps) {
   const pixel = useThree((state) => state.viewport.height / Math.max(1, state.size.height))
@@ -17,8 +18,8 @@ export function GrowthScene({ state, runtime, reducedMotion }: SceneProps) {
     const falling = reducedMotion ? Number(time >= TIMING.growth.fall[1]) : smooth(ramp(time, TIMING.growth.fall))
     if (seed.current) {
       seed.current.position.y = -1.45 * falling
-      const birth = smooth(ramp(time, [0, 1]))
-      const initial = pixel * 2.5
+      const birth = getPrologueLightPose(time, time, state.mode, getConfig().scenes.prologue, reducedMotion, true).transfer
+      const initial = pixel * 2.1
       const radius = initial + (0.055 - initial) * birth
       seed.current.scale.set(radius + ramp(time, TIMING.growth.seed) * 0.04, radius + ramp(time, TIMING.growth.seed) * 0.09, radius)
       if (seed.current.material instanceof MeshBasicMaterial) seed.current.material.opacity = birth
@@ -30,14 +31,13 @@ export function GrowthScene({ state, runtime, reducedMotion }: SceneProps) {
       particles.current.position.y = -1.45 * falling
       fade(particles.current, smooth(ramp(time, [0, 0.8])) * (1 - ramp(time, TIMING.growth.awakening)))
     }
-  }, [pixel, reducedMotion])
-  const entryLight = useCallback((time: number) => ({ opacity: 1 - smooth(ramp(time, [0.3, 1])), gain: 1.22, halo: 1, wave: 0 }), [])
+  }, [pixel, reducedMotion, state.mode])
   useSceneAnimation(runtime, TIMING.growth.duration, draw)
   return <>
-    <SeedLight runtime={runtime} duration={TIMING.growth.duration} pose={entryLight} />
     <mesh ref={seed}><sphereGeometry args={[1, 16, 12]} /><meshBasicMaterial color="#FFF0E8" transparent toneMapped={false} /></mesh>
     <group ref={particles}><ParticleCloud low={state.quality === 'low'} /></group>
     <Lily groupRef={lily} />
     <Spark position={[0.22, -1.45, 0.1]} />
   </>
 }
+

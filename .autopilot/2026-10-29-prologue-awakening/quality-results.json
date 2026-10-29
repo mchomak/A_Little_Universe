@@ -1,0 +1,29 @@
+{
+  "errors": [],
+  "dpr": {
+    "one": {
+      "width": 1180,
+      "height": 820
+    },
+    "onePointFive": {
+      "width": 1770,
+      "height": 1230
+    }
+  },
+  "quality": {
+    "low": {
+      "width": 1180,
+      "height": 820
+    },
+    "devPauseAccessible": true
+  },
+  "reduced": {
+    "firstReadable": "false"
+  },
+  "production": {
+    "debugElements": 0,
+    "webglCanvases": 1,
+    "paused": "true",
+    "pauseStable": true
+  }
+}
