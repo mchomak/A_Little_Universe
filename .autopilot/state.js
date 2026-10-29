@@ -11,7 +11,7 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-10-29T20:19:14+03:00",
-  "updatedAt": "2026-10-29T20:34:55+03:00",
+  "updatedAt": "2026-10-29T22:05:22+03:00",
   "finishedAt": null,
   "stages": [
     {
@@ -49,8 +49,9 @@ window.STATE =
       "startedAt": "2026-10-29T20:34:55+03:00"
     },
     {
-      "status": "pending",
-      "id": "review"
+      "status": "active",
+      "id": "review",
+      "startedAt": "2026-10-29T21:22:57+03:00"
     },
     {
       "status": "pending",
@@ -59,10 +60,10 @@ window.STATE =
   ],
   "requirements": {
     "total": 61,
-    "done": 0,
+    "done": 11,
     "inSpec": 0,
     "deferred": 0,
-    "inTicket": 61,
+    "inTicket": 50,
     "dropped": 0,
     "placeholder": 0
   },
@@ -100,20 +101,26 @@ window.STATE =
         "R47",
         "R48"
       ],
-      "retries": 0,
+      "retries": 1,
       "id": "01",
       "blockedBy": [],
       "title": "Геометрия и живое движение",
       "zone": [
         "geometry"
       ],
-      "handoffs": 0,
+      "handoffs": 1,
       "status": "in-progress",
-      "startedAt": "2026-10-29T20:34:55+03:00"
+      "startedAt": "2026-10-29T20:34:55+03:00",
+      "tests": {
+        "note": "Profile-only pass; dense red: endpoint assertion and tiny-triangle diagnosis; fresh continuation",
+        "failed": 2,
+        "passed": 1
+      },
+      "agent": "/root/lily_geometry_finish"
     },
     {
       "wave": 1,
-      "repairs": 0,
+      "repairs": 1,
       "requirements": [
         "R19",
         "R20",
@@ -141,9 +148,16 @@ window.STATE =
       "zone": [
         "materials"
       ],
-      "handoffs": 0,
-      "status": "in-progress",
-      "startedAt": "2026-10-29T20:34:55+03:00"
+      "handoffs": 1,
+      "status": "done",
+      "startedAt": "2026-10-29T20:34:55+03:00",
+      "tests": {
+        "passed": 22,
+        "failed": 0,
+        "note": "9 unit +13HTTP; contract2curves/7maps, Blender reimport6materials/7decodedimages; Craft clean"
+      },
+      "agent": "/root/lily_materials_finish",
+      "finishedAt": "2026-10-29T22:05:22+03:00"
     },
     {
       "wave": 2,
@@ -217,13 +231,37 @@ window.STATE =
     "missingAfterRecheck": 0,
     "reviewer": "/root/lily_spec_gate"
   },
-  "concerns": [],
+  "concerns": [
+    {
+      "ticket": "02",
+      "axis": "craft",
+      "decision": "fix-now",
+      "status": "resolved",
+      "finding": "Protect GLB inputs from overlapping report output; restore preview render settings; assert complete maturation metadata semantics; test real loopback startup binding.",
+      "reason": "Bounded regression repairs protect R08/R35/R43/R50 and cost less to close before export assembly."
+    },
+    {
+      "ticket": "01",
+      "axis": "geometry",
+      "decision": "fix-now",
+      "status": "in-progress",
+      "finding": "Stronger terminal sculpt produced 986 normal reversals outside attachment; reduce terminal offsets before acceptance.",
+      "reason": "User requires smooth fold-free intermediate motion; numeric profile improvements alone are insufficient."
+    }
+  ],
   "reviewers": {
-    "craft": null,
-    "manifestSpec": null
+    "craft": "/root/lily_craft_reviewer",
+    "manifestSpec": "/root/lily_spec_gate"
   },
   "blind": null,
   "worktree": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe",
   "branch": "codex/lily004-refinement",
-  "scope": "Existing Blender lily assets only; frontend untouched"
+  "scope": "Existing Blender lily assets only; frontend untouched",
+  "preview": {
+    "material": "http://127.0.0.1:5182/scripts/viewer.html?asset=final",
+    "rootIabPreview": 2,
+    "dashboard": "http://127.0.0.1:5181/.autopilot/dashboard.html",
+    "materialSession": 13442,
+    "rootIabOriginal": 1
+  }
 }

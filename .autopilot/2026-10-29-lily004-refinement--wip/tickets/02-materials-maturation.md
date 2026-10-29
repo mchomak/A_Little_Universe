@@ -21,3 +21,5 @@ S3,S4 color,S6. Study независим от01. Script принимает лю�
 - Без pointer-plugin стандартный GLB зрелый, runtime limitation честно; nonGrowth/crossfade reset определены.
 - Study GLB реимпортирован, изображения young/mature + материал report. Финальная9s длительность приходит от01; study может retime только material curve на canonical frame1..217.
 - Script safe paths/output flags, final assembly documented03.
+
+D01: завершить stock viewer adapter из interfaces; root проверяет материалы в обычном UI этого неизменённого viewer. Не запускать новые MCP browsers.
