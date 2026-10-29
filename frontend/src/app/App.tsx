@@ -16,6 +16,7 @@ import { AssetManager, type PreparationResult } from '../systems/assets/AssetMan
 import { Preloader } from '../bootstrap/Preloader'
 import { PreparationScreen, type PreparationStep } from './PreparationScreen'
 import { openGift } from './openGift'
+import { getImplementationStatus } from './filmStatus'
 
 // Application-lifetime ownership survives scene changes and StrictMode effect replay.
 const media = new MediaSession()
@@ -99,16 +100,17 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   const cinematic = state.scene === 'prologue'
   const lightPhase: PersistentLightPhase = route === 'ready' ? 'ready' : route === 'film' && cinematic ? 'prologue' : route === 'film' && state.scene === 'growth' ? 'growth' : 'hidden'
   const lightInteractive = lightPhase === 'prologue' && state.mode === 'waiting'
+  const implementationStatus = getImplementationStatus(state.scene)
 
   return <main className={`universe${cinematic ? ' cinematic' : ''}`} data-route={route} data-scene={state.scene} data-mode={state.mode} data-reading={state.reading} data-paused={state.paused} data-debug={import.meta.env.DEV && debug ? 'true' : undefined}>
     {mountedFilm && <div className="film-presentation" hidden={route !== 'film'}>
       <div className="film-surface">
         <div className="viewport" role="region" aria-label="Интерактивный фильм"><FilmCanvas state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} /></div>
-        {!cinematic && <header className="page-header"><span className="dedication">Для Василисы</span><span className="build-label">Сцены 02–03, 05–09 · placeholders</span></header>}
+        {!cinematic && <header className="page-header"><span className="dedication">Для Василисы</span><span className="build-label">{implementationStatus}</span></header>}
         <SceneOverlay key={`${state.scene}:${state.revision}`} state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} />
       </div>
       {cinematic ? <button className="cinematic-pause" type="button" data-testid="pause" aria-label={state.paused ? 'Продолжить фильм' : 'Пауза'} aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Ⅱ'}</button>
-        : <footer className="page-footer" aria-label="Управление фильмом"><span className="film-status">{state.paused ? 'На паузе' : reducedMotion ? 'Уменьшенное движение' : 'Сцены 02–03, 05–09 — placeholders'}</span><div className="playback-controls">{state.mode !== 'ended' && <button type="button" data-testid="pause" aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Пауза'}</button>}<label className="quality-control">Качество<select aria-label="Качество графики" value={state.quality} onChange={(event) => dispatch({ type: 'set-quality', quality: event.target.value === 'low' ? 'low' : 'standard' })}><option value="standard">Обычное</option><option value="low">Низкое</option></select></label></div></footer>}
+        : <footer className="page-footer" aria-label="Управление фильмом"><span className="film-status">{state.paused ? 'На паузе' : reducedMotion ? 'Уменьшенное движение' : implementationStatus}</span><div className="playback-controls">{state.mode !== 'ended' && <button type="button" data-testid="pause" aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Пауза'}</button>}<label className="quality-control">Качество<select aria-label="Качество графики" value={state.quality} onChange={(event) => dispatch({ type: 'set-quality', quality: event.target.value === 'low' ? 'low' : 'standard' })}><option value="standard">Обычное</option><option value="low">Низкое</option></select></label></div></footer>}
     </div>}
     {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} onOptions={changeOptions} onPrepare={() => { void prepare() }} onContinue={() => setRoute('ready')} onWithoutMedia={withoutMedia} onEdit={edit} onStart={start} />}
     <PersistentLight phase={lightPhase} interactive={lightInteractive} reducedMotion={reducedMotion} runtime={runtime} state={state} onActivate={() => dispatch({ type: 'interact' })} />

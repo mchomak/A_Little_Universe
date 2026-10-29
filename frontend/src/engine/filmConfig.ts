@@ -6,7 +6,7 @@ export const SCENE_ORDER = ['prologue', 'growth', 'bloom', 'identity', 'gallery'
 
 export const TIMING = {
   prologue: { duration: 18, seed: [0, 2], first: [2, 5.5], second: [7, 10.5], hold: [10.5, 12.5], dissolve: [12.5, 16], prompt: 18 },
-  growth: { duration: 23, seed: [0, 4], fall: [4, 7], awakening: [7, 11], stem: [11, 18], settle: [18, 23] },
+  growth: { duration: 23, formation: [0, 2.2], fall: [2.2, 3.45], landing: [3.45, 4.15], handoff: [3.65, 4.4], sprout: [3.65, 18], stem: [11, 18], settle: [18, 23] },
   bloom: { duration: 22, opening: [0, 16], contemplate: [16, 22] },
   identity: { duration: 34, flower: [0, 4], particles: [4, 8], name: [8, 13], morph: [13, 17], portrait: [17, 23], photo: [23, 34], caption: [28, 34] },
   gallery: { duration: 0, move: 1.2 },
