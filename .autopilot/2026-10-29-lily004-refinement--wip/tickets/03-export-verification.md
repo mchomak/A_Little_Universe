@@ -1,6 +1,6 @@
 # 03 — Финальный экспорт, сравнение и сдача
 Требования: R01,R02,R03,R04,R05,R06,R07,R08,R17,R35,R36,R40,R41,R42,R43,R44,R45,R49,R50,R51,R52,R53,R54,R55,R56,R57,R58,R59,R60,R61.
-Blocked by:01,02
+Blocked by:02; accepted immutable geometry-artifact milestone01 (satisfied)
 Зона: final blend/GLB, verification/render scripts, final reports/comparison screenshots, README,HANDOFF,license copies.
 Волна:2
 Status:ready
@@ -21,3 +21,6 @@ S1,S6,S7 plus all exported contracts. Use existing standalone viewer for GLTFLoa
 - BEFORE/AFTER comparison4 checkpoints same camera/light; young/mature material pair with metadata annotation. Front tepal/seams extra views.
 - Final JSON, changed files/commands/problems, README + HANDOFF exact path/SHA/bytes/axes/root/dims/clips/color/incompatibilities/rollback/attribution.
 - No merge/runtime edits. iPad/Safari not tested disclosed.
+
+## Execution seam update
+Root accepted/froze01geometry source/GLB; ownfullverifierPASS44clipobservations/5boundaries/410frames/0intersections withabsoluteGLBpath. SourceSHAref6ba2…2ecf,2,308,936B. Remaining01repaironlyauthor/verifieroutputpathguards/tests; noassetchanges.03mayassemble/readfrozengeometryinparallel, disjointoutput/sourcefiles.02pairedfacevalidatorpatchreviewedclean, materialCLIstable. Do notchange01/02code; rootwillreview/commit01repairseparately. This schedulingchange removesidlewait, noacceptancewaiver.

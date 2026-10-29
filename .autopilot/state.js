@@ -11,7 +11,7 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-10-29T20:19:14+03:00",
-  "updatedAt": "2026-10-29T22:05:22+03:00",
+  "updatedAt": "2026-10-29T23:31:57+03:00",
   "finishedAt": null,
   "stages": [
     {
@@ -60,17 +60,17 @@ window.STATE =
   ],
   "requirements": {
     "total": 61,
-    "done": 11,
+    "done": 31,
     "inSpec": 0,
     "deferred": 0,
-    "inTicket": 50,
+    "inTicket": 30,
     "dropped": 0,
     "placeholder": 0
   },
   "tickets": [
     {
       "wave": 1,
-      "repairs": 0,
+      "repairs": 1,
       "requirements": [
         "R09",
         "R10",
@@ -108,19 +108,20 @@ window.STATE =
       "zone": [
         "geometry"
       ],
-      "handoffs": 1,
-      "status": "in-progress",
+      "handoffs": 2,
+      "status": "done",
       "startedAt": "2026-10-29T20:34:55+03:00",
       "tests": {
-        "note": "Profile-only pass; dense red: endpoint assertion and tiny-triangle diagnosis; fresh continuation",
-        "failed": 2,
-        "passed": 1
+        "passed": 58,
+        "failed": 0,
+        "note": "RootfullverifierPASS44clip/5boundary/410frames/0intersections;8guards;UVboth2970unique1;M+Sclean,Craftre-reviewclean"
       },
-      "agent": "/root/lily_geometry_finish"
+      "agent": "/root/lily_geometry_final",
+      "finishedAt": "2026-10-29T23:31:57+03:00"
     },
     {
       "wave": 1,
-      "repairs": 1,
+      "repairs": 2,
       "requirements": [
         "R19",
         "R20",
@@ -157,7 +158,8 @@ window.STATE =
         "note": "9 unit +13HTTP; contract2curves/7maps, Blender reimport6materials/7decodedimages; Craft clean"
       },
       "agent": "/root/lily_materials_finish",
-      "finishedAt": "2026-10-29T22:05:22+03:00"
+      "finishedAt": "2026-10-29T23:31:57+03:00",
+      "commit": "3a96aa1"
     },
     {
       "wave": 2,
@@ -197,7 +199,6 @@ window.STATE =
       "retries": 0,
       "id": "03",
       "blockedBy": [
-        "01",
         "02"
       ],
       "title": "Экспорт, сравнение и HANDOFF",
@@ -205,7 +206,9 @@ window.STATE =
         "final-verification"
       ],
       "handoffs": 0,
-      "status": "pending"
+      "status": "in-progress",
+      "startedAt": "2026-10-29T23:17:52+03:00",
+      "agent": "/root/lily_export_verify"
     }
   ],
   "singlePass": null,
@@ -244,9 +247,49 @@ window.STATE =
       "ticket": "01",
       "axis": "geometry",
       "decision": "fix-now",
-      "status": "in-progress",
+      "status": "resolved",
       "finding": "Stronger terminal sculpt produced 986 normal reversals outside attachment; reduce terminal offsets before acceptance.",
       "reason": "User requires smooth fold-free intermediate motion; numeric profile improvements alone are insufficient."
+    },
+    {
+      "ticket": "01",
+      "axis": "planning",
+      "decision": "report",
+      "status": "open",
+      "finding": "Geometry/animation ticket exceeded two implementation contexts; third context is final and must finish or return a concrete blocker.",
+      "reason": "Original ticket combined geometry diagnostics, sculpt, motion, growth and export checks too broadly."
+    },
+    {
+      "ticket": "01",
+      "axis": "spec",
+      "decision": "drop",
+      "status": "resolved",
+      "finding": "Automated geometry report says visualpending; actualrootclayacceptance recorded separately inacceptance-01.md",
+      "reason": "Humanvisualapproval cannotbe assertedbyautomaticgeometrychecker"
+    },
+    {
+      "ticket": "03",
+      "axis": "spec",
+      "decision": "fix-now",
+      "status": "pending",
+      "finding": "Finalverification must include idleloops and crossfade0.25 fromarbitraryidlephases, notonlyendpointcomparisons",
+      "reason": "S5 proof delegatedtoT03, notmissinggeometryimplementation"
+    },
+    {
+      "ticket": "01",
+      "axis": "craft",
+      "decision": "fix-now",
+      "status": "resolved",
+      "finding": "Author/verifier outputroot/report flags could target primary/baseline/inputGLB; rejectprotectedwrites andprovebytepreservation",
+      "reason": "R08/R50 safety blocker"
+    },
+    {
+      "ticket": "03",
+      "axis": "craft",
+      "decision": "fix-now",
+      "status": "in-progress",
+      "finding": "FinalGLB needs actualendpoint/zerostart/connectivity, fullhierarchy/rootunits andGrowthBVH proof",
+      "reason": "Source-stage checks alone insufficient; assignedfinalverificationzone"
     }
   ],
   "reviewers": {

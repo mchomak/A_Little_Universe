@@ -50,3 +50,22 @@ Coordinator CUA IAB tab2 inspected mature open default and above-angle: right le
 ##02 — проверенные исправления
 CLI прежний; report не может перекрывать входнойGLB/readonlybaseline/primary; preview восстанавливает исходные Cycles device/samples/denoising до save. Полный color contract проверяет crossfade0.25/clamp/absolute/reverse. Root:9unit tests,contract2curves7PNG, Blender reimport6materials7decodedimages; Craft re-reviewclean. Readiness13checks restored on127.0.0.1:5182; root-ownedsession47870.
 
+
+## D02 — открытая форма
+Сравнение с одинаковой камерой показало регрессию04mopen pose относительноv13.01 может перенести совпадающую evaluatedv13openгеометрию на прежнюю tepal topology, сохраняя04mclosedseams. Final03документирует смешанную lineage и фактические размеры; author cup/front/edge heuristics только baseline comparison, не замена визуальной приёмке. Geometrystrictchecks остаются обязательны.
+
+
+## D03 — фиксированная связность tepals
+01face-only triangulates Petals/Petals_Outside по verifiedBasis/GLBFIXEDdiagonals:2688quads→5376tris,2970verts/keycoords/UV/NLA сохранены. ActualGLBtrianglebudget нерастёт.03учитываетtriangularsourcefaces и проверяетnative+fixedexport, безрасслабленияnormalthresholds.
+
+
+##01 — finalgeometrycontract
+Author+verifier/5boundary/410framesGREEN. GeometryGLB2,308,936B;6clips9/8/2/8/8/1,14nodes7meshes. --glb PATH позволяет проверитьexactfinalasset; reportglb_input_path/glb.path/sha256. Root clayR12/R18accepted inacceptance-01.md; machinependingvisualfieldнеявляетсяновымотказом. CombinedPBR, idle-loop и arbitraryphasecrossfade0.25 доказательства остаются03. Materialvalidator D03pairs faces byvertexsignature instead ofindex (patchT02); art/CLIunchanged.
+
+
+CLIgotcha: verify_geometry --glb relativepath is output-root-relative. Prefer absolute --glb and --output-root. Blender commands use --python-exit-code1 before --python; defaultBlenderexit0 doesnotguaranteescriptPASS, inspectJSONstatus.
+
+
+##01 — reviewclosure
+Blockingoutputpathguardrepaired: geometry_path_safety.py protectsresolvedpackage/baseline/inputs/outputs beforemkdir. Root8guardtestsPASS, realBlenderUVproofboth2970verticesoneUVeach; Craftclean/M+Sno blockers. Frozengeometryunchanged.03mayuseverify--glbABSOLUTE currentcode; source/dataSHAunchanged. ActualfinalGLBassembledc6fd5311e45f9586efc491ea6870cc6ae4123999fd954b1a9a607927841c0d24(2,560,052B), finalacceptancepending03.
+
