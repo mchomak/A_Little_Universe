@@ -1,51 +1,75 @@
-import { useSyncExternalStore } from 'react'
+﻿import { useLayoutEffect, useRef, useSyncExternalStore, type CSSProperties } from 'react'
+import type { FilmState } from '../engine/film'
+import type { FilmRuntime } from '../engine/runtime'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
+import { getPrologueLightPose } from '../scenes/prologue/lightPose'
 
-export type PersistentLightPhase = 'hidden' | 'ready' | 'prologue'
+export type PersistentLightPhase = 'hidden' | 'ready' | 'prologue' | 'growth'
 
 export interface PersistentLightProps {
   phase: PersistentLightPhase
   interactive?: boolean
   reducedMotion?: boolean
+  runtime?: FilmRuntime
+  state?: FilmState
   onActivate?(): void
 }
 
-/** A single viewport anchored point that can pass from preparation into the prologue. */
-export function PersistentLight({ phase, interactive = false, reducedMotion = false, onActivate }: PersistentLightProps) {
+/** One viewport anchored light: ready, cinematic awakening, then transfer into the seed. */
+export function PersistentLight({ phase, interactive = false, reducedMotion = false, runtime, state, onActivate }: PersistentLightProps) {
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
-  const { glow, pulseAmplitude, pulseFrequency } = config.scenes.prologue
+  const settings = config.scenes.prologue
+  const target = useRef<HTMLButtonElement>(null)
   const canActivate = phase === 'prologue' && interactive && Boolean(onActivate)
-  const blur = glow * 7
-  const amplitudeDown = formatNumber(Math.max(0.5, 1 - pulseAmplitude))
-  const amplitudeUp = formatNumber(1 + pulseAmplitude)
-  const pulseDuration = pulseFrequency > 0 ? `${formatNumber(1 / pulseFrequency)}s` : '0s'
-  const glowDown = 1 - pulseAmplitude * 0.2
-  const glowUp = 1 + pulseAmplitude * 0.2
-  const glowRule = `.persistent-light[data-phase="prologue"]::before { background: radial-gradient(circle, rgba(255, 240, 232, ${formatNumber(glow * 0.3)}) 0, rgba(255, 240, 232, ${formatNumber(glow * 0.13)}) 24%, transparent 72%); }
-    .persistent-light[data-phase="prologue"] .persistent-light-core { box-shadow: 0 0 ${formatNumber(blur)}px ${formatNumber(glow * 2)}px rgba(255, 240, 232, ${formatNumber(Math.min(1, glow * 0.55))}), 0 0 ${formatNumber(blur * 2.8)}px ${formatNumber(blur)}px rgba(255, 240, 232, ${formatNumber(glow * 0.2)}); }`
-  const pulseRule = reducedMotion || pulseFrequency === 0
-    ? '.persistent-light[data-phase="prologue"] .persistent-light-core { animation: none !important; }'
-    : `.persistent-light[data-phase="prologue"] .persistent-light-core { animation: prologue-light-pulse ${pulseDuration} ease-in-out infinite !important; }
-      @keyframes prologue-light-pulse {
-        0%, 100% { transform: scale(${amplitudeDown}); box-shadow: 0 0 ${formatNumber(blur * glowDown)}px ${formatNumber(glow * 2 * glowDown)}px rgba(255, 240, 232, ${formatNumber(Math.min(1, glow * 0.55 * glowDown))}), 0 0 ${formatNumber(blur * 2.8 * glowDown)}px ${formatNumber(blur * glowDown)}px rgba(255, 240, 232, ${formatNumber(glow * 0.2 * glowDown)}); }
-        50% { transform: scale(${amplitudeUp}); box-shadow: 0 0 ${formatNumber(blur * (1 + pulseAmplitude * 0.3) * glowUp)}px ${formatNumber(glow * 2 * (1 + pulseAmplitude * 0.25) * glowUp)}px rgba(255, 240, 232, ${formatNumber(Math.min(1, glow * 0.55 * (1 + pulseAmplitude * 0.2) * glowUp))}), 0 0 ${formatNumber(blur * 2.8 * (1 + pulseAmplitude * 0.3) * glowUp)}px ${formatNumber(blur * (1 + pulseAmplitude * 0.2) * glowUp)}px rgba(255, 240, 232, ${formatNumber(glow * 0.2 * (1 + pulseAmplitude * 0.4) * glowUp)}); }
-      }`
-  return <>
-    {phase === 'prologue' && <style>{`${glowRule}\n${pulseRule}`}</style>}
-    <button
-      className={`persistent-light${reducedMotion ? ' persistent-light-reduced' : ''}`}
-      type="button"
-      data-phase={phase}
-      data-interactive={canActivate}
-      aria-label={canActivate ? 'Прикоснуться к свету' : undefined}
-      aria-hidden={!canActivate}
-      tabIndex={canActivate ? 0 : -1}
-      disabled={!canActivate}
-      onClick={canActivate ? onActivate : undefined}
-    ><span className="persistent-light-core" aria-hidden="true" /></button>
-  </>
-}
-
-function formatNumber(value: number) {
-  return String(Number(value.toFixed(3)))
+  const mode = state?.mode
+  const touchDuration = state?.prologueTouchDuration
+  useLayoutEffect(() => {
+    const element = target.current
+    if (!element || !runtime || !mode || (phase !== 'prologue' && phase !== 'growth')) return
+    const draw = (presentation: number) => {
+      const pose = getPrologueLightPose(runtime.time, presentation, mode, settings, reducedMotion, phase === 'growth', touchDuration)
+      const style = element.style
+      style.setProperty('--light-opacity', String(pose.opacity))
+      style.setProperty('--light-gain', String(pose.gain))
+      style.setProperty('--light-radius', String(pose.radius))
+      style.setProperty('--light-pearl', String(pose.pearl))
+      style.setProperty('--wave-opacity', String(pose.wave))
+      style.setProperty('--wave-size', `${pose.waveRadius * 2}px`)
+      const dust = element.querySelectorAll<HTMLElement>('.light-arrival-dust')
+      dust.forEach((point, index) => {
+        const angle = index * 2.39996 + .37
+        const delay = index * .027
+        const progress = Math.min(1, Math.max(0, (pose.touch - delay) / (1 - delay)))
+        const radius = (20 + (index % 3) * 13) * Math.pow(1 - progress, 1.5)
+        point.style.transform = `translate(${Math.cos(angle) * radius}px, ${Math.sin(angle) * radius * .65}px)`
+        point.style.opacity = reducedMotion || phase === 'growth' ? '0' : String(Math.sin(progress * Math.PI) * .58)
+      })
+    }
+    draw(runtime.presentationTime)
+    return runtime.subscribePresentation(draw)
+  }, [phase, reducedMotion, runtime, settings, mode, touchDuration])
+  const style = {
+    '--inner-radius': `${settings.innerGlowRadius * 2}px`,
+    '--outer-radius': `${settings.outerGlowRadius * 2}px`,
+    '--halo-gain': Math.min(1.8, .65 + settings.glow * .65),
+  } as CSSProperties
+  return <button
+    ref={target}
+    className={`persistent-light${reducedMotion ? ' persistent-light-reduced' : ''}`}
+    style={style}
+    type="button"
+    data-phase={phase}
+    data-interactive={canActivate}
+    aria-label={canActivate ? 'Прикоснуться к свету' : undefined}
+    aria-hidden={!canActivate}
+    tabIndex={canActivate ? 0 : -1}
+    disabled={!canActivate}
+    onClick={canActivate ? onActivate : undefined}
+  >
+    <span className="persistent-light-aura" aria-hidden="true" />
+    <span className="persistent-light-inner" aria-hidden="true" />
+    <span className="persistent-light-core" aria-hidden="true" />
+    <span className="persistent-light-wave" aria-hidden="true" />
+    {(phase === 'prologue' || phase === 'growth') && Array.from({ length: 9 }, (_, index) => <span key={index} className="light-arrival-dust" aria-hidden="true" />)}
+  </button>
 }

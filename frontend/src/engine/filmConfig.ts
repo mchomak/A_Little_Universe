@@ -1,11 +1,11 @@
 import type { FilmState, SceneId } from './film'
-import { DEFAULT_SCENE_COMPOSER_CONFIG, type SceneComposerConfig } from '../systems/scene-config/config'
+import { getConfig, type SceneComposerConfig } from '../systems/scene-config/config'
 export type { SceneId } from './film'
 
 export const SCENE_ORDER = ['prologue', 'growth', 'bloom', 'identity', 'gallery', 'eye', 'cosmos', 'greeting', 'ending'] as const satisfies readonly SceneId[]
 
 export const TIMING = {
-  prologue: { duration: 21, seed: [0, 3], first: [3, 7], second: [10, 15], hold: [15, 16], dissolve: [16, 21], prompt: 21 },
+  prologue: { duration: 18, seed: [0, 2], first: [2, 5.5], second: [7, 10.5], hold: [10.5, 12.5], dissolve: [12.5, 16], prompt: 18 },
   growth: { duration: 23, seed: [0, 4], fall: [4, 7], awakening: [7, 11], stem: [11, 18], settle: [18, 23] },
   bloom: { duration: 22, opening: [0, 16], contemplate: [16, 22] },
   identity: { duration: 34, flower: [0, 4], particles: [4, 8], name: [8, 13], morph: [13, 17], portrait: [17, 23], photo: [23, 34], caption: [28, 34] },
@@ -65,24 +65,14 @@ export function createHandwritingSchedule(text: string, duration: number, rhythm
 export function getPrologueFrames(settings: PrologueFrameSettings): PrologueFrames {
   const duration = TIMING.prologue.duration
   const firstStart = TIMING.prologue.first[0]
-  const firstWrite = Math.min(settings.handwritingDuration, TIMING.prologue.first[1] - firstStart)
+  const firstWrite = bounded(settings.handwritingDuration, 0.5, 3.5, 3.5)
   const firstEnd = firstStart + firstWrite
-  const defaultInterval = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.interphraseInterval
-  const storyboardGap = TIMING.prologue.second[0] - TIMING.prologue.first[1]
-  const desiredSecondStart = firstEnd + storyboardGap + settings.interphraseInterval - defaultInterval
-  const secondStart = Math.min(
-    Math.max(firstEnd + settings.interphraseInterval, desiredSecondStart),
-    TIMING.prologue.second[1] - 0.5,
-  )
-  const secondWrite = Math.min(settings.handwritingDuration,
-    TIMING.prologue.second[1] - TIMING.prologue.second[0], TIMING.prologue.second[1] - secondStart)
+  const secondStart = Math.min(firstEnd + bounded(settings.interphraseInterval, 0, 8, 1.5), 10.5)
+  const secondWrite = Math.min(firstWrite, 11.5 - secondStart)
   const secondEnd = secondStart + secondWrite
-  const particleTravelDuration = Math.min(settings.particleDuration, TIMING.prologue.dissolve[1] - TIMING.prologue.dissolve[0])
-  const latestDissolveStart = duration - particleTravelDuration
-  const storyboardHold = TIMING.prologue.hold[1] - TIMING.prologue.hold[0]
-  const configBaselineOffset = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.readableHold - storyboardHold
-  const desiredDissolveStart = TIMING.prologue.hold[0] + Math.max(0, settings.readableHold - configBaselineOffset)
-  const dissolveStart = Math.max(secondEnd, Math.min(desiredDissolveStart, latestDissolveStart))
+  const dissolveEnd = TIMING.prologue.dissolve[1]
+  const dissolveStart = Math.min(14, secondEnd + bounded(settings.readableHold, 0, 30, 2))
+  const particleTravelDuration = Math.min(bounded(settings.particleDuration, 0.1, 20, 2.2), dissolveEnd - dissolveStart)
 
   return {
     duration,
@@ -90,15 +80,24 @@ export function getPrologueFrames(settings: PrologueFrameSettings): PrologueFram
     first: [firstStart, firstEnd],
     second: [secondStart, secondEnd],
     hold: [secondEnd, dissolveStart],
-    dissolve: [dissolveStart, duration],
+    dissolve: [dissolveStart, dissolveEnd],
     prompt: TIMING.prologue.prompt,
     particleTravelDuration,
   }
 }
 
+function bounded(value: number, min: number, max: number, fallback: number): number {
+  return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback
+}
+
+/** Captured on deliberate touch so a live composer edit cannot shorten an active reaction. */
+export function getPrologueTouchDuration(settings = getConfig().scenes.prologue): number {
+  return bounded(settings.touchDuration, 0.7, 1, 0.85)
+}
+
 /** Keeps the shared points layer visible only while the configured dissolve is in flight. */
 export function getPrologueParticleOpacity(time: number, frames: PrologueFrames, reducedMotion: boolean): number {
-  if (!Number.isFinite(time) || reducedMotion || time < frames.dissolve[0] || time >= frames.duration) return 0
+  if (!Number.isFinite(time) || reducedMotion || time < frames.dissolve[0] || time >= frames.dissolve[1]) return 0
   return Math.min(1, Math.max(0, (time - frames.dissolve[0]) * 4))
 }
 
@@ -123,7 +122,8 @@ export const SCENES: Record<SceneId, SceneConfig> = {
 
 export const COPY = {
   prologueFirst: 'Я долго думал, что тебе подарить…',
-  prologueSecond: 'И решил, что ты заслуживаешь чего-то особенного:',
+  prologueSecond: 'И решил начать с одной маленькой искры.',
+  prologueSecondLegacy: 'И решил, что ты заслуживаешь чего-то особенного:',
   seedPrompt: 'Прикоснись к свету', flowerPrompt: 'Прикоснись к бутону', name: 'ВАСИЛИСА',
   portrait: 'Портрет — временный placeholder', photo: 'Фотография — временный placeholder',
   photoCaption: 'С этого всё началось', greetingTitle: 'С днём рождения, Василиса!',
@@ -133,7 +133,11 @@ export const COPY = {
   credits: 'A Little Universe for You · Development placeholders', ending: 'Маленькая вселенная для тебя',
 } as const
 
-export const MEMORIES = Array.from({ length: 6 }, (_, index) => ({
-  id: `memory-${index + 1}`, index, title: `Фотография ${index + 1}`,
-  caption: 'Место для фотографии и подписи · placeholder', placeholder: true as const,
-}))
+export function getPrologueCopy(settings: Pick<SceneComposerConfig['scenes']['prologue'], 'copyVariant'>) {
+  return { first: COPY.prologueFirst, second: settings.copyVariant === 'legacy' ? COPY.prologueSecondLegacy : COPY.prologueSecond }
+}
+
+// Only supplied memories enter navigation. Eye close-ups belong to scene 06.
+export const MEMORIES = [
+  { id: 'memory-1', index: 0, title: 'Знакомство', caption: COPY.photoCaption, placeholder: false },
+]

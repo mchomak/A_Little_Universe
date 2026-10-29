@@ -1,7 +1,10 @@
-import { useLayoutEffect } from 'react'
+﻿import { useLayoutEffect } from 'react'
 import type { FilmState } from '../../engine/film'
 import type { FilmRuntime } from '../../engine/runtime'
 import { AudioDirector } from './AudioDirector'
+import { getPrologueFrames } from '../../engine/filmConfig'
+import { getConfig } from '../scene-config/config'
+import { getPrologueAudioCues } from './prologueCues'
 
 /** Audio follows the film clock; it never creates a scene timer or requests permissions. */
 export function useAudioDirector(director: AudioDirector, state: FilmState, runtime: FilmRuntime) {
@@ -23,8 +26,9 @@ export function useAudioDirector(director: AudioDirector, state: FilmState, runt
     let previous = state.elapsed === 0 ? -0.001 : runtime.time
     const onFrame = (time: number) => {
       if (state.scene === 'prologue' && state.mode === 'playing') {
-        if (previous < 0 && time >= 0) director.cue('prologue-intro')
-        if (previous < 8.7 && time >= 8.7) director.cue('prologue-second')
+        for (const slot of getPrologueAudioCues(getPrologueFrames(getConfig().scenes.prologue))) {
+          if (previous < slot.time && time >= slot.time) director.cue(slot.cue)
+        }
       }
       previous = time
     }
@@ -35,3 +39,4 @@ export function useAudioDirector(director: AudioDirector, state: FilmState, runt
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [director, runtime, state.revision])
 }
+

@@ -1,4 +1,4 @@
-import { MEMORIES, SCENES, SCENE_ORDER, TIMING } from './filmConfig'
+import { getPrologueTouchDuration, MEMORIES, SCENES, SCENE_ORDER, TIMING } from './filmConfig'
 
 export type SceneId = 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'eye' | 'cosmos' | 'greeting' | 'ending'
 export type Quality = 'standard' | 'low'
@@ -14,9 +14,12 @@ export interface FilmState {
   quality: Quality
   /** Revisited gallery/letter closes back to the final screen. */
   returnToEnding: boolean
+  /** Frozen at the deliberate touch; live tuning cannot move an in-flight endpoint. */
+  prologueTouchDuration?: number
 }
 export type FilmAction =
   | { type: 'start' | 'toggle-pause' | 'replay' | 'interact' | 'gallery-exit' | 'open-gallery' | 'open-reading' | 'close-reading' | 'finish' | 'dev-restart' | 'dev-skip' }
+  | { type: 'gallery-finish' }
   | { type: 'gallery-step'; direction: -1 | 1 }
   | { type: 'gallery-focus'; index: number }
   | { type: 'timeline-update'; time: number; revision: number }
@@ -32,7 +35,8 @@ export const initialFilmState: FilmState = {
 }
 
 export function filmDuration(state: FilmState) {
-  return SCENES[state.scene].duration + (state.scene === 'prologue' && state.mode === 'transitioning' ? 0.3 : 0)
+  return SCENES[state.scene].duration + (state.scene === 'prologue' && state.mode === 'transitioning'
+    ? state.prologueTouchDuration ?? getPrologueTouchDuration() : 0)
 }
 
 function enter(state: FilmState, scene: SceneId): FilmState {
@@ -65,7 +69,7 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
     case 'toggle-pause':
       return { ...state, paused: !state.paused }
     case 'replay':
-      return { ...initialFilmState, mode: 'playing', revision: state.revision + 1 }
+      return { ...initialFilmState, mode: 'playing', speed: state.speed, quality: state.quality, revision: state.revision + 1 }
     case 'open-reading':
       if (state.scene === 'ending') return { ...enter(state, 'greeting'), reading: true, returnToEnding: true }
       return state.scene === 'greeting' ? { ...state, reading: true } : state
@@ -78,7 +82,8 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
       return state.mode === 'ready' ? enter(state, 'prologue') : state
     case 'interact':
       if (state.mode !== 'waiting' || state.paused || state.reading) return state
-      if (state.scene === 'prologue') return { ...state, mode: 'transitioning', elapsed: TIMING.prologue.duration, revision: state.revision + 1 }
+      if (state.scene === 'prologue') return { ...state, mode: 'transitioning', elapsed: TIMING.prologue.duration,
+        prologueTouchDuration: getPrologueTouchDuration(), revision: state.revision + 1 }
       if (state.scene === 'bloom') return { ...state, elapsed: 0, mode: 'playing', revision: state.revision + 1 }
       return state
     case 'timeline-update':
@@ -98,6 +103,9 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
       const index = state.galleryIndex + action.direction
       return index >= 0 && index < MEMORIES.length ? { ...state, galleryIndex: index } : state
     }
+    case 'gallery-finish':
+      if (state.scene !== 'gallery') return state
+      return state.returnToEnding ? { ...enter(state, 'ending'), returnToEnding: false } : enter(state, 'eye')
     case 'gallery-exit':
       if (state.scene === 'gallery' && state.returnToEnding) return { ...enter(state, 'ending'), returnToEnding: false }
       return state.scene === 'gallery' && state.galleryIndex === MEMORIES.length - 1 ? enter(state, 'eye') : state

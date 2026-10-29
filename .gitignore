@@ -18,6 +18,7 @@ build/
 !.env.example
 *.log
 recordings/
+dev-reviews/
 .playwright-mcp/
 
 # Editors and OS
@@ -25,6 +26,7 @@ recordings/
 .DS_Store
 Thumbs.db
 .autopilot/*
+!.autopilot/2026-10-29-prologue-awakening*/
 !.autopilot/README.md
 !.autopilot/dashboard.html
 !.autopilot/index.html
@@ -37,3 +39,6 @@ Thumbs.db
 
 !.autopilot/2026-10-28-prologue-handwriting-ash--wip/
 !.autopilot/2026-10-28-prologue-handwriting-ash--wip/**
+
+# Private, reproducible Iris Lab derivatives
+/frontend/dev-assets/iris/

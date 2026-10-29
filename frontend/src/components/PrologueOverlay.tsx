@@ -1,9 +1,8 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { gsap } from 'gsap'
 import type { SceneProps } from '../engine/sceneTypes'
-import { COPY, getPrologueFrames } from '../engine/filmConfig'
+import { COPY, getPrologueCopy, getPrologueFrames } from '../engine/filmConfig'
 import { useSceneTimeline } from '../engine/useSceneTimeline'
-import { getFractureFront } from '../scenes/prologue/particleMath'
 import { ART_FONT_CATALOG } from '../systems/scene-config/fontCatalog'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, subscribeConfig, type SceneComposerConfig } from '../systems/scene-config/config'
 import './prologue.css'
@@ -23,7 +22,7 @@ export function createPrologueOverlayTimeline(
   reducedMotion: boolean,
 ) {
   const timeline = gsap.timeline({ paused: true })
-  const fractureFronts: { target: HTMLParagraphElement; start: number; duration: number; width: number; seed: number }[] = []
+  const fractureFronts: { target: HTMLParagraphElement; start: number; duration: number }[] = []
   const reveal = (target: HTMLParagraphElement | null, timeWindow: readonly [number, number]) => {
     if (!target) return
     target.style.setProperty('--write-progress', '0%')
@@ -46,37 +45,38 @@ export function createPrologueOverlayTimeline(
     }, timeWindow[0])
   }
 
-  const fracture = (target: HTMLParagraphElement | null, seed: number) => {
+  const fracture = (target: HTMLParagraphElement | null) => {
     if (!target) return
     if (reducedMotion) {
-      timeline.set(target, { opacity: 0 }, frames.dissolve[0])
+      timeline.to(target, { opacity: 0, duration: 0.7, ease: 'sine.inOut' }, frames.dissolve[0])
       return
     }
     const duration = Math.min(settings.fractureDuration, frames.dissolve[1] - frames.dissolve[0])
-    fractureFronts.push({ target, start: frames.dissolve[0], duration, width: settings.fractureWidth, seed })
-    timeline.set(target, { opacity: 0 }, frames.dissolve[0] + duration)
+    fractureFronts.push({ target, start: frames.dissolve[0], duration })
+    // DOM is the accessible fallback/layout guide. The GPU ink layer owns actual erosion.
+    timeline.to(target, { opacity: 0, duration, ease: 'sine.inOut' }, frames.dissolve[0])
   }
 
   reveal(targets.first, frames.first)
   reveal(targets.second, frames.second)
-  fracture(targets.first, 37)
-  fracture(targets.second, 71)
+  fracture(targets.first)
+  fracture(targets.second)
   timeline.eventCallback('onUpdate', () => {
     const time = timeline.time()
-    fractureFronts.forEach(({ target, start, duration, width, seed }) => {
+    fractureFronts.forEach(({ target, start, duration }) => {
       const progress = time < start ? 0 : duration <= 0 ? 1 : Math.min(1, (time - start) / duration)
       target.style.setProperty('--fracture-progress', `${progress * 100}%`)
-      target.style.setProperty('--fracture-clip', time < start ? 'none' : createFractureClip(progress, width, seed))
     })
   })
 
   if (targets.prompt) {
-    const promptStart = Math.max(0, frames.prompt - settings.promptHandwritingDuration)
+    const promptStart = frames.dissolve[1]
     targets.prompt.style.setProperty('--write-progress', '0%')
     targets.prompt.style.setProperty('--fracture-clip', 'none')
-    timeline.set(targets.prompt, { opacity: 1 }, reducedMotion ? frames.prompt : promptStart)
+    timeline.set(targets.prompt, { opacity: 0 }, 0)
+    timeline.to(targets.prompt, { opacity: 1, duration: reducedMotion ? 0.5 : 0.9, ease: 'sine.inOut' }, promptStart)
     if (reducedMotion) {
-      timeline.call(() => targets.prompt?.style.setProperty('--write-progress', '104%'), [], frames.prompt)
+      timeline.call(() => targets.prompt?.style.setProperty('--write-progress', '104%'), [], promptStart)
     } else {
       const promptWrite = { progress: 0 }
       timeline.fromTo(promptWrite, { progress: 0 }, {
@@ -89,16 +89,6 @@ export function createPrologueOverlayTimeline(
     }
   }
   return timeline
-}
-
-function createFractureClip(progress: number, width: number, seed: number): string {
-  const slices = 16
-  const edge = Array.from({ length: slices + 1 }, (_, index) => {
-    const y = index / slices
-    const x = Math.min(1, Math.max(0, getFractureFront(progress, y, width, seed)))
-    return `${formatNumber(x * 100)}% ${formatNumber(y * 100)}%`
-  })
-  return `polygon(${[edge[0], '100% 0%', '100% 100%', ...edge.slice(1).reverse()].join(', ')})`
 }
 
 export interface PrologueCopyLayoutInput {
@@ -138,39 +128,39 @@ export function PrologueOverlay({ state, runtime, reducedMotion }: SceneProps) {
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const prologue = config.scenes.prologue
   const frames = useMemo(() => getPrologueFrames(prologue), [prologue])
+  const copy = getPrologueCopy(prologue)
   const fontFamily = ART_FONT_CATALOG.find((font) => font.id === prologue.fontFamily)?.family ?? 'Marck Script'
   const viewportFontSize = formatNumber(5.3 * prologue.fontSize / DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontSize)
   const phrasesStyle: CSSProperties = { inset: 0 }
-  const copyStyle = (top: string, transform: CSSProperties['transform']): CSSProperties => ({
+  const copyStyle = (top: string, transform: CSSProperties['transform'], scale = 1): CSSProperties => ({
     top, bottom: 'auto', left: '7%', right: '7%', transform,
-    fontFamily: `"${fontFamily}"`, fontSize: `clamp(16px, ${viewportFontSize}vw, ${prologue.fontSize}px)`,
+    fontFamily: `"${fontFamily}"`, fontSize: `clamp(16px, ${formatNumber(Number(viewportFontSize) * scale)}vw, ${formatNumber(prologue.fontSize * scale)}px)`,
     lineHeight: prologue.lineHeight, letterSpacing: 'normal',
-    textShadow: `0 0 ${Math.max(2, prologue.glow * 14)}px rgba(255, 240, 232, ${Math.min(0.55, prologue.glow * 0.18)})`,
+    textShadow: `0 0 ${Math.max(2, prologue.textGlow * 14)}px rgba(255, 240, 232, ${Math.min(0.55, prologue.textGlow * 0.18)})`,
     '--write-progress': '0%', '--fracture-progress': '0%', '--fracture-clip': 'none',
   } as CSSProperties)
   const promptStyle: CSSProperties = {
     fontFamily: `"${fontFamily}"`, fontSize: 'clamp(18px, 2.4vw, 32px)',
     textShadow: `0 0 ${Math.max(2, prologue.glow * 12)}px rgba(255, 240, 232, ${Math.min(0.5, prologue.glow * 0.16)})`,
     '--write-progress': '0%', '--fracture-clip': 'none',
+    top: `calc(50% + ${Math.max(54, prologue.innerGlowRadius + prologue.textGap + 10)}px)`,
   } as CSSProperties
   useLayoutEffect(() => {
     const overlay = document.querySelector<HTMLElement>('.prologue-overlay')
-    const light = document.querySelector<HTMLElement>('.persistent-light[data-phase="prologue"]')
-    if (!overlay || !light || !first.current || !second.current) return
+    if (!overlay || !first.current || !second.current) return
 
     const updateLayout = () => {
       const viewport = overlay.getBoundingClientRect()
-      const point = light.getBoundingClientRect()
       const firstBlock = first.current?.getBoundingClientRect()
       const secondBlock = second.current?.getBoundingClientRect()
       if (!firstBlock || !secondBlock) return
       const next = layoutPrologueCopyBlocks({
         viewport: { width: viewport.width, height: viewport.height },
-        lightBounds: { top: point.top - viewport.top, bottom: point.bottom - viewport.top },
+        lightBounds: { top: viewport.height / 2 - prologue.innerGlowRadius, bottom: viewport.height / 2 + prologue.innerGlowRadius },
         firstHeight: firstBlock.height,
         secondHeight: secondBlock.height,
         firstPositionY: prologue.positionY,
-        gap: 24,
+        gap: prologue.textGap,
       })
       setCopyLayout((current) => current && Math.abs(current.firstTop - next.firstTop) < 0.5 && Math.abs(current.secondTop - next.secondTop) < 0.5 ? current : next)
     }
@@ -180,7 +170,6 @@ export function PrologueOverlay({ state, runtime, reducedMotion }: SceneProps) {
     observer?.observe(overlay)
     observer?.observe(first.current)
     observer?.observe(second.current)
-    observer?.observe(light)
     window.addEventListener('resize', updateLayout)
     document.fonts?.addEventListener('loadingdone', updateLayout)
     return () => {
@@ -188,7 +177,9 @@ export function PrologueOverlay({ state, runtime, reducedMotion }: SceneProps) {
       window.removeEventListener('resize', updateLayout)
       document.fonts?.removeEventListener('loadingdone', updateLayout)
     }
-  }, [prologue.fontFamily, prologue.fontSize, prologue.lineHeight, prologue.positionY])
+  }, [prologue.fontFamily, prologue.fontSize, prologue.secondFontScale, prologue.lineHeight, prologue.positionY, prologue.innerGlowRadius, prologue.textGap, copy.second])
+
+  useLayoutEffect(() => { window.dispatchEvent(new Event('prologue-layout')) }, [copyLayout, prologue])
 
   const build = useCallback(() => createPrologueOverlayTimeline({
     first: first.current,
@@ -203,11 +194,11 @@ export function PrologueOverlay({ state, runtime, reducedMotion }: SceneProps) {
 
   return <section className="prologue-overlay" aria-label="Пролог">
     <div className="prologue-phrases" aria-live="polite" style={phrasesStyle}>
-      <p ref={first} data-prologue-line="first" aria-label={COPY.prologueFirst} aria-hidden={!firstVisible} style={copyStyle(copyLayout ? `${copyLayout.firstTop}px` : `${prologue.positionY}%`, copyLayout ? 'none' : 'translateY(-50%)')}>
-        {COPY.prologueFirst}
+      <p ref={first} data-prologue-line="first" aria-label={copy.first} aria-hidden={!firstVisible} style={copyStyle(copyLayout ? `${copyLayout.firstTop}px` : `${prologue.positionY}%`, copyLayout ? 'none' : 'translateY(-50%)')}>
+        {copy.first}
       </p>
-      <p ref={second} data-prologue-line="second" aria-label={COPY.prologueSecond} aria-hidden={!secondVisible} style={copyStyle(copyLayout ? `${copyLayout.secondTop}px` : 'calc(50% + 56px)', 'none')}>
-        {COPY.prologueSecond}
+      <p ref={second} data-prologue-line="second" aria-label={copy.second} aria-hidden={!secondVisible} style={copyStyle(copyLayout ? `${copyLayout.secondTop}px` : 'calc(50% + 56px)', 'none', prologue.secondFontScale)}>
+        {copy.second}
       </p>
     </div>
     <p ref={prompt} className="prologue-prompt" aria-label={COPY.seedPrompt} aria-hidden={!waiting} style={promptStyle}>

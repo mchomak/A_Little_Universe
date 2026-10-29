@@ -10,9 +10,9 @@ it('uses immutable schema v2 defaults and the local Marck Script face', () => {
     windStrength: 1.15,
     turbulence: 0.3,
     fractureWidth: 0.08,
-    fractureDuration: 2.6,
-    particleDuration: 4,
-    particleFadeDuration: 2.4,
+    fractureDuration: 1.5,
+    particleDuration: 2.2,
+    particleFadeDuration: 1.2,
     promptHandwritingDuration: 0.65,
     glow: 0.45,
   })
@@ -38,7 +38,7 @@ it('migrates schema v1 particle settings and preserves compatible fields', () =>
   expect(migrated.global.quality).toBe('low')
   expect(migrated.scenes.prologue).toMatchObject({
     fontSize: 72, particleCount: 300, windStrength: 2.3, turbulence: 0.36,
-    fractureWidth: 0.08, fractureDuration: 2.6, particleDuration: 9, particleFadeDuration: 2.4,
+    fractureWidth: 0.08, fractureDuration: 1.5, particleDuration: 9, particleFadeDuration: 1.2,
     promptHandwritingDuration: 0.65,
   })
   expect(Object.isFrozen(migrated.scenes.prologue)).toBe(true)
@@ -91,6 +91,25 @@ it('accepts schema v2 inclusive bounds and defaults out-of-range or non-finite v
   expect(config.scenes.prologue.pulseFrequency).toBe(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.pulseFrequency)
   expect(normalizeConfig({ schemaVersion: 1, scenes: { prologue: { seed: Number.NaN } } }).scenes.prologue.seed)
     .toBe(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.seed)
+})
+
+it('fills additive awakening settings in old documents while preserving previous artistic choices', () => {
+  for (const schemaVersion of [1, 2]) {
+    const old = normalizeConfig({ schemaVersion, scenes: { prologue: { glow: 1.1, fontSize: 64, particleDuration: 4 } } })
+    expect(old.scenes.prologue).toMatchObject({
+      glow: 1.1, fontSize: 64, particleDuration: 4,
+      coreIntensity: 1, innerGlowRadius: 16, outerGlowRadius: 95,
+      touchDuration: 0.85, copyVariant: 'awakening', secondFontScale: 0.86,
+      atmosphereDensity: 42, particleSizeMin: 0.6, particleSizeMax: 1.8,
+    })
+  }
+  const invalid = normalizeConfig({ schemaVersion: 2, scenes: { prologue: {
+    coreIntensity: Infinity, touchDuration: 0.2, atmosphereDensity: -1, copyVariant: 'future',
+    particleSizeMin: 2, particleSizeMax: 0.5,
+  } } })
+  expect(invalid.scenes.prologue).toMatchObject({ coreIntensity: 1, touchDuration: 0.85,
+    atmosphereDensity: 42, copyVariant: 'awakening', particleSizeMin: 2, particleSizeMax: 2 })
+  expect(normalizeConfig({ schemaVersion: 2, scenes: { prologue: { copyVariant: 'legacy' } } }).scenes.prologue.copyVariant).toBe('legacy')
 })
 
 it('exposes an observable immutable store with scoped reset', async () => {
