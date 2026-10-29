@@ -2,7 +2,7 @@
 
 ## Текущий каркас
 
-Модульный монолит: React SPA и необязательный минимальный FastAPI backend. Сцены 00/00.1/01 реализованы по текущему брифу; сцена 04 содержит художественную последовательность с исходной фотографией, а 02–03 и 05–09 сохраняют технические placeholders. Нарративный источник — [Storyboard v2.0](../A_Little_Universe_for_Vasilisa_Storyboard_v2.0.md); главы 02–09 сохранены из [v1.1](../A_Little_Universe_for_Vasilisa_Storyboard_v1.1.md).
+Модульный монолит: React SPA и необязательный минимальный FastAPI backend. Сцены 00/00.1/01 реализованы по текущему брифу; сцена 02 формирует и опускает семечко, затем передаёт его схематичному началу роста, а дальнейший рост лилии остаётся placeholder. Сцена 04 содержит художественную последовательность с исходной фотографией; 03 и 05–09 сохраняют технические placeholders. См. [контракт и проверку сцены 02](scene-02-seed.md). Нарративный источник — [Storyboard v2.0](../A_Little_Universe_for_Vasilisa_Storyboard_v2.0.md); главы 02–09 сохранены из [v1.1](../A_Little_Universe_for_Vasilisa_Storyboard_v1.1.md).
 
 ```text
 Bootstrap (лёгкий Preloader → AssetManager → lazy App/Three → проверка SW-кэша)

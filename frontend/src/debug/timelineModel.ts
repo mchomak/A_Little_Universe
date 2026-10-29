@@ -14,8 +14,10 @@ export function timelineFrames(scene: SceneId, config: SceneComposerConfig): Tim
       { label: '01.5 Ожидание', start: p.prompt },
     ]
     case 'growth': return [
-      { label: '02.1 Семечко', start: 0 }, { label: '02.2 Падение', start: TIMING.growth.fall[0] },
-      { label: '02.3 Пробуждение', start: TIMING.growth.awakening[0] }, { label: '02.4 Рост', start: TIMING.growth.stem[0] },
+      { label: '02.1 Формирование семечка', start: TIMING.growth.formation[0] },
+      { label: '02.2 Падение', start: TIMING.growth.fall[0] },
+      { label: '02.3 Остановка и импульс', start: TIMING.growth.landing[0] },
+      { label: '02.4 Рост и передача', start: TIMING.growth.handoff[0] },
       { label: '02.5 Завершение роста', start: TIMING.growth.settle[0] },
     ]
     case 'bloom': return [{ label: '03 Ожидание / раскрытие', start: 0 }, { label: '03.6 Созерцание', start: TIMING.bloom.contemplate[0] }]
