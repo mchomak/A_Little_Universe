@@ -1,6 +1,26 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../systems/scene-config/config'
-import { createHandwritingSchedule, getPrologueFrames } from './filmConfig'
+import { COPY, SCENES, TIMING, createHandwritingSchedule, getPrologueFrames } from './filmConfig'
+
+describe('scene 04 identity timing', () => {
+  it('plays directly from flower dissolve to portrait, photo, caption and gallery handoff in 21 seconds', () => {
+    expect(TIMING.identity).toMatchObject({
+      duration: 21,
+      dissolve: [0, 3.5],
+      gather: [3.5, 7.5],
+      portrait: [7.5, 10.5],
+      photo: [10.5, 13.5],
+      frame: [13.5, 15],
+      caption: [14.25, 15.75],
+    })
+    expect(COPY.photoCaption).toBe('С этого всё началось')
+    expect(SCENES.identity).toMatchObject({ duration: 21, entryMode: 'playing' })
+    expect(SCENES.gallery.entryMode).toBe('exploring')
+    expect(TIMING.identity).not.toHaveProperty('name')
+    expect(TIMING.identity).not.toHaveProperty('spiral')
+    expect(TIMING.identity).not.toHaveProperty('spark')
+  })
+})
 
 describe('prologue frames', () => {
   it('keeps the default reveal, hold, dissolve and prompt within the 21 second gate', () => {

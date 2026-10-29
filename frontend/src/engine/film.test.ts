@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { filmDuration, filmReducer, initialFilmState, type FilmAction, type FilmState } from './film'
 
-const duration = { prologue: 21, growth: 23, bloom: 22, identity: 34, gallery: 0, eye: 18, cosmos: 26, greeting: 50, ending: 0 }
+const duration = { prologue: 21, growth: 23, bloom: 22, identity: 21, gallery: 0, eye: 18, cosmos: 26, greeting: 50, ending: 0 }
 const complete = (state: FilmState) => filmReducer(
   filmReducer(state, { type: 'timeline-update', time: duration[state.scene], revision: state.revision }),
   { type: 'timeline-complete', revision: state.revision },

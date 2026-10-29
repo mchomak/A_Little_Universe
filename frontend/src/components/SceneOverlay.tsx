@@ -12,7 +12,8 @@ function IdentityCaption({ runtime }: { runtime: FilmRuntime }) {
   useLayoutEffect(() => {
     const render = (time: number) => {
       if (!caption.current) return
-      const opacity = Math.min(1, Math.max(0, (time - TIMING.identity.caption[0]) / 1.5))
+      const [start, end] = TIMING.identity.caption
+      const opacity = Math.min(1, Math.max(0, (time - start) / (end - start)))
       caption.current.style.opacity = String(opacity)
       caption.current.setAttribute('aria-hidden', String(opacity === 0))
     }

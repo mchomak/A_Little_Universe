@@ -53,7 +53,7 @@ export function CameraDirector({ state, runtime, reducedMotion }: SceneProps) {
     if (reducedMotion) return timeline
     if (scene === 'growth') timeline.to(p, { ...flowerSide, duration: TIMING.growth.duration, ease: 'sine.inOut' })
     if (scene === 'bloom') timeline.to(p, { ...flowerTop, duration: TIMING.camera.bloom, ease: 'sine.inOut' })
-    if (scene === 'identity') timeline.to(p, { ...front, duration: TIMING.identity.particles[1], ease: 'sine.inOut' })
+    if (scene === 'identity') timeline.to(p, { ...front, duration: TIMING.identity.cameraSettle, ease: 'sine.inOut' })
     if (scene === 'eye') timeline.to(p, { z: 0.85, duration: TIMING.camera.eye, ease: 'power2.inOut' }, TIMING.eye.approach[0])
     if (scene === 'cosmos') timeline.to(p, { z: 0.7, duration: TIMING.cosmos.iris[1], ease: 'sine.inOut' })
       .to(p, { z: 8.5, x: 1, y: 1.1, duration: TIMING.cosmos.duration - TIMING.cosmos.iris[1], ease: 'sine.inOut' })
