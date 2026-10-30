@@ -172,15 +172,15 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
     preparation: { fontFamily: 'marck-script', spacing: 24, entranceDuration: 0.8, typeScale: 1, lineHeight: 1.08, cardOpacity: 1 },
     prologue: {
-      fontFamily: 'marck-script', fontSize: 48, lineHeight: 1.3, positionY: 40,
-      handwritingDuration: 3.5, handwritingRhythm: 0.82, interphraseInterval: 1.5, readableHold: 2,
+      fontFamily: 'great-vibes', fontSize: 48, lineHeight: 1.3, positionY: 40,
+      handwritingDuration: 3.5, handwritingRhythm: 0.82, interphraseInterval: 1.35, readableHold: 2,
       particleCount: 1800, windStrength: 1.15, turbulence: 0.3, fractureWidth: 0.08,
       fractureDuration: 1.5, particleDuration: 2.2, particleFadeDuration: 1.2, promptHandwritingDuration: 0.65,
       glow: 0.45, pulseAmplitude: 0.035, pulseFrequency: 0.22, seed: 1420577,
       coreIntensity: 1, innerGlowRadius: 16, outerGlowRadius: 95, phraseResponse: 0.12,
       touchIntensity: 0.55, touchDuration: 0.85, waveStrength: 0.14, waveRadius: 70,
       atmosphereDensity: 42, hazeIntensity: 0.035, spaceDepth: 0.35, driftSpeed: 0.035,
-      secondFontScale: 0.86, textGap: 34, textGlow: 0.22, copyVariant: 'awakening',
+      secondFontScale: 0.86, textGap: 34, textGlow: 0.22, copyVariant: 'legacy',
       particleSizeMin: 0.6, particleSizeMax: 1.8, particleGlow: 0.95,
     },
     growth: {

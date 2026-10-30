@@ -1,5 +1,6 @@
 import type { ArtFontId } from './fontIds'
 import { isArtFontId } from './fontIds'
+import greatVibesAsset from '../../assets/typography/GreatVibes-Regular.ttf?url'
 
 export interface ArtFontDefinition {
   readonly id: ArtFontId
@@ -7,11 +8,13 @@ export interface ArtFontDefinition {
   readonly family: string
   readonly fileName: string
   readonly source: string
+  readonly assetUrl?: string
 }
 
 export const ART_FONT_REQUIRED_GLYPHS = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя0123456789«»—…!?.,:;'
 
 export const ART_FONT_CATALOG: readonly ArtFontDefinition[] = Object.freeze([
+  Object.freeze({ id: 'great-vibes', label: 'Great Vibes', family: 'Great Vibes', fileName: 'GreatVibes-Regular.ttf', source: 'https://github.com/google/fonts/tree/main/ofl/greatvibes', assetUrl: greatVibesAsset }),
   Object.freeze({ id: 'marck-script', label: 'Marck Script', family: 'Marck Script', fileName: 'MarckScript-Regular.ttf', source: 'https://github.com/google/fonts/tree/main/ofl/marckscript' }),
   Object.freeze({ id: 'bad-script', label: 'Bad Script', family: 'Bad Script', fileName: 'BadScript-Regular.ttf', source: 'https://github.com/google/fonts/tree/main/ofl/badscript' }),
   Object.freeze({ id: 'caveat', label: 'Caveat', family: 'Caveat', fileName: 'Caveat-Variable.ttf', source: 'https://github.com/google/fonts/tree/main/ofl/caveat' }),
@@ -38,6 +41,11 @@ async function loadFace(font: ArtFontDefinition): Promise<boolean> {
   if (typeof document === 'undefined' || !document.fonts) return false
   const descriptor = `400 16px "${font.family}"`
   try {
+    if (font.assetUrl) {
+      if (typeof FontFace === 'undefined') return false
+      const face = await new FontFace(font.family, `url("${font.assetUrl}")`, { weight: '400' }).load()
+      document.fonts.add(face)
+    }
     const faces = await document.fonts.load(descriptor, ART_FONT_REQUIRED_GLYPHS)
     return faces.length > 0 && document.fonts.check(descriptor, ART_FONT_REQUIRED_GLYPHS)
   } catch {

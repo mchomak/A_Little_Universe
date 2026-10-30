@@ -4,6 +4,7 @@ These unchanged TrueType font files are served only from this application. No ru
 
 | Family | Upstream | License |
 |---|---|---|
+| Great Vibes | [Google Fonts, `ofl/greatvibes`](https://github.com/google/fonts/tree/main/ofl/greatvibes) | `OFL-Great-Vibes.txt` |
 | Marck Script | [Google Fonts, `ofl/marckscript`](https://github.com/google/fonts/tree/main/ofl/marckscript) | `OFL-Marck-Script.txt` |
 | Bad Script | [Google Fonts, `ofl/badscript`](https://github.com/google/fonts/tree/main/ofl/badscript) | `OFL-Bad-Script.txt` |
 | Caveat | [Google Fonts, `ofl/caveat`](https://github.com/google/fonts/tree/main/ofl/caveat) | `OFL-Caveat.txt` |

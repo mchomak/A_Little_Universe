@@ -2,10 +2,11 @@ import { expect, it, vi } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, normalizeConfig, SCENE_CONFIG_PRESETS } from './config'
 import * as configApi from './config'
 
-it('uses immutable schema v5 defaults and the local Marck Script face', () => {
+it('uses immutable schema v5 defaults and the local Great Vibes prologue face', () => {
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(5)
-  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('marck-script')
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('great-vibes')
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue).toMatchObject({
+    interphraseInterval: 1.35,
     particleCount: 1800,
     windStrength: 1.15,
     turbulence: 0.3,
@@ -102,7 +103,7 @@ it('fills additive awakening settings in old documents while preserving previous
     expect(old.scenes.prologue).toMatchObject({
       glow: 1.1, fontSize: 64, particleDuration: 4,
       coreIntensity: 1, innerGlowRadius: 16, outerGlowRadius: 95,
-      touchDuration: 0.85, copyVariant: 'awakening', secondFontScale: 0.86,
+      touchDuration: 0.85, copyVariant: 'legacy', secondFontScale: 0.86,
       atmosphereDensity: 42, particleSizeMin: 0.6, particleSizeMax: 1.8,
     })
   }
@@ -111,7 +112,7 @@ it('fills additive awakening settings in old documents while preserving previous
     particleSizeMin: 2, particleSizeMax: 0.5,
   } } })
   expect(invalid.scenes.prologue).toMatchObject({ coreIntensity: 1, touchDuration: 0.85,
-    atmosphereDensity: 42, copyVariant: 'awakening', particleSizeMin: 2, particleSizeMax: 2 })
+    atmosphereDensity: 42, copyVariant: 'legacy', particleSizeMin: 2, particleSizeMax: 2 })
   expect(normalizeConfig({ schemaVersion: 2, scenes: { prologue: { copyVariant: 'legacy' } } }).scenes.prologue.copyVariant).toBe('legacy')
 })
 

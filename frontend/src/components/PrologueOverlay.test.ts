@@ -23,7 +23,7 @@ it('scales the configured prologue font size into the responsive text rule', asy
   }
 })
 
-it('renders each handwritten phrase as one connected line and gives the touch prompt the same script face', async () => {
+it('keeps each narrative phrase whole and preserves Marck Script for the touch prompt', async () => {
   const markup = renderToStaticMarkup(createElement(PrologueOverlay, {
     state: initialFilmState, dispatch: () => undefined, runtime: createFilmRuntime(), reducedMotion: false,
   }))
@@ -97,14 +97,15 @@ it('replays writing, a readable hold, fallback dissolve and the invitation throu
   expect(targets.first.opacity).toBe(1)
   expect(targets.second.opacity).toBe(1)
 
-  runtime.publish(13.25)
+  runtime.publish(frames.firstDissolve[0] + (frames.firstDissolve[1] - frames.firstDissolve[0]) * 0.5)
   const dissolve = snapshot()
   expect(progress(targets.first, '--fracture-progress')).toBeCloseTo(50, 0)
+  expect(progress(targets.second, '--fracture-progress')).toBeCloseTo(0, 0)
   expect(targets.first.style.getPropertyValue('--fracture-clip')).toBe('none')
   expect(targets.first.opacity).toBeCloseTo(0.5)
   runtime.publish(12)
   expect(snapshot()).toBe(hold)
-  runtime.publish(13.25)
+  runtime.publish(frames.firstDissolve[0] + (frames.firstDissolve[1] - frames.firstDissolve[0]) * 0.5)
   expect(snapshot()).toBe(dissolve)
 
   runtime.publish(16.325)
@@ -128,7 +129,7 @@ it('replays writing, a readable hold, fallback dissolve and the invitation throu
   expect(replaySnapshot()).toBe(reveal)
   runtime.publish(12)
   expect(replaySnapshot()).toBe(hold)
-  runtime.publish(13.25)
+  runtime.publish(frames.firstDissolve[0] + (frames.firstDissolve[1] - frames.firstDissolve[0]) * 0.5)
   expect(replaySnapshot()).toBe(dissolve)
   runtime.publish(16.325)
   expect(replaySnapshot()).toBe(promptWriting)
@@ -169,7 +170,9 @@ it('keeps reduced-motion text static while preserving the touch gate timing', ()
   expect([targets.first.opacity, targets.first.style.getPropertyValue('--write-progress')]).toEqual([1, '104%'])
   runtime.publish(frames.second[0])
   expect([targets.second.opacity, targets.second.style.getPropertyValue('--write-progress')]).toEqual([1, '104%'])
-  runtime.publish(frames.dissolve[0] + 0.7)
+  runtime.publish(frames.firstDissolve[0] + 0.7)
+  expect([targets.first.opacity, targets.second.opacity]).toEqual([0, 1])
+  runtime.publish(frames.secondDissolve[0] + 0.7)
   expect([targets.first.opacity, targets.second.opacity]).toEqual([0, 0])
   runtime.publish(frames.dissolve[1] - 0.01)
   expect(targets.prompt.opacity).toBe(0)

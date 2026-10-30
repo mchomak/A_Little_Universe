@@ -45,22 +45,23 @@ export function createPrologueOverlayTimeline(
     }, timeWindow[0])
   }
 
-  const fracture = (target: HTMLParagraphElement | null) => {
+  const fracture = (target: HTMLParagraphElement | null, range: readonly [number, number]) => {
     if (!target) return
+    const start = range[0]
+    const duration = range[1] - range[0]
     if (reducedMotion) {
-      timeline.to(target, { opacity: 0, duration: 0.7, ease: 'sine.inOut' }, frames.dissolve[0])
+      timeline.to(target, { opacity: 0, duration: 0.7, ease: 'sine.inOut' }, start)
       return
     }
-    const duration = Math.min(settings.fractureDuration, frames.dissolve[1] - frames.dissolve[0])
-    fractureFronts.push({ target, start: frames.dissolve[0], duration })
+    fractureFronts.push({ target, start, duration })
     // DOM is the accessible fallback/layout guide. The GPU ink layer owns actual erosion.
-    timeline.to(target, { opacity: 0, duration, ease: 'sine.inOut' }, frames.dissolve[0])
+    timeline.to(target, { opacity: 0, duration, ease: 'sine.inOut' }, start)
   }
 
   reveal(targets.first, frames.first)
   reveal(targets.second, frames.second)
-  fracture(targets.first)
-  fracture(targets.second)
+  fracture(targets.first, frames.firstDissolve)
+  fracture(targets.second, frames.secondDissolve)
   timeline.eventCallback('onUpdate', () => {
     const time = timeline.time()
     fractureFronts.forEach(({ target, start, duration }) => {
@@ -130,6 +131,7 @@ export function PrologueOverlay({ state, runtime, reducedMotion }: SceneProps) {
   const frames = useMemo(() => getPrologueFrames(prologue), [prologue])
   const copy = getPrologueCopy(prologue)
   const fontFamily = ART_FONT_CATALOG.find((font) => font.id === prologue.fontFamily)?.family ?? 'Marck Script'
+  const promptFontFamily = ART_FONT_CATALOG.find((font) => font.id === 'marck-script')?.family ?? 'Marck Script'
   const viewportFontSize = formatNumber(5.3 * prologue.fontSize / DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontSize)
   const phrasesStyle: CSSProperties = { inset: 0 }
   const copyStyle = (top: string, transform: CSSProperties['transform'], scale = 1): CSSProperties => ({
@@ -140,7 +142,7 @@ export function PrologueOverlay({ state, runtime, reducedMotion }: SceneProps) {
     '--write-progress': '0%', '--fracture-progress': '0%', '--fracture-clip': 'none',
   } as CSSProperties)
   const promptStyle: CSSProperties = {
-    fontFamily: `"${fontFamily}"`, fontSize: 'clamp(18px, 2.4vw, 32px)',
+    fontFamily: `"${promptFontFamily}"`, fontSize: 'clamp(18px, 2.4vw, 32px)',
     textShadow: `0 0 ${Math.max(2, prologue.glow * 12)}px rgba(255, 240, 232, ${Math.min(0.5, prologue.glow * 0.16)})`,
     '--write-progress': '0%', '--fracture-clip': 'none',
     top: `calc(50% + ${Math.max(54, prologue.innerGlowRadius + prologue.textGap + 10)}px)`,
@@ -188,8 +190,8 @@ export function PrologueOverlay({ state, runtime, reducedMotion }: SceneProps) {
   }, frames, prologue, reducedMotion), [frames, prologue, reducedMotion])
   useSceneTimeline(build, { runtime })
 
-  const firstVisible = state.elapsed >= frames.first[1] && state.elapsed < frames.dissolve[0]
-  const secondVisible = state.elapsed >= frames.second[1] && state.elapsed < frames.dissolve[0]
+  const firstVisible = state.elapsed >= frames.first[1] && state.elapsed < frames.firstDissolve[0]
+  const secondVisible = state.elapsed >= frames.second[1] && state.elapsed < frames.secondDissolve[0]
   const waiting = state.mode === 'waiting'
 
   return <section className="prologue-overlay" aria-label="Пролог">

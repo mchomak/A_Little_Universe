@@ -1,4 +1,4 @@
-export const ART_FONT_IDS = ['marck-script', 'bad-script', 'caveat', 'cormorant-garamond'] as const
+export const ART_FONT_IDS = ['great-vibes', 'marck-script', 'bad-script', 'caveat', 'cormorant-garamond'] as const
 export type ArtFontId = (typeof ART_FONT_IDS)[number]
 
 export function isArtFontId(value: unknown): value is ArtFontId {

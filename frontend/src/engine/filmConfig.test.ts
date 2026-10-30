@@ -9,9 +9,11 @@ describe('prologue frames', () => {
     expect(frames.duration).toBe(18)
     expect(frames.seed).toEqual([0, 2])
     expect(frames.first).toEqual([2, 5.5])
-    expect(frames.second).toEqual([7, 10.5])
-    expect(frames.hold).toEqual([10.5, 12.5])
-    expect(frames.dissolve).toEqual([12.5, 16])
+    expect(frames.second).toEqual([6.85, 10.35])
+    expect(frames.hold).toEqual([10.35, 12.35])
+    expect(frames.dissolve).toEqual([12.35, 16])
+    expect(frames.firstDissolve).toEqual([12.35, 13.85])
+    expect(frames.secondDissolve).toEqual([13.1, 14.6])
     expect(frames.prompt).toBe(18)
     expect(frames.particleTravelDuration).toBe(2.2)
   })
@@ -35,17 +37,25 @@ describe('prologue frames', () => {
   })
 
   it('keeps extreme legacy timings finite, ordered and inside the eighteen-second scene', () => {
-    const frames = getPrologueFrames({ handwritingDuration: 20, interphraseInterval: 8, readableHold: 30, particleDuration: 20 })
+    const frames = getPrologueFrames({ handwritingDuration: 20, interphraseInterval: 8, readableHold: 30, fractureDuration: 20, particleDuration: 20 })
     expect(frames.first).toEqual([2, 5.5])
     expect(frames.second).toEqual([10.5, 11.5])
     expect(frames.hold).toEqual([11.5, 14])
     expect(frames.dissolve).toEqual([14, 16])
+    expect(frames.firstDissolve).toEqual([14, 14 + 4 / 3])
+    expect(frames.secondDissolve).toEqual([14 + 2 / 3, 16])
     expect(frames.particleTravelDuration).toBe(2)
   })
 
   it('offers the previous personal wording as a configuration choice', () => {
     expect(getPrologueCopy({ copyVariant: 'awakening' }).second).toBe('И решил начать с одной маленькой искры.')
     expect(getPrologueCopy({ copyVariant: 'legacy' }).second).toBe('И решил, что ты заслуживаешь чего-то особенного:')
+  })
+
+  it('uses the approved phrases in the default prologue copy', () => {
+    const copy = getPrologueCopy(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)
+    expect(copy.first).toBe('Я долго думал, что тебе подарить…')
+    expect(copy.second).toBe('И решил, что ты заслуживаешь чего-то особенного:')
   })
 
   it('leaves the invitation free of text dust before the gate opens', () => {
