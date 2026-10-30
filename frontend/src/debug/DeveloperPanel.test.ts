@@ -55,7 +55,10 @@ it('shows only the active scene controls and keeps playback in the timeline', ()
     onPermissions: () => undefined,
     route: 'film',
   }))
-  expect(markup).toContain('Для этой сцены пока нет связанных параметров')
+  expect(markup).toContain('Качество семечка')
+  expect(markup).toMatch(/id="composer-scenes-growth-formationDuration"[^>]*min="2\.5" max="3\.5" step="0\.1" value="3\.2"/)
+  expect(markup).toMatch(/id="composer-scenes-growth-attractionStrength"[^>]*min="2" max="24" step="0\.5" value="11\.5"/)
+  expect(markup).toContain('id="composer-scenes-growth-pearlColor"')
   expect(markup).not.toContain('composer-scenes-prologue-windStrength')
   expect(markup).not.toContain('composer-scenes-preparation-typeScale')
   expect(markup).not.toContain('dev-seek')

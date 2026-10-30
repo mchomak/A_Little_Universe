@@ -112,6 +112,17 @@ it('fills additive awakening settings in old documents while preserving previous
   expect(normalizeConfig({ schemaVersion: 2, scenes: { prologue: { copyVariant: 'legacy' } } }).scenes.prologue.copyVariant).toBe('legacy')
 })
 
+it('normalizes the seed formation controls and a bounded scene-local quality tier', () => {
+  const config = normalizeConfig({ schemaVersion: 2, scenes: { growth: {
+    particleQuality: 'high', formationDuration: 3.5, cloudRadius: 1.1, noiseStrength: 0.9,
+  } } })
+  expect(config.scenes.growth).toMatchObject({ particleQuality: 'high', formationDuration: 3.5, cloudRadius: 1.1, noiseStrength: 0.9 })
+  expect(Object.isFrozen(config.scenes.growth)).toBe(true)
+  expect(normalizeConfig({ schemaVersion: 2, scenes: { growth: {
+    particleQuality: 'ultra', formationDuration: 3.6, cloudRadius: -1,
+  } } }).scenes.growth).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth)
+})
+
 it('exposes an observable immutable store with scoped reset', async () => {
   expect(configApi).toHaveProperty('subscribeConfig')
   expect(configApi).toHaveProperty('updateConfig')

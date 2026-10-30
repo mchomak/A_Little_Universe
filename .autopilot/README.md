@@ -16,3 +16,5 @@
 | 2026-10-28 | `2026-10-28-scene-editor-completion--wip` | в работе | Завершение Scene Editor |
 | 2026-10-29 | `2026-10-29-prologue-awakening` | сдан | Пролог18с, единый свет, GPU письмо/пыль, касание и Composer;191 тест/50 файлов, build прошёл |
 | 2026-10-29 | `2026-10-29-seed-procedure` | сдан | Семечко02, процедурный seed/handoff, GLB growth pending |
+
+| 2026-10-30 | `2026-10-30-recstudio-seed` | ???????? | RecStudio ? ????? 02; ??????????? ???????? ? ? state.js |

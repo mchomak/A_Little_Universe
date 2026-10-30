@@ -3,7 +3,8 @@ import { type ArtFontId, isArtFontId } from './fontIds'
 
 export type QualityProfile = 'standard' | 'low'
 export type ScenePresetId = 'moonlit-letter' | 'stardust'
-export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'preset'
+export type SeedQuality = 'low' | 'standard' | 'high'
+export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'preset'
 
 type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T[Key]> : T[Key] }
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
@@ -67,6 +68,23 @@ export interface SceneComposerConfig {
       particleGlow: number
       seed: number
     }>
+    growth: Readonly<{
+      particleQuality: SeedQuality
+      particleSize: number
+      particleOpacity: number
+      cloudRadius: number
+      noiseStrength: number
+      attractionStrength: number
+      attractionRampDuration: number
+      morphDamping: number
+      formationDuration: number
+      freeParticleFraction: number
+      pearlColor: string
+      roseColor: string
+      lavenderColor: string
+      coreGlow: number
+      seedScale: number
+    }>
   }>
   readonly preset: ScenePresetId
 }
@@ -88,6 +106,13 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       atmosphereDensity: 42, hazeIntensity: 0.035, spaceDepth: 0.35, driftSpeed: 0.035,
       secondFontScale: 0.86, textGap: 34, textGlow: 0.22, copyVariant: 'awakening',
       particleSizeMin: 0.6, particleSizeMax: 1.8, particleGlow: 0.95,
+    },
+    growth: {
+      particleQuality: 'standard', particleSize: 1.4, particleOpacity: 0.7,
+      cloudRadius: 0.6, noiseStrength: 0.55, attractionStrength: 11.5,
+      attractionRampDuration: 2.8, morphDamping: 7.2, formationDuration: 3.2,
+      freeParticleFraction: 0.08, pearlColor: '#FFF4E8', roseColor: '#F4CCDA',
+      lavenderColor: '#D7CCF1', coreGlow: 0.55, seedScale: 1,
     },
   },
   preset: 'moonlit-letter',
@@ -119,6 +144,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const preloadInput = asRecord(scenesInput?.preload)
   const preparationInput = asRecord(scenesInput?.preparation)
   const prologueInput = asRecord(scenesInput?.prologue)
+  const growthInput = asRecord(scenesInput?.growth)
   const legacyParticleSpeed = numberValue(prologueInput?.particleSpeed, 1, 0.1, 10)
   const legacyParticleSpread = numberValue(prologueInput?.particleSpread, 1, 0, 2)
   const windStrength = numberValue(
@@ -198,6 +224,23 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       particleSizeMax: numberValue(prologueInput?.particleSizeMax, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.particleSizeMax, 0.5, 4),
       particleGlow: numberValue(prologueInput?.particleGlow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.particleGlow, 0, 2),
       seed: numberValue(prologueInput?.seed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.seed, 0, 2_147_483_647, true),
+    },
+    growth: {
+      particleQuality: enumValue(growthInput?.particleQuality, ['low', 'standard', 'high'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.particleQuality),
+      particleSize: numberValue(growthInput?.particleSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.particleSize, 0.5, 3),
+      particleOpacity: numberValue(growthInput?.particleOpacity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.particleOpacity, 0, 1.5),
+      cloudRadius: numberValue(growthInput?.cloudRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudRadius, 0.3, 1.2),
+      noiseStrength: numberValue(growthInput?.noiseStrength, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.noiseStrength, 0, 2),
+      attractionStrength: numberValue(growthInput?.attractionStrength, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.attractionStrength, 2, 24),
+      attractionRampDuration: numberValue(growthInput?.attractionRampDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.attractionRampDuration, 0.5, 3.5),
+      morphDamping: numberValue(growthInput?.morphDamping, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.morphDamping, 2, 14),
+      formationDuration: numberValue(growthInput?.formationDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.formationDuration, 2.5, 3.5),
+      freeParticleFraction: numberValue(growthInput?.freeParticleFraction, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.freeParticleFraction, 0, 0.2),
+      pearlColor: colorValue(growthInput?.pearlColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.pearlColor),
+      roseColor: colorValue(growthInput?.roseColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.roseColor),
+      lavenderColor: colorValue(growthInput?.lavenderColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lavenderColor),
+      coreGlow: numberValue(growthInput?.coreGlow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.coreGlow, 0, 1.5),
+      seedScale: numberValue(growthInput?.seedScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedScale, 0.65, 1.4),
     },
   }
   if (scenes.prologue.particleSizeMin > scenes.prologue.particleSizeMax) {
@@ -324,6 +367,10 @@ function enumValue<const Values extends readonly string[]>(value: unknown, allow
 
 function fontValue(value: unknown, fallback: ArtFontId): ArtFontId {
   return isArtFontId(value) ? value : fallback
+}
+
+function colorValue(value: unknown, fallback: string): string {
+  return typeof value === 'string' && /^#[\da-f]{6}$/iu.test(value) ? value.toUpperCase() : fallback
 }
 
 function deepFreeze<T>(value: T): T {

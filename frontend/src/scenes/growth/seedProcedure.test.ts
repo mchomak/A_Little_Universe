@@ -5,6 +5,15 @@ import { getConfig } from '../../systems/scene-config/config'
 import { TIMING } from '../../engine/filmConfig'
 
 describe('scene 02 seed procedure', () => {
+  it('fits seed formation and a full plant growth pass inside the v3 scene window', () => {
+    expect(TIMING.growth.duration).toBe(16)
+    expect(TIMING.growth.formation).toEqual([0, 3.2])
+    expect(TIMING.growth.fall[0]).toBe(TIMING.growth.formation[1])
+    expect(TIMING.growth.sprout[1] - TIMING.growth.handoff[1]).toBeGreaterThanOrEqual(8)
+    expect(TIMING.growth.sprout[1] - TIMING.growth.handoff[1]).toBeLessThanOrEqual(10)
+    expect(TIMING.growth.sprout[1]).toBeLessThan(TIMING.growth.duration)
+  })
+
   it('forms from the center, lands on the shared plant root, and hands off to growth', () => {
     expect(getSeedPose(0, 3.82, false).anchor).toEqual([0, -1.45, 0])
     expect(getSeedPose(0, 3.82, false).seedY).toBeCloseTo(1.45)

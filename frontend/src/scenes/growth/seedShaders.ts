@@ -18,15 +18,15 @@ export const seedFragment = `
   varying vec3 vNormal;
   varying vec3 vView;
   void main() {
-    float rim = pow(1.0 - abs(dot(normalize(vNormal), normalize(vView))), 2.2);
-    float grain = sin(vUv.y * 27.0 + sin(vUv.x * 31.4) * 0.7);
-    float vein = pow(0.5 + 0.5 * cos(vUv.x * 62.83185 + sin(vUv.y * 5.0) * 1.2), 28.0);
-    float fine = pow(0.5 + 0.5 * cos(vUv.x * 138.23 + vUv.y * 3.0), 42.0);
-    float tips = pow(abs(vUv.y - 0.5) * 2.0, 7.0);
-    vec3 pearl = mix(vec3(1.0, 0.60, 0.35), vec3(1.0, 0.86, 0.80), vUv.y);
-    float light = 0.13 + rim * 0.6 + vein * 0.44 + fine * 0.1 + tips * 0.5;
-    light *= 0.97 + 0.03 * sin(time * 3.0) + grain * 0.015;
-    gl_FragColor = vec4(pearl * (0.8 + light * 0.7), opacity * light);
+    float rim = pow(1.0 - abs(dot(normalize(vNormal), normalize(vView))), 2.8);
+    float grain = sin(vUv.y * 21.0 + sin(vUv.x * 19.4) * 0.5);
+    float vein = pow(0.5 + 0.5 * cos(vUv.x * 50.265 + sin(vUv.y * 4.0) * 0.8), 24.0);
+    float fine = pow(0.5 + 0.5 * cos(vUv.x * 106.23 + vUv.y * 2.0), 38.0);
+    float tips = pow(abs(vUv.y - 0.5) * 2.0, 8.0);
+    vec3 pearl = mix(vec3(0.97, 0.81, 0.84), vec3(1.0, 0.96, 0.94), smoothstep(0.08, 0.92, vUv.y));
+    float shimmer = 0.99 + 0.01 * sin(time * 2.2) + grain * 0.006;
+    float body = 0.55 + rim * 0.22 + vein * 0.06 + fine * 0.02 + tips * 0.1;
+    gl_FragColor = vec4(pearl * shimmer, opacity * body);
   }
 `
 export const haloFragment = `
@@ -36,19 +36,22 @@ export const haloFragment = `
     vec2 p = (vUv - 0.5) * 2.0;
     float r = dot(p, p);
     float glow = exp(-r * 6.0) * 0.42 + exp(-r * 25.0) * 0.4;
-    gl_FragColor = vec4(1.0, 0.66, 0.33, glow * opacity * (1.0 - smoothstep(0.5, 1.0, r)));
+    gl_FragColor = vec4(1.0, 0.78, 0.78, glow * opacity * (1.0 - smoothstep(0.5, 1.0, r)));
   }
 `
 export const coreFragment = `
   uniform float opacity;
+  uniform float time;
+  uniform float intensity;
   varying vec2 vUv;
   void main() {
     vec2 p = (vUv - 0.5) * 2.0;
     float r = dot(p, p);
-    float heart = exp(-r * 7.0);
-    float hot = exp(-r * 32.0);
-    vec3 color = mix(vec3(1.0, 0.57, 0.2), vec3(1.0, 0.95, 0.76), hot);
-    gl_FragColor = vec4(color, (heart * 0.6 + hot * 0.4) * opacity);
+    float heart = exp(-r * 5.2);
+    float hot = exp(-r * 22.0);
+    float breathe = 0.95 + 0.05 * sin(time * 2.1);
+    vec3 color = mix(vec3(1.0, 0.56, 0.24), vec3(1.0, 0.82, 0.55), hot);
+    gl_FragColor = vec4(color, (heart * 0.55 + hot * 0.12) * opacity * intensity * breathe);
   }
 `
 export const groundFragment = `

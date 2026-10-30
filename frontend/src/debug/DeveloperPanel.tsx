@@ -103,6 +103,26 @@ const PROLOGUE_GROUPS: readonly { name: string; controls: readonly NumericContro
   ] },
 ]
 
+const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
+  { name: 'Частицы и формирование', controls: [
+    { path: 'scenes.growth.particleSize', label: 'Размер точки', unit: 'px', min: 0.5, max: 3, step: 0.1 },
+    { path: 'scenes.growth.particleOpacity', label: 'Непрозрачность', unit: '×', min: 0, max: 1.5, step: 0.05 },
+    { path: 'scenes.growth.cloudRadius', label: 'Радиус облака', unit: '', min: 0.3, max: 1.2, step: 0.05 },
+    { path: 'scenes.growth.formationDuration', label: 'Длительность формирования', unit: 'с', min: 2.5, max: 3.5, step: 0.1 },
+  ] },
+  { name: 'Движение и притяжение', controls: [
+    { path: 'scenes.growth.noiseStrength', label: 'Сила noise-поля', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.attractionStrength', label: 'Притяжение к форме', unit: '×', min: 2, max: 24, step: 0.5 },
+    { path: 'scenes.growth.attractionRampDuration', label: 'Нарастание притяжения', unit: 'с', min: 0.5, max: 3.5, step: 0.1 },
+    { path: 'scenes.growth.morphDamping', label: 'Торможение формы', unit: '×', min: 2, max: 14, step: 0.2 },
+    { path: 'scenes.growth.freeParticleFraction', label: 'Свободные искры', unit: '%', min: 0, max: 20, step: 1, displayScale: 100 },
+  ] },
+  { name: 'Свет и размер', controls: [
+    { path: 'scenes.growth.coreGlow', label: 'Свечение ядра', unit: '×', min: 0, max: 1.5, step: 0.05 },
+    { path: 'scenes.growth.seedScale', label: 'Масштаб семечка', unit: '×', min: 0.65, max: 1.4, step: 0.05 },
+  ] },
+]
+
 function useApproximateRafFps() {
   const [fps, setFps] = useState<number | null>(null)
   useEffect(() => {
@@ -205,7 +225,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const compareBusy = useRef(false)
   const [comparing, setComparing] = useState(false)
   const [snapshots, setSnapshots] = useState<Partial<Record<InspectorScope, { A?: object; B?: object; active?: 'A' | 'B'; point?: ComparisonPoint }>>>({})
-  const isHistoryScope = (scope: InspectorScene): scope is Exclude<InspectorScope, 'global'> => scope === 'preload' || scope === 'preparation' || scope === 'prologue'
+  const isHistoryScope = (scope: InspectorScene): scope is Exclude<InspectorScope, 'global'> => scope === 'preload' || scope === 'preparation' || scope === 'prologue' || scope === 'growth'
   const section = (value: SceneComposerConfig, scope: InspectorScope): object => scope === 'global' ? value.global : value.scenes[scope]
   const recordChange = (scope: InspectorScope, before: SceneComposerConfig, after: SceneComposerConfig) => {
     history.record(scope, section(before, scope), section(after, scope))
@@ -269,7 +289,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
 
   const resetField = async (path: ComposerFieldPath) => changeField(path, defaultAtPath(path))
 
-  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue') => {
+  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth') => {
     const before = getConfig()
     const result = await resetComposerScope(scope)
     if (!result.ok) {
@@ -329,9 +349,16 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   }
 
   const range = (control: NumericControl) => <ConfigRange key={control.path} control={control} config={config} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
+  const color = (path: ComposerFieldPath, label: string) => {
+    const value = valueAtPath(config, path) as string
+    return <div className="composer-control" key={path}>
+      <div className="inspector-control-heading"><label htmlFor={`composer-${path.replaceAll('.', '-')}`}>{label}</label>{value !== defaultAtPath(path) && <button type="button" className="inspector-reset" aria-label={`Сбросить ${label.toLocaleLowerCase('ru-RU')}`} onClick={() => { void resetField(path) }}>↺</button>}</div>
+      <input id={`composer-${path.replaceAll('.', '-')}`} type="color" value={value} onChange={(event) => { void changeField(path, event.target.value.toUpperCase()) }} />
+    </div>
+  }
   const font = (scene: 'preparation' | 'prologue', label: string) => <FontControl path={`scenes.${scene}.fontFamily`} label={label} value={config.scenes[scene].fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
   const title = selected === 'preload' ? '00 · Загрузка' : selected === 'preparation' ? '00.1 · Подготовка' : SCENES[selected].label
-  const hasSceneControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue'
+  const hasSceneControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth'
   const currentScope = isHistoryScope(selected) ? selected : undefined
   const currentSnapshots = currentScope ? snapshots[currentScope] : undefined
   const remember = (slot: 'A' | 'B') => {
@@ -435,7 +462,20 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           </>}
           {group.controls.map(range)}
         </details>)}
-        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected as 'preload' | 'preparation' | 'prologue') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
+        {selected === 'growth' && <>
+          <details open><summary>Формирование семечка</summary>
+            <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-growth-particleQuality">Качество семечка</label>{config.scenes.growth.particleQuality !== defaultAtPath('scenes.growth.particleQuality') && <button type="button" className="inspector-reset" aria-label="Сбросить качество семечка" onClick={() => { void resetField('scenes.growth.particleQuality') }}>↺</button>}</div>
+              <select id="composer-scenes-growth-particleQuality" value={config.scenes.growth.particleQuality} onChange={(event) => { void changeField('scenes.growth.particleQuality', event.target.value) }}><option value="low">Низкое · 2304</option><option value="standard">Обычное · 4096</option><option value="high">Высокое · 9216</option></select>
+            </div>
+            {GROWTH_GROUPS.map(group => <details key={group.name} open={group.name === 'Частицы и формирование'}><summary>{group.name}</summary>{group.controls.map(range)}</details>)}
+          </details>
+          <details><summary>Палитра частиц</summary>
+            {color('scenes.growth.pearlColor', 'Жемчужный')}
+            {color('scenes.growth.roseColor', 'Розовый')}
+            {color('scenes.growth.lavenderColor', 'Лавандовый')}
+          </details>
+        </>}
+        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected as 'preload' | 'preparation' | 'prologue' | 'growth') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
       </section>
       <details className="inspector-section"><summary>Диагностика</summary>
         <div className="dev-actions"><button type="button" data-testid="dev-preload" onClick={onPreload}>Проверить загрузку</button><button type="button" data-testid="dev-permissions" onClick={onPermissions}>Настройки заново</button></div>

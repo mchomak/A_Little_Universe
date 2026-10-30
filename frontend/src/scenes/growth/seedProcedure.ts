@@ -1,8 +1,49 @@
 import { TIMING } from '../../engine/filmConfig'
 import type { CameraPose } from '../shared/galleryMotion'
+import { DEFAULT_SCENE_COMPOSER_CONFIG, type SceneComposerConfig } from '../../systems/scene-config/config'
 
 export type SeedStage = 'forming' | 'falling' | 'landed' | 'handoff' | 'growth'
 export const SEED_ROOT = [0, -1.45, 0] as const
+export type GrowthSettings = SceneComposerConfig['scenes']['growth']
+
+export interface GrowthFrames {
+  duration: number
+  formation: readonly [number, number]
+  fall: readonly [number, number]
+  landing: readonly [number, number]
+  moonlight: readonly [number, number]
+  handoff: readonly [number, number]
+  sprout: readonly [number, number]
+  stem: readonly [number, number]
+  settle: readonly [number, number]
+}
+
+/** Formation edits remain inside scene 02 and the fall always waits for completion. */
+export function getGrowthFrames(settings: GrowthSettings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth): GrowthFrames {
+  const duration = TIMING.growth.duration
+  const round = (value: number) => Number(value.toFixed(2))
+  const formationEnd = round(Math.min(3.5, Math.max(2.5, settings.formationDuration)))
+  const fallEnd = round(formationEnd + 1.2)
+  const landingEnd = round(fallEnd + 0.5)
+  const handoffEnd = round(fallEnd + 1.45)
+  const sproutEnd = 14.2
+  return {
+    duration,
+    formation: [0, formationEnd],
+    fall: [formationEnd, fallEnd],
+    landing: [fallEnd, landingEnd],
+    moonlight: [round(fallEnd + 0.5), round(fallEnd + 2)],
+    handoff: [round(fallEnd + 0.7), handoffEnd],
+    sprout: [handoffEnd, sproutEnd],
+    stem: [sproutEnd - 4.2, sproutEnd],
+    settle: [sproutEnd, duration],
+  }
+}
+
+export function getSeedParticleCount(deviceQuality: 'standard' | 'low', quality: GrowthSettings['particleQuality']): number {
+  if (deviceQuality === 'low' || quality === 'low') return 2304
+  return quality === 'high' ? 9216 : 4096
+}
 
 /** Front camera framing while the seed is on screen; mirrors CameraDirector's fit/fov. */
 export function getGrowthViewportHeight(width: number, height: number): number {
@@ -44,8 +85,8 @@ const progress = (time: number, range: readonly [number, number]) => {
 }
 
 /** A pure sampled pose: replay, backward seek and viewport updates never depend on history. */
-export function getSeedPose(time: number, viewportHeight: number, reducedMotion: boolean): SeedPose {
-  const { formation, fall, landing, handoff } = TIMING.growth
+export function getSeedPose(time: number, viewportHeight: number, reducedMotion: boolean, settings: GrowthSettings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth): SeedPose {
+  const { formation, fall, landing, handoff, moonlight, sprout } = getGrowthFrames(settings)
   const forming = progress(time, formation)
   // Ballistic descent: velocity keeps increasing right up to contact, never eases to a stop.
   const fallTime = clamp01((time - fall[0]) / (fall[1] - fall[0]))
@@ -53,7 +94,7 @@ export function getSeedPose(time: number, viewportHeight: number, reducedMotion:
   const transfer = progress(time, handoff)
   const lightTransfer = progress(time, [0, 1.15])
   const sproutStart = transfer * 0.065
-  const growthWeight = sproutStart + 0.935 * progress(time, [handoff[1], TIMING.growth.sprout[1]])
+  const growthWeight = sproutStart + 0.935 * progress(time, [handoff[1], sprout[1]])
   const stage: SeedStage = time < formation[1] ? 'forming'
     : time < fall[1] ? 'falling'
       : time < handoff[0] ? 'landed'
@@ -72,19 +113,20 @@ export function getSeedPose(time: number, viewportHeight: number, reducedMotion:
     impact: reducedMotion ? 1 : clamp01((time - landing[0]) / (landing[1] - landing[0])),
     growthTime: Math.max(0, time - handoff[0]),
     anchor: SEED_ROOT,
-    seedSize: Math.max(0.001, viewportHeight * (0.004 + 0.061 * forming)),
+    seedSize: Math.max(0.001, viewportHeight * (0.004 + 0.061 * forming) * settings.seedScale),
     seedOpacity: 1 - progress(time, [landing[0], landing[0] + 0.12]),
     ringOpacity: progress(time, [0.5, 1.8]) * (0.36 + 0.24 * progress(time, fall)),
     sparkOpacity: reducedMotion || time < landing[0] ? 0 : 1 - progress(time, [landing[0] + 0.08, landing[0] + 0.85]),
     mound: progress(time, [landing[0], landing[0] + 0.28]),
-    moonlight: progress(time, TIMING.growth.moonlight),
+    moonlight: progress(time, moonlight),
   }
 }
 
 /** Delayed pursuit preserves downward screen motion; returns to the existing bloom framing. */
-export function getGrowthCameraPose(time: number, reducedMotion: boolean): CameraPose {
-  const follow = reducedMotion ? 0 : progress(time, [TIMING.growth.fall[0] + 0.32, TIMING.growth.landing[1]])
-  const settle = reducedMotion ? 0 : progress(time, [TIMING.growth.handoff[1], TIMING.growth.duration])
+export function getGrowthCameraPose(time: number, reducedMotion: boolean, settings: GrowthSettings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth): CameraPose {
+  const frames = getGrowthFrames(settings)
+  const follow = reducedMotion ? 0 : progress(time, [frames.fall[0] + 0.32, frames.landing[1]])
+  const settle = reducedMotion ? 0 : progress(time, [frames.handoff[1], frames.duration])
   return {
     x: 0, y: -0.42 * follow * (1 - settle) + 0.2 * settle, z: 5.6,
     tx: 0, ty: -0.42 * follow * (1 - settle) + 0.1 * settle, tz: 0,
@@ -99,8 +141,8 @@ export interface GrowthHandoff {
 }
 
 /** Stable scene-local contract for a future model adapter; no GLB assumptions are encoded here. */
-export function getGrowthHandoff(time: number, viewportHeight = 1, reducedMotion = false): GrowthHandoff {
-  const pose = getSeedPose(time, viewportHeight, reducedMotion)
+export function getGrowthHandoff(time: number, viewportHeight = 1, reducedMotion = false, settings: GrowthSettings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth): GrowthHandoff {
+  const pose = getSeedPose(time, viewportHeight, reducedMotion, settings)
   return { anchor: pose.anchor, stage: pose.stage, localTime: pose.growthTime, weight: pose.growthWeight }
 }
 

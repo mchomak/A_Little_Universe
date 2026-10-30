@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
+import { useSyncExternalStore } from 'react'
 import { gsap } from 'gsap'
 import { PerspectiveCamera } from 'three'
 import type { SceneProps } from './sceneTypes'
@@ -12,12 +13,15 @@ import { focusCamera } from '../scenes/gallery/camera'
 import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
 import { getGrowthCameraPose } from '../scenes/growth/seedProcedure'
+import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 
 /** Camera settings belong here, never inside an artistic scene module. */
 export function CameraDirector({ state, dispatch, runtime, reducedMotion }: SceneProps) {
   const camera = useThree((state) => state.camera)
   const invalidate = useThree((state) => state.invalidate)
   const aspect = useThree((state) => state.size.width / Math.max(state.size.height, 1))
+  const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
+  const growthSettings = config.scenes.growth
   const pose = useRef<CameraPose>({ x: 0, y: 0, z: 5.6, tx: 0, ty: 0, tz: 0 })
   const galleryRevision = useRef<number | null>(null)
   const { scene, revision, paused, reading, speed } = state
@@ -57,10 +61,10 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     if (scene === 'growth') {
       const cursor = { time: 0 }
       timeline.eventCallback('onUpdate', () => {
-        Object.assign(p, getGrowthCameraPose(cursor.time, reducedMotion))
+        Object.assign(p, getGrowthCameraPose(cursor.time, reducedMotion, growthSettings))
         render()
       })
-      Object.assign(p, getGrowthCameraPose(0, reducedMotion))
+      Object.assign(p, getGrowthCameraPose(0, reducedMotion, growthSettings))
       return timeline.to(cursor, { time: TIMING.growth.duration, duration: TIMING.growth.duration, ease: 'none' })
     }
     if (reducedMotion) return timeline
@@ -71,7 +75,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     if (scene === 'cosmos') timeline.to(p, { z: 0.7, duration: TIMING.cosmos.iris[1], ease: 'sine.inOut' })
       .to(p, { z: 8.5, x: 1, y: 1.1, duration: TIMING.cosmos.duration - TIMING.cosmos.iris[1], ease: 'sine.inOut' })
     return timeline
-  }, [reducedMotion, render, revision, scene])
+  }, [growthSettings, reducedMotion, render, revision, scene])
   useSceneTimeline(build, { runtime })
   useEffect(() => scene === 'gallery' ? wakeOnVisible(document, invalidate) : undefined, [scene, invalidate])
 

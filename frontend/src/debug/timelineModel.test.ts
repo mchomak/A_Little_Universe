@@ -3,6 +3,7 @@ import { filmReducer, initialFilmState } from '../engine/film'
 import { SCENES, TIMING } from '../engine/filmConfig'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../systems/scene-config/config'
 import { activeFrameIndex, canSeekTimeline, timelineFrames } from './timelineModel'
+import { getGrowthFrames } from '../scenes/growth/seedProcedure'
 
 describe('scene editor timeline', () => {
   it('uses actual dynamic prologue and identity frame boundaries', () => {
@@ -13,21 +14,23 @@ describe('scene editor timeline', () => {
   })
   it('maps the new seed stages to seekable positions inside the growth scene', () => {
     const frames = timelineFrames('growth', DEFAULT_SCENE_COMPOSER_CONFIG)
-    expect(frames.map(({ label, start }) => [label, start])).toEqual([
-      ['02.1 Формирование семечка', 0],
-      ['02.2 Падение', 2.8],
-      ['02.3 Удар и искры', 4.45],
-      ['02.3 Лунный свет', 4.95],
-      ['02.4 Рост и передача', 5.65],
-      ['02.5 Завершение роста', 18],
-    ])
-    expect(TIMING.growth.duration).toBe(23)
+    expect(frames.map(({ start }) => start)).toEqual([0, 3.2, 4.4, 4.9, 5.1, 14.2])
+    expect(TIMING.growth.duration).toBe(16)
     expect(SCENES.growth.duration).toBe(TIMING.growth.duration)
     expect(frames.every((frame) => frame.start >= 0 && frame.start < SCENES.growth.duration)).toBe(true)
 
     const growth = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'growth' }, true)
     expect(canSeekTimeline(growth, true)).toBe(true)
     expect(filmReducer(growth, { type: 'dev-seek', time: 3.7 }, true).elapsed).toBe(3.7)
+
+    const slowerFormation = { ...DEFAULT_SCENE_COMPOSER_CONFIG, scenes: {
+      ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes,
+      growth: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, formationDuration: 3.5 },
+    } }
+    const delayed = timelineFrames('growth', slowerFormation)
+    expect(delayed[1]?.start).toBe(3.5)
+    expect(delayed[2]?.start).toBe(4.7)
+    expect(getGrowthFrames(slowerFormation.scenes.growth).fall[0]).toBe(3.5)
   })
   it('does not seek through waiting for a bud, gallery, preparation, transition or reading', () => {
     const bloom = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'bloom' }, true)

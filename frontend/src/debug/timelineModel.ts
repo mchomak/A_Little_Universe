@@ -1,12 +1,14 @@
 import { getPrologueFrames, SCENES, TIMING, type SceneId } from '../engine/filmConfig'
 import type { FilmState } from '../engine/film'
 import type { SceneComposerConfig } from '../systems/scene-config/config'
+import { getGrowthFrames } from '../scenes/growth/seedProcedure'
 
 export interface TimelineFrame { label: string; start: number }
 
 /** Only boundaries represented by the current film timing model. */
 export function timelineFrames(scene: SceneId, config: SceneComposerConfig): TimelineFrame[] {
   const p = getPrologueFrames(config.scenes.prologue)
+  const g = getGrowthFrames(config.scenes.growth)
   switch (scene) {
     case 'prologue': return [
       { label: '01.1 Первый свет', start: 0 }, { label: '01.2 Первая фраза', start: p.first[0] },
@@ -14,12 +16,12 @@ export function timelineFrames(scene: SceneId, config: SceneComposerConfig): Tim
       { label: '01.5 Ожидание', start: p.prompt },
     ]
     case 'growth': return [
-      { label: '02.1 Формирование семечка', start: TIMING.growth.formation[0] },
-      { label: '02.2 Падение', start: TIMING.growth.fall[0] },
-      { label: '02.3 Удар и искры', start: TIMING.growth.landing[0] },
-      { label: '02.3 Лунный свет', start: TIMING.growth.moonlight[0] },
-      { label: '02.4 Рост и передача', start: TIMING.growth.handoff[0] },
-      { label: '02.5 Завершение роста', start: TIMING.growth.settle[0] },
+      { label: '02.1 Формирование семечка', start: g.formation[0] },
+      { label: '02.2 Падение', start: g.fall[0] },
+      { label: '02.3 Удар и искры', start: g.landing[0] },
+      { label: '02.3 Лунный свет', start: g.moonlight[0] },
+      { label: '02.4 Рост и передача', start: g.handoff[0] },
+      { label: '02.5 Завершение роста', start: g.settle[0] },
     ]
     case 'bloom': return [{ label: '03 Ожидание / раскрытие', start: 0 }, { label: '03.6 Созерцание', start: TIMING.bloom.contemplate[0] }]
     case 'identity': return [
