@@ -9,6 +9,7 @@ import {
   subscribeConfig,
   updateConfig,
   type QualityProfile,
+  type GalaxyPalette,
   type SceneComposerConfig,
   type SceneComposerConfigPatch,
   type ScenePresetId,
@@ -25,6 +26,7 @@ import {
 } from './composerControls'
 import { createInspectorHistory, type InspectorScope } from './inspectorHistory'
 import { comparisonPointValid, type ComparisonPoint } from './inspectorCompare'
+import { editGalaxyColor, getGalaxyColors, selectGalaxyPalette, type GalaxyColorKey } from '../scenes/galaxy/palette'
 
 type NumericControl = {
   path: ComposerFieldPath
@@ -37,6 +39,7 @@ type NumericControl = {
 }
 
 type InspectorScene = SceneId | 'preload' | 'preparation'
+type SelectControl = { path: ComposerFieldPath; label: string; options: readonly { value: string; label: string }[] }
 
 const PRELOAD_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.preload.glow', label: 'Свечение', unit: '×', min: 0, max: 2, step: 0.05 },
@@ -131,6 +134,88 @@ const BLOOM_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.bloom.flowerBloomDuration', label: 'Длительность раскрытия Bloom', unit: 'с', min: 6, max: 24, step: 0.25 },
 ]
 
+const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
+  { name: 'Galaxy Geometry · перестройка после паузы ползунка', controls: [
+    { path: 'scenes.galaxy.starCount', label: 'Количество звёзд', unit: 'шт.', min: 8000, max: 90000, step: 1000 },
+    { path: 'scenes.galaxy.arms', label: 'Спиральные рукава', unit: '', min: 2, max: 8, step: 1 },
+    { path: 'scenes.galaxy.radius', label: 'Радиус', unit: '', min: 4, max: 14, step: 0.1 },
+    { path: 'scenes.galaxy.spin', label: 'Закручивание рукавов', unit: 'рад', min: 0.2, max: 18, step: 0.05 },
+    { path: 'scenes.galaxy.armWidth', label: 'Ширина рукавов', unit: '× R', min: 0, max: 0.5, step: 0.005 },
+    { path: 'scenes.galaxy.randomness', label: 'Разброс звёзд', unit: '× R', min: 0, max: 0.3, step: 0.005 },
+    { path: 'scenes.galaxy.randomnessPower', label: 'Сжатие разброса', unit: '×', min: 0.1, max: 8, step: 0.1 },
+    { path: 'scenes.galaxy.coreSize', label: 'Размер ядра', unit: '× R', min: 0.08, max: 0.5, step: 0.005 },
+    { path: 'scenes.galaxy.coreDensity', label: 'Плотность ядра', unit: '×', min: 0, max: 0.5, step: 0.01 },
+    { path: 'scenes.galaxy.thickness', label: 'Толщина диска', unit: '× R', min: 0.005, max: 0.2, step: 0.005 },
+  ] },
+  { name: 'Stars · live', controls: [
+    { path: 'scenes.galaxy.starSize', label: 'Размер обычных звёзд', unit: '×', min: 0.25, max: 3.5, step: 0.05 },
+    { path: 'scenes.galaxy.brightness', label: 'Яркость звёзд', unit: '×', min: 0.1, max: 1.5, step: 0.02 },
+    { path: 'scenes.galaxy.twinkle', label: 'Интенсивность мерцания', unit: '×', min: 0, max: 1, step: 0.02 },
+    { path: 'scenes.galaxy.twinkleSpeed', label: 'Скорость мерцания', unit: '×', min: 0, max: 3, step: 0.05 },
+    { path: 'scenes.galaxy.brightStarCount', label: 'Особенно яркие звёзды', unit: 'шт.', min: 0, max: 200, step: 1 },
+    { path: 'scenes.galaxy.brightStarSize', label: 'Размер ярких звёзд', unit: 'px', min: 1, max: 8, step: 0.1 },
+    { path: 'scenes.galaxy.brightStarIntensity', label: 'Интенсивность ярких звёзд', unit: '×', min: 0, max: 3, step: 0.05 },
+    { path: 'scenes.galaxy.backgroundStarCount', label: 'Звёзды фона · перестройка', unit: 'шт.', min: 0, max: 10000, step: 200 },
+    { path: 'scenes.galaxy.backgroundBrightness', label: 'Яркость фона', unit: '×', min: 0, max: 1, step: 0.02 },
+    { path: 'scenes.galaxy.backgroundSize', label: 'Размер звёзд фона', unit: 'px', min: 0.2, max: 2.5, step: 0.05 },
+    { path: 'scenes.galaxy.backgroundDepth', label: 'Глубина фона · перестройка', unit: '', min: 15, max: 100, step: 1 },
+    { path: 'scenes.galaxy.backgroundGasDensity', label: 'Плотность фонового газа', unit: '×', min: 0, max: 0.8, step: 0.02 },
+    { path: 'scenes.galaxy.backgroundGasBrightness', label: 'Яркость фонового газа', unit: '×', min: 0, max: 1, step: 0.02 },
+  ] },
+  { name: 'Nebula · live', controls: [
+    { path: 'scenes.galaxy.nebulaDensity', label: 'Плотность газа', unit: '×', min: 0, max: 1, step: 0.02 },
+    { path: 'scenes.galaxy.nebulaBrightness', label: 'Яркость газа', unit: '×', min: 0, max: 1.5, step: 0.02 },
+    { path: 'scenes.galaxy.nebulaSaturation', label: 'Насыщенность газа', unit: '×', min: 0, max: 1.5, step: 0.02 },
+    { path: 'scenes.galaxy.nebulaOpacity', label: 'Непрозрачность газа', unit: '%', min: 0, max: 100, step: 1, displayScale: 100 },
+    { path: 'scenes.galaxy.nebulaScale', label: 'Масштаб шума', unit: '×', min: 0.3, max: 4, step: 0.05 },
+    { path: 'scenes.galaxy.nebulaIntensity', label: 'Интенсивность газовых рукавов', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.galaxy.nebulaSpeed', label: 'Скорость газа', unit: '×', min: 0, max: 0.1, step: 0.002 },
+  ] },
+  { name: 'Reveal Fog · live', controls: [
+    { path: 'scenes.galaxy.fogDensity', label: 'Плотность переднего тумана', unit: '×', min: 0, max: 1, step: 0.02 },
+    { path: 'scenes.galaxy.fogLayers', label: 'Слои тумана', unit: '', min: 1, max: 8, step: 1 },
+    { path: 'scenes.galaxy.fogDepth', label: 'Глубина слоёв', unit: '', min: 4, max: 30, step: 0.5 },
+    { path: 'scenes.galaxy.fogDissipation', label: 'Скорость рассеивания', unit: '×', min: 0, max: 1, step: 0.02 },
+    { path: 'scenes.galaxy.fogStart', label: 'Начало рассеивания', unit: 'с', min: 0, max: 8, step: 0.1 },
+    { path: 'scenes.galaxy.fogEnd', label: 'Конец рассеивания', unit: 'с', min: 4, max: 18, step: 0.1 },
+    { path: 'scenes.galaxy.fogTurbulence', label: 'Турбулентность', unit: '×', min: 0, max: 1, step: 0.02 },
+    { path: 'scenes.galaxy.fogAfterOpacity', label: 'Остаточная дымка', unit: '%', min: 0, max: 20, step: 0.5, displayScale: 100 },
+  ] },
+  { name: 'Motion · live', controls: [
+    { path: 'scenes.galaxy.rotationSpeed', label: 'Скорость вращения', unit: '×', min: 0, max: 0.1, step: 0.0005 },
+    { path: 'scenes.galaxy.motionSpeed', label: 'Общая скорость движения', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.galaxy.revealMotion', label: 'Движение при раскрытии', unit: '×', min: 0, max: 3, step: 0.05 },
+    { path: 'scenes.galaxy.idleMotion', label: 'Спокойное движение', unit: '×', min: 0, max: 0.6, step: 0.01 },
+    { path: 'scenes.galaxy.firstStarsAt', label: 'Появление первых звёзд', unit: 'с', min: 0, max: 6, step: 0.1 },
+    { path: 'scenes.galaxy.galaxyRevealAt', label: 'Начало раскрытия галактики', unit: 'с', min: 0, max: 10, step: 0.1 },
+    { path: 'scenes.galaxy.revealDuration', label: 'Длительность раскрытия', unit: 'с', min: 5, max: 18, step: 0.1 },
+    { path: 'scenes.galaxy.pauseDuration', label: 'Пауза до затемнения', unit: 'с', min: 0, max: 12, step: 0.1 },
+    { path: 'scenes.galaxy.backgroundTransition', label: 'Переход в фон', unit: 'с', min: 2, max: 18, step: 0.1 },
+  ] },
+  { name: 'Camera · CameraDirector', controls: [
+    { path: 'scenes.galaxy.cameraStartDistance', label: 'Начальная дистанция', unit: '', min: 3, max: 12, step: 0.1 },
+    { path: 'scenes.galaxy.cameraEndDistance', label: 'Финальная дистанция', unit: '', min: 9, max: 28, step: 0.1 },
+    { path: 'scenes.galaxy.cameraStartAngle', label: 'Начальный угол', unit: 'rad', min: -0.3, max: 0.8, step: 0.01 },
+    { path: 'scenes.galaxy.cameraEndAngle', label: 'Финальный угол', unit: 'rad', min: 0.1, max: 0.95, step: 0.01 },
+    { path: 'scenes.galaxy.cameraFocusX', label: 'Смещение фокуса X', unit: '', min: -3, max: 3, step: 0.05 },
+    { path: 'scenes.galaxy.cameraFocusY', label: 'Смещение фокуса Y', unit: '', min: -3, max: 3, step: 0.05 },
+    { path: 'scenes.galaxy.cameraDuration', label: 'Длительность отдаления', unit: 'с', min: 5, max: 18, step: 0.1 },
+    { path: 'scenes.galaxy.cameraSlowdown', label: 'Время замедления', unit: 'с', min: 0, max: 8, step: 0.1 },
+    { path: 'scenes.galaxy.compositionScale', label: 'Масштаб композиции', unit: '×', min: 0.65, max: 1.4, step: 0.01 },
+  ] },
+]
+
+const GALAXY_SELECTS: readonly SelectControl[] = [
+  { path: 'scenes.galaxy.quality', label: 'Качество галактики', options: [{ value: 'low', label: 'Low' }, { value: 'standard', label: 'Standard' }, { value: 'high', label: 'High' }] },
+  { path: 'scenes.galaxy.distribution', label: 'Форма распределения', options: [{ value: 'balanced', label: 'Сбалансированное' }, { value: 'core', label: 'Плотное ядро' }, { value: 'arms', label: 'Выраженные рукава' }] },
+  { path: 'scenes.galaxy.palette', label: 'Палитра', options: [
+    { value: 'vasilisa', label: 'Vasilisa Cinematic' }, { value: 'spore', label: 'Spore (R/B/Y/V)' },
+    { value: 'ember', label: 'Ember' }, { value: 'emerald', label: 'Emerald' },
+    { value: 'ice', label: 'Ice' }, { value: 'rose', label: 'Rose' }, { value: 'custom', label: 'Custom' },
+  ] },
+  { path: 'scenes.galaxy.cameraEase', label: 'Easing камеры', options: [{ value: 'sine', label: 'Sine' }, { value: 'power2', label: 'Power 2' }, { value: 'power3', label: 'Power 3' }] },
+]
+
 function useApproximateRafFps() {
   const [fps, setFps] = useState<number | null>(null)
   useEffect(() => {
@@ -210,6 +295,19 @@ function FontControl({ path, label, value, onChange, onReset }: {
   )
 }
 
+function SelectConfigControl({ control, value, onChange, onReset }: {
+  control: SelectControl
+  value: string
+  onChange(path: ComposerFieldPath, value: string): void
+  onReset(path: ComposerFieldPath): void
+}) {
+  const id = `composer-${control.path.replaceAll('.', '-')}`
+  return <div className="composer-control">
+    <div className="inspector-control-heading"><label htmlFor={id}>{control.label}</label>{value !== defaultAtPath(control.path) && <button type="button" className="inspector-reset" aria-label={`Сбросить ${control.label}`} onClick={() => onReset(control.path)}>↺</button>}</div>
+    <select id={id} data-testid={id} value={value} onChange={(event) => onChange(control.path, event.target.value)}>{control.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+  </div>
+}
+
 export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion, onPreload, onPermissions, route = 'film' }: {
   state: FilmState
   dispatch: Dispatch<FilmAction>
@@ -233,7 +331,6 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const compareBusy = useRef(false)
   const [comparing, setComparing] = useState(false)
   const [snapshots, setSnapshots] = useState<Partial<Record<InspectorScope, { A?: object; B?: object; active?: 'A' | 'B'; point?: ComparisonPoint }>>>({})
-  const isHistoryScope = (scope: InspectorScene): scope is Exclude<InspectorScope, 'global'> => scope === 'preload' || scope === 'preparation' || scope === 'prologue' || scope === 'growth' || scope === 'bloom'
   const section = (value: SceneComposerConfig, scope: InspectorScope): object => scope === 'global' ? value.global : value.scenes[scope]
   const recordChange = (scope: InspectorScope, before: SceneComposerConfig, after: SceneComposerConfig) => {
     history.record(scope, section(before, scope), section(after, scope))
@@ -297,7 +394,17 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
 
   const resetField = async (path: ComposerFieldPath) => changeField(path, defaultAtPath(path))
 
-  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom') => {
+  const commitGalaxySettings = async (settings: SceneComposerConfig['scenes']['galaxy']) => {
+    const before = getConfig()
+    const next = await updateConfig({ scenes: { galaxy: settings } })
+    recordChange('galaxy', before, next)
+  }
+
+  const changeGalaxyPalette = async (palette: GalaxyPalette) => {
+    await commitGalaxySettings(selectGalaxyPalette(getConfig().scenes.galaxy, palette))
+  }
+
+  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'galaxy') => {
     const before = getConfig()
     const result = await resetComposerScope(scope)
     if (!result.ok) {
@@ -339,7 +446,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1 и 2. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–5. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -358,16 +465,28 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
 
   const range = (control: NumericControl) => <ConfigRange key={control.path} control={control} config={config} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
   const color = (path: ComposerFieldPath, label: string) => {
-    const value = valueAtPath(config, path) as string
+    const isGalaxyColor = path.startsWith('scenes.galaxy.')
+    const galaxyColorKey = isGalaxyColor ? path.slice('scenes.galaxy.'.length) as GalaxyColorKey : undefined
+    const value = galaxyColorKey ? getGalaxyColors(config.scenes.galaxy)[galaxyColorKey] : valueAtPath(config, path) as string
+    const applyColor = async (next: string) => {
+      if (galaxyColorKey) {
+        await commitGalaxySettings(editGalaxyColor(getConfig().scenes.galaxy, galaxyColorKey, next))
+        return
+      }
+      await changeField(path, next.toUpperCase())
+    }
     return <div className="composer-control" key={path}>
-      <div className="inspector-control-heading"><label htmlFor={`composer-${path.replaceAll('.', '-')}`}>{label}</label>{value !== defaultAtPath(path) && <button type="button" className="inspector-reset" aria-label={`Сбросить ${label.toLocaleLowerCase('ru-RU')}`} onClick={() => { void resetField(path) }}>↺</button>}</div>
-      <input id={`composer-${path.replaceAll('.', '-')}`} type="color" value={value} onChange={(event) => { void changeField(path, event.target.value.toUpperCase()) }} />
+      <div className="inspector-control-heading"><label htmlFor={`composer-${path.replaceAll('.', '-')}`}>{label}</label>{value !== defaultAtPath(path) && <button type="button" className="inspector-reset" aria-label={`Сбросить ${label.toLocaleLowerCase('ru-RU')}`} onClick={() => { void applyColor(defaultAtPath(path) as string) }}>↺</button>}</div>
+      <input id={`composer-${path.replaceAll('.', '-')}`} type="color" value={value} onChange={(event) => { void applyColor(event.target.value) }} />
     </div>
   }
   const font = (scene: 'preparation' | 'prologue', label: string) => <FontControl path={`scenes.${scene}.fontFamily`} label={label} value={config.scenes[scene].fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
   const title = selected === 'preload' ? '00 · Загрузка' : selected === 'preparation' ? '00.1 · Подготовка' : SCENES[selected].label
-  const hasSceneControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth' || selected === 'bloom'
-  const currentScope = isHistoryScope(selected) ? selected : undefined
+  const hasSceneControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue'
+    || selected === 'growth' || selected === 'bloom' || selected === 'cosmos'
+  const currentScope: InspectorScope | undefined = selected === 'cosmos' ? 'galaxy'
+    : selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth' || selected === 'bloom'
+      ? selected : undefined
   const currentSnapshots = currentScope ? snapshots[currentScope] : undefined
   const remember = (slot: 'A' | 'B') => {
     if (!currentScope) return
@@ -485,7 +604,27 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           </details>
         </>}
         {selected === 'bloom' && <details open><summary>Анимация раскрытия</summary>{BLOOM_CONTROLS.map(range)}<p>IdleClosed ожидает касания; Bloom начинается только после него.</p></details>}
-        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected as 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
+        {selected === 'cosmos' && <>
+          <details open><summary>Scene 07 — Galaxy</summary>
+            {GALAXY_SELECTS.map((control) => <SelectConfigControl key={control.path} control={control} value={valueAtPath(config, control.path) as string} onChange={(path, value) => { void (path === 'scenes.galaxy.palette' ? changeGalaxyPalette(value as GalaxyPalette) : changeField(path, value)) }} onReset={(path) => { void resetField(path) }} />)}
+            <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-galaxy-seed">Seed генерации</label>{config.scenes.galaxy.seed !== defaultAtPath('scenes.galaxy.seed') && <button type="button" className="inspector-reset" aria-label="Сбросить seed генерации" onClick={() => { void resetField('scenes.galaxy.seed') }}>↺</button>}</div><input id="composer-scenes-galaxy-seed" data-testid="composer-scenes-galaxy-seed" type="text" maxLength={64} value={config.scenes.galaxy.seed} onChange={(event) => { void changeField('scenes.galaxy.seed', event.target.value) }} /></div>
+            <label className="composer-control"><input type="checkbox" checked={config.scenes.galaxy.nebulaEnabled} onChange={(event) => { void changeField('scenes.galaxy.nebulaEnabled', event.target.checked) }} /> Газовая туманность</label>
+            <label className="composer-control"><input type="checkbox" checked={config.scenes.galaxy.blackHoleEnabled} onChange={(event) => { void changeField('scenes.galaxy.blackHoleEnabled', event.target.checked) }} /> Чёрный центр</label>
+            {GALAXY_GROUPS.map((group) => <details key={group.name} open={group.name.startsWith('Galaxy Geometry')}><summary>{group.name}</summary>{group.controls.map(range)}</details>)}
+            <details><summary>Colors & Light · live</summary>
+              {color('scenes.galaxy.coreColor', 'Цвет ядра')}
+              {color('scenes.galaxy.innerColor', 'Цвет внутреннего диска')}
+              {color('scenes.galaxy.armColor', 'Цвет спиральных рукавов')}
+              {color('scenes.galaxy.nebulaColor', 'Цвет туманности')}
+              {color('scenes.galaxy.brightColor', 'Цвет ярких звёзд')}
+              {color('scenes.galaxy.backgroundColor', 'Цвет фона')}
+              {range({ path: 'scenes.galaxy.exposure', label: 'Экспозиция', unit: '×', min: 0.3, max: 1.8, step: 0.05 })}
+              {range({ path: 'scenes.galaxy.coreGlow', label: 'Свечение ядра', unit: '×', min: 0, max: 2, step: 0.05 })}
+            </details>
+            <button type="button" onClick={() => { void resetScope('galaxy') }}>Сбросить Galaxy</button>
+          </details>
+        </>}
+        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
       </section>
       <details className="inspector-section"><summary>Диагностика</summary>
         <div className="dev-actions"><button type="button" data-testid="dev-preload" onClick={onPreload}>Проверить загрузку</button><button type="button" data-testid="dev-permissions" onClick={onPermissions}>Настройки заново</button></div>

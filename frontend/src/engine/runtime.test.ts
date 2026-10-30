@@ -171,3 +171,27 @@ it('publishes coherent presentation and scene getters to both subscriber kinds',
   expect(canonical).toHaveBeenCalledTimes(1)
   expect(presentation).toHaveBeenCalledTimes(2)
 })
+
+it('keeps Scene 09 alive on the shared presentation clock without advancing film state', () => {
+  const runtime = createFilmRuntime()
+  const actions: FilmAction[] = []
+  const presentation: number[] = []
+  const off = runtime.subscribePresentation((time) => presentation.push(time))
+  class Visibility extends EventTarget { hidden = false }
+  const visibility = new Visibility()
+  const state = { ...initialFilmState, scene: 'ending' as const, mode: 'ended' as const, revision: 4 }
+  const clock = createFilmClock({ state, runtime, dispatch: (action) => actions.push(action), visibility })
+
+  expect(clock.timeline.paused()).toBe(false)
+  clock.timeline.time(2)
+  expect(runtime.time).toBe(0)
+  expect(runtime.presentationTime).toBeCloseTo(2)
+  expect(presentation.at(-1)).toBeCloseTo(2)
+  expect(actions).toEqual([])
+  clock.sync({ ...state, paused: true })
+  expect(clock.timeline.paused()).toBe(true)
+  clock.sync(state)
+  expect(clock.timeline.paused()).toBe(false)
+  clock.dispose()
+  off()
+})
