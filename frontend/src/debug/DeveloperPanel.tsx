@@ -1,7 +1,7 @@
 ﻿import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type Dispatch } from 'react'
 import type { FilmAction, FilmState } from '../engine/film'
 import type { FilmRuntime } from '../engine/runtime'
-import { SCENES, type SceneId } from '../engine/filmConfig'
+import { getSceneDuration, SCENES, type SceneId } from '../engine/filmConfig'
 import {
   DEFAULT_SCENE_COMPOSER_CONFIG,
   SCENE_CONFIG_PRESETS,
@@ -121,6 +121,14 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.growth.coreGlow', label: 'Свечение ядра', unit: '×', min: 0, max: 1.5, step: 0.05 },
     { path: 'scenes.growth.seedScale', label: 'Масштаб семечка', unit: '×', min: 0.65, max: 1.4, step: 0.05 },
   ] },
+  { name: 'Анимация лилии', controls: [
+    { path: 'scenes.growth.flowerGrowthDuration', label: 'Длительность Growth', unit: 'с', min: 4, max: 14, step: 0.25 },
+    { path: 'scenes.bloom.flowerBloomDuration', label: 'Длительность Bloom', unit: 'с', min: 6, max: 24, step: 0.25 },
+  ] },
+]
+
+const BLOOM_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.bloom.flowerBloomDuration', label: 'Длительность раскрытия Bloom', unit: 'с', min: 6, max: 24, step: 0.25 },
 ]
 
 function useApproximateRafFps() {
@@ -225,7 +233,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const compareBusy = useRef(false)
   const [comparing, setComparing] = useState(false)
   const [snapshots, setSnapshots] = useState<Partial<Record<InspectorScope, { A?: object; B?: object; active?: 'A' | 'B'; point?: ComparisonPoint }>>>({})
-  const isHistoryScope = (scope: InspectorScene): scope is Exclude<InspectorScope, 'global'> => scope === 'preload' || scope === 'preparation' || scope === 'prologue' || scope === 'growth'
+  const isHistoryScope = (scope: InspectorScene): scope is Exclude<InspectorScope, 'global'> => scope === 'preload' || scope === 'preparation' || scope === 'prologue' || scope === 'growth' || scope === 'bloom'
   const section = (value: SceneComposerConfig, scope: InspectorScope): object => scope === 'global' ? value.global : value.scenes[scope]
   const recordChange = (scope: InspectorScope, before: SceneComposerConfig, after: SceneComposerConfig) => {
     history.record(scope, section(before, scope), section(after, scope))
@@ -289,7 +297,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
 
   const resetField = async (path: ComposerFieldPath) => changeField(path, defaultAtPath(path))
 
-  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth') => {
+  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom') => {
     const before = getConfig()
     const result = await resetComposerScope(scope)
     if (!result.ok) {
@@ -358,7 +366,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   }
   const font = (scene: 'preparation' | 'prologue', label: string) => <FontControl path={`scenes.${scene}.fontFamily`} label={label} value={config.scenes[scene].fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
   const title = selected === 'preload' ? '00 · Загрузка' : selected === 'preparation' ? '00.1 · Подготовка' : SCENES[selected].label
-  const hasSceneControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth'
+  const hasSceneControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth' || selected === 'bloom'
   const currentScope = isHistoryScope(selected) ? selected : undefined
   const currentSnapshots = currentScope ? snapshots[currentScope] : undefined
   const remember = (slot: 'A' | 'B') => {
@@ -377,7 +385,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
       if (!runtime || state.reading || (state.mode !== 'playing' && state.mode !== 'waiting')) { setNotice('Сравнение недоступно во время перехода или чтения.'); return }
       const time = state.mode === 'playing' ? runtime.time : state.elapsed
       point ??= { scene: state.scene, mode: state.mode, time, revision: state.revision }
-      if (!comparisonPointValid(point, state, SCENES[state.scene].duration)) {
+      if (!comparisonPointValid(point, state, getSceneDuration(state.scene, config))) {
         setNotice('Эта точка больше недоступна. Выберите новую точку сравнения.')
         return
       }
@@ -469,13 +477,15 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             </div>
             {GROWTH_GROUPS.map(group => <details key={group.name} open={group.name === 'Частицы и формирование'}><summary>{group.name}</summary>{group.controls.map(range)}</details>)}
           </details>
+          <p>Обе длительности анимации цветка настраиваются здесь и в сцене раскрытия.</p>
           <details><summary>Палитра частиц</summary>
             {color('scenes.growth.pearlColor', 'Жемчужный')}
             {color('scenes.growth.roseColor', 'Розовый')}
             {color('scenes.growth.lavenderColor', 'Лавандовый')}
           </details>
         </>}
-        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected as 'preload' | 'preparation' | 'prologue' | 'growth') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
+        {selected === 'bloom' && <details open><summary>Анимация раскрытия</summary>{BLOOM_CONTROLS.map(range)}<p>IdleClosed ожидает касания; Bloom начинается только после него.</p></details>}
+        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected as 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
       </section>
       <details className="inspector-section"><summary>Диагностика</summary>
         <div className="dev-actions"><button type="button" data-testid="dev-preload" onClick={onPreload}>Проверить загрузку</button><button type="button" data-testid="dev-permissions" onClick={onPermissions}>Настройки заново</button></div>

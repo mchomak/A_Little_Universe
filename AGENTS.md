@@ -217,7 +217,7 @@ When the task introduces a durable rule that will matter across future work, upd
 <!-- autopilot:start -->
 ## Current implementation
 
-A Little Universe for You is a private, tablet-first cinematic React/Three.js birthday film. Preload (00), preparation (00.1), prologue (01), scene 02 RecStudio seed formation/fall/handoff, and the particle-to-first-memory sequence (04.2–04.7) are implemented. Scene 02 plant growth remains a placeholder; scene 03 and scenes 06–09 remain navigable placeholders. The 04.1 lily is procedural. Scene 05 is an interactive gallery with the first real photo and 11 generated development placeholders; music, gaze tracking, and video upload are not connected. The active storyboard is A_Little_Universe_for_Vasilisa_Storyboard_v3.0.md; key_frames/splitting the text.png is an art reference, not a runtime texture.
+A Little Universe for You is a private, tablet-first cinematic React/Three.js birthday film. Preload (00), preparation (00.1), prologue (01), scene 02 RecStudio seed formation/fall/handoff, and the particle-to-first-memory sequence (04.2–04.7) are implemented. Scene 02 uses the animated Lily 004 GLB for plant growth; scene 03 continues the same lily through its touch gate and opening. Scenes 06–09 remain navigable placeholders. The 04.1 lily is procedural. Scene 05 is an interactive gallery with the first real photo and 11 generated development placeholders; music, gaze tracking, and video upload are not connected. The active storyboard is A_Little_Universe_for_Vasilisa_Storyboard_v3.0.md; key_frames/splitting the text.png is an art reference, not a runtime texture.
 
 ### Working commands
 
@@ -271,8 +271,12 @@ Environment variable names only: frontend/.env.example defines public VITE_APP_T
 
 - RecStudio curl noise, per-particle spring attraction and damping run in a deterministic 30 Hz GPU ping-pong simulation on the shared WebGL2 renderer. Float targets require `EXT_color_buffer_float`; otherwise the scene uses its analytic fallback.
 - GPU checkpoints are saved every 0.5 s. Backward seek and physics edits restore/reset and replay to film time; replay is bounded to 2.5–3.5 s formation plus a 0.95 s spark tail. Procedural targets describe an asymmetric 3D seed with surface and interior particles.
-- Scene duration is 16 s. Formation defaults to 3.2 s and is bounded to 2.5–3.5 s; fall starts at formation end, leaving 8–10 s for plant growth. DEV Inspector exposes quality (2304/4096/9216), size, opacity, cloud, noise, attraction, ramp, damping, formation, free-particle fraction, colors, core glow and seed scale.
+- Scene duration defaults to 16 s and follows the configurable lily growth duration. Formation defaults to 3.2 s and is bounded to 2.5–3.5 s; fall starts at formation end. DEV Inspector exposes quality (2304/4096/9216), size, opacity, cloud, noise, attraction, ramp, damping, formation, free-particle fraction, colors, core glow and seed scale.
 - `npm run check` passed on 2026-10-30: 209 tests in 54 files, lint, strict typecheck and production build. Chrome 4:3 checks covered formation, backward seek and fall handoff without WebGL console errors. Physical iPad/Safari performance and hardware without `EXT_color_buffer_float` remain unverified. See `docs/scene-02-seed.md`.
+
+### Lily 004 film integration
+
+- Runtime asset: `frontend/src/assets/lily/lily_004_final.glb`, copied from the early-interior candidate; attribution is in the adjacent `ATTRIBUTION.md` and film credits. Growth plays in scene 02; IdleClosed plays at the scene 03 touch gate and Bloom begins only after touch. The DEV Inspector exposes Growth (default 9 s) and Bloom (default 16 s) durations. The same model persists across the transition; scene 04.1 remains procedural. Desktop browser checks passed; physical iPad/Safari remains unverified. Existing petal gaps and low front petal remain artistic limitations.
 
 ### Lily 004 Blender candidate
 

@@ -1,77 +1,100 @@
 window.STATE =
 {
-  "slug": "recstudio-seed",
-  "dir": "2026-10-30-recstudio-seed",
-  "title": "RecStudio ? ???????????? ???????",
+  "slug": "lily-film-integration",
+  "dir": "2026-10-30-lily-film-integration--wip",
+  "title": "Интеграция лилии в фильм",
   "mode": "full",
   "depth": "normal",
   "polish": null,
-  "tier": "T0",
+  "tier": "T1",
   "briefFile": "2026-10-30-brief.md",
   "memoryFile": "AGENTS.md",
-  "skillDir": "C:\\Users\\McHomak\\.agents\\skills\\autopilot",
-  "startedAt": "2026-10-30T03:06:38+03:00",
-  "updatedAt": "2026-10-30T03:34:32+03:00",
-  "finishedAt": "2026-10-30T03:34:32+03:00",
+  "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
+  "startedAt": "2026-10-30T16:09:38+03:00",
+  "updatedAt": "2026-10-30T18:16:20+03:00",
+  "finishedAt": null,
   "stages": [
     {
       "id": "preflight",
       "status": "done",
-      "finishedAt": "2026-10-30T03:11:16+03:00",
-      "note": "?????? ??????????"
+      "startedAt": "2026-10-30T16:09:38+03:00",
+      "finishedAt": "2026-10-30T16:09:38+03:00"
     },
     {
       "id": "manifest",
       "status": "done",
-      "note": "????????? ????????????? ????? ??????????",
-      "finishedAt": "2026-10-30T03:11:16+03:00"
+      "startedAt": "2026-10-30T16:10:25+03:00",
+      "finishedAt": "2026-10-30T16:10:25+03:00"
     },
     {
       "id": "briefing",
       "status": "skipped",
-      "note": "?????? ??????? ? ???????????"
+      "note": "полный автомат — самобрифинг"
     },
     {
       "id": "spec",
       "status": "done",
-      "note": "????????? ????????????? ????? ??????????",
-      "finishedAt": "2026-10-30T03:11:16+03:00"
+      "startedAt": "2026-10-30T16:10:25+03:00",
+      "finishedAt": "2026-10-30T16:10:25+03:00"
     },
     {
       "id": "plan",
       "status": "done",
-      "note": "?????? ??????????",
-      "finishedAt": "2026-10-30T03:11:16+03:00"
+      "startedAt": "2026-10-30T16:10:25+03:00",
+      "finishedAt": "2026-10-30T16:10:25+03:00"
     },
     {
       "id": "build",
-      "status": "done",
-      "startedAt": "2026-10-30T03:06:38+03:00",
-      "finishedAt": "2026-10-30T03:34:32+03:00"
+      "status": "active",
+      "startedAt": "2026-10-30T16:09:38+03:00"
     },
     {
       "id": "review",
-      "status": "done",
-      "finishedAt": "2026-10-30T03:34:32+03:00"
+      "status": "pending"
     },
     {
       "id": "final",
-      "status": "done",
-      "finishedAt": "2026-10-30T03:34:32+03:00"
+      "status": "pending"
     }
   ],
   "requirements": {
-    "total": 60,
-    "done": 60,
-    "inTicket": 0,
+    "total": 13,
+    "done": 0,
+    "inTicket": 13,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
     "dropped": 0
   },
-  "tickets": [],
+  "tickets": [
+    {
+      "id": "01",
+      "title": "Интеграция модели и анимаций",
+      "status": "in-progress",
+      "startedAt": "2026-10-30T16:09:38+03:00",
+      "requirements": [
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "R05",
+        "R06",
+        "R07",
+        "R08",
+        "R09",
+        "R10",
+        "R11",
+        "R12",
+        "R13"
+      ],
+      "wave": 1,
+      "blockedBy": [],
+      "repairs": 0,
+      "handoffs": 0
+    }
+  ],
   "singlePass": null,
-  "tests": "npm run check: 209 tests, lint, typecheck, production build",
+  "tests": null,
   "debt": {
     "placeholders": [],
     "assumptions": [],
@@ -79,23 +102,15 @@ window.STATE =
   },
   "additions": [],
   "coverage": {
-    "findings": 7,
-    "resolved": 7,
-    "result": "G2: ??????????? ????????? ??????"
+    "status": "passed",
+    "findings": 4,
+    "resolved": "spec updated: continuous scene placement, inspector controls, checkpoint and final commit, browser verification",
+    "reviewer": "/root/spec_check"
   },
-  "concerns": [
-    "?????????? replay ?? 134 ????? ????? ????????? UI ?? iPad"
-  ],
+  "concerns": [],
   "reviewers": {
     "manifestSpec": null,
     "craft": null
   },
-  "blind": {
-    "result": "??????????? ???????: ??????????? ?????????????? ?? ???????",
-    "limitations": [
-      "???????????? ??? ???????? ??????????; ????????? ????? ? ????????? keyframes",
-      "?????????? iPad/Safari ? fallback ??? ?????????? ?? ?????????",
-      "GPU checkpoint ??????????? ????????; replay ????? ??????? ????????"
-    ]
-  }
+  "blind": null
 }

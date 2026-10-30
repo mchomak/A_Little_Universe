@@ -4,7 +4,7 @@ import { type ArtFontId, isArtFontId } from './fontIds'
 export type QualityProfile = 'standard' | 'low'
 export type ScenePresetId = 'moonlit-letter' | 'stardust'
 export type SeedQuality = 'low' | 'standard' | 'high'
-export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'preset'
+export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'preset'
 
 type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T[Key]> : T[Key] }
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
@@ -84,7 +84,9 @@ export interface SceneComposerConfig {
       lavenderColor: string
       coreGlow: number
       seedScale: number
+      flowerGrowthDuration: number
     }>
+    bloom: Readonly<{ flowerBloomDuration: number }>
   }>
   readonly preset: ScenePresetId
 }
@@ -112,8 +114,9 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       cloudRadius: 0.6, noiseStrength: 0.55, attractionStrength: 11.5,
       attractionRampDuration: 2.8, morphDamping: 7.2, formationDuration: 3.2,
       freeParticleFraction: 0.08, pearlColor: '#FFF4E8', roseColor: '#F4CCDA',
-      lavenderColor: '#D7CCF1', coreGlow: 0.55, seedScale: 1,
+      lavenderColor: '#D7CCF1', coreGlow: 0.55, seedScale: 1, flowerGrowthDuration: 9,
     },
+    bloom: { flowerBloomDuration: 16 },
   },
   preset: 'moonlit-letter',
 })
@@ -241,6 +244,10 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       lavenderColor: colorValue(growthInput?.lavenderColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lavenderColor),
       coreGlow: numberValue(growthInput?.coreGlow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.coreGlow, 0, 1.5),
       seedScale: numberValue(growthInput?.seedScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedScale, 0.65, 1.4),
+      flowerGrowthDuration: numberValue(growthInput?.flowerGrowthDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.flowerGrowthDuration, 4, 14),
+    },
+    bloom: {
+      flowerBloomDuration: numberValue(asRecord(scenesInput?.bloom)?.flowerBloomDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.flowerBloomDuration, 6, 24),
     },
   }
   if (scenes.prologue.particleSizeMin > scenes.prologue.particleSizeMax) {

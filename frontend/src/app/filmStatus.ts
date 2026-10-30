@@ -1,7 +1,7 @@
 import type { SceneId } from '../engine/filmConfig'
 
 export function getImplementationStatus(scene: SceneId): string {
-  return scene === 'growth'
-    ? 'Сцена 02 · формирование семечка'
-    : 'Сцены 03, 06–09 · placeholders'
+  if (scene === 'growth') return 'Сцена 02 · семечко и рост лилии'
+  if (scene === 'bloom') return 'Сцена 03 · раскрытие лилии'
+  return 'Сцены 06–09 · placeholders'
 }

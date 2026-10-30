@@ -36,6 +36,32 @@ it('keeps canonical waiting time at eighteen while one controlled presentation c
   impulse.dispose()
 })
 
+it('runs IdleClosed presentation time while bloom waits without advancing the film timeline', async () => {
+  const runtime = createFilmRuntime()
+  const actions: FilmAction[] = []
+  const state = { ...initialFilmState, scene: 'bloom' as const, mode: 'waiting' as const }
+  const waiting = createFilmClock({ state, runtime, dispatch: (action) => actions.push(action) })
+
+  waiting.timeline.totalTime(2.25)
+  expect(runtime.time).toBe(0)
+  expect(runtime.presentationTime).toBeCloseTo(2.25)
+  expect(actions).toEqual([])
+  waiting.sync({ ...state, paused: true })
+  const frozenPresentation = runtime.presentationTime
+  expect(runtime.presentationTime).toBe(frozenPresentation)
+  expect(waiting.timeline.paused()).toBe(true)
+  await new Promise((resolve) => setTimeout(resolve, 40))
+  expect(runtime.presentationTime).toBe(frozenPresentation)
+  waiting.dispose()
+
+  const opening = filmReducer(state, { type: 'interact' })
+  const bloom = createFilmClock({ state: opening, runtime, dispatch: (action) => actions.push(action) })
+  bloom.timeline.time(1.5)
+  expect(runtime.time).toBeCloseTo(1.5)
+  expect(actions.at(-1)).toMatchObject({ type: 'timeline-update', time: 1.5 })
+  bloom.dispose()
+})
+
 it('completes an endpoint seek after explicit resume and keeps old revisions inert', () => {
   const runtime = createFilmRuntime()
   let state = { ...initialFilmState, scene: 'eye' as const, mode: 'playing' as const, elapsed: 18, paused: true, revision: 7 }
