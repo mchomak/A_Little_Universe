@@ -61,6 +61,8 @@ export function createStarMaterial() {
     fragmentShader: `
       uniform float uBrightness;
       uniform float uExposure;
+      uniform vec3 uCoreColor;
+      uniform vec3 uInnerColor;
       varying vec3 vColor;
       varying float vAlpha;
       varying float vSeed;
@@ -71,10 +73,13 @@ export function createStarMaterial() {
         if (r > 1.0) discard;
         float core = exp(-r * r * 9.0);
         float halo = exp(-r * r * 3.2) * 0.28;
-        float warm = smoothstep(0.94, 0.995, vSeed) * 0.22;
-        vec3 tint = mix(vColor, vec3(1.0, 0.77, 0.55), warm);
-        float alpha = (core + halo) * vAlpha * uBrightness;
-        gl_FragColor = vec4(tint * alpha * uExposure, alpha);
+        float warmAccent = smoothstep(0.9, 0.995, vSeed) * 0.42;
+        float coolAccent = smoothstep(0.94, 0.995, fract(vSeed * 7.13)) * 0.3;
+        vec3 tint = mix(vColor, uCoreColor, warmAccent);
+        tint = mix(tint, uInnerColor, coolAccent);
+        float alpha = (core + halo) * vAlpha;
+        // AdditiveBlending applies source alpha in the blend stage, so keep RGB unpremultiplied here.
+        gl_FragColor = vec4(tint * uBrightness * uExposure, alpha);
         #include <colorspace_fragment>
       }`,
   })
@@ -87,6 +92,7 @@ export function createGasMaterial() {
     uBrightness: { value: 0.48 }, uOpacity: { value: 0.62 }, uIntensity: { value: 0.7 },
     uSpeed: { value: 0.018 }, uSaturation: { value: 0.72 }, uReveal: { value: 0 },
     uColor: { value: new Color('#E3AFCF') }, uRadius: { value: 8.2 },
+    uArms: { value: 4 }, uSpin: { value: 1.2 }, uArmWidth: { value: 0.5 }, uRotationSpeed: { value: 0.006 }, uMotionTime: { value: 0 },
   }
   const material = new ShaderMaterial({
     uniforms,
@@ -95,20 +101,16 @@ export function createGasMaterial() {
     side: 2,
     blending: AdditiveBlending,
     vertexShader: `
-      uniform float uTime;
-      uniform float uSpeed;
       varying vec2 vUv;
-      varying vec3 vPosition;
       void main() {
         vUv = uv;
-        vPosition = position;
-        vec3 p = position;
-        float angle = uTime * uSpeed;
-        p.xy = mat2(cos(angle), -sin(angle), sin(angle), cos(angle)) * p.xy;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }`,
     fragmentShader: `
       uniform float uTime;
+      uniform float uSpeed;
+      uniform float uMotionTime;
+      uniform float uRotationSpeed;
       uniform float uScale;
       uniform float uDensity;
       uniform float uBrightness;
@@ -117,9 +119,11 @@ export function createGasMaterial() {
       uniform float uSaturation;
       uniform float uReveal;
       uniform float uRadius;
+      uniform float uArms;
+      uniform float uSpin;
+      uniform float uArmWidth;
       uniform vec3 uColor;
       varying vec2 vUv;
-      varying vec3 vPosition;
       float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
       float noise(vec2 p) {
         vec2 i = floor(p); vec2 f = fract(p); f = f*f*(3.0-2.0*f);
@@ -133,12 +137,16 @@ export function createGasMaterial() {
       void main() {
         vec2 p = (vUv - 0.5) * 2.0;
         float radius = length(p);
-        float angle = atan(p.y, p.x);
-        float spiral = sin(angle * 4.0 - radius * 8.0 + uTime * uSpeed * 3.0);
+        float normalizedRadius = clamp(radius * 1.225, 0.0, 1.0);
+        float differential = mix(1.0, 0.52, normalizedRadius);
+        // Points rotate by subtracting their phase from theta; the pattern sampled at a fixed pixel uses the inverse sign.
+        float angle = atan(p.y, p.x) + uMotionTime * uRotationSpeed * differential;
+        float spiral = cos(angle * uArms - radius * uSpin * uArms * 1.225);
         float cloud = fbm(p * uScale * 6.0 + vec2(uTime*uSpeed, -uTime*uSpeed*0.67));
         float clouds = smoothstep(0.26, 0.74, cloud + spiral*0.12);
         float disk = (1.0 - smoothstep(0.08, 1.03, radius)) * smoothstep(0.02, 0.16, radius);
-        float armDust = smoothstep(0.22, 0.9, clouds + max(spiral, 0.0)*0.25);
+        float armSignal = pow(max(spiral, 0.0), mix(1.18, 0.58, clamp(uArmWidth / 1.1, 0.0, 1.0)));
+        float armDust = smoothstep(0.27, 0.82, clouds * 0.3 + armSignal * 0.88);
         float alpha = disk * armDust * uDensity * uOpacity * uIntensity * uBrightness * uReveal;
         vec3 gas = mix(uColor * 0.48, uColor * 1.42, clouds);
         gas = mix(vec3(dot(gas, vec3(0.299,0.587,0.114))), gas, uSaturation);
@@ -177,7 +185,7 @@ export function createFogMaterial() {
         float uneven=n+wisps*uTurbulence*.35;
         float edge=length(p*vec2(.88,1.06));
         float cloud=smoothstep(.51-uDensity*.22,.88,uneven);
-        float boundary=1.0-smoothstep(.23,1.12,edge+(.5-uneven)*.34);
+      float boundary=1.0-smoothstep(.4,.86,edge+(.5-uneven)*.34);
         float alpha=cloud*boundary*uOpacity*uDensity;
         vec3 color=uColor*(.62+wisps*.62);
         gl_FragColor=vec4(color,alpha);
@@ -205,7 +213,7 @@ export function createBackgroundGasMaterial() {
       float hash(vec2 p){return fract(sin(dot(p,vec2(27.1,93.7)))*43758.5453);}
       float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.)),f.x),f.y);}
       float fbm(vec2 p){float v=0.,a=.54;for(int i=0;i<5;i++){v+=a*noise(p);p=p*2.01+vec2(5.3,2.4);a*=.5;}return v;}
-      void main(){vec2 p=(vUv-.5)*2.;vec2 drift=vec2(uTime*uSpeed,-uTime*uSpeed*.64);float n=fbm(p*uScale*4.+drift);float detail=fbm(p*uScale*9.-drift*1.4);float clouds=smoothstep(.45,.79,n+detail*.17);float veil=1.0-smoothstep(.22,1.25,length(p*vec2(.93,1.0)));float a=clouds*veil*uDensity*uBrightness;vec3 c=uColor*(.55+detail*.7);gl_FragColor=vec4(c,a);
+      void main(){vec2 p=(vUv-.5)*2.;vec2 drift=vec2(uTime*uSpeed,-uTime*uSpeed*.64);float n=fbm(p*uScale*4.+drift);float detail=fbm(p*uScale*9.-drift*1.4);float clouds=smoothstep(.45,.79,n+detail*.17);float veil=1.0-smoothstep(.4,.96,length(p*vec2(.93,1.0)));float a=clouds*veil*uDensity*uBrightness;vec3 c=uColor*(.55+detail*.7);gl_FragColor=vec4(c,a);
       #include <colorspace_fragment>
       }`,
   })
@@ -220,7 +228,7 @@ export function createCoreMaterial() {
     depthWrite: false,
     blending: AdditiveBlending,
     vertexShader: 'varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-    fragmentShader: `uniform vec3 uColor; uniform float uGlow; uniform float uReveal; uniform float uTime; varying vec2 vUv; void main(){vec2 p=(vUv-.5)*2.;float r=length(p);float halo=exp(-r*r*5.2);float heart=exp(-r*r*24.);float breath=1.0+.025*sin(uTime*.7);float a=(halo*.18+heart*.5)*uGlow*uReveal*breath;vec3 c=mix(uColor,vec3(1.0),heart*.35);gl_FragColor=vec4(c*a,a);
+    fragmentShader: `uniform vec3 uColor; uniform float uGlow; uniform float uReveal; uniform float uTime; varying vec2 vUv; void main(){vec2 p=(vUv-.5)*2.;float r=length(p);float halo=exp(-r*r*2.9);float heart=exp(-r*r*13.);float bloom=exp(-r*r*1.35);float edgeFade=1.0-smoothstep(.82,1.0,r);float breath=1.0+.025*sin(uTime*.7);float a=(halo*.32+heart*.58+bloom*.16)*uGlow*uReveal*breath*edgeFade;vec3 c=mix(uColor,vec3(1.0,.92,.7),heart*.28);gl_FragColor=vec4(c,a);
       #include <colorspace_fragment>
       }`,
   })
@@ -260,6 +268,7 @@ export function applyGalaxyFrameMaterials(materials: {
   materials.background.uniforms.uReveal!.value = frame.firstStars
   materials.background.uniforms.uBrightness!.value = frame.backgroundBrightness
   materials.gas.uniforms.uTime!.value = frame.phaseTime
+  materials.gas.uniforms.uMotionTime!.value = frame.motionTime
   materials.gas.uniforms.uBrightness!.value = frame.gasBrightness
   materials.gas.uniforms.uReveal!.value = frame.gasReveal
   materials.backgroundGas.uniforms.uTime!.value = frame.phaseTime

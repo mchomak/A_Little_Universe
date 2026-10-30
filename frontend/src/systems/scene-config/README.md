@@ -1,6 +1,6 @@
 # Scene Composer configuration
 
-`SceneComposerConfig` is an immutable schema version 3. `normalizeConfig(input)` accepts partial schema v3 and older schema v1/v2 JSON; unknown keys are discarded and missing or invalid values use the v3 defaults. The store publishes font changes only after the selected local font is ready.
+`SceneComposerConfig` is an immutable schema version 4. `normalizeConfig(input)` accepts partial schema v4 and older schema v1/v2/v3 JSON; unknown keys are discarded and missing or invalid values use the v4 defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 stores total winding in radians. The store publishes font changes only after the selected local font is ready.
 
 The public store is:
 
@@ -11,7 +11,7 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v3.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v4.
 
 Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its 0.1–20 second travel-window meaning, with the cinematic default now 2.2 seconds; `particleFadeDuration` controls individual dust fade and defaults to 1.2 seconds. `particleReturnFraction` is ignored. The light, atmosphere, typography and interaction fields are additive schema-v2 fields: missing fields in both v1 and v2 files receive current defaults.
 

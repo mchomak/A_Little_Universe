@@ -132,7 +132,7 @@ const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.galaxy.starCount', label: 'Количество звёзд', unit: 'шт.', min: 8000, max: 90000, step: 1000 },
     { path: 'scenes.galaxy.arms', label: 'Спиральные рукава', unit: '', min: 2, max: 8, step: 1 },
     { path: 'scenes.galaxy.radius', label: 'Радиус', unit: '', min: 4, max: 14, step: 0.1 },
-    { path: 'scenes.galaxy.spin', label: 'Закручивание рукавов', unit: '×', min: 0.2, max: 2.8, step: 0.05 },
+    { path: 'scenes.galaxy.spin', label: 'Закручивание рукавов', unit: 'рад', min: 0.2, max: 18, step: 0.05 },
     { path: 'scenes.galaxy.armWidth', label: 'Ширина рукавов', unit: '', min: 0.12, max: 1.1, step: 0.02 },
     { path: 'scenes.galaxy.scatter', label: 'Разброс звёзд', unit: '×', min: 0, max: 1, step: 0.02 },
     { path: 'scenes.galaxy.coreSize', label: 'Размер ядра', unit: '', min: 0.4, max: 3, step: 0.05 },
@@ -438,7 +438,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1 и 2. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–4. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])

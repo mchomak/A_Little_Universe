@@ -13,3 +13,8 @@ it('creates a standalone three-quarter camera shot and a smooth pullback target'
   expect(interpolateCameraPose(start, end, 0)).toEqual(start)
   expect(interpolateCameraPose(start, end, 1)).toEqual(end)
 })
+
+it('frames the settled galaxy from approximately 45 degrees above its plane', () => {
+  const end = galaxyCameraPose(16, Math.PI / 4, 0, 0)
+  expect(end.y).toBeCloseTo(end.z, 10)
+})

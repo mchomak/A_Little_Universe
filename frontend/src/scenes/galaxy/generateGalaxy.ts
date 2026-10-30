@@ -43,6 +43,11 @@ function normal(random: () => number) {
   return Math.sqrt(-2 * Math.log(Math.max(1e-8, random()))) * Math.cos(Math.PI * 2 * random())
 }
 
+function smoothstep(min: number, max: number, value: number) {
+  const t = Math.max(0, Math.min(1, (value - min) / (max - min)))
+  return t * t * (3 - 2 * t)
+}
+
 function makeGeometry(count: number, settings: GalaxyGeometrySettings, type: 'disk' | 'bright' | 'background', seedOffset = 0) {
   const geometry = new BufferGeometry()
   const positions = new Float32Array(count * 3)
@@ -70,7 +75,13 @@ function makeGeometry(count: number, settings: GalaxyGeometrySettings, type: 'di
       if (type === 'bright') radius = settings.radius * (0.14 + random() * 0.83)
       if (type === 'disk' && random() < settings.coreDensity * 0.62) radius *= 0.34
       normalizedRadius = radius / settings.radius
-      const armAngle = armIndex / settings.arms * Math.PI * 2 + normalizedRadius * settings.spin * Math.PI * 2
+      // Keep the central bulge angularly diffuse, then smoothly merge into the spiral arms.
+      const baseArmAngle = armIndex / settings.arms * Math.PI * 2 + normalizedRadius * settings.spin
+      const randomBulgeAngle = random() * Math.PI * 2
+      const coreFraction = settings.coreSize / settings.radius
+      const armInfluence = smoothstep(coreFraction * 0.8, coreFraction * 2, normalizedRadius)
+      const angularDifference = Math.atan2(Math.sin(baseArmAngle - randomBulgeAngle), Math.cos(baseArmAngle - randomBulgeAngle))
+      const armAngle = randomBulgeAngle + angularDifference * armInfluence
       const scatter = normal(random) * settings.armWidth * (0.14 + normalizedRadius * 0.5) * settings.scatter
       const angle = armAngle + scatter / Math.max(radius, 0.35) + (random() - 0.5) * settings.armWidth * 0.48
       const radialScatter = normal(random) * settings.armWidth * settings.scatter

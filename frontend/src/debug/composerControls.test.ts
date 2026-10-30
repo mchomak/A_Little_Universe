@@ -84,7 +84,7 @@ describe('Scene Composer controls', () => {
       scenes: { prologue: Record<string, unknown> }
     }
 
-    expect(exported.schemaVersion).toBe(3)
+    expect(exported.schemaVersion).toBe(4)
     expect(exported.global.quality).toBe('low')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpeed')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpread')
@@ -92,7 +92,7 @@ describe('Scene Composer controls', () => {
   })
 
   it('imports and exports production-ready galaxy settings and the Vasilisa preset', async () => {
-    const result = await importComposerJson(JSON.stringify({ schemaVersion: 3, scenes: { galaxy: {
+    const result = await importComposerJson(JSON.stringify({ schemaVersion: 4, scenes: { galaxy: {
       seed: 1234, starCount: 42000, arms: 5, palette: 'custom', armColor: '#DDBBFF', nebulaEnabled: false,
     } } }))
     expect(result.ok).toBe(true)

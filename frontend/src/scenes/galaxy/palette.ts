@@ -5,7 +5,7 @@ export type GalaxyColorKey = 'coreColor' | 'innerColor' | 'armColor' | 'nebulaCo
 export type GalaxyColors = Pick<GalaxySettings, GalaxyColorKey>
 
 export const GALAXY_PALETTES: Record<Exclude<GalaxyPalette, 'custom'>, GalaxyColors> = {
-  vasilisa: { coreColor: '#FFE9C8', innerColor: '#AFC9F8', armColor: '#C6A9EE', nebulaColor: '#E3AFCF', brightColor: '#E8F1FF', backgroundColor: '#050812' },
+  vasilisa: { coreColor: '#FFE8C1', innerColor: '#879DFF', armColor: '#C261FF', nebulaColor: '#A253EC', brightColor: '#F6E7FF', backgroundColor: '#02030A' },
   spore: { coreColor: '#F4E7CE', innerColor: '#A6D9CF', armColor: '#86B7C2', nebulaColor: '#A1AFCB', brightColor: '#D8F4F3', backgroundColor: '#050B10' },
   ember: { coreColor: '#FFE2B0', innerColor: '#F2AB75', armColor: '#DB7188', nebulaColor: '#B94F73', brightColor: '#FFF1D6', backgroundColor: '#10070A' },
   emerald: { coreColor: '#E7F0C0', innerColor: '#93D4B6', armColor: '#5AAEAE', nebulaColor: '#598895', brightColor: '#DAF6E4', backgroundColor: '#04100D' },

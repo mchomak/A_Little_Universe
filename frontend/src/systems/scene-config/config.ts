@@ -11,7 +11,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 3
+  readonly schemaVersion: 4
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -162,7 +162,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 3,
+  schemaVersion: 4,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
@@ -187,24 +187,24 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       lavenderColor: '#D7CCF1', coreGlow: 0.55, seedScale: 1,
     },
     galaxy: {
-      quality: 'standard', seed: 731204, starCount: 34000, arms: 4, radius: 8.2,
-      spin: 1.2, armWidth: 0.42, scatter: 0.32, coreSize: 1.35, coreDensity: 0.68,
-      thickness: 0.42, distribution: 'balanced', starSize: 1.25, brightness: 0.68,
-      twinkle: 0.24, twinkleSpeed: 0.72, brightStarCount: 52, brightStarSize: 2.8,
-      brightStarIntensity: 1.15, backgroundStarCount: 1700, backgroundBrightness: 0.34,
-      backgroundSize: 0.8, backgroundDepth: 42, backgroundGasDensity: 0.12,
-      backgroundGasBrightness: 0.3, nebulaEnabled: true, nebulaDensity: 0.58,
-      nebulaBrightness: 0.48, nebulaSaturation: 0.72, nebulaOpacity: 0.62, nebulaScale: 1.35,
-      nebulaIntensity: 0.7, nebulaSpeed: 0.018, fogDensity: 0.55, fogLayers: 5,
-      fogDepth: 14, fogDissipation: 0.72, fogStart: 1.5, fogEnd: 10.5,
-      fogTurbulence: 0.18, fogAfterOpacity: 0.025, palette: 'vasilisa',
-      coreColor: '#FFE9C8', innerColor: '#AFC9F8', armColor: '#C6A9EE',
-      nebulaColor: '#E3AFCF', brightColor: '#E8F1FF', backgroundColor: '#050812',
-      exposure: 1, coreGlow: 1.18, rotationSpeed: 0.006, motionSpeed: 1,
-      revealMotion: 1, idleMotion: 0.16, firstStarsAt: 0.25, galaxyRevealAt: 1.2,
+      quality: 'standard', seed: 154684308, starCount: 32000, arms: 5, radius: 8.2,
+      spin: 4.6, armWidth: 0.64, scatter: 0.33, coreSize: 1.55, coreDensity: 0.4,
+      thickness: 0.12, distribution: 'balanced', starSize: 1.08, brightness: 0.64,
+      twinkle: 0.5, twinkleSpeed: 0.72, brightStarCount: 220, brightStarSize: 2.05,
+      brightStarIntensity: 1.25, backgroundStarCount: 1700, backgroundBrightness: 0.34,
+      backgroundSize: 0.8, backgroundDepth: 42, backgroundGasDensity: 0.035,
+      backgroundGasBrightness: 0.1, nebulaEnabled: true, nebulaDensity: 0.5,
+      nebulaBrightness: 0.69, nebulaSaturation: 1.15, nebulaOpacity: 0.72, nebulaScale: 1.35,
+      nebulaIntensity: 0.88, nebulaSpeed: 0.018, fogDensity: 0.28, fogLayers: 4,
+      fogDepth: 14, fogDissipation: 0.84, fogStart: 1.5, fogEnd: 8.5,
+      fogTurbulence: 0.18, fogAfterOpacity: 0.008, palette: 'vasilisa',
+      coreColor: '#FFE8C1', innerColor: '#879DFF', armColor: '#C261FF',
+      nebulaColor: '#A253EC', brightColor: '#F6E7FF', backgroundColor: '#02030A',
+      exposure: 1, coreGlow: 0.9, rotationSpeed: 0.03, motionSpeed: 1,
+      revealMotion: 1, idleMotion: 0.3, firstStarsAt: 0.25, galaxyRevealAt: 1.2,
       revealDuration: 10.4, pauseDuration: 4.2, backgroundTransition: 7,
       cameraStartDistance: 6.4, cameraEndDistance: 16, cameraStartAngle: 0.18,
-      cameraEndAngle: 0.52, cameraFocusX: 0, cameraFocusY: 0, cameraDuration: 10,
+      cameraEndAngle: 0.785, cameraFocusX: 0, cameraFocusY: 0, cameraDuration: 10,
       cameraEase: 'sine', cameraSlowdown: 3, compositionScale: 1,
     },
   },
@@ -223,9 +223,13 @@ export const SCENE_CONFIG_PRESETS = deepFreeze({
   'vasilisa-cinematic': {
     label: 'Vasilisa Cinematic',
     patch: { preset: 'vasilisa-cinematic', scenes: { galaxy: { palette: 'vasilisa',
-      coreColor: '#FFE9C8', innerColor: '#AFC9F8', armColor: '#C6A9EE', nebulaColor: '#E3AFCF',
-      brightColor: '#E8F1FF', backgroundColor: '#050812', starCount: 34000, rotationSpeed: 0.006,
-      coreGlow: 1.18, brightness: 0.68 } } },
+      coreColor: '#FFE8C1', innerColor: '#879DFF', armColor: '#C261FF', nebulaColor: '#A253EC',
+      brightColor: '#F6E7FF', backgroundColor: '#02030A', starCount: 32000, arms: 5, spin: 4.6,
+      rotationSpeed: 0.03, coreGlow: 0.9, brightness: 0.64, coreSize: 1.55,
+      coreDensity: 0.4, armWidth: 0.64, scatter: 0.33, thickness: 0.12,
+      twinkle: 0.5, starSize: 1.08, brightStarCount: 220,
+      brightStarSize: 2.05, brightStarIntensity: 1.25, nebulaDensity: 0.5,
+      nebulaBrightness: 0.69, nebulaSaturation: 1.15, nebulaOpacity: 0.72, nebulaIntensity: 0.88 } } },
   },
 })
 
@@ -237,7 +241,7 @@ const configListeners = new Set<(config: SceneComposerConfig) => void>()
 export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || (inputVersion !== 1 && inputVersion !== 2 && inputVersion !== 3)) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || (inputVersion !== 1 && inputVersion !== 2 && inputVersion !== 3 && inputVersion !== 4)) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -246,6 +250,9 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const prologueInput = asRecord(scenesInput?.prologue)
   const growthInput = asRecord(scenesInput?.growth)
   const galaxyInput = asRecord(scenesInput?.galaxy)
+  const galaxySettingsInput = inputVersion === 3 && typeof galaxyInput?.spin === 'number'
+    ? { ...galaxyInput, spin: galaxyInput.spin * Math.PI * 2 }
+    : galaxyInput
   const legacyParticleSpeed = numberValue(prologueInput?.particleSpeed, 1, 0.1, 10)
   const legacyParticleSpread = numberValue(prologueInput?.particleSpread, 1, 0, 2)
   const windStrength = numberValue(
@@ -343,14 +350,14 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       coreGlow: numberValue(growthInput?.coreGlow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.coreGlow, 0, 1.5),
       seedScale: numberValue(growthInput?.seedScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedScale, 0.65, 1.4),
     },
-    galaxy: normalizeGalaxy(galaxyInput),
+    galaxy: normalizeGalaxy(galaxySettingsInput),
   }
   if (scenes.prologue.particleSizeMin > scenes.prologue.particleSizeMax) {
     scenes.prologue.particleSizeMax = scenes.prologue.particleSizeMin
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 3, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 4, global, scenes, preset })
 }
 function normalizeGalaxy(input: Record<string, unknown> | undefined): SceneComposerConfig['scenes']['galaxy'] {
   const d = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.galaxy
@@ -359,7 +366,7 @@ function normalizeGalaxy(input: Record<string, unknown> | undefined): SceneCompo
     seed: numberValue(input?.seed, d.seed, 0, 2_147_483_647, true),
     starCount: numberValue(input?.starCount, d.starCount, 8000, 90000, true),
     arms: numberValue(input?.arms, d.arms, 2, 8, true), radius: numberValue(input?.radius, d.radius, 4, 14),
-    spin: numberValue(input?.spin, d.spin, 0.2, 2.8), armWidth: numberValue(input?.armWidth, d.armWidth, 0.12, 1.1),
+    spin: numberValue(input?.spin, d.spin, 0.2, 18), armWidth: numberValue(input?.armWidth, d.armWidth, 0.12, 1.1),
     scatter: numberValue(input?.scatter, d.scatter, 0, 1), coreSize: numberValue(input?.coreSize, d.coreSize, 0.4, 3),
     coreDensity: numberValue(input?.coreDensity, d.coreDensity, 0.1, 1), thickness: numberValue(input?.thickness, d.thickness, 0.08, 1.6),
     distribution: enumValue(input?.distribution, ['balanced', 'core', 'arms'] as const, d.distribution),

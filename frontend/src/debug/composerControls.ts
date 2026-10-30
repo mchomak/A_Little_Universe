@@ -49,7 +49,7 @@ export async function importComposerJson(source: string): Promise<ComposerImport
     return { ok: false, reason: 'json' }
   }
   if (document === null || typeof document !== 'object' || Array.isArray(document)) return { ok: false, reason: 'document' }
-  if (!('schemaVersion' in document) || (document.schemaVersion !== 1 && document.schemaVersion !== 2 && document.schemaVersion !== 3)) return { ok: false, reason: 'version' }
+  if (!('schemaVersion' in document) || (document.schemaVersion !== 1 && document.schemaVersion !== 2 && document.schemaVersion !== 3 && document.schemaVersion !== 4)) return { ok: false, reason: 'version' }
   const root = document as Record<string, unknown>
   if ('global' in root && !isRecord(root.global)) return { ok: false, reason: 'document' }
   if ('scenes' in root && !isRecord(root.scenes)) return { ok: false, reason: 'document' }

@@ -4,6 +4,15 @@ import { editGalaxyColor, getGalaxyColors, selectGalaxyPalette } from './palette
 
 const defaults = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.galaxy
 
+it('uses a pearly Vasilisa core with luminous violet arms and star accents', () => {
+  const vasilisa = selectGalaxyPalette(defaults, 'vasilisa')
+
+  expect(vasilisa).toMatchObject({
+    coreColor: '#FFE8C1', innerColor: '#879DFF', armColor: '#C261FF',
+    nebulaColor: '#A253EC', brightColor: '#F6E7FF',
+  })
+})
+
 it('materializes the selected palette into the Inspector color fields', () => {
   const ice = selectGalaxyPalette(defaults, 'ice')
 

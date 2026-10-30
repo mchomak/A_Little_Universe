@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useThree } from '@react-three/fiber'
-import { Color, MeshBasicMaterial, type Group, type Points } from 'three'
+import { BackSide, Color, MeshBasicMaterial, type Group, type Points } from 'three'
 import type { SceneProps } from '../../engine/sceneTypes'
 import { TIMING } from '../../engine/filmConfig'
 import { getConfig, subscribeConfig, type SceneComposerConfig } from '../../systems/scene-config/config'
@@ -64,8 +64,8 @@ function updateLiveUniforms(settings: GalaxySettings, dpr: number, materials: {
   bright.uTwinkleSpeed!.value = settings.twinkleSpeed
   bright.uSpin!.value = settings.rotationSpeed
   bright.uDpr!.value = dpr
-  setColor(bright, 'uCoreColor', colors.brightColor)
-  setColor(bright, 'uInnerColor', colors.brightColor)
+  setColor(bright, 'uCoreColor', colors.coreColor)
+  setColor(bright, 'uInnerColor', colors.innerColor)
   setColor(bright, 'uArmColor', colors.brightColor)
 
   const background = materials.background.uniforms
@@ -96,6 +96,10 @@ function updateLiveUniforms(settings: GalaxySettings, dpr: number, materials: {
   gas.uSaturation!.value = settings.nebulaSaturation
   gas.uSpeed!.value = settings.nebulaSpeed
   gas.uRadius!.value = settings.radius
+  gas.uArms!.value = settings.arms
+  gas.uSpin!.value = settings.spin
+  gas.uArmWidth!.value = settings.armWidth
+  gas.uRotationSpeed!.value = settings.rotationSpeed
   setColor(gas, 'uColor', colors.nebulaColor)
 
   materials.core.uniforms.uGlow!.value = settings.coreGlow
@@ -132,7 +136,9 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
   }), [])
   const materialsRef = useRef(materials)
   const geometry = useMemo(() => createGalaxyGeometry(built), [built])
-  const baseMaterial = useMemo(() => new MeshBasicMaterial({ color: '#050812', toneMapped: false }), [])
+  const baseMaterial = useMemo(() => new MeshBasicMaterial({
+    color: '#050812', toneMapped: false, side: BackSide, depthWrite: false,
+  }), [])
 
   useEffect(() => {
     const timer = window.setTimeout(() => setBuilt(structureSettings(getConfig().scenes.galaxy, getConfig().global.quality)), 280)
@@ -206,8 +212,8 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
 
   return <>
     <group ref={galaxy} visible={false}>
-      <mesh position={[0, 0, -built.backgroundDepth - 16]} frustumCulled={false}>
-        <planeGeometry args={[built.backgroundDepth * 4.2, built.backgroundDepth * 2.7]} />
+      <mesh frustumCulled={false} renderOrder={-10}>
+        <sphereGeometry args={[60, 32, 16]} />
         <primitive object={baseMaterial} attach="material" />
       </mesh>
       <mesh position={[0, 0, -built.backgroundDepth * 0.52]} frustumCulled={false}>
@@ -227,7 +233,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
           <primitive object={materials.gas.material} attach="material" />
         </mesh>
         <mesh scale={[settings.coreSize * 5.2, settings.coreSize * 5.2, 1]} position={[0, 0, 0.12]} frustumCulled={false}>
-          <planeGeometry args={[1, 1]} />
+          <circleGeometry args={[0.5, 64]} />
           <primitive object={materials.core.material} attach="material" />
         </mesh>
         <points ref={diskPoints} geometry={geometry.disk} material={materials.disk.material} frustumCulled={false} />
