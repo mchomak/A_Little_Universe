@@ -8,8 +8,8 @@ it('places silent asset slots at the authored beats and follows configured phras
   expect(getPrologueAudioCues(getPrologueFrames(settings))).toEqual([
     { time: 0, cue: 'prologue-intro' },
     { time: 2, cue: 'prologue-first' },
-    { time: 7, cue: 'prologue-second' },
-    { time: 12.5, cue: 'prologue-dissolve' },
+    { time: 6.85, cue: 'prologue-second' },
+    { time: 12.35, cue: 'prologue-dissolve' },
   ])
   const changed = getPrologueAudioCues(getPrologueFrames({ ...settings, interphraseInterval: 3 }))
   expect(changed.find(({ cue }) => cue === 'prologue-second')?.time).toBe(8.5)

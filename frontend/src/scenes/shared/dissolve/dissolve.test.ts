@@ -1,6 +1,8 @@
 import { expect, it } from 'vitest'
 import {
   getDissolveEdge,
+  getDissolveEmissionTime,
+  getDissolveParticleLifetime,
   getDissolveThreshold,
   normalizeDissolveStyle,
   sampleDissolveNoise,
@@ -41,4 +43,16 @@ it('offsets each glyph zone with noise and keeps the edge localized to its thres
   expect(getDissolveThreshold(0.5, 1, 0.2, style)).toBeCloseTo(0.6)
   expect(getDissolveEdge(0.5, 0.5, style)).toBeCloseTo(0.3)
   expect(getDissolveEdge(0.54, 0.5, style)).toBeLessThan(0.02)
+})
+
+it('emits at the same seeded per-grapheme threshold used by the dissolve mask', () => {
+  const style = normalizeDissolveStyle({ noiseStrength: 0.5, edgeWidth: 0.02 })
+
+  expect(getDissolveEmissionTime(0.25, 1, 0.5, 8, 4, style)).toBeCloseTo(9.5)
+})
+
+it('bounds particle lifetime by travel and the remaining film-local dissolve window', () => {
+  expect(getDissolveParticleLifetime(2, 0.5, 10)).toBeCloseTo(1.88)
+  expect(getDissolveParticleLifetime(2, 0.5, 0.6)).toBeCloseTo(0.6)
+  expect(getDissolveParticleLifetime(2, 0.5, 0.05)).toBe(0.05)
 })

@@ -6,6 +6,7 @@ it('uses immutable schema v2 defaults and the local Great Vibes prologue face', 
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(2)
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('great-vibes')
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue).toMatchObject({
+    interphraseInterval: 1.35,
     particleCount: 1800,
     windStrength: 1.15,
     turbulence: 0.3,

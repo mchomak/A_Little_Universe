@@ -11,7 +11,7 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:\\Users\\McHomak\\.agents\\skills\\autopilot",
   "startedAt": "2026-10-30T19:14:17+03:00",
-  "updatedAt": "2026-10-30T22:27:00+03:00",
+  "updatedAt": "2026-10-30T23:58:46+03:00",
   "finishedAt": null,
   "stages": [
     {
@@ -62,8 +62,8 @@ window.STATE =
   ],
   "requirements": {
     "total": 69,
-    "done": 0,
-    "inTicket": 69,
+    "done": 28,
+    "inTicket": 41,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
@@ -128,19 +128,20 @@ window.STATE =
         "frontend/src/assets/typography/",
         "frontend/src/systems/scene-config/"
       ],
-      "status": "review",
+      "status": "done",
       "retries": 0,
       "repairs": 0,
       "handoffs": 0,
       "startedAt": "2026-10-30T21:02:19+03:00",
-      "finishedAt": "2026-10-30T22:15:00+03:00",
+      "finishedAt": "2026-10-30T22:46:12+03:00",
       "tests": {
         "passed": 214,
         "failed": 0
       },
       "concerns": [
         "Runtime shader visual review was not completed because port 5174 was occupied."
-      ]
+      ],
+      "commit": "a711a1f"
     },
     {
       "id": "02",
@@ -195,12 +196,23 @@ window.STATE =
       "zone": [
         "frontend/src/scenes/prologue/",
         "frontend/src/scenes/shared/dissolve/",
-        "frontend/src/engine/"
+        "frontend/src/engine/",
+        "frontend/src/systems/scene-config/",
+        "frontend/src/components/"
       ],
-      "status": "pending",
+      "status": "review",
       "retries": 0,
-      "repairs": 0,
-      "handoffs": 0
+      "repairs": 1,
+      "handoffs": 0,
+      "startedAt": "2026-10-30T22:46:12+03:00",
+      "finishedAt": "2026-10-30T23:57:22+03:00",
+      "tests": {
+        "passed": 216,
+        "failed": 0
+      },
+      "concerns": [
+        "Runtime visual review unavailable because Playwright/Chrome DevTools profiles were occupied."
+      ]
     }
   ],
   "singlePass": null,
@@ -249,6 +261,16 @@ window.STATE =
       "ticket": "01",
       "kind": "visual review",
       "note": "Runtime dissolve screenshot could not be captured: Playwright and Chrome DevTools profiles are in use; isolated page creation also failed. Reviewer server was at 127.0.0.1:5187."
+    },
+    {
+      "ticket": "02",
+      "kind": "visual review",
+      "note": "Runtime visual review remains unavailable because the shared browser profiles are occupied."
+    },
+    {
+      "ticket": "02",
+      "kind": "craft",
+      "note": "frontend/src/scenes/prologue/letterMatter.test.ts:16 ? fixture injects particleBirths directly and lacks a halo-only texel, so it does not exercise the raster-to-alpha sampler seam."
     }
   ],
   "reviewers": {

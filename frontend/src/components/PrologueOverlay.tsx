@@ -45,22 +45,23 @@ export function createPrologueOverlayTimeline(
     }, timeWindow[0])
   }
 
-  const fracture = (target: HTMLParagraphElement | null) => {
+  const fracture = (target: HTMLParagraphElement | null, range: readonly [number, number]) => {
     if (!target) return
+    const start = range[0]
+    const duration = range[1] - range[0]
     if (reducedMotion) {
-      timeline.to(target, { opacity: 0, duration: 0.7, ease: 'sine.inOut' }, frames.dissolve[0])
+      timeline.to(target, { opacity: 0, duration: 0.7, ease: 'sine.inOut' }, start)
       return
     }
-    const duration = Math.min(settings.fractureDuration, frames.dissolve[1] - frames.dissolve[0])
-    fractureFronts.push({ target, start: frames.dissolve[0], duration })
+    fractureFronts.push({ target, start, duration })
     // DOM is the accessible fallback/layout guide. The GPU ink layer owns actual erosion.
-    timeline.to(target, { opacity: 0, duration, ease: 'sine.inOut' }, frames.dissolve[0])
+    timeline.to(target, { opacity: 0, duration, ease: 'sine.inOut' }, start)
   }
 
   reveal(targets.first, frames.first)
   reveal(targets.second, frames.second)
-  fracture(targets.first)
-  fracture(targets.second)
+  fracture(targets.first, frames.firstDissolve)
+  fracture(targets.second, frames.secondDissolve)
   timeline.eventCallback('onUpdate', () => {
     const time = timeline.time()
     fractureFronts.forEach(({ target, start, duration }) => {
@@ -189,8 +190,8 @@ export function PrologueOverlay({ state, runtime, reducedMotion }: SceneProps) {
   }, frames, prologue, reducedMotion), [frames, prologue, reducedMotion])
   useSceneTimeline(build, { runtime })
 
-  const firstVisible = state.elapsed >= frames.first[1] && state.elapsed < frames.dissolve[0]
-  const secondVisible = state.elapsed >= frames.second[1] && state.elapsed < frames.dissolve[0]
+  const firstVisible = state.elapsed >= frames.first[1] && state.elapsed < frames.firstDissolve[0]
+  const secondVisible = state.elapsed >= frames.second[1] && state.elapsed < frames.secondDissolve[0]
   const waiting = state.mode === 'waiting'
 
   return <section className="prologue-overlay" aria-label="Пролог">

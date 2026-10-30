@@ -18,7 +18,7 @@ export const TIMING = {
 } as const
 
 export type PrologueFrameSettings = Pick<SceneComposerConfig['scenes']['prologue'],
-  'handwritingDuration' | 'interphraseInterval' | 'readableHold' | 'particleDuration'>
+  'handwritingDuration' | 'interphraseInterval' | 'readableHold' | 'fractureDuration' | 'particleDuration'>
 
 export interface PrologueFrames {
   duration: number
@@ -27,6 +27,8 @@ export interface PrologueFrames {
   second: readonly [number, number]
   hold: readonly [number, number]
   dissolve: readonly [number, number]
+  firstDissolve: readonly [number, number]
+  secondDissolve: readonly [number, number]
   prompt: number
   particleTravelDuration: number
 }
@@ -72,6 +74,10 @@ export function getPrologueFrames(settings: PrologueFrameSettings): PrologueFram
   const secondEnd = secondStart + secondWrite
   const dissolveEnd = TIMING.prologue.dissolve[1]
   const dissolveStart = Math.min(14, secondEnd + bounded(settings.readableHold, 0, 30, 2))
+  const waveDuration = Math.min(bounded(settings.fractureDuration, 0.8, 4, 1.5), (dissolveEnd - dissolveStart) / 1.5)
+  const firstDissolve: readonly [number, number] = [dissolveStart, dissolveStart + waveDuration]
+  const secondDissolveStart = dissolveStart + waveDuration * 0.5
+  const secondDissolve: readonly [number, number] = [secondDissolveStart, secondDissolveStart + waveDuration]
   const particleTravelDuration = Math.min(bounded(settings.particleDuration, 0.1, 20, 2.2), dissolveEnd - dissolveStart)
 
   return {
@@ -81,6 +87,8 @@ export function getPrologueFrames(settings: PrologueFrameSettings): PrologueFram
     second: [secondStart, secondEnd],
     hold: [secondEnd, dissolveStart],
     dissolve: [dissolveStart, dissolveEnd],
+    firstDissolve,
+    secondDissolve,
     prompt: TIMING.prologue.prompt,
     particleTravelDuration,
   }

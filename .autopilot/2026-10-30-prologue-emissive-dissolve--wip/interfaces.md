@@ -39,3 +39,16 @@
 - The current LetterRaster particleBirths auxiliary uses an atlas-wide noise field, while the dissolve shader uses per-grapheme zones. Ticket 02 must not use particleBirths as the final emission clock unless it aligns birth time to the same per-grapheme threshold/noise used to hide each stroke; derive or normalize it through the shared dissolve helpers.
 - The craft reviewer found the Intl.Segmenter-unavailable fallback may split combining graphemes with Array.from. Keep this as a non-blocking concern; when consuming grapheme metadata, preserve the whole-line rendering contract.
 - Runtime visual review remains unverified because the available Chrome/Playwright profiles are occupied; no screenshot was captured.
+
+
+## ?? ????? 02 ? ??????? ? ????? dissolve
+
+- PrologueFrames exposes firstDissolve and secondDissolve as readonly [start, end] ranges, calculated by getPrologueFrames. The first phrase dissolves first; the second range begins at 50% of the first wave.
+- The prologue config default interphrase interval is 1.35 s; PrologueOverlay uses the shared frame settings for phrase writing while preserving prompt style/layout and the existing 16 s invitation / 18 s touch gate.
+- createPrologueDissolveStyle(seed, fractureWidth) creates the shared deterministic DissolveStyle. The same style object is stored with each letter resource, passed to raster sampling, then supplies the GPU shader uniforms; fractureWidth remains an effective DEV control.
+- getDissolveEmissionTime(zone, noise, zoneWidth, start, duration, style) aligns each pixel's particle birth to its grapheme-zone threshold. getDissolveParticleLifetime(travelDuration, variation, remainingDuration) bounds its tail.
+- LetterRaster.particleBirths is Float32Array. It accompanies the unchanged coverage/alpha atlas; it is derived from the same per-grapheme style/noise threshold, not an atlas-wide independent noise field.
+- Existing prologue cues derive timing from the shared frame values; no audio source or playback path changed. The persistent point, film gate, scene order, and seed handoff remain existing owners.
+- Verification after ticket 02: npm run check ? lint, 216 tests across 55 files, strict typecheck, production build; baseline at ticket 01 commit a711a1f was 214 tests across 55 files.
+
+- Repair after ticket 02 review caps both TypeScript and GLSL particle lifetimes to the remaining scene window, including a 0.05 s remainder.

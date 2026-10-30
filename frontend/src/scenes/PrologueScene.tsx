@@ -5,9 +5,9 @@ import type { SceneProps } from '../engine/sceneTypes'
 import { getPrologueFrames } from '../engine/filmConfig'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { loadArtFont } from '../systems/scene-config/fontCatalog'
-import { DEFAULT_DISSOLVE_STYLE, DISSOLVE_GLSL, normalizeDissolveStyle } from './shared/dissolve'
+import { DISSOLVE_GLSL, type DissolveStyle } from './shared/dissolve'
 import { resolvePrologueParticleCount } from './prologue/particleMath'
-import { rasterizeLetter, sampleLetterMatter, seededRandom, type LetterRaster } from './prologue/letterMatter'
+import { createPrologueDissolveStyle, rasterizeLetter, sampleLetterMatter, seededRandom, type LetterRaster } from './prologue/letterMatter'
 import { PrologueAtmosphere } from './prologue/PrologueAtmosphere'
 
 // eslint-disable-next-line react-refresh/only-export-components -- retained public deterministic sampling seam.
@@ -63,9 +63,10 @@ uniform vec2 uResolution;
 uniform float uTime,uEnd,uTravel,uFade,uWind,uTurbulence,uGlow,uDpr;
 varying float vAlpha;
 varying float vTint;
+${DISSOLVE_GLSL}
 void main(){
  float age=uTime-aMatter.x;
- float life=min(uTravel*(0.73+aMotion.z*0.42),max(0.1,uEnd-aMatter.x));
+ float life=dissolveParticleLifetime(uTravel,aMotion.z,uEnd-aMatter.x);
  float progress=clamp(age/max(0.1,life),0.0,1.0);
  float inertia=max(0.0,age-0.055*(0.6+aMotion.z));
  float drift=inertia*(1.0-exp(-inertia*2.4));
@@ -91,13 +92,13 @@ void main(){
  #include <colorspace_fragment>
 }`
 
-interface LetterResource { texture: DataTexture; raster: LetterRaster; geometry: BufferGeometry; index: number }
+interface LetterResource { texture: DataTexture; raster: LetterRaster; geometry: BufferGeometry; index: number; dissolveStyle: DissolveStyle }
 
-function makeResource(raster: LetterRaster, count: number, seed: number, index: number, start: number, fractureDuration: number, minSize: number, maxSize: number): LetterResource {
+function makeResource(raster: LetterRaster, count: number, seed: number, index: number, fracture: readonly [number, number], dissolveStyle: DissolveStyle, minSize: number, maxSize: number): LetterResource {
   const texture = new DataTexture(raster.data, raster.width, raster.height, RGBAFormat)
   texture.magFilter = LinearFilter; texture.minFilter = LinearFilter; texture.generateMipmaps = false; texture.needsUpdate = true
   const geometry = new BufferGeometry()
-  const sampled = sampleLetterMatter(raster, count, seed, start, fractureDuration)
+  const sampled = sampleLetterMatter(raster, count, seed, fracture[0], fracture[1] - fracture[0])
   const positions = new Float32Array(count * 3), matter = new Float32Array(count * 4), motion = new Float32Array(count * 3)
   const random = seededRandom(seed ^ 0x4f1bbcdc)
   for (let i = 0; i < count; i++) {
@@ -110,7 +111,7 @@ function makeResource(raster: LetterRaster, count: number, seed: number, index: 
   geometry.setAttribute('position', new Float32BufferAttribute(positions, 3))
   geometry.setAttribute('aMatter', new Float32BufferAttribute(matter, 4))
   geometry.setAttribute('aMotion', new Float32BufferAttribute(motion, 3))
-  return { texture, raster, geometry, index }
+  return { texture, raster, geometry, index, dissolveStyle }
 }
 
 function LetterLayer({ resource, runtime, reducedMotion }: { resource: LetterResource; runtime: SceneProps['runtime']; reducedMotion: boolean }) {
@@ -119,14 +120,15 @@ function LetterLayer({ resource, runtime, reducedMotion }: { resource: LetterRes
   const size = useThree(s => s.size), dpr = useThree(s => s.viewport.dpr), invalidate = useThree(s => s.invalidate)
   const ink = useRef<ShaderMaterial>(null), dust = useRef<ShaderMaterial>(null)
   const rect = resource.raster.rect
-  const dissolveStyle = useMemo(() => normalizeDissolveStyle({ ...DEFAULT_DISSOLVE_STYLE, seed: config.seed + resource.index * 71 }), [config.seed, resource.index])
+  const fracture = resource.index === 0 ? frames.firstDissolve : frames.secondDissolve
+  const dissolveStyle = resource.dissolveStyle
   const uniforms = useMemo(() => ({
     uResolution: { value: new Vector2(size.width, size.height) },
     uRect: { value: new Vector4(rect.x, rect.y, rect.width, rect.height) },
     uMatter: { value: resource.texture },
     uTime: { value: 0 },
     uWrite: { value: new Vector2(...(resource.index === 0 ? frames.first : frames.second)) },
-    uFracture: { value: new Vector2(frames.dissolve[0], Math.min(config.fractureDuration, Math.max(.1, frames.dissolve[1] - frames.dissolve[0] - .55))) },
+    uFracture: { value: new Vector2(fracture[0], fracture[1] - fracture[0]) },
     uGlow: { value: config.textGlow },
     uReduced: { value: Number(reducedMotion) },
     uSeed: { value: dissolveStyle.seed },
@@ -136,7 +138,7 @@ function LetterLayer({ resource, runtime, reducedMotion }: { resource: LetterRes
     uEdgeWidth: { value: dissolveStyle.edgeWidth },
     uEdgeIntensity: { value: dissolveStyle.edgeIntensity },
     uEdgeColor: { value: new Vector3(...dissolveStyle.edgeColor) },
-  }), [config, dissolveStyle, frames, rect, resource, reducedMotion, size.width, size.height])
+  }), [config, dissolveStyle, fracture, frames, rect, resource, reducedMotion, size.width, size.height])
   const dustUniforms = useMemo(() => ({ uResolution: uniforms.uResolution, uTime: { value: 0 }, uEnd: { value: frames.dissolve[1] }, uTravel: { value: frames.particleTravelDuration }, uFade: { value: config.particleFadeDuration }, uWind: { value: config.windStrength }, uTurbulence: { value: config.turbulence }, uGlow: { value: config.particleGlow }, uDpr: { value: dpr } }), [config, frames, dpr, uniforms.uResolution])
   useLayoutEffect(() => {
     const draw = (time: number) => { if (ink.current) ink.current.uniforms.uTime!.value = time; if (dust.current) dust.current.uniforms.uTime!.value = time; invalidate() }
@@ -169,10 +171,11 @@ export function PrologueScene(props: SceneProps) {
           if (elements.length !== 2) return
           const compact = size.width < 820 || window.matchMedia('(pointer:coarse)').matches
           const count = props.reducedMotion ? 0 : resolvePrologueParticleCount(config.particleCount, props.state.quality, dpr, compact)
-          const duration = Math.min(config.fractureDuration, Math.max(.1, frames.dissolve[1] - frames.dissolve[0] - .55))
           const next = elements.flatMap((element, index) => {
-            const raster = rasterizeLetter(element, viewport, config.handwritingRhythm, config.fractureWidth, config.seed + index * 71)
-            return raster ? [makeResource(raster, Math.floor(count / 2), config.seed + index * 71, index, frames.dissolve[0], duration, config.particleSizeMin, config.particleSizeMax)] : []
+            const dissolveStyle = createPrologueDissolveStyle(config.seed + index * 71, config.fractureWidth)
+            const raster = rasterizeLetter(element, viewport, config.handwritingRhythm, config.fractureWidth, config.seed + index * 71, dissolveStyle)
+            const fracture = index === 0 ? frames.firstDissolve : frames.secondDissolve
+            return raster ? [makeResource(raster, Math.floor(count / 2), config.seed + index * 71, index, fracture, dissolveStyle, config.particleSizeMin, config.particleSizeMax)] : []
           })
           setLetters(next)
           document.querySelector<HTMLElement>('.prologue-overlay')?.setAttribute('data-matter-ready', String(next.length === 2))

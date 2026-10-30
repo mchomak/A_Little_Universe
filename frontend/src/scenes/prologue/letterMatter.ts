@@ -1,14 +1,12 @@
 import { createHandwritingSchedule } from '../../engine/filmConfig'
+import { DEFAULT_DISSOLVE_STYLE, getDissolveEmissionTime, normalizeDissolveStyle, sampleDissolveNoise, type DissolveStyle } from '../shared/dissolve'
 
-export function getMatterBirthProgress(x: number, y: number, width: number, seed: number, aspect = 1): number {
-  // Small coherent islands, unrelated to reading direction: no paragraph-wide erasing edge.
-  const scale = 360 + Math.max(0, width) * 100
-  const px = x * scale, py = y * scale / Math.max(0.1, aspect)
-  const ix = Math.floor(px), iy = Math.floor(py)
-  const sx = smooth(px - ix), sy = smooth(py - iy)
-  const a = mix(hash(ix, iy, seed), hash(ix + 1, iy, seed), sx)
-  const b = mix(hash(ix, iy + 1, seed), hash(ix + 1, iy + 1, seed), sx)
-  return Math.min(1, Math.max(0, 0.04 + mix(a, b, sy) * 0.92))
+const DEFAULT_FRACTURE_WIDTH = 0.08
+
+/** Adapts the prologue width control to the shared threshold noise used by ink and particles. */
+export function createPrologueDissolveStyle(seed: number, fractureWidth: number): DissolveStyle {
+  const width = Number.isFinite(fractureWidth) ? clamp(fractureWidth / DEFAULT_FRACTURE_WIDTH * DEFAULT_DISSOLVE_STYLE.noiseStrength) : DEFAULT_DISSOLVE_STYLE.noiseStrength
+  return normalizeDissolveStyle({ ...DEFAULT_DISSOLVE_STYLE, seed, noiseStrength: width })
 }
 
 export function sampleGlyphParticlePixels(alpha: Uint8Array, width: number, height: number, count: number, seed: number): Float32Array {
@@ -50,7 +48,8 @@ export interface LetterRaster {
   /** RGBA channels: ink coverage, handwriting progress, grapheme dissolve zone, soft halo. */
   data: Uint8Array
   alpha: Uint8Array
-  particleBirths: Uint8Array
+  /** Normalized per-pixel dissolve thresholds, matched to the visible seeded shader mask. */
+  particleBirths: Float32Array
   graphemeCount: number
   zoneWidth: number
 }
@@ -78,13 +77,13 @@ export function sampleLetterMatter(raster: LetterRaster, count: number, seed: nu
   for (let i = 0; i < pixels.length / 2; i++) {
     const x = pixels[i * 2]!, y = pixels[i * 2 + 1]!
     const pixel = Math.floor(y) * raster.width + Math.floor(x)
-    samples.set([raster.rect.x + x / raster.scale, raster.rect.y + y / raster.scale, start + raster.particleBirths[pixel]! / 255 * fractureDuration], i * 3)
+    samples.set([raster.rect.x + x / raster.scale, raster.rect.y + y / raster.scale, start + raster.particleBirths[pixel]! * fractureDuration], i * 3)
   }
   return samples
 }
 
-/** One whole-line atlas for GPU ink, with separately retained legacy particle release samples. */
-export function rasterizeLetter(element: HTMLElement, viewport: DOMRect, rhythm: number, fractureWidth: number, seed: number): LetterRaster | null {
+/** One whole-line atlas for GPU ink, with alpha samples and aligned per-pixel particle thresholds. */
+export function rasterizeLetter(element: HTMLElement, viewport: DOMRect, rhythm: number, fractureWidth: number, seed: number, dissolveStyle = createPrologueDissolveStyle(seed, fractureWidth)): LetterRaster | null {
   const rect = element.getBoundingClientRect(), style = getComputedStyle(element)
   const fontSize = Number.parseFloat(style.fontSize) || 48
   const padding = 12, scale = 2
@@ -133,8 +132,9 @@ export function rasterizeLetter(element: HTMLElement, viewport: DOMRect, rhythm:
   const haloContext = haloCanvas.getContext('2d', { willReadFrequently: true })
   if (haloContext) { haloContext.filter = `blur(${2.2 * scale}px)`; haloContext.drawImage(canvas, 0, 0) }
   const halo = haloContext?.getImageData(0, 0, width, height).data
-  const alpha = new Uint8Array(width * height), particleBirths = new Uint8Array(width * height), data = new Uint8Array(width * height * 4)
+  const alpha = new Uint8Array(width * height), particleBirths = new Float32Array(width * height), data = new Uint8Array(width * height * 4)
   const schedule = createHandwritingSchedule(element.textContent ?? '', 1, rhythm)
+  const zoneWidth = 1 / glyphs.length
   for (let y = 0; y < height; y++) {
     const screenY = rect.top - padding + (y + 0.5) / scale
     const line = lines.reduce((best, item) => Math.abs(screenY - (item[0]!.top + item[0]!.bottom) / 2) < Math.abs(screenY - (best[0]!.top + best[0]!.bottom) / 2) ? item : best, lines[0]!)
@@ -150,10 +150,11 @@ export function rasterizeLetter(element: HTMLElement, viewport: DOMRect, rhythm:
       const localY = clamp((screenY - glyph.top) / Math.max(1, glyph.bottom - glyph.top))
       const stroke = localX * 0.78 + (glyph.index % 2 ? 1 - localY : localY) * 0.22
       const write = Math.min(0.985, beat.start + beat.duration * stroke)
-      // Low-coverage edges release a few grains before the solid stroke interior.
-      const birth = clamp(getMatterBirthProgress(x / width, y / height, fractureWidth, seed, width / height) - (coverage < 140 ? 0.085 : 0))
+      const zone = Math.round(glyph.zone * 255) / 255
+      const noise = sampleDissolveNoise((x + 0.5) / width, (y + 0.5) / height, dissolveStyle)
+      const birth = getDissolveEmissionTime(zone, noise, zoneWidth, 0, 1, dissolveStyle)
       alpha[pixel] = coverage
-      particleBirths[pixel] = Math.round(birth * 255)
+      particleBirths[pixel] = birth
       data[pixel * 4] = coverage
       data[pixel * 4 + 1] = Math.round(write * 255)
       data[pixel * 4 + 2] = Math.round(glyph.zone * 255)
@@ -170,7 +171,4 @@ function getGraphemes(text: string): string[] {
   return Array.from(text)
 }
 
-function hash(x: number, y: number, seed: number) { const n = Math.sin(x * 127.1 + y * 311.7 + seed * 0.0137) * 43758.5453; return n - Math.floor(n) }
 function clamp(value: number) { return Math.min(1, Math.max(0, value)) }
-function smooth(value: number) { return value * value * (3 - 2 * value) }
-function mix(a: number, b: number, t: number) { return a + (b - a) * t }

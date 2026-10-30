@@ -52,6 +52,19 @@ export function getDissolveThreshold(zone: number, noise: number, zoneWidth: num
   return bounded(base + (sample - 0.5) * width * style.noiseStrength, 0, 1 - style.edgeWidth, base)
 }
 
+/** Film-local time at which one atlas texel crosses its seeded, per-grapheme dissolve threshold. */
+export function getDissolveEmissionTime(zone: number, noise: number, zoneWidth: number, start: number, duration: number, style: DissolveStyle): number {
+  return finite(start) + Math.max(0, finite(duration)) * getDissolveThreshold(zone, noise, zoneWidth, style)
+}
+
+/** Bounded seeded-particle lifetime, capped by the remaining scene window. */
+export function getDissolveParticleLifetime(travelDuration: number, variation: number, remainingDuration: number): number {
+  const travel = Math.max(0.1, finite(travelDuration))
+  const variance = bounded(variation, 0, 1, 0)
+  const remaining = Math.max(0, finite(remainingDuration))
+  return Math.min(travel * (0.73 + variance * 0.42), remaining)
+}
+
 /** Fraction of a stroke erased at film-local progress, with a soft transition around the noisy edge. */
 export function getDissolveReveal(progress: number, threshold: number, edgeWidth: number): number {
   const width = bounded(edgeWidth, 0.001, 0.5, DEFAULT_DISSOLVE_STYLE.edgeWidth)
@@ -90,6 +103,9 @@ float dissolveReveal(float progress, float threshold, float edgeWidth) {
 float dissolveEdge(float progress, float threshold, float edgeWidth, float intensity) {
   float edgeDistance = (progress - threshold) / max(edgeWidth, 0.001);
   return exp(-edgeDistance * edgeDistance) * intensity;
+}
+float dissolveParticleLifetime(float travelDuration, float variation, float remainingDuration) {
+  return min(max(0.1, travelDuration) * (0.73 + clamp(variation, 0.0, 1.0) * 0.42), max(0.0, remainingDuration));
 }
 `
 
