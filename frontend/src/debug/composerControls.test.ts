@@ -84,11 +84,24 @@ describe('Scene Composer controls', () => {
       scenes: { prologue: Record<string, unknown> }
     }
 
-    expect(exported.schemaVersion).toBe(2)
+    expect(exported.schemaVersion).toBe(3)
     expect(exported.global.quality).toBe('low')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpeed')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpread')
     expect(exported.scenes.prologue).not.toHaveProperty('particleReturnFraction')
+  })
+
+  it('imports and exports production-ready galaxy settings and the Vasilisa preset', async () => {
+    const result = await importComposerJson(JSON.stringify({ schemaVersion: 3, scenes: { galaxy: {
+      seed: 1234, starCount: 42000, arms: 5, palette: 'custom', armColor: '#DDBBFF', nebulaEnabled: false,
+    } } }))
+    expect(result.ok).toBe(true)
+    expect(getConfig().scenes.galaxy).toMatchObject({ seed: 1234, starCount: 42000, arms: 5, palette: 'custom', armColor: '#DDBBFF', nebulaEnabled: false })
+    const exported = JSON.parse(exportComposerJson()) as { scenes: { galaxy: Record<string, unknown> } }
+    expect(exported.scenes.galaxy).toMatchObject({ seed: 1234, starCount: 42000, arms: 5, palette: 'custom' })
+    await applyComposerPreset('vasilisa-cinematic')
+    expect(getConfig().preset).toBe('vasilisa-cinematic')
+    expect(getConfig().scenes.galaxy.palette).toBe('vasilisa')
   })
 
   it('resets one control to its field default', async () => {

@@ -8,6 +8,7 @@ import { EyeScene } from '../scenes/EyeScene'
 import { CosmosScene } from '../scenes/CosmosScene'
 import { GreetingScene } from '../scenes/GreetingScene'
 import { EndingScene } from '../scenes/EndingScene'
+import { GalaxyExperience } from '../scenes/galaxy/GalaxyExperience'
 
 const modules = { prologue: PrologueScene, growth: GrowthScene, bloom: BloomScene, identity: IdentityScene, gallery: GalleryScene, eye: EyeScene, cosmos: CosmosScene, greeting: GreetingScene, ending: EndingScene }
 
@@ -18,6 +19,7 @@ export function SceneDirector(props: SceneProps) {
     <ambientLight intensity={0.9} />
     <directionalLight position={[-3, 5, 4]} intensity={2.4} color="#FFF0E8" />
     <directionalLight position={[3, 1, -2]} intensity={1.1} color="#B9A4E8" />
+    <GalaxyExperience {...props} />
     <Scene key={`${props.state.scene}:${props.state.revision}`} {...props} />
   </>
 }

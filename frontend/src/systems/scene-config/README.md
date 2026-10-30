@@ -1,6 +1,6 @@
 # Scene Composer configuration
 
-`SceneComposerConfig` is an immutable schema version 2. `normalizeConfig(input)` accepts partial schema v2 and older schema v1 JSON; unknown keys are discarded and missing or invalid values use the v2 defaults. The store publishes font changes only after the selected local font is ready.
+`SceneComposerConfig` is an immutable schema version 3. `normalizeConfig(input)` accepts partial schema v3 and older schema v1/v2 JSON; unknown keys are discarded and missing or invalid values use the v3 defaults. The store publishes font changes only after the selected local font is ready.
 
 The public store is:
 
@@ -11,7 +11,7 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v2.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v3.
 
 Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its 0.1–20 second travel-window meaning, with the cinematic default now 2.2 seconds; `particleFadeDuration` controls individual dust fade and defaults to 1.2 seconds. `particleReturnFraction` is ignored. The light, atmosphere, typography and interaction fields are additive schema-v2 fields: missing fields in both v1 and v2 files receive current defaults.
 
@@ -19,7 +19,7 @@ An optional production override can contain only values that differ from the def
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "global": { "quality": "low" },
   "scenes": {
     "preparation": {
@@ -38,6 +38,14 @@ An optional production override can contain only values that differ from the def
       "particleFadeDuration": 1.2,
       "promptHandwritingDuration": 0.65,
       "glow": 0.45
+    },
+    "galaxy": {
+      "seed": 731204,
+      "starCount": 34000,
+      "arms": 4,
+      "quality": "standard",
+      "palette": "vasilisa",
+      "rotationSpeed": 0.006
     }
   }
 }
@@ -69,10 +77,19 @@ An optional production override can contain only values that differ from the def
 | Dissolve | Particle size min / max; particle glow | 0.25–2.5 / 0.5–4 CSS px (0.6 / 1.8), min ≤ max; 0–2 (0.95) |
 | Interaction | Touch intensity / duration | 0–1.5 (0.55) / 0.7–1 s (0.85) |
 | Interaction | Wave strength / radius | 0–0.5 (0.14) / 30–120 CSS px (70) |
+| Galaxy Geometry | Star count, arms, radius | 8000–90000 integer (34000), 2–8 integer (4), 4–14 (8.2) |
+| Galaxy Geometry | Seed, arm width, scatter, thickness | integer 0–2147483647; 0.12–1.1; 0–1; 0.08–1.6 |
+| Galaxy Quality | Local profile / distribution | `low` / `standard` / `high`; `balanced` / `core` / `arms` |
+| Galaxy Stars | Size, brightness, twinkle | 0.25–3.5 (1.25), 0.1–1.5 (0.68), 0–1 |
+| Galaxy Background | Star count / gas density / gas brightness | 0–6000 / 0–0.8 / 0–1 |
+| Galaxy Nebula | Density, opacity, scale, speed | 0–1; 0–1; 0.3–4; 0–0.1 |
+| Galaxy Reveal Fog | Layers, depth, dissipation | 1–8; 4–30; 0–1 |
+| Galaxy Motion | Rotation, reveal/idle rates, reveal duration | 0–0.04; 0–3 / 0–0.6; 5–18 s |
+| Galaxy Camera | Start/end distance, angle, duration | 3–12 / 9–28; −0.3–0.8 / 0.1–0.95 rad; 5–18 s |
 
 Default breathing uses amplitude `0.035` and frequency `0.22` Hz (about 4.5 seconds). The canonical prologue gate remains fixed at 18 seconds; configured reveal/hold/fracture windows are fitted inside it, with the dust gone by the invitation at 16 seconds. Touch duration is captured at activation, so editing it during a transition does not change that transition. `copyVariant: "legacy"` restores the previous second phrase; the default reads «И решил начать с одной маленькой искры.».
 
-The existing `Moonlit Letter` and `Stardust` presets remain available. Global quality, DPR and playback settings remain global and are not changed by prologue-specific controls. The store owns neither a playback clock nor a canvas.
+The existing `Moonlit Letter` and `Stardust` presets remain available; `Vasilisa Cinematic` presets Scene 07's palette, star density and lighting. The galaxy section stores seeded geometry, live shader values, background and foreground gas, reveal timing, camera staging, and an independent custom palette. Geometry controls rebuild after a 280 ms quiet interval; shader uniforms update live. Geometry and materials are disposed when replaced or unmounted. Scene 07, 08, and 09 share one persistent scene graph and one renderer. The ending uses the shared FilmClock presentation channel for slow motion while its film state remains ended. Global quality, DPR and playback settings remain global and are not changed by prologue-specific controls. The store owns neither a playback clock nor a canvas.
 
 The preparation defaults keep the existing composition: heading scale `1`, heading line height `1.08`, and card surface opacity `1`. These settings use `--preparation-type-scale`, `--preparation-line-height`, and `--preparation-card-opacity`; reset restores the defaults.
 

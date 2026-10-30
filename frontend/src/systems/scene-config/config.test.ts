@@ -3,7 +3,7 @@ import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, normalizeConfig } from './con
 import * as configApi from './config'
 
 it('uses immutable schema v2 defaults and the local Marck Script face', () => {
-  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(2)
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(3)
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('marck-script')
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue).toMatchObject({
     particleCount: 1800,
@@ -34,7 +34,7 @@ it('migrates schema v1 particle settings and preserves compatible fields', () =>
     prologue: { fontSize: 72, particleCount: 120, particleSpeed: 2, particleSpread: 1.2, particleDuration: 9, particleReturnFraction: 0.9 },
   } })
 
-  expect(migrated.schemaVersion).toBe(2)
+  expect(migrated.schemaVersion).toBe(3)
   expect(migrated.global.quality).toBe('low')
   expect(migrated.scenes.prologue).toMatchObject({
     fontSize: 72, particleCount: 300, windStrength: 2.3, turbulence: 0.36,
@@ -73,7 +73,7 @@ it('falls back per field, drops unknown keys, and rejects unsupported versions',
   expect(malformed.global).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.global)
   expect(malformed.scenes.prologue).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)
   expect(Object.keys(malformed)).toEqual(['schemaVersion', 'global', 'scenes', 'preset'])
-  expect(normalizeConfig({ schemaVersion: 3, scenes: { prologue: { fontSize: 72 } } })).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
+  expect(normalizeConfig({ schemaVersion: 4, scenes: { prologue: { fontSize: 72 } } })).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
 })
 
 it('accepts schema v2 inclusive bounds and defaults out-of-range or non-finite values', () => {
@@ -121,6 +121,20 @@ it('normalizes the seed formation controls and a bounded scene-local quality tie
   expect(normalizeConfig({ schemaVersion: 2, scenes: { growth: {
     particleQuality: 'ultra', formationDuration: 3.6, cloudRadius: -1,
   } } }).scenes.growth).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth)
+})
+
+it('migrates schema v2 documents with galaxy defaults and bounds the new controls', () => {
+  const migrated = normalizeConfig({ schemaVersion: 2, scenes: { growth: { seedScale: 1.2 } } })
+  expect(migrated.schemaVersion).toBe(3)
+  expect(migrated.scenes.galaxy).toMatchObject({ seed: 731204, starCount: 34000, arms: 4, palette: 'vasilisa' })
+  const galaxy = normalizeConfig({ schemaVersion: 3, scenes: { galaxy: {
+    starCount: 90000, arms: 8, quality: 'high', palette: 'custom', coreColor: '#A1B2C3', fogLayers: 8,
+    cameraEase: 'power3', nebulaEnabled: false, rotationSpeed: 0.04,
+  } } }).scenes.galaxy
+  expect(galaxy).toMatchObject({ starCount: 90000, arms: 8, quality: 'high', palette: 'custom', coreColor: '#A1B2C3', fogLayers: 8, cameraEase: 'power3', nebulaEnabled: false, rotationSpeed: 0.04 })
+  expect(normalizeConfig({ schemaVersion: 3, scenes: { galaxy: { starCount: 90001, arms: 1, coreColor: 'red' } } }).scenes.galaxy)
+    .toMatchObject({ starCount: 34000, arms: 4, coreColor: '#FFE9C8' })
+  expect(Object.isFrozen(galaxy)).toBe(true)
 })
 
 it('exposes an observable immutable store with scoped reset', async () => {
