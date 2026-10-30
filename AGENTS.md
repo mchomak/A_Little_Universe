@@ -261,4 +261,29 @@ App.tsx owns one MediaSession and AudioDirector outside scene lifetimes. restore
 Production builds emit a same-origin runtime manifest and service worker; required assets are byte-count/SHA-256 checked. Development does not establish offline readiness. Failed module imports require reload after network recovery; ordinary resource failures can be retried. Camera and recording need a secure context. Physical tablet/Safari performance and behavior remain unverified.
 
 Environment variable names only: frontend/.env.example defines public VITE_APP_TITLE; backend/.env.example defines ALU_APP_NAME and ALU_DEBUG. Never place secrets in VITE_* values.
+
+### Lily 004 Blender candidate
+
+- Reviewed asset: `3D_models/production/lily_004/refinement_03/export/lily_004_refined.glb`; editable source: `3D_models/production/lily_004/refinement_03/source/lily_004_refined.blend`. Frontend scene 04.1 remains procedural; GLB runtime integration is a separate change.
+- Blender 5.2.3 was used. Blender CLI calls use absolute `--python` paths and `--python-exit-code 1`.
+- The GLB is glTF Y-up with identity `Lily_Root` TRS. Clip durations: Growth 9 s, IdleClosed 8 s, TouchResponse 2 s, Bloom 8 s, IdleOpen 8 s, DissolveReady 1 s.
+- `3D_models/production/lily_004/refinement_03/export/bud_maturation.json` mirrors `Lily_Root.extras.ALU_budMaturation` schema 1; a runtime consumer samples absolute Growth clip time in linear-sRGB, with mature factors for other clips.
+- GLB defaults and the stock viewer are mature-colored; the viewer ignores this metadata. No runtime color consumer is included.
+- `Petals` and `Petals_Outside` use verified fixed Basis diagonals (5,376 triangles per surface); preserve that connectivity and do not re-diagonalize during export.
+- Blender GLB imports can show an evaluated Growth pose instead of file defaults; restore glTF node TRS and node/mesh default morph weights before comparing the base pose (`3D_models/production/lily_004/refinement_03/scripts/render_comparison.py`).
+- `3D_models/production/lily_004/refinement_03/scripts/material_viewer_adapter.py` runs the unchanged stock viewer. Its `--three-root` may point to an existing Three.js 0.186.1 directory in this worktree or the primary checkout; absent worktree dependencies do not by themselves require installation.
+- `3D_models/production/lily_004/refinement_03/HANDOFF.md` contains the full reproducible asset pipeline. From the repository root, these final verification commands use resolved absolute paths:
+
+```powershell
+$AssetRoot = (Resolve-Path '3D_models/production/lily_004/refinement_03').Path
+$HostPython = 'C:/Users/McHomak/AppData/Roaming/uv/python/cpython-3.14.6-windows-x86_64-none/python.exe'
+$BlenderExe = 'C:/Program Files/Blender Foundation/Blender 5.2/blender.exe'
+& $HostPython "$AssetRoot/scripts/verify_final.py" --root "$AssetRoot"
+Push-Location "$AssetRoot/scripts"
+& $HostPython -m unittest test_verify_final test_render_comparison test_geometry_path_safety test_material_contract test_material_reimport_safety test_material_viewer_adapter test_refine_materials_petal_pairing
+Pop-Location
+& $BlenderExe --background --factory-startup --python-exit-code 1 --python "$AssetRoot/scripts/verify_final.py" -- --root "$AssetRoot" --blender-evidence
+```
+
+- Verified: 39 host tests, aggregate verification, and 217-frame Growth BVH with zero intersection events passed. Physical iPad/Safari performance remains unmeasured.
 <!-- autopilot:end -->

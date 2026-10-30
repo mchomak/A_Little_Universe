@@ -1,7 +1,7 @@
 window.STATE =
 {
   "slug": "lily004-refinement",
-  "dir": "2026-10-29-lily004-refinement--wip",
+  "dir": "2026-10-29-lily004-refinement",
   "title": "Лилия 004 — геометрия, материалы и анимация",
   "mode": "full",
   "depth": "normal",
@@ -11,8 +11,8 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-10-29T20:19:14+03:00",
-  "updatedAt": "2026-10-30T03:30:54.5523497+03:00",
-  "finishedAt": null,
+  "updatedAt": "2026-10-30T03:43:40.7116457+03:00",
+  "finishedAt": "2026-10-30T03:43:40.7116457+03:00",
   "stages": [
     {
       "status": "done",
@@ -56,9 +56,10 @@ window.STATE =
       "finishedAt": "2026-10-30T03:30:54.5523497+03:00"
     },
     {
-      "status": "active",
+      "status": "done",
       "id": "final",
-      "startedAt": "2026-10-30T03:30:54.5523497+03:00"
+      "startedAt": "2026-10-30T03:30:54.5523497+03:00",
+      "finishedAt": "2026-10-30T03:43:40.7116457+03:00"
     }
   ],
   "requirements": {
@@ -218,11 +219,16 @@ window.STATE =
         "failed": 0,
         "note": "RootaggregatePASS0failures;39hostunitPASS;217GrowthBVH0;410normalframes0;exactGLTFLoaderboundaries/loops/crossfadePASS;M+S clean/Craftnoblockers;rootvisualaccepted"
       },
-      "finishedAt": "2026-10-30T03:30:54.5523497+03:00"
+      "finishedAt": "2026-10-30T03:30:54.5523497+03:00",
+      "commit": "31e6b57"
     }
   ],
   "singlePass": null,
-  "tests": null,
+  "tests": {
+    "passed": 39,
+    "failed": 0,
+    "note": "Final root host suite39PASS; aggregate0failures; Blender217GrowthBVH+410normalframes; 13HTTP checks; actualGLTFLoader boundaries/loops/crossfade; frontendnotchanged"
+  },
   "debt": {
     "emptyEnv": [],
     "placeholders": [],
@@ -265,7 +271,7 @@ window.STATE =
       "ticket": "01",
       "axis": "planning",
       "decision": "report",
-      "status": "open",
+      "status": "reported",
       "finding": "Geometry/animation ticket exceeded two implementation contexts; third context is final and must finish or return a concrete blocker.",
       "reason": "Original ticket combined geometry diagnostics, sculpt, motion, growth and export checks too broadly."
     },
@@ -321,7 +327,7 @@ window.STATE =
       "ticket": "03",
       "axis": "craft",
       "decision": "report",
-      "status": "open",
+      "status": "reported",
       "finding": "test_render_comparison.py:108 and test_verify_final.py:38 cover helper behavior, not production call wiring; deleting the production reset/assert call would leave helper tests green",
       "reason": "Current candidate verified by real Blender/render/GLTFLoader evidence; regression-test wiring depth is nonblocking and explicitly reported"
     }
@@ -330,7 +336,28 @@ window.STATE =
     "craft": "/root/lily_craft_reviewer",
     "manifestSpec": "/root/lily_spec_gate"
   },
-  "blind": null,
+  "blind": {
+    "status": "passed",
+    "reviewer": "/root/lily_blind_acceptance",
+    "missing": 0,
+    "report": "blind-acceptance.md",
+    "observed": "IndependentaggregatePASS/freshBlenderreimport/actualWebGL2viewer5190/backuphashes/gitnoFrontendNoMerge",
+    "disagreements": [
+      {
+        "initial": "Growthpartial instockviewer",
+        "resolution": "Checkerclarifiedimplementedunderexplicitbriefalternative: embeddedexportdata+runtimecontract; whiteviewerexpectedintegrationlimit"
+      },
+      {
+        "initial": "Root/hierarchy/size partialdelta",
+        "resolution": "Identityroot14nodehierarchy preserved;3inheritedchildlocaltranslationsandrawboundsdifferencesexplicitlydocumentedperallowedcontract"
+      }
+    ],
+    "limits": [
+      "PhysicaliPad/Safarinotperformed;noactualincompatibilityestablished",
+      "Stockloaderrequiresseparatecolorconsumer",
+      "One shader-loop unroll warning;zero pageerrors"
+    ]
+  },
   "worktree": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe",
   "branch": "codex/lily004-refinement",
   "scope": "Existing Blender lily assets only; frontend untouched",
