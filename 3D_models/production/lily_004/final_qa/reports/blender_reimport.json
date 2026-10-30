@@ -1,0 +1,165 @@
+{
+  "glb": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\final_qa\\export\\lily_004_final.glb",
+  "meshCount": 7,
+  "uploadVertices": 11015,
+  "triangles": 19188,
+  "animations": {
+    "Bloom": 16.0,
+    "DissolveReady": 1.0,
+    "Growth": 16.0,
+    "IdleClosed": 8.0,
+    "IdleOpen": 8.0,
+    "TouchResponse": 2.0
+  },
+  "materials": [
+    "Anther_SoftGold",
+    "Dots Stroke",
+    "Filament_Ivory",
+    "Leaf_SoftGreen",
+    "Material",
+    "Petal_Outside",
+    "Petal_Pearl",
+    "Stem_SoftGreen"
+  ],
+  "decodedEmbeddedImages": [
+    {
+      "name": "lily_leaf_base",
+      "width": 256,
+      "height": 512,
+      "decodedPixels": 524288
+    },
+    {
+      "name": "lily_leaf_roughness",
+      "width": 256,
+      "height": 512,
+      "decodedPixels": 524288
+    },
+    {
+      "name": "lily_petal_outside_base",
+      "width": 512,
+      "height": 512,
+      "decodedPixels": 1048576
+    },
+    {
+      "name": "lily_petal_pearl_base",
+      "width": 512,
+      "height": 512,
+      "decodedPixels": 1048576
+    },
+    {
+      "name": "lily_petal_roughness",
+      "width": 512,
+      "height": 512,
+      "decodedPixels": 1048576
+    },
+    {
+      "name": "lily_stem_base",
+      "width": 128,
+      "height": 512,
+      "decodedPixels": 262144
+    },
+    {
+      "name": "lily_stem_roughness",
+      "width": 128,
+      "height": 512,
+      "decodedPixels": 262144
+    }
+  ],
+  "malformedFaces": 0,
+  "degenerateTriangles": 0,
+  "nonfiniteGeometryOrNormals": 0,
+  "meshBounds": [
+    {
+      "mesh": "Calyx",
+      "min": [
+        0.0019042778294533491,
+        -0.004024642985314131,
+        0.018017679452896118
+      ],
+      "max": [
+        0.0020485480781644583,
+        -0.0038803727366030216,
+        0.018125880509614944
+      ]
+    },
+    {
+      "mesh": "Flower_Details",
+      "min": [
+        0.0019759549759328365,
+        -0.003953014966100454,
+        0.018071739003062248
+      ],
+      "max": [
+        0.001976937986910343,
+        -0.00395190017297864,
+        0.018072927370667458
+      ]
+    },
+    {
+      "mesh": "Leaf_A",
+      "min": [
+        0.003390942234545946,
+        -0.000581484055146575,
+        0.004832823760807514
+      ],
+      "max": [
+        0.0038722578901797533,
+        -0.00036264664959162474,
+        0.00535508431494236
+      ]
+    },
+    {
+      "mesh": "Leaf_B",
+      "min": [
+        0.0008283889619633555,
+        2.4936667614383623e-05,
+        0.0012882549781352282
+      ],
+      "max": [
+        0.0010760498698800802,
+        0.00030573445837944746,
+        0.001754924887791276
+      ]
+    },
+    {
+      "mesh": "Petals",
+      "min": [
+        0.00159178813919425,
+        -0.004298125393688679,
+        0.01807177998125553
+      ],
+      "max": [
+        0.0023620272986590862,
+        -0.0035668802447617054,
+        0.019619232043623924
+      ]
+    },
+    {
+      "mesh": "Petals_Outside",
+      "min": [
+        0.00159178813919425,
+        -0.004298125393688679,
+        0.01807177998125553
+      ],
+      "max": [
+        0.0023620272986590862,
+        -0.0035668802447617054,
+        0.019619232043623924
+      ]
+    },
+    {
+      "mesh": "Stem",
+      "min": [
+        -0.0001493693416705355,
+        -0.0045126210898160934,
+        0.0
+      ],
+      "max": [
+        0.005377655848860741,
+        9.259457874577492e-05,
+        0.01807177998125553
+      ]
+    }
+  ],
+  "result": "PASS"
+}

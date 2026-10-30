@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "renderer": "BLENDER_EEVEE",
+  "resolution": [
+    720,
+    900
+  ],
+  "camera": {
+    "position": [
+      1.7550000000000001,
+      -3.0250000000000004,
+      2.178
+    ],
+    "target": [
+      0.0,
+      -0.1,
+      0.54
+    ],
+    "sourceCoordinates": "stock viewer glTF Y-up",
+    "projection": "orthographic",
+    "orthoScale": 1.25,
+    "elevationDegrees": 25.65,
+    "distanceScale": 1.3
+  },
+  "lighting": "same temporary camera/world/area lights for both GLBs",
+  "before": {
+    "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\baseline\\lily_004_animated.glb",
+    "sha256": "8152f8094a30c3af6eee4ecbcb8e94bafb4c93536828ea1ea9d0f2f8349a143c",
+    "durationsSeconds": {
+      "Bloom": 16.0,
+      "Growth": 16.0
+    }
+  },
+  "after": {
+    "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\export\\lily_004_refined.glb",
+    "sha256": "c6fd5311e45f9586efc491ea6870cc6ae4123999fd954b1a9a607927841c0d24",
+    "durationsSeconds": {
+      "Bloom": 8.0,
+      "Growth": 9.0
+    }
+  },
+  "checkpoints": [
+    {
+      "clip": "Growth",
+      "label": "end",
+      "beforeSeconds": 16.0,
+      "afterSeconds": 9.0,
+      "before": {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\growth_end_before.png",
+        "bytes": 600364,
+        "sha256": "af0f0e051e5345083a14c6ac02bd2f44d25fadefa61f935ef78b0b6655558d78"
+      },
+      "after": {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\growth_end_after.png",
+        "bytes": 599247,
+        "sha256": "4657c980d6d461b17f63786376f3e3e8d3ea96d586c7e64111d50ac375321769"
+      }
+    },
+    {
+      "clip": "Bloom",
+      "label": "start",
+      "beforeSeconds": 0.0,
+      "afterSeconds": 0.0,
+      "before": {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_start_before.png",
+        "bytes": 600368,
+        "sha256": "efc4c34258b572ff7dab130eeaf6265c3377528dab23ebb4dc79fd0bf069c676"
+      },
+      "after": {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_start_after.png",
+        "bytes": 599238,
+        "sha256": "c5b534e322025f7823dbed91d0978022a46341fb049d0f2d366a41ff0c5a6540"
+      }
+    },
+    {
+      "clip": "Bloom",
+      "label": "mid",
+      "beforeSeconds": 8.0,
+      "afterSeconds": 4.0,
+      "before": {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_mid_before.png",
+        "bytes": 609160,
+        "sha256": "13f00fceec80cdb4b90bb00e5acaabc186ef887905348d9287677311be9a4a40"
+      },
+      "after": {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_mid_after.png",
+        "bytes": 621950,
+        "sha256": "d8a189b08c5f08e4dde9125fec44fa5a196d67677450647165f44c7403575e9d"
+      }
+    },
+    {
+      "clip": "Bloom",
+      "label": "end",
+      "beforeSeconds": 16.0,
+      "afterSeconds": 8.0,
+      "before": {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_end_before.png",
+        "bytes": 617070,
+        "sha256": "d059da37d7d1aef67438525ff38163ba5f29a63e7000f1a29226fb27bf80598f"
+      },
+      "after": {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_end_after.png",
+        "bytes": 619579,
+        "sha256": "2258caac93fdda290cefe787a63294ce59d2e184cbc899de895564c4b83a7cc7"
+      }
+    }
+  ],
+  "colorMetadata": {
+    "contract": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\export\\bud_maturation.json",
+    "schemaVersion": 1,
+    "sampling": {
+      "mode": "absolute-clip-time",
+      "interpolation": "piecewise-linear",
+      "formula": "factor(t)=lerp(k[i].linearSrgbFactor,k[i+1].linearSrgbFactor,(clamp(t,0,9)-t[i])/(t[i+1]-t[i])); interpolate each RGB channel independently",
+      "endpointClamping": true,
+      "nonGrowth": "mature",
+      "crossfade": {
+        "durationSeconds": 0.25,
+        "space": "linear-sRGB",
+        "formula": "lerp(sourceFactor,targetFactor,clamp(transitionElapsedSeconds/0.25,0,1))",
+        "sourceAndTarget": "sample each clip at its absolute clip time; non-Growth clips use their mature factor",
+        "reverseScrub": "recompute from source/target absolute clip times and transition elapsed time; do not accumulate frame deltas"
+      }
+    },
+    "plainGLTFLoaderDefault": "mature material; the viewer does not consume this metadata",
+    "samples": [
+      {
+        "label": "young",
+        "clip": "Growth",
+        "absoluteSeconds": 0.0,
+        "metadataSampling": "absolute clip time; piecewise-linear in linear-sRGB",
+        "materialFactors": {
+          "Petal_Pearl": [
+            0.2,
+            0.47,
+            0.2
+          ],
+          "Petal_Outside": [
+            0.2,
+            0.47,
+            0.2
+          ]
+        },
+        "geometryPose": "same final GLB; Growth end pose held fixed for a color-only metadata comparison",
+        "geometryPoseSeconds": 9.0,
+        "image": {
+          "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\growth_young_metadata.png",
+          "bytes": 600992,
+          "sha256": "a1343700cec41fa86903648d260917d8eb1ea11b771f26ca218caccb70ab540a"
+        }
+      },
+      {
+        "label": "mature",
+        "clip": "Growth",
+        "absoluteSeconds": 9.0,
+        "metadataSampling": "absolute clip time; piecewise-linear in linear-sRGB",
+        "materialFactors": {
+          "Petal_Pearl": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "Petal_Outside": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "geometryPose": "same final GLB; Growth end pose held fixed for a color-only metadata comparison",
+        "geometryPoseSeconds": 9.0,
+        "image": {
+          "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\growth_mature_metadata.png",
+          "bytes": 599238,
+          "sha256": "4cbd7bbf8ca7a316df515f931467074dbf4d8ad4981a5e8176d30aff76445b6f"
+        }
+      }
+    ]
+  },
+  "contactSheet": {
+    "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\comparison_sheet.png",
+    "bytes": 982051,
+    "sha256": "34b72558af98161e19a6409724020b7f5668510a644734c0f870f155282e2c8e",
+    "resolution": [
+      720,
+      2250
+    ],
+    "layout": "rows 1-4: BEFORE/AFTER checkpoints; row 5: young/mature metadata pair"
+  },
+  "knownLimitation": "Blender EEVEE render uses a shared comparison setup; final viewer camera/light proof is recorded separately."
+}
