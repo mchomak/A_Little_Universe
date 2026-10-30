@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nameAssembly, nameFocus, nameSparkPosition, nameWave } from './identityName'
+import { nameAssembly, nameFocus, nameWave } from './identityName'
 
 describe('04.3 name choreography', () => {
   it('preserves the incoming handoff, staggers streams and settles for a 3–4 second hold', () => {
@@ -27,17 +27,5 @@ describe('04.3 name choreography', () => {
     expect(nameFocus(10)).toBe(1)
     expect(nameFocus(13)).toBe(1)
     expect(nameFocus(17)).toBe(0)
-  })
-
-  it('keeps the blue motif continuous at both shot boundaries and reversible on seek', () => {
-    for (const time of [8, 13]) {
-      const before = nameSparkPosition(time - .0001)
-      const after = nameSparkPosition(time + .0001)
-      expect(Math.hypot(...after.map((v, i) => v - before[i]!))).toBeLessThan(.002)
-    }
-    const frame = nameSparkPosition(10.6)
-    nameSparkPosition(12.9)
-    expect(nameSparkPosition(10.6)).toEqual(frame)
-    expect(nameSparkPosition(10.6)[2]).not.toBeCloseTo(nameSparkPosition(11.6)[2], 2)
   })
 })

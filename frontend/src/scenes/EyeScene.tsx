@@ -4,7 +4,7 @@ import type { Group } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
 import { TIMING } from '../engine/filmConfig'
 import { fade, ramp, useSceneAnimation } from './shared/animation'
-import { Iris, Spark } from './shared/Primitives'
+import { Iris } from './shared/Primitives'
 
 export function EyeScene({ runtime, reducedMotion }: SceneProps) {
   const iris = useRef<Group>(null)
@@ -25,6 +25,6 @@ export function EyeScene({ runtime, reducedMotion }: SceneProps) {
     invalidate()
   }} onPointerLeave={() => { iris.current?.rotation.set(0, 0, 0); invalidate() }}>
     <mesh><planeGeometry args={[20, 20]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>
-    <group ref={iris}><Iris /><Spark position={[0.34, 0.08, 0.03]} /></group>
+    <group ref={iris}><Iris /></group>
   </group>
 }

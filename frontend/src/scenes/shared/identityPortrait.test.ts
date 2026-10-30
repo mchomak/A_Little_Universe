@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { portraitPresence, portraitStage, portraitTone, portraitMotion, portraitSpark } from './identityPortrait'
-import { nameSparkPosition } from './identityName'
+import { portraitPresence, portraitStage, portraitTone, portraitMotion } from './identityPortrait'
 
 describe('04.5 photographic portrait', () => {
   it('isolates the treatment to 17–23s with continuous handoffs', () => {
@@ -36,8 +35,4 @@ describe('04.5 photographic portrait', () => {
     expect(portraitMotion(18, true)).toBe(0)
   })
 
-  it('keeps the blue motif outside the image while leaving other shots untouched', () => {
-    for (const t of [0, 8, 13, 17, 23, 28, 34]) expect(portraitSpark(t)).toEqual(nameSparkPosition(t))
-    for (const t of [18, 19, 20, 21]) expect(portraitSpark(t)[0]).toBeLessThan(-1.45)
-  })
 })

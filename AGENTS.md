@@ -8,7 +8,7 @@ Project-level instructions for Codex. Keep this file compact: task-specific requ
 
 The authoritative narrative and planned shot order are in the Markdown storyboard supplied at the project root (later it may be copied or referenced from `docs/storyboard.md`). Approved keyframes will be stored under `references/keyframes/`; they are art-direction references, not automatically usable 3D assets.
 
-The experience includes a glowing seed; a pink-white lily that grows and opens on touch; particle morphing into Vasilisa's name and a portrait; a navigable 3D memory gallery; a stylized blue eye with optional gaze tracking; an iris-to-galaxy transition; a cosmic lily-and-peony bouquet; and closing birthday greetings and credits. A small blue particle is a recurring visual motif.
+The experience includes a glowing seed; a pink-white lily that grows and opens on touch; particle morphing into Vasilisa's name and a portrait; a navigable 3D memory gallery; a stylized blue eye with optional gaze tracking; an iris-to-galaxy transition; a cosmic lily-and-peony bouquet; and closing birthday greetings and credits. The recurring blue-particle motif was removed from all scenes.
 
 **Current priority:** establish a stable technical foundation and a fully navigable placeholder version of the entire film. Implement and polish artistic scenes only when explicitly requested and their references are available.
 
@@ -80,7 +80,7 @@ Before a scene task, read its segment of the storyboard and the relevant approve
 
 Do not generate arbitrary filler stories, photos, personal facts, or altered facial features. For absent personal photos and art assets use clearly labeled development placeholders; never pretend they are final.
 
-The blue particle motif is a continuous, subtle narrative cue, not an instruction to make every frame predominantly blue.
+Do not reintroduce a recurring blue particle. Blue remains available within scene-specific art such as the eye and galaxy.
 
 When artistic feasibility conflicts with a static reference, identify the trade-off and offer a technically achievable rendition instead of silently changing the approved look.
 

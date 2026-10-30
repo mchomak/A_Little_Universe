@@ -16,9 +16,9 @@ Scope: Storyboard v2.0, scene 04 at 8–13 seconds; visual reference
   Depth is at most ±0.128 world units during the hold. Approximately 2.2% of
   points carry larger halos and fine rays. Background dust is reduced to 22%
   brightness and its motion/twinkle slows during the hold.
-- The blue motif follows a continuous curved detour through the lettering,
-  with depth changes and a small local halo. Reduced motion removes that detour,
-  flight arcs, overshoot and the moving highlight.
+- The former blue guide particle and its local halo have been removed from the
+  film. Reduced motion still removes flight arcs, overshoot and the moving
+  highlight.
 - The existing viewport fit keeps the complete name on one line in both tablet
   orientations. Name point sizes account for renderer DPR and the lower particle
   budget. The main particle counts remain 16,000 / 7,000.
@@ -31,9 +31,9 @@ Scope: Storyboard v2.0, scene 04 at 8–13 seconds; visual reference
 - `cd frontend; npm run check`: ESLint, 110 tests in 28 files, strict TypeScript
   and production build passed. Existing Three.js CommonJS deprecation and large
   application chunk warnings remain.
-- New tests cover stream staggering, bounded overshoot, settling/hold, one-way
-  highlight timing and blue motif continuity. A shared-clock test seeks forward
-  and backward across the name and its neighboring shot boundaries.
+- Tests cover stream staggering, bounded overshoot, settling/hold and one-way
+  highlight timing. A shared-clock test seeks forward and backward across the
+  name and its neighboring shot boundaries.
 - Headless Chromium against the running Vite server: inspected 7.9, 8, 8.4, 8.8,
   9.4, 10.2, 12.8, 13 and 17s at 1366×1024; portrait at 834×1194; low quality
   and reduced motion. No JavaScript/WebGL console errors occurred.
@@ -52,9 +52,8 @@ Scope: Storyboard v2.0, scene 04 at 8–13 seconds; visual reference
    than the name. The whole word fits landscape and portrait tablet screens.
 3. Play 9.4–10.9s: exactly one gentle light wave crosses from «В» to the last «А».
    It does not repeat during the remaining hold.
-4. Follow the blue particle: its curved path and small halo read as a light moving
-   among letters, with no cursor-like straight scan or large distracting disc.
+4. Confirm that no separate blue guide dot or halo appears around the lettering.
 5. Seek 12.8 → 8.4 → 10.2, pause/resume, restart and repeat; the same time must
-   reproduce the same composition, particle positions and highlight phase.
+   reproduce the same composition and highlight phase.
 6. Cross 13s into the existing symbol morph and inspect 17s: no flash, abrupt
    rescaling, surviving name halo or change in the portrait timing.

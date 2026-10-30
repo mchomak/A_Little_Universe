@@ -4,7 +4,7 @@ import { initialFilmState } from '../../engine/film'
 import { createFilmClock, createFilmRuntime } from '../../engine/runtime'
 import { createSceneTimeline } from '../../engine/useSceneTimeline'
 import { identityFrame } from './identityFrame'
-import { nameAssembly, nameFocus, nameSparkPosition, nameWave } from './identityName'
+import { nameAssembly, nameWave } from './identityName'
 
 it('scrubs identity frames on the shared clock, holds pause, changes speed and replays cleanly', () => {
   const runtime = createFilmRuntime()
@@ -62,13 +62,13 @@ it('rebuilds the paused identity clock after seek and restart without retaining 
   clock.dispose()
 })
 
-it('seeks name assembly, its single wave and blue motif backwards without retaining motion history', () => {
+it('seeks name assembly and its single wave backwards without retaining motion history', () => {
   const runtime = createFilmRuntime()
   const state = { ...initialFilmState, scene: 'identity' as const, mode: 'playing' as const, paused: true, revision: 2 }
   const clock = createFilmClock({ state, runtime, dispatch: () => {} })
   const sample = (time: number) => ({
     streams: [0, 1, 2].map((stream) => nameAssembly(time, stream, .5)),
-    focus: nameFocus(time), wave: nameWave(time, 1), spark: nameSparkPosition(time),
+    wave: nameWave(time, 1),
   })
   let frame = sample(0)
   const cursor = { time: 0 }

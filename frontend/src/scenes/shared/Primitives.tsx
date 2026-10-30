@@ -2,10 +2,6 @@ import { useMemo, type RefObject } from 'react'
 import { DoubleSide, type Group } from 'three'
 import type { ThreeEvent } from '@react-three/fiber'
 
-export function Spark({ position = [0.45, 0.25, 0.4] }: { position?: [number, number, number] }) {
-  return <mesh position={position}><sphereGeometry args={[0.024, 12, 8]} /><meshBasicMaterial color="#54B4F0" /></mesh>
-}
-
 /** Deliberately schematic flower; final petal art can replace this group. */
 export function Lily({ groupRef, onClick }: { groupRef?: RefObject<Group | null>; onClick?: (event: ThreeEvent<MouseEvent>) => void }) {
   return <group ref={groupRef ?? null} onClick={onClick ?? (() => {})}>

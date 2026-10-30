@@ -28,18 +28,6 @@ export function nameWave(time: number, x: number) {
   return Math.exp(-distance * distance) * Math.sin(t * Math.PI)
 }
 
-/** Exact legacy path outside the name; a closed organic detour between the letters. */
-export function nameSparkPosition(time: number, scale = 1, motion = true): [number, number, number] {
-  const end = ramp(time, [28, 34]), entry = ramp(time, [0, 4])
-  const x = -1.4 + Math.min(time / 34, 1) * 2.75
-  const y = Math.sin(time * .8) * .18 * (1 - end) - .27 * end
-  const z = .35 - .25 * end
-  const t = ramp(time, [8, 13]), envelope = motion ? Math.sin(Math.PI * t) ** 2 : 0
-  return [.1 + (x - .1) * entry + Math.sin(t * Math.PI * 2 - 1.2) * 1.75 * envelope * scale,
-    .16 + (y - .16) * entry + Math.sin(t * Math.PI * 3) * .19 * envelope,
-    .1 + (z - .1) * entry + Math.sin(t * Math.PI * 4) * .38 * envelope]
-}
-
 /** The GPU and testable choreography use the same timing constants; no simulation state. */
 export const identityNameGLSL = `
 float identityNameFocus(float time) {
