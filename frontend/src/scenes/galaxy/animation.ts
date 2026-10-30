@@ -20,8 +20,8 @@ export function getGalaxyRevealState(time: number, settings: Settings) {
 /** Preserve the configured residual haze through the reveal, then fade it out at the Scene 07 handoff. */
 export function getGalaxyFogOpacity(scene: GalaxyAnimationScene, time: number, settings: Settings, cosmosDuration: number) {
   if (scene !== 'cosmos') return 0
-  const fogDissipation = smooth(settings.fogStart, settings.fogEnd, time)
-  const residualOpacity = settings.fogDensity * (1 - fogDissipation * settings.fogDissipation) + settings.fogAfterOpacity
+  const dissipationProgress = smooth(settings.fogStart, settings.fogEnd, time)
+  const residualOpacity = settings.fogDensity * (1 - dissipationProgress * settings.fogDissipation) + settings.fogAfterOpacity
   const handoffFade = smooth(cosmosDuration - settings.backgroundTransition, cosmosDuration, time)
   return residualOpacity * (1 - handoffFade)
 }

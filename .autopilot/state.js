@@ -11,7 +11,7 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:\\Users\\McHomak\\.agents\\skills\\autopilot",
   "startedAt": "2026-10-30T03:46:45+03:00",
-  "updatedAt": "2026-10-30T04:06:39+03:00",
+  "updatedAt": "2026-10-30T17:12:33+03:00",
   "finishedAt": null,
   "stages": [
     {
@@ -43,19 +43,19 @@ window.STATE =
     {
       "id": "build",
       "status": "done",
-      "startedAt": "2026-10-30T03:47:32+03:00",
-      "finishedAt": "2026-10-30T04:06:39+03:00"
+      "startedAt": "2026-10-30T15:18:30+03:00",
+      "finishedAt": "2026-10-30T17:12:33+03:00"
     },
     {
       "id": "review",
       "status": "done",
-      "finishedAt": "2026-10-30T04:06:39+03:00"
+      "finishedAt": "2026-10-30T17:12:33+03:00"
     },
     {
       "id": "final",
       "status": "active",
-      "startedAt": "2026-10-30T04:06:39+03:00",
-      "note": "?????????? ??????? ? WebGL/iPad ???????? ?? ?????????"
+      "note": "Visual parity and target iPad performance remain unverified",
+      "startedAt": "2026-10-30T17:12:33+03:00"
     }
   ],
   "requirements": {
@@ -72,12 +72,12 @@ window.STATE =
       "id": "01",
       "title": "????????? ? ??????????",
       "status": "review",
-      "startedAt": "2026-10-30T03:47:32+03:00",
-      "note": "??? ? ???????? ?????????; ?????????? ??????? ?? ?????????"
+      "startedAt": "2026-10-30T15:18:30+03:00",
+      "note": "Reference graphics adapted; HDR parity and iPad remain unverified"
     }
   ],
   "singlePass": null,
-  "tests": "npm run check: 223 tests, lint, typecheck, production build passed",
+  "tests": "npm run check: 246 tests, lint, typecheck and build passed; browser WebGL and pause checked",
   "debt": {
     "placeholders": [],
     "assumptions": [],
@@ -86,8 +86,8 @@ window.STATE =
   "additions": [],
   "coverage": null,
   "concerns": [
-    "Reference has no license; implementation independent rather than direct port.",
-    "Browser visual and shader compilation check unavailable; iPad performance unverified."
+    "Source repository has no license; user requested adaptation, rights-holder authorization not established.",
+    "Source HDR pipeline differs from local LDR rendering; exact visual parity and physical iPad performance unverified."
   ],
   "reviewers": {
     "manifestSpec": null,

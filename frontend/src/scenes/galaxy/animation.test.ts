@@ -43,3 +43,12 @@ it('preserves residual fog through the reveal, then fades it continuously to the
   expect(getGalaxyFogOpacity('cosmos', 26, settings, 26)).toBe(0)
   expect(getGalaxyFogOpacity('greeting', 0, settings, 26)).toBe(0)
 })
+
+it('uses the fog dissipation control to change the reveal haze curve', () => {
+  const slow = { ...settings, fogDissipation: 0 }
+  const fast = { ...settings, fogDissipation: 1 }
+  const halfway = (settings.fogStart + settings.fogEnd) / 2
+  expect(getGalaxyFogOpacity('cosmos', halfway, fast, 26)).toBeLessThan(getGalaxyFogOpacity('cosmos', halfway, slow, 26))
+  expect(getGalaxyFogOpacity('cosmos', settings.fogEnd, fast, 26)).toBeCloseTo(settings.fogAfterOpacity, 10)
+  expect(getGalaxyFogOpacity('cosmos', settings.fogEnd, slow, 26)).toBeCloseTo(settings.fogDensity + settings.fogAfterOpacity, 10)
+})

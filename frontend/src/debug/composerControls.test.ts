@@ -84,7 +84,7 @@ describe('Scene Composer controls', () => {
       scenes: { prologue: Record<string, unknown> }
     }
 
-    expect(exported.schemaVersion).toBe(4)
+    expect(exported.schemaVersion).toBe(5)
     expect(exported.global.quality).toBe('low')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpeed')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpread')
@@ -92,16 +92,16 @@ describe('Scene Composer controls', () => {
   })
 
   it('imports and exports production-ready galaxy settings and the Vasilisa preset', async () => {
-    const result = await importComposerJson(JSON.stringify({ schemaVersion: 4, scenes: { galaxy: {
-      seed: 1234, starCount: 42000, arms: 5, palette: 'custom', armColor: '#DDBBFF', nebulaEnabled: false,
+    const result = await importComposerJson(JSON.stringify({ schemaVersion: 5, scenes: { galaxy: {
+      seed: 'orion', starCount: 42000, arms: 5, palette: 'custom', armColor: '#DDBBFF', nebulaEnabled: false, blackHoleEnabled: true,
     } } }))
     expect(result.ok).toBe(true)
-    expect(getConfig().scenes.galaxy).toMatchObject({ seed: 1234, starCount: 42000, arms: 5, palette: 'custom', armColor: '#DDBBFF', nebulaEnabled: false })
+    expect(getConfig().scenes.galaxy).toMatchObject({ seed: 'orion', starCount: 42000, arms: 5, palette: 'custom', armColor: '#DDBBFF', nebulaEnabled: false, blackHoleEnabled: true })
     const exported = JSON.parse(exportComposerJson()) as { scenes: { galaxy: Record<string, unknown> } }
-    expect(exported.scenes.galaxy).toMatchObject({ seed: 1234, starCount: 42000, arms: 5, palette: 'custom' })
+    expect(exported.scenes.galaxy).toMatchObject({ seed: 'orion', starCount: 42000, arms: 5, palette: 'custom', blackHoleEnabled: true })
     await applyComposerPreset('vasilisa-cinematic')
     expect(getConfig().preset).toBe('vasilisa-cinematic')
-    expect(getConfig().scenes.galaxy.palette).toBe('vasilisa')
+    expect(getConfig().scenes.galaxy.palette).toBe('spore')
   })
 
   it('resets one control to its field default', async () => {

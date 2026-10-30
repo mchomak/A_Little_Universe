@@ -2,8 +2,8 @@ import { expect, it, vi } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, normalizeConfig, SCENE_CONFIG_PRESETS } from './config'
 import * as configApi from './config'
 
-it('uses immutable schema v4 defaults and the local Marck Script face', () => {
-  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(4)
+it('uses immutable schema v5 defaults and the local Marck Script face', () => {
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(5)
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('marck-script')
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue).toMatchObject({
     particleCount: 1800,
@@ -25,6 +25,7 @@ it('merges a known partial override into defaults field by field', () => {
   expect(normalizeConfig({ schemaVersion: 1, scenes: { prologue: { fontSize: 64 } } }))
     .toEqual({ ...DEFAULT_SCENE_COMPOSER_CONFIG, scenes: {
       ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes,
+      galaxy: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.galaxy, blackHoleEnabled: false },
       prologue: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue, fontSize: 64 },
     } })
 })
@@ -34,7 +35,7 @@ it('migrates schema v1 particle settings and preserves compatible fields', () =>
     prologue: { fontSize: 72, particleCount: 120, particleSpeed: 2, particleSpread: 1.2, particleDuration: 9, particleReturnFraction: 0.9 },
   } })
 
-  expect(migrated.schemaVersion).toBe(4)
+  expect(migrated.schemaVersion).toBe(5)
   expect(migrated.global.quality).toBe('low')
   expect(migrated.scenes.prologue).toMatchObject({
     fontSize: 72, particleCount: 300, windStrength: 2.3, turbulence: 0.36,
@@ -73,7 +74,7 @@ it('falls back per field, drops unknown keys, and rejects unsupported versions',
   expect(malformed.global).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.global)
   expect(malformed.scenes.prologue).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)
   expect(Object.keys(malformed)).toEqual(['schemaVersion', 'global', 'scenes', 'preset'])
-  expect(normalizeConfig({ schemaVersion: 5, scenes: { prologue: { fontSize: 72 } } })).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
+  expect(normalizeConfig({ schemaVersion: 6, scenes: { prologue: { fontSize: 72 } } })).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
 })
 
 it('accepts schema v2 inclusive bounds and defaults out-of-range or non-finite values', () => {
@@ -125,39 +126,50 @@ it('normalizes the seed formation controls and a bounded scene-local quality tie
 
 it('migrates schema v2 documents with galaxy defaults and bounds the new controls', () => {
   const migrated = normalizeConfig({ schemaVersion: 2, scenes: { growth: { seedScale: 1.2 } } })
-  expect(migrated.schemaVersion).toBe(4)
-  expect(migrated.scenes.galaxy).toMatchObject({ seed: 154684308, starCount: 32000, arms: 5, palette: 'vasilisa', cameraEndAngle: 0.785 })
+  expect(migrated.schemaVersion).toBe(5)
+  expect(migrated.scenes.galaxy).toMatchObject({ seed: 'andromeda', starCount: 32000, arms: 5, palette: 'spore', cameraEndAngle: 0.785 })
   const galaxy = normalizeConfig({ schemaVersion: 4, scenes: { galaxy: {
     starCount: 90000, arms: 8, quality: 'high', palette: 'custom', coreColor: '#A1B2C3', fogLayers: 8,
     cameraEase: 'power3', nebulaEnabled: false, rotationSpeed: 0.04,
   } } }).scenes.galaxy
   expect(galaxy).toMatchObject({ starCount: 90000, arms: 8, quality: 'high', palette: 'custom', coreColor: '#A1B2C3', fogLayers: 8, cameraEase: 'power3', nebulaEnabled: false, rotationSpeed: 0.04 })
   expect(normalizeConfig({ schemaVersion: 4, scenes: { galaxy: { starCount: 90001, arms: 1, coreColor: 'red' } } }).scenes.galaxy)
-    .toMatchObject({ starCount: 32000, arms: 5, coreColor: '#FFE8C1', coreSize: 1.55, coreDensity: 0.4, armWidth: 0.64, scatter: 0.33 })
+    .toMatchObject({ starCount: 32000, arms: 5, coreColor: '#FFE6AD', coreSize: 0.24, coreDensity: 0.2, armWidth: 0.16, randomness: 0.065, blackHoleEnabled: false })
   expect(Object.isFrozen(galaxy)).toBe(true)
 })
 
-it('migrates schema v3 galaxy spin from turns to radians and preserves current schema v4 radians', () => {
+it('migrates schema v3 galaxy spin from turns to radians and converts schema v4 geometry units', () => {
   const legacy = normalizeConfig({ schemaVersion: 3, scenes: { galaxy: { spin: 1.2 } } })
-  const current = normalizeConfig({ schemaVersion: 4, scenes: { galaxy: { spin: 4.6 } } })
+  const current = normalizeConfig({ schemaVersion: 4, scenes: { galaxy: {
+    seed: 154684308, spin: 4.6, radius: 8.2, armWidth: 0.64, scatter: 0.33,
+    coreSize: 1.55, coreDensity: 0.4, thickness: 0.12,
+  } } })
 
-  expect(legacy.schemaVersion).toBe(4)
+  expect(legacy.schemaVersion).toBe(5)
   expect(legacy.scenes.galaxy.spin).toBeCloseTo(1.2 * Math.PI * 2, 10)
-  expect(current.schemaVersion).toBe(4)
-  expect(current.scenes.galaxy.spin).toBe(4.6)
+  expect(current.schemaVersion).toBe(5)
+  expect(current.scenes.galaxy).toMatchObject({
+    seed: '154684308', spin: 4.6, armWidth: 0.16,
+    coreSize: 1.55 / 8.2, coreDensity: 0.248, thickness: 0.12 / 8.2,
+    blackHoleEnabled: false,
+  })
+  expect(current.scenes.galaxy.randomness).toBeCloseTo(0.065)
+  expect(normalizeConfig({ schemaVersion: 5, scenes: { galaxy: { seed: 'andromeda', blackHoleEnabled: true } } }).scenes.galaxy)
+    .toMatchObject({ seed: 'andromeda', blackHoleEnabled: true })
 })
 
-it('uses a broad pearly core, saturated violet arms, and visible colored stars by default', () => {
+it('uses the reference galaxy geometry and optional black center by default', () => {
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.galaxy).toMatchObject({
-    seed: 154684308, starCount: 32000, arms: 5, spin: 4.6, armWidth: 0.64, scatter: 0.33,
-    coreSize: 1.55, coreDensity: 0.4, thickness: 0.12, brightStarCount: 220,
-    brightStarSize: 2.05, brightStarIntensity: 1.25, starSize: 1.08, brightness: 0.64, twinkle: 0.5,
-    nebulaDensity: 0.5, nebulaBrightness: 0.69, nebulaSaturation: 1.15, nebulaOpacity: 0.72, nebulaIntensity: 0.88, coreGlow: 0.9,
-    coreColor: '#FFE8C1', armColor: '#C261FF', nebulaColor: '#A253EC', brightColor: '#F6E7FF',
-    rotationSpeed: 0.03, cameraEndAngle: 0.785,
+    seed: 'andromeda', starCount: 32000, arms: 5, spin: 4.6, armWidth: 0.16, randomness: 0.065,
+    randomnessPower: 3.6, coreSize: 0.24, coreDensity: 0.2, thickness: 0.05,
+    brightStarCount: 175, brightStarSize: 1.4, starSize: 1.03, brightness: 1.14,
+    twinkle: 0.5, nebulaIntensity: 0.46, blackHoleEnabled: true,
+    backgroundStarCount: 5200, backgroundBrightness: 1, backgroundDepth: 42,
+    rotationSpeed: 0.045, palette: 'spore', cameraEndAngle: 0.785,
   })
   expect(SCENE_CONFIG_PRESETS['vasilisa-cinematic'].patch.scenes?.galaxy).toMatchObject({
-    coreSize: 1.55, coreGlow: 0.9, armWidth: 0.64, scatter: 0.33, nebulaBrightness: 0.69, brightStarSize: 2.05,
+    palette: 'spore', blackHoleEnabled: true, coreSize: 0.24, armWidth: 0.16, randomness: 0.065,
+    backgroundBrightness: 1,
   })
 })
 

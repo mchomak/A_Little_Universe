@@ -11,7 +11,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 4
+  readonly schemaVersion: 5
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -88,13 +88,14 @@ export interface SceneComposerConfig {
     }>
     galaxy: Readonly<{
       quality: SeedQuality
-      seed: number
+      seed: string
       starCount: number
       arms: number
       radius: number
       spin: number
       armWidth: number
-      scatter: number
+      randomness: number
+      randomnessPower: number
       coreSize: number
       coreDensity: number
       thickness: number
@@ -113,6 +114,7 @@ export interface SceneComposerConfig {
       backgroundGasDensity: number
       backgroundGasBrightness: number
       nebulaEnabled: boolean
+      blackHoleEnabled: boolean
       nebulaDensity: number
       nebulaBrightness: number
       nebulaSaturation: number
@@ -162,7 +164,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 4,
+  schemaVersion: 5,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
@@ -187,20 +189,20 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       lavenderColor: '#D7CCF1', coreGlow: 0.55, seedScale: 1,
     },
     galaxy: {
-      quality: 'standard', seed: 154684308, starCount: 32000, arms: 5, radius: 8.2,
-      spin: 4.6, armWidth: 0.64, scatter: 0.33, coreSize: 1.55, coreDensity: 0.4,
-      thickness: 0.12, distribution: 'balanced', starSize: 1.08, brightness: 0.64,
-      twinkle: 0.5, twinkleSpeed: 0.72, brightStarCount: 220, brightStarSize: 2.05,
-      brightStarIntensity: 1.25, backgroundStarCount: 1700, backgroundBrightness: 0.34,
-      backgroundSize: 0.8, backgroundDepth: 42, backgroundGasDensity: 0.035,
-      backgroundGasBrightness: 0.1, nebulaEnabled: true, nebulaDensity: 0.5,
+      quality: 'standard', seed: 'andromeda', starCount: 32000, arms: 5, radius: 8.2,
+      spin: 4.6, armWidth: 0.16, randomness: 0.065, randomnessPower: 3.6, coreSize: 0.24, coreDensity: 0.2,
+      thickness: 0.05, distribution: 'balanced', starSize: 1.03, brightness: 1.14,
+      twinkle: 0.5, twinkleSpeed: 0.72, brightStarCount: 175, brightStarSize: 1.4,
+      brightStarIntensity: 1.1, backgroundStarCount: 5200, backgroundBrightness: 1,
+      backgroundSize: 1.6, backgroundDepth: 42, backgroundGasDensity: 0.34,
+      backgroundGasBrightness: 0.34, nebulaEnabled: true, blackHoleEnabled: true, nebulaDensity: 0.5,
       nebulaBrightness: 0.69, nebulaSaturation: 1.15, nebulaOpacity: 0.72, nebulaScale: 1.35,
-      nebulaIntensity: 0.88, nebulaSpeed: 0.018, fogDensity: 0.28, fogLayers: 4,
+      nebulaIntensity: 0.46, nebulaSpeed: 0.018, fogDensity: 0.14, fogLayers: 3,
       fogDepth: 14, fogDissipation: 0.84, fogStart: 1.5, fogEnd: 8.5,
-      fogTurbulence: 0.18, fogAfterOpacity: 0.008, palette: 'vasilisa',
-      coreColor: '#FFE8C1', innerColor: '#879DFF', armColor: '#C261FF',
-      nebulaColor: '#A253EC', brightColor: '#F6E7FF', backgroundColor: '#02030A',
-      exposure: 1, coreGlow: 0.9, rotationSpeed: 0.03, motionSpeed: 1,
+      fogTurbulence: 0.18, fogAfterOpacity: 0.008, palette: 'spore',
+      coreColor: '#FFE6AD', innerColor: '#D9C6FF', armColor: '#4F5CFF',
+      nebulaColor: '#9A52FF', brightColor: '#7FB4FF', backgroundColor: '#04020C',
+      exposure: 1, coreGlow: 1, rotationSpeed: 0.045, motionSpeed: 1,
       revealMotion: 1, idleMotion: 0.3, firstStarsAt: 0.25, galaxyRevealAt: 1.2,
       revealDuration: 10.4, pauseDuration: 4.2, backgroundTransition: 7,
       cameraStartDistance: 6.4, cameraEndDistance: 16, cameraStartAngle: 0.18,
@@ -222,14 +224,15 @@ export const SCENE_CONFIG_PRESETS = deepFreeze({
   },
   'vasilisa-cinematic': {
     label: 'Vasilisa Cinematic',
-    patch: { preset: 'vasilisa-cinematic', scenes: { galaxy: { palette: 'vasilisa',
-      coreColor: '#FFE8C1', innerColor: '#879DFF', armColor: '#C261FF', nebulaColor: '#A253EC',
-      brightColor: '#F6E7FF', backgroundColor: '#02030A', starCount: 32000, arms: 5, spin: 4.6,
-      rotationSpeed: 0.03, coreGlow: 0.9, brightness: 0.64, coreSize: 1.55,
-      coreDensity: 0.4, armWidth: 0.64, scatter: 0.33, thickness: 0.12,
-      twinkle: 0.5, starSize: 1.08, brightStarCount: 220,
-      brightStarSize: 2.05, brightStarIntensity: 1.25, nebulaDensity: 0.5,
-      nebulaBrightness: 0.69, nebulaSaturation: 1.15, nebulaOpacity: 0.72, nebulaIntensity: 0.88 } } },
+    patch: { preset: 'vasilisa-cinematic', scenes: { galaxy: { palette: 'spore', blackHoleEnabled: true,
+      coreColor: '#FFE6AD', innerColor: '#D9C6FF', armColor: '#4F5CFF', nebulaColor: '#9A52FF',
+      brightColor: '#7FB4FF', backgroundColor: '#04020C', seed: 'andromeda', starCount: 32000,
+      arms: 5, spin: 4.6, rotationSpeed: 0.045, coreGlow: 1, brightness: 1.14,
+      coreSize: 0.24, coreDensity: 0.2, armWidth: 0.16, randomness: 0.065,
+      randomnessPower: 3.6, thickness: 0.05, twinkle: 0.5, starSize: 1.03,
+      brightStarCount: 175, brightStarSize: 1.4, brightStarIntensity: 1.1, backgroundStarCount: 5200, backgroundBrightness: 1,
+      nebulaDensity: 0.5, nebulaBrightness: 0.69, nebulaSaturation: 1.15,
+      nebulaOpacity: 0.72, nebulaIntensity: 0.46 } } },
   },
 })
 
@@ -240,8 +243,9 @@ const configListeners = new Set<(config: SceneComposerConfig) => void>()
 
 export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
+  if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || (inputVersion !== 1 && inputVersion !== 2 && inputVersion !== 3 && inputVersion !== 4)) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || (inputVersion !== 1 && inputVersion !== 2 && inputVersion !== 3 && inputVersion !== 4 && inputVersion !== 5)) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -250,9 +254,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const prologueInput = asRecord(scenesInput?.prologue)
   const growthInput = asRecord(scenesInput?.growth)
   const galaxyInput = asRecord(scenesInput?.galaxy)
-  const galaxySettingsInput = inputVersion === 3 && typeof galaxyInput?.spin === 'number'
-    ? { ...galaxyInput, spin: galaxyInput.spin * Math.PI * 2 }
-    : galaxyInput
+  const galaxySettingsInput = migrateGalaxySettings(galaxyInput, inputVersion)
   const legacyParticleSpeed = numberValue(prologueInput?.particleSpeed, 1, 0.1, 10)
   const legacyParticleSpread = numberValue(prologueInput?.particleSpread, 1, 0, 2)
   const windStrength = numberValue(
@@ -357,29 +359,50 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 4, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 5, global, scenes, preset })
 }
+
+function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
+  if (version === 5) return input
+  if (!input) return { blackHoleEnabled: false }
+  const radius = numberValue(input.radius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.galaxy.radius, 4, 14)
+  const migrated: Record<string, unknown> = {
+    ...input,
+    seed: typeof input.seed === 'string' ? input.seed : String(input.seed ?? DEFAULT_SCENE_COMPOSER_CONFIG.scenes.galaxy.seed),
+    blackHoleEnabled: typeof input.blackHoleEnabled === 'boolean' ? input.blackHoleEnabled : false,
+  }
+  if (version === 3 && typeof input.spin === 'number') migrated.spin = input.spin * Math.PI * 2
+  if (typeof input.armWidth === 'number') migrated.armWidth = input.armWidth * 0.25
+  if (typeof input.scatter === 'number') migrated.randomness = input.scatter * 0.197
+  if (typeof input.coreSize === 'number') migrated.coreSize = input.coreSize / radius
+  if (typeof input.coreDensity === 'number') migrated.coreDensity = input.coreDensity * 0.62
+  if (typeof input.thickness === 'number') migrated.thickness = input.thickness / radius
+  return migrated
+}
+
 function normalizeGalaxy(input: Record<string, unknown> | undefined): SceneComposerConfig['scenes']['galaxy'] {
   const d = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.galaxy
   return {
     quality: enumValue(input?.quality, ['low', 'standard', 'high'] as const, d.quality),
-    seed: numberValue(input?.seed, d.seed, 0, 2_147_483_647, true),
+    seed: typeof input?.seed === 'string' && input.seed.length > 0 ? input.seed.slice(0, 64) : d.seed,
     starCount: numberValue(input?.starCount, d.starCount, 8000, 90000, true),
     arms: numberValue(input?.arms, d.arms, 2, 8, true), radius: numberValue(input?.radius, d.radius, 4, 14),
-    spin: numberValue(input?.spin, d.spin, 0.2, 18), armWidth: numberValue(input?.armWidth, d.armWidth, 0.12, 1.1),
-    scatter: numberValue(input?.scatter, d.scatter, 0, 1), coreSize: numberValue(input?.coreSize, d.coreSize, 0.4, 3),
-    coreDensity: numberValue(input?.coreDensity, d.coreDensity, 0.1, 1), thickness: numberValue(input?.thickness, d.thickness, 0.08, 1.6),
+    spin: numberValue(input?.spin, d.spin, 0.2, 18), armWidth: numberValue(input?.armWidth, d.armWidth, 0, 0.5),
+    randomness: numberValue(input?.randomness, d.randomness, 0, 0.3), randomnessPower: numberValue(input?.randomnessPower, d.randomnessPower, 0.1, 8),
+    coreSize: numberValue(input?.coreSize, d.coreSize, 0.08, 0.5),
+    coreDensity: numberValue(input?.coreDensity, d.coreDensity, 0, 0.5), thickness: numberValue(input?.thickness, d.thickness, 0.005, 0.2),
     distribution: enumValue(input?.distribution, ['balanced', 'core', 'arms'] as const, d.distribution),
     starSize: numberValue(input?.starSize, d.starSize, 0.25, 3.5), brightness: numberValue(input?.brightness, d.brightness, 0.1, 1.5),
     twinkle: numberValue(input?.twinkle, d.twinkle, 0, 1), twinkleSpeed: numberValue(input?.twinkleSpeed, d.twinkleSpeed, 0, 3),
     brightStarCount: numberValue(input?.brightStarCount, d.brightStarCount, 0, 200, true),
     brightStarSize: numberValue(input?.brightStarSize, d.brightStarSize, 1, 8), brightStarIntensity: numberValue(input?.brightStarIntensity, d.brightStarIntensity, 0, 3),
-    backgroundStarCount: numberValue(input?.backgroundStarCount, d.backgroundStarCount, 0, 6000, true),
+    backgroundStarCount: numberValue(input?.backgroundStarCount, d.backgroundStarCount, 0, 10000, true),
     backgroundBrightness: numberValue(input?.backgroundBrightness, d.backgroundBrightness, 0, 1), backgroundSize: numberValue(input?.backgroundSize, d.backgroundSize, 0.2, 2.5),
     backgroundDepth: numberValue(input?.backgroundDepth, d.backgroundDepth, 15, 100),
     backgroundGasDensity: numberValue(input?.backgroundGasDensity, d.backgroundGasDensity, 0, 0.8),
     backgroundGasBrightness: numberValue(input?.backgroundGasBrightness, d.backgroundGasBrightness, 0, 1),
     nebulaEnabled: typeof input?.nebulaEnabled === 'boolean' ? input.nebulaEnabled : d.nebulaEnabled,
+    blackHoleEnabled: typeof input?.blackHoleEnabled === 'boolean' ? input.blackHoleEnabled : d.blackHoleEnabled,
     nebulaDensity: numberValue(input?.nebulaDensity, d.nebulaDensity, 0, 1), nebulaBrightness: numberValue(input?.nebulaBrightness, d.nebulaBrightness, 0, 1.5),
     nebulaSaturation: numberValue(input?.nebulaSaturation, d.nebulaSaturation, 0, 1.5), nebulaOpacity: numberValue(input?.nebulaOpacity, d.nebulaOpacity, 0, 1),
     nebulaScale: numberValue(input?.nebulaScale, d.nebulaScale, 0.3, 4), nebulaIntensity: numberValue(input?.nebulaIntensity, d.nebulaIntensity, 0, 2),
@@ -393,7 +416,7 @@ function normalizeGalaxy(input: Record<string, unknown> | undefined): SceneCompo
     armColor: colorValue(input?.armColor, d.armColor), nebulaColor: colorValue(input?.nebulaColor, d.nebulaColor),
     brightColor: colorValue(input?.brightColor, d.brightColor), backgroundColor: colorValue(input?.backgroundColor, d.backgroundColor),
     exposure: numberValue(input?.exposure, d.exposure, 0.3, 1.8), coreGlow: numberValue(input?.coreGlow, d.coreGlow, 0, 2),
-    rotationSpeed: numberValue(input?.rotationSpeed, d.rotationSpeed, 0, 0.04), motionSpeed: numberValue(input?.motionSpeed, d.motionSpeed, 0, 2),
+    rotationSpeed: numberValue(input?.rotationSpeed, d.rotationSpeed, 0, 0.1), motionSpeed: numberValue(input?.motionSpeed, d.motionSpeed, 0, 2),
     revealMotion: numberValue(input?.revealMotion, d.revealMotion, 0, 3), idleMotion: numberValue(input?.idleMotion, d.idleMotion, 0, 0.6),
     firstStarsAt: numberValue(input?.firstStarsAt, d.firstStarsAt, 0, 6), galaxyRevealAt: numberValue(input?.galaxyRevealAt, d.galaxyRevealAt, 0, 10),
     revealDuration: numberValue(input?.revealDuration, d.revealDuration, 5, 18), pauseDuration: numberValue(input?.pauseDuration, d.pauseDuration, 0, 12),

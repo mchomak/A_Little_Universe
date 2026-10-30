@@ -1,19 +1,36 @@
+import { Color, SRGBColorSpace } from 'three'
 import type { GalaxyPalette, SceneComposerConfig } from '../../systems/scene-config/config'
 
 type GalaxySettings = SceneComposerConfig['scenes']['galaxy']
 export type GalaxyColorKey = 'coreColor' | 'innerColor' | 'armColor' | 'nebulaColor' | 'brightColor' | 'backgroundColor'
 export type GalaxyColors = Pick<GalaxySettings, GalaxyColorKey>
+export type GalaxyPaletteSettings = Pick<GalaxySettings, 'palette' | GalaxyColorKey>
 
-export const GALAXY_PALETTES: Record<Exclude<GalaxyPalette, 'custom'>, GalaxyColors> = {
-  vasilisa: { coreColor: '#FFE8C1', innerColor: '#879DFF', armColor: '#C261FF', nebulaColor: '#A253EC', brightColor: '#F6E7FF', backgroundColor: '#02030A' },
-  spore: { coreColor: '#F4E7CE', innerColor: '#A6D9CF', armColor: '#86B7C2', nebulaColor: '#A1AFCB', brightColor: '#D8F4F3', backgroundColor: '#050B10' },
-  ember: { coreColor: '#FFE2B0', innerColor: '#F2AB75', armColor: '#DB7188', nebulaColor: '#B94F73', brightColor: '#FFF1D6', backgroundColor: '#10070A' },
-  emerald: { coreColor: '#E7F0C0', innerColor: '#93D4B6', armColor: '#5AAEAE', nebulaColor: '#598895', brightColor: '#DAF6E4', backgroundColor: '#04100D' },
-  ice: { coreColor: '#F0F4FF', innerColor: '#A9D7FF', armColor: '#8AAEEB', nebulaColor: '#698FD1', brightColor: '#F0F6FF', backgroundColor: '#040916' },
-  rose: { coreColor: '#FFE6D7', innerColor: '#E6A6C4', armColor: '#BC92DF', nebulaColor: '#D775A9', brightColor: '#FFF0F6', backgroundColor: '#10070F' },
+export interface GalaxyRenderPalette extends GalaxyColors {
+  outerColor: string
+  hotColor: string
+  nebulaCoreColor: string
+  nebulaEdgeColor: string
 }
 
-export function getGalaxyColors(settings: GalaxySettings): GalaxyColors {
+export const GALAXY_PALETTES: Record<Exclude<GalaxyPalette, 'custom'>, GalaxyColors> = {
+  vasilisa: { coreColor: '#FFE8C1', innerColor: '#BBA7FF', armColor: '#9A52FF', nebulaColor: '#7F43D6', brightColor: '#F6E7FF', backgroundColor: '#02030A' },
+  spore: { coreColor: '#FFE6AD', innerColor: '#D9C6FF', armColor: '#4F5CFF', nebulaColor: '#9A52FF', brightColor: '#7FB4FF', backgroundColor: '#04020C' },
+  ember: { coreColor: '#FFF1CF', innerColor: '#FFD089', armColor: '#FF5A3C', nebulaColor: '#E0632A', brightColor: '#FFD0A0', backgroundColor: '#0B0503' },
+  emerald: { coreColor: '#EAFFF4', innerColor: '#9AF7D0', armColor: '#1FAE8C', nebulaColor: '#1F9E86', brightColor: '#BFFFE6', backgroundColor: '#02080A' },
+  ice: { coreColor: '#FFFFFF', innerColor: '#BFE6FF', armColor: '#3F7BFF', nebulaColor: '#3F7BD6', brightColor: '#DFF0FF', backgroundColor: '#030810' },
+  rose: { coreColor: '#FFF0FB', innerColor: '#FFB3E6', armColor: '#B03CFF', nebulaColor: '#C03CD0', brightColor: '#FFD0F0', backgroundColor: '#0A030A' },
+}
+
+const NEBULA_GRADIENTS: Record<Exclude<GalaxyPalette, 'custom' | 'vasilisa'>, { core: string; mid: string; edge: string }> = {
+  spore: { core: '#FFCF8A', mid: '#9A52FF', edge: '#3A1A7A' },
+  ember: { core: '#FFE7B0', mid: '#E0632A', edge: '#5A1C0E' },
+  emerald: { core: '#D6FFF0', mid: '#1F9E86', edge: '#0A3B32' },
+  ice: { core: '#E6F4FF', mid: '#3F7BD6', edge: '#13284F' },
+  rose: { core: '#FFD6F2', mid: '#C03CD0', edge: '#451460' },
+}
+
+export function getGalaxyColors(settings: GalaxyPaletteSettings): GalaxyColors {
   if (settings.palette !== 'custom') return GALAXY_PALETTES[settings.palette]
   return {
     coreColor: settings.coreColor,
@@ -22,6 +39,31 @@ export function getGalaxyColors(settings: GalaxySettings): GalaxyColors {
     nebulaColor: settings.nebulaColor,
     brightColor: settings.brightColor,
     backgroundColor: settings.backgroundColor,
+  }
+}
+
+export function getGalaxyRenderPalette(settings: GalaxyPaletteSettings): GalaxyRenderPalette {
+  const colors = getGalaxyColors(settings)
+  if (settings.palette === 'custom') {
+    const edge = new Color(colors.nebulaColor).multiplyScalar(0.28).getHexString(SRGBColorSpace)
+    return {
+      ...colors,
+      outerColor: colors.armColor,
+      hotColor: colors.brightColor,
+      nebulaCoreColor: colors.coreColor,
+      nebulaEdgeColor: `#${edge}`,
+    }
+  }
+  const gradient = settings.palette === 'vasilisa'
+    ? { core: colors.coreColor, mid: colors.nebulaColor, edge: '#271543' }
+    : NEBULA_GRADIENTS[settings.palette]
+  return {
+    ...colors,
+    outerColor: colors.armColor,
+    hotColor: colors.brightColor,
+    nebulaCoreColor: gradient.core,
+    nebulaColor: gradient.mid,
+    nebulaEdgeColor: gradient.edge,
   }
 }
 

@@ -1,15 +1,18 @@
 import { expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
-import { editGalaxyColor, getGalaxyColors, selectGalaxyPalette } from './palette'
+import { editGalaxyColor, getGalaxyColors, getGalaxyRenderPalette, selectGalaxyPalette } from './palette'
 
 const defaults = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.galaxy
 
-it('uses a pearly Vasilisa core with luminous violet arms and star accents', () => {
-  const vasilisa = selectGalaxyPalette(defaults, 'vasilisa')
+it('keeps the original Spore palette colors and gas gradient', () => {
+  const spore = selectGalaxyPalette(defaults, 'spore')
 
-  expect(vasilisa).toMatchObject({
-    coreColor: '#FFE8C1', innerColor: '#879DFF', armColor: '#C261FF',
-    nebulaColor: '#A253EC', brightColor: '#F6E7FF',
+  expect(spore).toMatchObject({
+    coreColor: '#FFE6AD', innerColor: '#D9C6FF', armColor: '#4F5CFF',
+    nebulaColor: '#9A52FF', brightColor: '#7FB4FF', backgroundColor: '#04020C',
+  })
+  expect(getGalaxyRenderPalette(spore)).toMatchObject({
+    nebulaCoreColor: '#FFCF8A', nebulaColor: '#9A52FF', nebulaEdgeColor: '#3A1A7A',
   })
 })
 
@@ -17,9 +20,9 @@ it('materializes the selected palette into the Inspector color fields', () => {
   const ice = selectGalaxyPalette(defaults, 'ice')
 
   expect(ice.palette).toBe('ice')
-  expect(ice.coreColor).toBe('#F0F4FF')
-  expect(ice.backgroundColor).toBe('#040916')
-  expect(getGalaxyColors(ice)).toMatchObject({ coreColor: '#F0F4FF', backgroundColor: '#040916' })
+  expect(ice.coreColor).toBe('#FFFFFF')
+  expect(ice.backgroundColor).toBe('#030810')
+  expect(getGalaxyColors(ice)).toMatchObject({ coreColor: '#FFFFFF', backgroundColor: '#030810' })
 })
 
 it('preserves all active palette colors when one color is edited into Custom', () => {
@@ -28,12 +31,12 @@ it('preserves all active palette colors when one color is edited into Custom', (
 
   expect(custom.palette).toBe('custom')
   expect(getGalaxyColors(custom)).toEqual({
-    coreColor: '#FFE2B0',
-    innerColor: '#F2AB75',
+    coreColor: '#FFF1CF',
+    innerColor: '#FFD089',
     armColor: '#AABBCC',
-    nebulaColor: '#B94F73',
-    brightColor: '#FFF1D6',
-    backgroundColor: '#10070A',
+    nebulaColor: '#E0632A',
+    brightColor: '#FFD0A0',
+    backgroundColor: '#0B0503',
   })
 })
 

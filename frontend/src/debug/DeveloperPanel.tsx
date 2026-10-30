@@ -128,16 +128,16 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
 
 const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
   { name: 'Galaxy Geometry · перестройка после паузы ползунка', controls: [
-    { path: 'scenes.galaxy.seed', label: 'Seed генерации', unit: '', min: 0, max: 2147483647, step: 1 },
     { path: 'scenes.galaxy.starCount', label: 'Количество звёзд', unit: 'шт.', min: 8000, max: 90000, step: 1000 },
     { path: 'scenes.galaxy.arms', label: 'Спиральные рукава', unit: '', min: 2, max: 8, step: 1 },
     { path: 'scenes.galaxy.radius', label: 'Радиус', unit: '', min: 4, max: 14, step: 0.1 },
     { path: 'scenes.galaxy.spin', label: 'Закручивание рукавов', unit: 'рад', min: 0.2, max: 18, step: 0.05 },
-    { path: 'scenes.galaxy.armWidth', label: 'Ширина рукавов', unit: '', min: 0.12, max: 1.1, step: 0.02 },
-    { path: 'scenes.galaxy.scatter', label: 'Разброс звёзд', unit: '×', min: 0, max: 1, step: 0.02 },
-    { path: 'scenes.galaxy.coreSize', label: 'Размер ядра', unit: '', min: 0.4, max: 3, step: 0.05 },
-    { path: 'scenes.galaxy.coreDensity', label: 'Плотность ядра', unit: '×', min: 0.1, max: 1, step: 0.02 },
-    { path: 'scenes.galaxy.thickness', label: 'Толщина диска', unit: '', min: 0.08, max: 1.6, step: 0.02 },
+    { path: 'scenes.galaxy.armWidth', label: 'Ширина рукавов', unit: '× R', min: 0, max: 0.5, step: 0.005 },
+    { path: 'scenes.galaxy.randomness', label: 'Разброс звёзд', unit: '× R', min: 0, max: 0.3, step: 0.005 },
+    { path: 'scenes.galaxy.randomnessPower', label: 'Сжатие разброса', unit: '×', min: 0.1, max: 8, step: 0.1 },
+    { path: 'scenes.galaxy.coreSize', label: 'Размер ядра', unit: '× R', min: 0.08, max: 0.5, step: 0.005 },
+    { path: 'scenes.galaxy.coreDensity', label: 'Плотность ядра', unit: '×', min: 0, max: 0.5, step: 0.01 },
+    { path: 'scenes.galaxy.thickness', label: 'Толщина диска', unit: '× R', min: 0.005, max: 0.2, step: 0.005 },
   ] },
   { name: 'Stars · live', controls: [
     { path: 'scenes.galaxy.starSize', label: 'Размер обычных звёзд', unit: '×', min: 0.25, max: 3.5, step: 0.05 },
@@ -147,7 +147,7 @@ const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.galaxy.brightStarCount', label: 'Особенно яркие звёзды', unit: 'шт.', min: 0, max: 200, step: 1 },
     { path: 'scenes.galaxy.brightStarSize', label: 'Размер ярких звёзд', unit: 'px', min: 1, max: 8, step: 0.1 },
     { path: 'scenes.galaxy.brightStarIntensity', label: 'Интенсивность ярких звёзд', unit: '×', min: 0, max: 3, step: 0.05 },
-    { path: 'scenes.galaxy.backgroundStarCount', label: 'Звёзды фона · перестройка', unit: 'шт.', min: 0, max: 6000, step: 100 },
+    { path: 'scenes.galaxy.backgroundStarCount', label: 'Звёзды фона · перестройка', unit: 'шт.', min: 0, max: 10000, step: 200 },
     { path: 'scenes.galaxy.backgroundBrightness', label: 'Яркость фона', unit: '×', min: 0, max: 1, step: 0.02 },
     { path: 'scenes.galaxy.backgroundSize', label: 'Размер звёзд фона', unit: 'px', min: 0.2, max: 2.5, step: 0.05 },
     { path: 'scenes.galaxy.backgroundDepth', label: 'Глубина фона · перестройка', unit: '', min: 15, max: 100, step: 1 },
@@ -174,7 +174,7 @@ const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.galaxy.fogAfterOpacity', label: 'Остаточная дымка', unit: '%', min: 0, max: 20, step: 0.5, displayScale: 100 },
   ] },
   { name: 'Motion · live', controls: [
-    { path: 'scenes.galaxy.rotationSpeed', label: 'Скорость вращения', unit: '×', min: 0, max: 0.04, step: 0.0005 },
+    { path: 'scenes.galaxy.rotationSpeed', label: 'Скорость вращения', unit: '×', min: 0, max: 0.1, step: 0.0005 },
     { path: 'scenes.galaxy.motionSpeed', label: 'Общая скорость движения', unit: '×', min: 0, max: 2, step: 0.05 },
     { path: 'scenes.galaxy.revealMotion', label: 'Движение при раскрытии', unit: '×', min: 0, max: 3, step: 0.05 },
     { path: 'scenes.galaxy.idleMotion', label: 'Спокойное движение', unit: '×', min: 0, max: 0.6, step: 0.01 },
@@ -201,7 +201,7 @@ const GALAXY_SELECTS: readonly SelectControl[] = [
   { path: 'scenes.galaxy.quality', label: 'Качество галактики', options: [{ value: 'low', label: 'Low' }, { value: 'standard', label: 'Standard' }, { value: 'high', label: 'High' }] },
   { path: 'scenes.galaxy.distribution', label: 'Форма распределения', options: [{ value: 'balanced', label: 'Сбалансированное' }, { value: 'core', label: 'Плотное ядро' }, { value: 'arms', label: 'Выраженные рукава' }] },
   { path: 'scenes.galaxy.palette', label: 'Палитра', options: [
-    { value: 'vasilisa', label: 'Vasilisa Cinematic' }, { value: 'spore', label: 'Spore · sea glass' },
+    { value: 'vasilisa', label: 'Vasilisa Cinematic' }, { value: 'spore', label: 'Spore (R/B/Y/V)' },
     { value: 'ember', label: 'Ember' }, { value: 'emerald', label: 'Emerald' },
     { value: 'ice', label: 'Ice' }, { value: 'rose', label: 'Rose' }, { value: 'custom', label: 'Custom' },
   ] },
@@ -438,7 +438,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–4. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–5. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -595,7 +595,9 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         {selected === 'cosmos' && <>
           <details open><summary>Scene 07 — Galaxy</summary>
             {GALAXY_SELECTS.map((control) => <SelectConfigControl key={control.path} control={control} value={valueAtPath(config, control.path) as string} onChange={(path, value) => { void (path === 'scenes.galaxy.palette' ? changeGalaxyPalette(value as GalaxyPalette) : changeField(path, value)) }} onReset={(path) => { void resetField(path) }} />)}
+            <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-galaxy-seed">Seed генерации</label>{config.scenes.galaxy.seed !== defaultAtPath('scenes.galaxy.seed') && <button type="button" className="inspector-reset" aria-label="Сбросить seed генерации" onClick={() => { void resetField('scenes.galaxy.seed') }}>↺</button>}</div><input id="composer-scenes-galaxy-seed" data-testid="composer-scenes-galaxy-seed" type="text" maxLength={64} value={config.scenes.galaxy.seed} onChange={(event) => { void changeField('scenes.galaxy.seed', event.target.value) }} /></div>
             <label className="composer-control"><input type="checkbox" checked={config.scenes.galaxy.nebulaEnabled} onChange={(event) => { void changeField('scenes.galaxy.nebulaEnabled', event.target.checked) }} /> Газовая туманность</label>
+            <label className="composer-control"><input type="checkbox" checked={config.scenes.galaxy.blackHoleEnabled} onChange={(event) => { void changeField('scenes.galaxy.blackHoleEnabled', event.target.checked) }} /> Чёрный центр</label>
             {GALAXY_GROUPS.map((group) => <details key={group.name} open={group.name.startsWith('Galaxy Geometry')}><summary>{group.name}</summary>{group.controls.map(range)}</details>)}
             <details><summary>Colors & Light · live</summary>
               {color('scenes.galaxy.coreColor', 'Цвет ядра')}
