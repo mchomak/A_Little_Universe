@@ -40,6 +40,29 @@ it('captures touch duration once so editing the composer cannot change an active
   }
 })
 
+it('keeps configured full clip durations inside the scene endpoint and preserves the Bloom gate', async () => {
+  await resetConfig('all')
+  try {
+    let growth = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'growth' }, true)
+    await updateConfig({ scenes: { growth: { formationDuration: 3.5, flowerGrowthDuration: 7 } } })
+    expect(filmDuration(growth)).toBe(14.3)
+    growth = filmReducer(growth, { type: 'dev-seek', time: 999 }, true)
+    expect(growth.elapsed).toBe(14.3)
+    growth = filmReducer(growth, { type: 'timeline-complete', revision: growth.revision })
+    expect([growth.scene, growth.mode, growth.elapsed]).toEqual(['bloom', 'waiting', 0])
+
+    await updateConfig({ scenes: { bloom: { flowerBloomDuration: 12 } } })
+    expect(filmDuration(growth)).toBe(18)
+    growth = filmReducer(growth, { type: 'interact' })
+    expect([growth.scene, growth.mode, filmDuration(growth)]).toEqual(['bloom', 'playing', 18])
+    growth = filmReducer(growth, { type: 'timeline-update', time: 18, revision: growth.revision })
+    growth = filmReducer(growth, { type: 'timeline-complete', revision: growth.revision })
+    expect(growth.scene).toBe('identity')
+  } finally {
+    await resetConfig('all')
+  }
+})
+
 describe('film navigation', () => {
   it('waits indefinitely, accepts one touch and runs a pausable impulse before growth', () => {
     let state = complete(filmReducer(initialFilmState, { type: 'start' }))

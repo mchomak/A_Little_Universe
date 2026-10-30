@@ -1,0 +1,289 @@
+{
+  "schemaVersion": 1,
+  "sourceInput": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\source\\lily_004_geometry.blend",
+  "sourceOutput": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\source\\lily_004_refined.blend",
+  "glbOutput": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\export\\lily_004_refined.glb",
+  "metadataOutput": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\export\\bud_maturation.json",
+  "glbBytes": 2560052,
+  "glbSha256": "c6fd5311e45f9586efc491ea6870cc6ae4123999fd954b1a9a607927841c0d24",
+  "geometryPreserved": true,
+  "preservationSignature": "5d1c3a92db67d513897fed983ecf3fa804c3952cb63f57deb8df26ca52246def",
+  "petalSurfaceSidedness": {
+    "objects": [
+      "Petals",
+      "Petals_Outside"
+    ],
+    "verticesPerSurface": 2970,
+    "facesPerSurface": 5376,
+    "shapeKeysChecked": [
+      "Basis",
+      "Closed_01",
+      "Closed_02",
+      "Closed_03",
+      "Closed_04",
+      "Closed_05",
+      "Closed_06",
+      "TipCurl",
+      "TipArc",
+      "SeamClear_01",
+      "SeamClear_02",
+      "SeamClear_03",
+      "SeamClear_04",
+      "SeamClear_05",
+      "SeamClear_06",
+      "TipUnfurl",
+      "GrowthBudForm"
+    ],
+    "maxCorrespondingVertexGap": 0.0,
+    "normalDotRange": [
+      -1.0000002086162567,
+      -0.9999997172853909
+    ],
+    "petalMaterialsOneSided": true,
+    "thinLeafMaterialDoubleSided": true
+  },
+  "sourceCurveSampleCheck": {
+    "status": "PASS",
+    "mode": "direct Blender frame_set",
+    "timesSeconds": [
+      0.0,
+      2.25,
+      4.5,
+      5.625,
+      6.75,
+      7.875,
+      9.0
+    ],
+    "materials": [
+      "Petal_Pearl",
+      "Petal_Outside"
+    ]
+  },
+  "sourceRenderSettings": {
+    "beforePreview": {
+      "engine": "CYCLES",
+      "cyclesDevice": "CPU",
+      "cyclesSamples": 300,
+      "cyclesUseDenoising": false
+    },
+    "afterPreview": {
+      "engine": "CYCLES",
+      "cyclesDevice": "CPU",
+      "cyclesSamples": 300,
+      "cyclesUseDenoising": false
+    },
+    "preserved": true
+  },
+  "materialContract": {
+    "schemaVersion": 1,
+    "clip": "Growth",
+    "durationSeconds": 9.0,
+    "colorSpace": "linear-sRGB",
+    "sampling": {
+      "mode": "absolute-clip-time",
+      "interpolation": "piecewise-linear",
+      "formula": "factor(t)=lerp(k[i].linearSrgbFactor,k[i+1].linearSrgbFactor,(clamp(t,0,9)-t[i])/(t[i+1]-t[i])); interpolate each RGB channel independently",
+      "endpointClamping": true,
+      "nonGrowth": "mature",
+      "crossfade": {
+        "durationSeconds": 0.25,
+        "space": "linear-sRGB",
+        "formula": "lerp(sourceFactor,targetFactor,clamp(transitionElapsedSeconds/0.25,0,1))",
+        "sourceAndTarget": "sample each clip at its absolute clip time; non-Growth clips use their mature factor",
+        "reverseScrub": "recompute from source/target absolute clip times and transition elapsed time; do not accumulate frame deltas"
+      }
+    },
+    "materialFactors": [
+      {
+        "material": "Petal_Pearl",
+        "target": "pbrMetallicRoughness.baseColorFactor.rgb",
+        "keyframes": [
+          {
+            "timeSeconds": 0.0,
+            "linearSrgbFactor": [
+              0.2,
+              0.47,
+              0.2
+            ]
+          },
+          {
+            "timeSeconds": 4.5,
+            "linearSrgbFactor": [
+              0.38,
+              0.59,
+              0.31
+            ]
+          },
+          {
+            "timeSeconds": 6.75,
+            "linearSrgbFactor": [
+              0.83,
+              0.79,
+              0.7
+            ]
+          },
+          {
+            "timeSeconds": 9.0,
+            "linearSrgbFactor": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      },
+      {
+        "material": "Petal_Outside",
+        "target": "pbrMetallicRoughness.baseColorFactor.rgb",
+        "keyframes": [
+          {
+            "timeSeconds": 0.0,
+            "linearSrgbFactor": [
+              0.2,
+              0.47,
+              0.2
+            ]
+          },
+          {
+            "timeSeconds": 4.5,
+            "linearSrgbFactor": [
+              0.38,
+              0.59,
+              0.31
+            ]
+          },
+          {
+            "timeSeconds": 6.75,
+            "linearSrgbFactor": [
+              0.82,
+              0.8,
+              0.74
+            ]
+          },
+          {
+            "timeSeconds": 9.0,
+            "linearSrgbFactor": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "textures": [
+    {
+      "logicalName": "Petal_Pearl_BaseColor",
+      "image": "ALU_Petal_Pearl_BaseColor",
+      "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\textures\\lily_petal_pearl_base.png",
+      "width": 512,
+      "height": 512,
+      "bytes": 71061,
+      "packed": true,
+      "materials": [
+        "Petal_Pearl"
+      ]
+    },
+    {
+      "logicalName": "Petal_Outside_BaseColor",
+      "image": "ALU_Petal_Outside_BaseColor",
+      "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\textures\\lily_petal_outside_base.png",
+      "width": 512,
+      "height": 512,
+      "bytes": 64042,
+      "packed": true,
+      "materials": [
+        "Petal_Outside"
+      ]
+    },
+    {
+      "logicalName": "Petal_Roughness",
+      "image": "ALU_Petal_Roughness",
+      "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\textures\\lily_petal_roughness.png",
+      "width": 512,
+      "height": 512,
+      "bytes": 44829,
+      "packed": true,
+      "materials": [
+        "Petal_Outside",
+        "Petal_Pearl"
+      ]
+    },
+    {
+      "logicalName": "Leaf_BaseColor",
+      "image": "ALU_Leaf_BaseColor",
+      "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\textures\\lily_leaf_base.png",
+      "width": 256,
+      "height": 512,
+      "bytes": 45304,
+      "packed": true,
+      "materials": [
+        "Leaf_SoftGreen"
+      ]
+    },
+    {
+      "logicalName": "Leaf_Roughness",
+      "image": "ALU_Leaf_Roughness",
+      "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\textures\\lily_leaf_roughness.png",
+      "width": 256,
+      "height": 512,
+      "bytes": 37645,
+      "packed": true,
+      "materials": [
+        "Leaf_SoftGreen"
+      ]
+    },
+    {
+      "logicalName": "Stem_BaseColor",
+      "image": "ALU_Stem_BaseColor",
+      "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\textures\\lily_stem_base.png",
+      "width": 128,
+      "height": 512,
+      "bytes": 24589,
+      "packed": true,
+      "materials": [
+        "Stem_SoftGreen"
+      ]
+    },
+    {
+      "logicalName": "Stem_Roughness",
+      "image": "ALU_Stem_Roughness",
+      "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\textures\\lily_stem_roughness.png",
+      "width": 128,
+      "height": 512,
+      "bytes": 21199,
+      "packed": true,
+      "materials": [
+        "Stem_SoftGreen"
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "label": "young",
+      "growthSampleSeconds": 0.0,
+      "geometryPose": "closed Growth endpoint held at source frame 385 for material-only comparison",
+      "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\material_refined\\material_young_growth_0s.png",
+      "bytes": 2771003
+    },
+    {
+      "label": "mature",
+      "growthSampleSeconds": 9.0,
+      "geometryPose": "closed Growth endpoint held at source frame 385 for material-only comparison",
+      "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\material_refined\\material_mature_growth_9s.png",
+      "bytes": 2771003
+    },
+    {
+      "label": "open-bloom",
+      "clip": "Bloom",
+      "sourceFrame": 1057,
+      "materialState": "mature",
+      "geometryPose": "Bloom endpoint; source study retains its 16-second geometry timing",
+      "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\material_refined\\material_open_bloom_3quarter.png",
+      "bytes": 2525533
+    }
+  ],
+  "glbBaseState": "mature PBR textures and factors; Growth tint remains an absolute-time runtime contract",
+  "runtimeRequirement": "A consumer must sample Lily_Root extras ALU_budMaturation; plain GLTFLoader does not animate material baseColorFactor from this metadata."
+}

@@ -4,10 +4,10 @@ import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, Color
 import type { SceneProps } from '../engine/sceneTypes'
 import { TIMING } from '../engine/filmConfig'
 import { fade, ramp, smooth, useSceneAnimation } from './shared/animation'
-import { Lily, Spark } from './shared/Primitives'
+import { Lily } from './shared/Primitives'
 import { poseLily } from './shared/lilyPose'
 import { identityFrame } from './shared/identityFrame'
-import { identityNameGLSL, nameFocus } from './shared/identityName'
+import { identityNameGLSL } from './shared/identityName'
 import { identityMorphGLSL, portraitCell, portraitFragment, portraitSample, portraitVertex } from './shared/identityMorph'
 import { mockLilyParticles, type LilyParticleSource } from './shared/identityParticles'
 import { createVortexAttributes, identityVortexGLSL } from './shared/identityVortex'
@@ -15,7 +15,7 @@ import { IdentityTrails } from './shared/IdentityTrails'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
 import { IdentityAtmosphere } from './shared/IdentityAtmosphere'
 import { IdentityPortrait } from './shared/CosmicPortraitField'
-import { portraitPresence, portraitSpark } from './shared/identityPortrait'
+import { portraitPresence } from './shared/identityPortrait'
 import { restorationFrame, restorationMap, restorationGLSL, restoredPhotoFragment, restoredPhotoVertex, restoredRimFragment } from './shared/identityRestoration'
 import { firstMemoryFrame } from './shared/firstMemoryFrame'
 import { FirstMemorySpace } from './shared/FirstMemorySpace'
@@ -255,7 +255,7 @@ function orbitGeometry() {
 }
 
 export function IdentityScene({ state, runtime, reducedMotion, particleSource = mockLilyParticles }: SceneProps & { particleSource?: LilyParticleSource }) {
-  const lily = useRef<Group>(null), photo = useRef<Group>(null), frame = useRef<Group>(null), ascii = useRef<Group>(null), spark = useRef<Group>(null), orbitGroup = useRef<Group>(null), memory = useRef<Group>(null)
+  const lily = useRef<Group>(null), photo = useRef<Group>(null), frame = useRef<Group>(null), ascii = useRef<Group>(null), orbitGroup = useRef<Group>(null), memory = useRef<Group>(null)
   const texture = useLoader(TextureLoader, photoUrl)
   const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height))
   const dpr = useThree((s) => s.viewport.dpr)
@@ -287,17 +287,9 @@ export function IdentityScene({ state, runtime, reducedMotion, particleSource = 
   const orbitArrays = useMemo(() => Array.from({ length: 5 }, (_, i) => (orbits.getAttribute('position').array as Float32Array).slice(i * 480, (i + 1) * 480)), [orbits])
   const material = useMemo(() => new ShaderMaterial({ vertexShader: vertex, fragmentShader: fragment, transparent: true, depthWrite: false, blending: AdditiveBlending, uniforms: { uTime: { value: 0 }, uRestoration: { value: recoveryMap }, uPortraitPresence: { value: 0 }, uMotion: { value: reducedMotion ? 0 : 1 }, uNameScale: { value: 1 }, uNamePixelScale: { value: 1 }, uVortexScale: { value: 1 }, uGlyphs: { value: glyphAtlas } } }), [reducedMotion, glyphAtlas, recoveryMap])
   const materialRef = useRef<ShaderMaterial>(null)
-  const sparkGlowRef = useRef<ShaderMaterial>(null)
-  const sparkGlow = useMemo(() => new ShaderMaterial({
-    vertexShader: 'varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-    fragmentShader: `uniform float uOpacity; varying vec2 vUv;
-      void main(){float r=length(vUv-.5); gl_FragColor=vec4(mix(vec3(.9,.97,1.0),vec3(.13,.52,1.0),smoothstep(.0,.2,r)),exp(-r*r*44.0)*uOpacity*.72);}`,
-    transparent: true, depthWrite: false, blending: AdditiveBlending, uniforms: { uOpacity: { value: 0 } },
-  }), [])
   useEffect(() => () => geometry.dispose(), [geometry])
   useEffect(() => () => orbits.dispose(), [orbits])
   useEffect(() => () => material.dispose(), [material])
-  useEffect(() => () => sparkGlow.dispose(), [sparkGlow])
   useEffect(() => () => { asciiTextures.texture.dispose(); asciiTextures.delivery.dispose() }, [asciiTextures])
   useEffect(() => () => asciiMaterial.dispose(), [asciiMaterial])
   useEffect(() => () => recoveryMap.dispose(), [recoveryMap])
@@ -353,12 +345,6 @@ export function IdentityScene({ state, runtime, reducedMotion, particleSource = 
     if (ascii.current) ascii.current.scale.setScalar(scale)
     if (photo.current?.parent) photo.current.parent.scale.setScalar(scale)
     if (memory.current) memory.current.rotation.set(...firstMemoryFrame(time, reducedMotion).rotation)
-    if (spark.current) {
-      const position = portraitSpark(time, nameScale, !reducedMotion)
-      spark.current.position.set(position[0] + (-1.64 - position[0]) * recovery.quiet, position[1], position[2])
-      spark.current.scale.setScalar(1 - nameFocus(time) * .28)
-      if (sparkGlowRef.current) sparkGlowRef.current.uniforms.uOpacity!.value = nameFocus(time)
-    }
   }, [nameScale, vortexScale, reducedMotion, namePixelScale])
   useSceneAnimation(runtime, TIMING.identity.duration, draw)
   return <>
@@ -372,9 +358,6 @@ export function IdentityScene({ state, runtime, reducedMotion, particleSource = 
     <group ref={memory} position={[0, .08, 0]}>
       <group ref={ascii} position={[0, 0, .01]}><mesh><planeGeometry args={[2.15, 2.15]} /><primitive ref={asciiMaterialRef} object={asciiMaterial} attach="material" /></mesh></group>
       <group><FirstMemoryCard photoRef={photo} frameRef={frame} photoMaterial={restoredPhoto} rimMaterial={restoredRim} /></group>
-    </group>
-    <group ref={spark}><Spark position={[0, 0, 0]} />
-      <mesh position={[0, 0, .026]}><planeGeometry args={[.18, .18]} /><primitive ref={sparkGlowRef} object={sparkGlow} attach="material" /></mesh>
     </group>
   </>
 }

@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "url": "http://127.0.0.1:5183/scripts/viewer.html?asset=final",
+  "viewer": "byte-identical production viewer.html and viewer.js; Playwright isolated browser context",
+  "asset": {
+    "path": "export/lily_004_refined.glb",
+    "sha256": "c6fd5311e45f9586efc491ea6870cc6ae4123999fd954b1a9a607927841c0d24",
+    "bytes": 2560052,
+    "loaded": true
+  },
+  "webgl": {
+    "webgl2": true,
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "renderer": "WebKit WebGL"
+  },
+  "animations": {
+    "durationsSeconds": {
+      "Growth": 9,
+      "IdleClosed": 8,
+      "TouchResponse": 2,
+      "Bloom": 8,
+      "IdleOpen": 8,
+      "DissolveReady": 1
+    },
+    "boundaryMaxDeltaMeters": {
+      "Growth→IdleClosed": 0,
+      "IdleClosed→TouchResponse": 0,
+      "TouchResponse→Bloom": 0,
+      "Bloom→IdleOpen": 0,
+      "IdleOpen→DissolveReady": 0
+    },
+    "idleLoopMaxDeltaMeters": {
+      "IdleClosed": 0,
+      "IdleOpen": 0,
+      "DissolveReady": 0
+    },
+    "sampledVertices": 11015,
+    "renderCalls": 8,
+    "renderedTriangles": 19188
+  },
+  "crossfadeTests": {
+    "durationSeconds": 0.25,
+    "phasesSeconds": [2, 6],
+    "IdleClosed@2s→TouchResponse": {"initialJumpMeters": 0, "maxStepAt60HzMeters": 0.002131619093797963},
+    "IdleClosed@6s→TouchResponse": {"initialJumpMeters": 0, "maxStepAt60HzMeters": 0.004973973453325975},
+    "IdleOpen@2s→DissolveReady": {"initialJumpMeters": 0, "maxStepAt60HzMeters": 0.00047633619326854196},
+    "IdleOpen@6s→DissolveReady": {"initialJumpMeters": 0, "maxStepAt60HzMeters": 0.0004220316246065372}
+  },
+  "pageErrors": []
+}

@@ -17,6 +17,7 @@ import { Preloader } from '../bootstrap/Preloader'
 import { PreparationScreen, type PreparationStep } from './PreparationScreen'
 import { openGift } from './openGift'
 import { getImplementationStatus } from './filmStatus'
+import { LILY_MODEL_RUNTIME_ASSET, preloadLilyModel } from '../assets/lily/lilyAsset'
 
 // Application-lifetime ownership survives scene changes and StrictMode effect replay.
 const media = new MediaSession()
@@ -24,7 +25,9 @@ const audio = new AudioDirector()
 let restore: Promise<void> | undefined
 let disposal: ReturnType<typeof setTimeout> | undefined
 // Film modules have already been prepared by Bootstrap; a rerun verifies resources/cache.
-const devManager = new AssetManager({ development: import.meta.env.DEV, loadModules: async () => FilmCanvas })
+const devManager = new AssetManager({ development: import.meta.env.DEV,
+  ...(import.meta.env.DEV ? { manifest: { version: 'development-lily', assets: [LILY_MODEL_RUNTIME_ASSET] } } : {}),
+  loadModules: async () => FilmCanvas })
 const DeveloperPanel = import.meta.env.DEV ? lazy(() => import('../debug/DeveloperPanel')) : null
 const SceneTimeline = import.meta.env.DEV ? lazy(() => import('../debug/SceneTimeline')) : null
 
@@ -40,6 +43,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   const operation = useRef(0)
   const opening = useRef(false)
   useAudioDirector(audio, state, runtime)
+  useEffect(() => { preloadLilyModel() }, [])
   useEffect(() => { if (state.scene === 'prologue') resetGalleryInstruction() }, [state.scene, state.revision])
 
   useEffect(() => {
@@ -106,11 +110,11 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     {mountedFilm && <div className="film-presentation" hidden={route !== 'film'}>
       <div className="film-surface">
         <div className="viewport" role="region" aria-label="Интерактивный фильм"><FilmCanvas state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} /></div>
-        {!cinematic && <header className="page-header"><span className="dedication">Для Василисы</span><span className="build-label">{implementationStatus}</span></header>}
+        {!cinematic && <header className="page-header"><span className="dedication">Для Василисы</span>{import.meta.env.DEV && <span className="build-label">{implementationStatus}</span>}</header>}
         <SceneOverlay key={`${state.scene}:${state.revision}`} state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} />
       </div>
       {cinematic ? <button className="cinematic-pause" type="button" data-testid="pause" aria-label={state.paused ? 'Продолжить фильм' : 'Пауза'} aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Ⅱ'}</button>
-        : <footer className="page-footer" aria-label="Управление фильмом"><span className="film-status">{state.paused ? 'На паузе' : reducedMotion ? 'Уменьшенное движение' : implementationStatus}</span><div className="playback-controls">{state.mode !== 'ended' && <button type="button" data-testid="pause" aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Пауза'}</button>}<label className="quality-control">Качество<select aria-label="Качество графики" value={state.quality} onChange={(event) => dispatch({ type: 'set-quality', quality: event.target.value === 'low' ? 'low' : 'standard' })}><option value="standard">Обычное</option><option value="low">Низкое</option></select></label></div></footer>}
+        : <footer className="page-footer" aria-label="Управление фильмом"><span className="film-status">{state.paused ? 'На паузе' : reducedMotion ? 'Уменьшенное движение' : import.meta.env.DEV ? implementationStatus : ''}</span><div className="playback-controls">{state.mode !== 'ended' && <button type="button" data-testid="pause" aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Пауза'}</button>}<label className="quality-control">Качество<select aria-label="Качество графики" value={state.quality} onChange={(event) => dispatch({ type: 'set-quality', quality: event.target.value === 'low' ? 'low' : 'standard' })}><option value="standard">Обычное</option><option value="low">Низкое</option></select></label></div></footer>}
     </div>}
     {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} onOptions={changeOptions} onPrepare={() => { void prepare() }} onContinue={() => setRoute('ready')} onWithoutMedia={withoutMedia} onEdit={edit} onStart={start} />}
     <PersistentLight phase={lightPhase} interactive={lightInteractive} reducedMotion={reducedMotion} runtime={runtime} state={state} onActivate={() => dispatch({ type: 'interact' })} />

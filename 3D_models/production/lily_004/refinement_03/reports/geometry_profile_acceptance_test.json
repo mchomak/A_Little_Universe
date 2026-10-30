@@ -1,0 +1,575 @@
+{
+  "status": "PASS",
+  "source_blend": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\source\\lily_004_geometry.blend",
+  "v13_reference_blend": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\baseline\\lily_004_v13_final.blend",
+  "glb_input_path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\export\\lily_004_geometry.glb",
+  "clip_durations": [
+    {
+      "owner": "Flower_Interior",
+      "clip": "Growth",
+      "duration_seconds": 9.0,
+      "expected_seconds": 9.0,
+      "pass": true
+    },
+    {
+      "owner": "Flower_Interior",
+      "clip": "IdleClosed",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Flower_Interior",
+      "clip": "TouchResponse",
+      "duration_seconds": 2.0,
+      "expected_seconds": 2.0,
+      "pass": true
+    },
+    {
+      "owner": "Flower_Interior",
+      "clip": "Bloom",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Flower_Interior",
+      "clip": "IdleOpen",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Flower_Interior",
+      "clip": "DissolveReady",
+      "duration_seconds": 1.0,
+      "expected_seconds": 1.0,
+      "pass": true
+    },
+    {
+      "owner": "Head_Root",
+      "clip": "Growth",
+      "duration_seconds": 9.0,
+      "expected_seconds": 9.0,
+      "pass": true
+    },
+    {
+      "owner": "Head_Root",
+      "clip": "IdleClosed",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Head_Root",
+      "clip": "TouchResponse",
+      "duration_seconds": 2.0,
+      "expected_seconds": 2.0,
+      "pass": true
+    },
+    {
+      "owner": "Head_Root",
+      "clip": "Bloom",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Head_Root",
+      "clip": "IdleOpen",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Head_Root",
+      "clip": "DissolveReady",
+      "duration_seconds": 1.0,
+      "expected_seconds": 1.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_A.shape_keys",
+      "clip": "Growth",
+      "duration_seconds": 9.0,
+      "expected_seconds": 9.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_A_Pivot",
+      "clip": "Growth",
+      "duration_seconds": 9.0,
+      "expected_seconds": 9.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_A_Pivot",
+      "clip": "IdleClosed",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_A_Pivot",
+      "clip": "TouchResponse",
+      "duration_seconds": 2.0,
+      "expected_seconds": 2.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_A_Pivot",
+      "clip": "Bloom",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_A_Pivot",
+      "clip": "IdleOpen",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_A_Pivot",
+      "clip": "DissolveReady",
+      "duration_seconds": 1.0,
+      "expected_seconds": 1.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_B.shape_keys",
+      "clip": "Growth",
+      "duration_seconds": 9.0,
+      "expected_seconds": 9.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_B_Pivot",
+      "clip": "Growth",
+      "duration_seconds": 9.0,
+      "expected_seconds": 9.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_B_Pivot",
+      "clip": "IdleClosed",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_B_Pivot",
+      "clip": "TouchResponse",
+      "duration_seconds": 2.0,
+      "expected_seconds": 2.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_B_Pivot",
+      "clip": "Bloom",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_B_Pivot",
+      "clip": "IdleOpen",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Leaf_B_Pivot",
+      "clip": "DissolveReady",
+      "duration_seconds": 1.0,
+      "expected_seconds": 1.0,
+      "pass": true
+    },
+    {
+      "owner": "Petals.shape_keys",
+      "clip": "Growth",
+      "duration_seconds": 9.0,
+      "expected_seconds": 9.0,
+      "pass": true
+    },
+    {
+      "owner": "Petals.shape_keys",
+      "clip": "IdleClosed",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Petals.shape_keys",
+      "clip": "TouchResponse",
+      "duration_seconds": 2.0,
+      "expected_seconds": 2.0,
+      "pass": true
+    },
+    {
+      "owner": "Petals.shape_keys",
+      "clip": "Bloom",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Petals.shape_keys",
+      "clip": "IdleOpen",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Petals.shape_keys",
+      "clip": "DissolveReady",
+      "duration_seconds": 1.0,
+      "expected_seconds": 1.0,
+      "pass": true
+    },
+    {
+      "owner": "Petals_Outside.shape_keys",
+      "clip": "Growth",
+      "duration_seconds": 9.0,
+      "expected_seconds": 9.0,
+      "pass": true
+    },
+    {
+      "owner": "Petals_Outside.shape_keys",
+      "clip": "IdleClosed",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Petals_Outside.shape_keys",
+      "clip": "TouchResponse",
+      "duration_seconds": 2.0,
+      "expected_seconds": 2.0,
+      "pass": true
+    },
+    {
+      "owner": "Petals_Outside.shape_keys",
+      "clip": "Bloom",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Petals_Outside.shape_keys",
+      "clip": "IdleOpen",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Petals_Outside.shape_keys",
+      "clip": "DissolveReady",
+      "duration_seconds": 1.0,
+      "expected_seconds": 1.0,
+      "pass": true
+    },
+    {
+      "owner": "Stem.shape_keys",
+      "clip": "Growth",
+      "duration_seconds": 9.0,
+      "expected_seconds": 9.0,
+      "pass": true
+    },
+    {
+      "owner": "Stem.shape_keys",
+      "clip": "IdleClosed",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Stem.shape_keys",
+      "clip": "TouchResponse",
+      "duration_seconds": 2.0,
+      "expected_seconds": 2.0,
+      "pass": true
+    },
+    {
+      "owner": "Stem.shape_keys",
+      "clip": "Bloom",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Stem.shape_keys",
+      "clip": "IdleOpen",
+      "duration_seconds": 8.0,
+      "expected_seconds": 8.0,
+      "pass": true
+    },
+    {
+      "owner": "Stem.shape_keys",
+      "clip": "DissolveReady",
+      "duration_seconds": 1.0,
+      "expected_seconds": 1.0,
+      "pass": true
+    }
+  ],
+  "topology": {
+    "objects": {
+      "Petals": {
+        "parent": "Head_Root",
+        "vertices": 2970,
+        "faces": 5376,
+        "shape_keys": [
+          "Basis",
+          "Closed_01",
+          "Closed_02",
+          "Closed_03",
+          "Closed_04",
+          "Closed_05",
+          "Closed_06",
+          "TipCurl",
+          "TipArc",
+          "SeamClear_01",
+          "SeamClear_02",
+          "SeamClear_03",
+          "SeamClear_04",
+          "SeamClear_05",
+          "SeamClear_06",
+          "TipUnfurl",
+          "GrowthBudForm"
+        ]
+      },
+      "Petals_Outside": {
+        "parent": "Head_Root",
+        "vertices": 2970,
+        "faces": 5376,
+        "shape_keys": [
+          "Basis",
+          "Closed_01",
+          "Closed_02",
+          "Closed_03",
+          "Closed_04",
+          "Closed_05",
+          "Closed_06",
+          "TipCurl",
+          "TipArc",
+          "SeamClear_01",
+          "SeamClear_02",
+          "SeamClear_03",
+          "SeamClear_04",
+          "SeamClear_05",
+          "SeamClear_06",
+          "TipUnfurl",
+          "GrowthBudForm"
+        ]
+      }
+    },
+    "winding": {
+      "face_pairs": 5376,
+      "min_dot": -1.0000002086162567,
+      "mean_dot": -0.9999999987556203,
+      "max_dot": -0.9999997172853909,
+      "opposite_face_pairs": 5376,
+      "pairing": "sorted vertex-ID triangle signature"
+    },
+    "growth_bud_pinned_rows": {
+      "Petals": {
+        "max_attachment_delta_m": 0.0,
+        "max_tip_delta_m": 0.0
+      },
+      "Petals_Outside": {
+        "max_attachment_delta_m": 0.0,
+        "max_tip_delta_m": 0.0
+      }
+    }
+  },
+  "open_profile": {
+    "full_open_cup_depth_m": 0.10852783918380737,
+    "cup_depths_by_island_m": [
+      0.1004449725151062,
+      0.10091954469680786,
+      0.1004449725151062,
+      0.10716015100479126,
+      0.10554325580596924,
+      0.10852783918380737
+    ],
+    "front_tepal_forward_reach_m": 0.22547616064548492,
+    "front_edge_roll_m": 0.005845382809638977,
+    "v13_source_comparison": {
+      "source_blend": "baseline/lily_004_v13_final.blend",
+      "source_sha256": "a6373f7395a9f3d46ef51bfb1eef9426efaae1d9a27182dfdb7333d0f3503e83",
+      "source_metrics": {
+        "full_open_cup_depth_m": 0.10173279047012329,
+        "cup_depths_by_island_m": [
+          0.09318214654922485,
+          0.09392684698104858,
+          0.09318214654922485,
+          0.10028153657913208,
+          0.09868228435516357,
+          0.10173279047012329
+        ],
+        "front_tepal_forward_reach_m": 0.22547610104084015,
+        "front_edge_roll_m": 0.003117665648460388
+      },
+      "candidate_delta": {
+        "cup_depth_m": 0.006795048713684082,
+        "front_tepal_forward_reach_m": 5.960464477539063e-08,
+        "front_edge_roll_m": 0.002727717161178589
+      },
+      "assessment": "informational_only"
+    },
+    "v13_endpoint_geometry_comparison": {
+      "reference": "baseline/lily_004_v13_final.blend Bloom endpoint (16 s)",
+      "candidate": "source/lily_004_geometry.blend Bloom endpoint (8 s), evaluated",
+      "max_vertex_delta_m": 0.010744035085143171,
+      "mean_vertex_delta_m": 0.004103142783591427,
+      "by_object": {
+        "Petals": {
+          "vertices": 2970,
+          "max_vertex_delta_m": 0.010744035085143171,
+          "mean_vertex_delta_m": 0.004103142783591427
+        },
+        "Petals_Outside": {
+          "vertices": 2970,
+          "max_vertex_delta_m": 0.010744035085143171,
+          "mean_vertex_delta_m": 0.004103142783591427
+        }
+      },
+      "mid_row_centerline_samples": [
+        {
+          "island": 1,
+          "row": 16,
+          "column": 7,
+          "reference_world_m": [
+            0.083019,
+            -0.077784,
+            0.941349
+          ],
+          "candidate_world_m": [
+            0.083019,
+            -0.077784,
+            0.946093
+          ],
+          "delta_world_m": [
+            0.0,
+            0.0,
+            0.004744
+          ],
+          "delta_length_m": 0.004744
+        },
+        {
+          "island": 2,
+          "row": 16,
+          "column": 7,
+          "reference_world_m": [
+            0.184286,
+            -0.226176,
+            0.946977
+          ],
+          "candidate_world_m": [
+            0.184286,
+            -0.226176,
+            0.951721
+          ],
+          "delta_world_m": [
+            0.0,
+            0.0,
+            0.004744
+          ],
+          "delta_length_m": 0.004744
+        },
+        {
+          "island": 3,
+          "row": 16,
+          "column": 7,
+          "reference_world_m": [
+            0.000426,
+            -0.240207,
+            0.941349
+          ],
+          "candidate_world_m": [
+            0.000426,
+            -0.240207,
+            0.946093
+          ],
+          "delta_world_m": [
+            0.0,
+            0.0,
+            0.004744
+          ],
+          "delta_length_m": 0.004744
+        },
+        {
+          "island": 4,
+          "row": 16,
+          "column": 7,
+          "reference_world_m": [
+            0.177644,
+            -0.12109,
+            0.934839
+          ],
+          "candidate_world_m": [
+            0.177644,
+            -0.12109,
+            0.939583
+          ],
+          "delta_world_m": [
+            0.0,
+            0.0,
+            0.004744
+          ],
+          "delta_length_m": 0.004744
+        },
+        {
+          "island": 5,
+          "row": 16,
+          "column": 7,
+          "reference_world_m": [
+            -0.004337,
+            -0.133799,
+            0.92998
+          ],
+          "candidate_world_m": [
+            -0.004337,
+            -0.133799,
+            0.934724
+          ],
+          "delta_world_m": [
+            0.0,
+            0.0,
+            0.004744
+          ],
+          "delta_length_m": 0.004744
+        },
+        {
+          "island": 6,
+          "row": 16,
+          "column": 7,
+          "reference_world_m": [
+            0.096673,
+            -0.277705,
+            0.927481
+          ],
+          "candidate_world_m": [
+            0.096673,
+            -0.277705,
+            0.932225
+          ],
+          "delta_world_m": [
+            0.0,
+            -0.0,
+            0.004744
+          ],
+          "delta_length_m": 0.004744
+        }
+      ],
+      "attachment_and_tip_rows_are_pinned_by_correction": [
+        0,
+        32
+      ]
+    },
+    "metric_assessment": "cup depth and front reach are source-relative visual heuristics, not pass/fail thresholds",
+    "visual_acceptance": "pending/R12,R18"
+  },
+  "failures": []
+}

@@ -28,27 +28,34 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
   let completed = false
   let lastDispatch = -Infinity
   const revision = initial.revision
-  const waiting = initial.scene === 'prologue' && initial.mode === 'waiting'
-  const start = waiting ? filmDuration(initial) : initial.mode === 'transitioning' ? initial.elapsed : 0
-  const duration = waiting ? 1 : filmDuration(initial) - start
+  const waiting = initial.mode === 'waiting' && (initial.scene === 'prologue' || initial.scene === 'bloom')
+  const start = initial.scene === 'prologue' && initial.mode === 'waiting' ? filmDuration(initial) : initial.mode === 'transitioning' ? initial.elapsed : 0
+  const ambientEnding = initial.scene === 'ending' && initial.mode === 'ended'
+  const duration = ambientEnding ? 3600 : waiting ? 1 : filmDuration(initial) - start
   const endpoint = start + duration
   const presentationStart = (waiting || initial.mode === 'transitioning') && runtime.time === start
     ? Math.max(start, runtime.presentationTime) : start
   const clock = { time: start }
+  let ambientOffset = 0
   let timeline!: gsap.core.Timeline
   const complete = () => {
-    if (disposed || completed || waiting) return
+    if (disposed || completed || waiting || ambientEnding) return
     completed = true
     dispatch({ type: 'timeline-update', time: endpoint, revision })
     dispatch({ type: 'timeline-complete', revision })
   }
   const context = gsap.context(() => {
-    timeline = gsap.timeline({ paused: true, repeat: waiting ? -1 : 0,
+    timeline = gsap.timeline({ paused: true, repeat: waiting || ambientEnding ? -1 : 0,
+      onRepeat() { if (ambientEnding) ambientOffset += duration },
       onUpdate() {
         if (disposed) return
         if (waiting) {
           // One repeatable GSAP clock, no scene-local ticker and no gate advancement.
           runtime.publishPresentation(presentationStart + timeline.totalTime())
+          return
+        }
+        if (ambientEnding) {
+          runtime.publishPresentation(ambientOffset + timeline.time())
           return
         }
         runtime.publish(clock.time, initial.mode === 'transitioning' ? presentationStart + clock.time - start : clock.time)
@@ -63,14 +70,14 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
     timeline.to(clock, { time: endpoint, duration, ease: 'none' })
   })
   timeline.time(Math.max(0, initial.elapsed - start), true)
-  runtime.publish(initial.elapsed, waiting || initial.mode === 'transitioning' ? presentationStart : initial.elapsed)
+  runtime.publish(initial.elapsed, waiting || initial.mode === 'transitioning' || ambientEnding ? presentationStart : initial.elapsed)
   const sync = (next: FilmState) => {
     if (disposed || next.revision !== revision) return
     state = next
     timeline.timeScale(state.speed)
-    const paused = (!waiting && state.mode !== 'playing' && state.mode !== 'transitioning') || state.paused || state.reading || Boolean(visibility?.hidden)
+    const paused = (!waiting && !ambientEnding && state.mode !== 'playing' && state.mode !== 'transitioning') || state.paused || state.reading || Boolean(visibility?.hidden)
     timeline.paused(paused)
-    if (!paused && !waiting && timeline.time() >= duration) complete()
+    if (!paused && !waiting && !ambientEnding && timeline.time() >= duration) complete()
   }
   const onVisibility = () => sync(state)
   visibility?.addEventListener('visibilitychange', onVisibility)

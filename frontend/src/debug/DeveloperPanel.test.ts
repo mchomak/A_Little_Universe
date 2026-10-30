@@ -65,3 +65,22 @@ it('shows only the active scene controls and keeps playback in the timeline', ()
   expect(markup).toContain('Auto')
 })
 
+it('exposes the imported galaxy seed and optional black center in Scene 07 Inspector', () => {
+  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'cosmos' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    onPermissions: () => undefined,
+  }))
+
+  expect(markup).toContain('Seed генерации')
+  expect(markup).toMatch(/id="composer-scenes-galaxy-seed"[^>]*type="text"[^>]*value="andromeda"/)
+  expect(markup).toContain('Чёрный центр')
+  expect(markup).toContain('Spore (R/B/Y/V)')
+  expect(markup).not.toContain('scenes-galaxy-scatter')
+  expect(markup).toContain('Сжатие разброса')
+  expect(markup).toMatch(/id="composer-scenes-galaxy-rotationSpeed"[^>]*min="0" max="0\.1"[^>]*value="0\.045"/)
+  expect(markup).toMatch(/id="composer-scenes-galaxy-backgroundStarCount"[^>]*max="10000"[^>]*value="5200"/)
+})
+

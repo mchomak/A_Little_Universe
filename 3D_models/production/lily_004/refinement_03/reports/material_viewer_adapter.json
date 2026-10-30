@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "result": "PASS",
+  "server": {
+    "host": "127.0.0.1",
+    "port": 5190,
+    "url": "http://127.0.0.1:5190/scripts/viewer.html?asset=final",
+    "bindScope": "loopback-only"
+  },
+  "readOnlyPolicy": {
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "allowlistedFileRoutesOnly": true,
+    "directoryListing": false,
+    "pathTraversalRejected": true,
+    "sourceViewerServedFromCopies": true,
+    "writesToProductionViewerOrThree": false
+  },
+  "viewerCopies": [
+    {
+      "role": "viewerHtml",
+      "sourcePath": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\scripts\\viewer.html",
+      "copyPath": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\scripts\\material_viewer_assets\\viewer.html",
+      "sourceSha256": "564932e604bec309e5ca965290a17fa7797b1148f7dcfff8c2fddcbe1f1a98b7",
+      "copySha256": "564932e604bec309e5ca965290a17fa7797b1148f7dcfff8c2fddcbe1f1a98b7",
+      "byteIdentical": true
+    },
+    {
+      "role": "viewerJs",
+      "sourcePath": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\scripts\\viewer.js",
+      "copyPath": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\scripts\\material_viewer_assets\\viewer.js",
+      "sourceSha256": "d9e82a577f5878572383ce06097ad0369db58b31ecd9b99a75e6b628afe1bf64",
+      "copySha256": "d9e82a577f5878572383ce06097ad0369db58b31ecd9b99a75e6b628afe1bf64",
+      "byteIdentical": true
+    }
+  ],
+  "asset": {
+    "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\export\\lily_004_refined.glb",
+    "bytes": 2560052,
+    "sha256": "c6fd5311e45f9586efc491ea6870cc6ae4123999fd954b1a9a607927841c0d24",
+    "virtualRoute": "/export/lily_004_animated.glb"
+  },
+  "three": {
+    "root": "C:\\Users\\McHomak\\Projects\\A_Little_Universe\\frontend\\node_modules\\three",
+    "verifiedEntryFileSha256": {
+      "build/three.module.js": "9052042d676cb0fdc1ddfefe193053f34b7ac0513a616fdac4535d49987812ea",
+      "examples/jsm/loaders/GLTFLoader.js": "131c0f78c01d19368ae495caa65b3adaa10487810a36a05bb5901b769a35ac16",
+      "examples/jsm/controls/OrbitControls.js": "3d79d07ecb686b4e5d93232eedab255331c1beef711e13164eaa1f68655a5f2b"
+    },
+    "virtualPrefix": "/frontend/node_modules/three/"
+  },
+  "routeChecks": [
+    {
+      "path": "/",
+      "status": 302,
+      "expectedStatus": 302
+    },
+    {
+      "path": "/scripts/viewer.html",
+      "status": 200,
+      "expectedStatus": 200
+    },
+    {
+      "path": "/scripts/viewer.js",
+      "status": 200,
+      "expectedStatus": 200
+    },
+    {
+      "path": "/export/lily_004_animated.glb",
+      "status": 200,
+      "expectedStatus": 200
+    },
+    {
+      "path": "/frontend/node_modules/three/build/three.module.js",
+      "status": 200,
+      "expectedStatus": 200
+    },
+    {
+      "path": "/frontend/node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+      "status": 200,
+      "expectedStatus": 200
+    },
+    {
+      "path": "/frontend/node_modules/three/examples/jsm/controls/OrbitControls.js",
+      "status": 200,
+      "expectedStatus": 200
+    },
+    {
+      "path": "/frontend/node_modules/three/",
+      "status": 404,
+      "expectedStatus": 404
+    },
+    {
+      "path": "/not-allowlisted",
+      "status": 404,
+      "expectedStatus": 404
+    },
+    {
+      "path": "/frontend/node_modules/three/%2e%2e/%2e%2e/secrets.txt",
+      "status": 400,
+      "expectedStatus": 400
+    },
+    {
+      "path": "/export/%2e%2e/secrets.txt",
+      "status": 400,
+      "expectedStatus": 400
+    }
+  ],
+  "httpReadiness": {
+    "result": "PASS",
+    "baseUrl": "http://127.0.0.1:5190",
+    "checks": [
+      {
+        "name": "viewer html",
+        "route": "/scripts/viewer.html",
+        "method": "GET",
+        "status": 200,
+        "bytes": 1568,
+        "sha256": "564932e604bec309e5ca965290a17fa7797b1148f7dcfff8c2fddcbe1f1a98b7"
+      },
+      {
+        "name": "viewer js",
+        "route": "/scripts/viewer.js",
+        "method": "GET",
+        "status": 200,
+        "bytes": 8201,
+        "sha256": "d9e82a577f5878572383ce06097ad0369db58b31ecd9b99a75e6b628afe1bf64"
+      },
+      {
+        "name": "page query route",
+        "route": "/scripts/viewer.html?asset=final",
+        "method": "GET",
+        "status": 200,
+        "bytes": 1568,
+        "sha256": "564932e604bec309e5ca965290a17fa7797b1148f7dcfff8c2fddcbe1f1a98b7"
+      },
+      {
+        "name": "root redirect",
+        "route": "/",
+        "method": "GET",
+        "status": 302,
+        "bytes": 0,
+        "sha256": null
+      },
+      {
+        "name": "GLB override",
+        "route": "/export/lily_004_animated.glb",
+        "method": "GET",
+        "status": 200,
+        "bytes": 2560052,
+        "sha256": "c6fd5311e45f9586efc491ea6870cc6ae4123999fd954b1a9a607927841c0d24"
+      },
+      {
+        "name": "GLB HEAD",
+        "route": "/export/lily_004_animated.glb",
+        "method": "HEAD",
+        "status": 200,
+        "bytes": 0,
+        "sha256": null
+      },
+      {
+        "name": "Three.js build/three.module.js",
+        "route": "/frontend/node_modules/three/build/three.module.js",
+        "method": "GET",
+        "status": 200,
+        "bytes": 662772,
+        "sha256": "9052042d676cb0fdc1ddfefe193053f34b7ac0513a616fdac4535d49987812ea"
+      },
+      {
+        "name": "Three.js examples/jsm/loaders/GLTFLoader.js",
+        "route": "/frontend/node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+        "method": "GET",
+        "status": 200,
+        "bytes": 117570,
+        "sha256": "131c0f78c01d19368ae495caa65b3adaa10487810a36a05bb5901b769a35ac16"
+      },
+      {
+        "name": "Three.js examples/jsm/controls/OrbitControls.js",
+        "route": "/frontend/node_modules/three/examples/jsm/controls/OrbitControls.js",
+        "method": "GET",
+        "status": 200,
+        "bytes": 40755,
+        "sha256": "3d79d07ecb686b4e5d93232eedab255331c1beef711e13164eaa1f68655a5f2b"
+      },
+      {
+        "name": "three directory listing",
+        "route": "/frontend/node_modules/three/",
+        "method": "GET",
+        "status": 404,
+        "bytes": 455,
+        "sha256": "fe9cc07233143bc2c61cbd6e3f5c61ecb31a696252b78ac7406bca60efa5f827"
+      },
+      {
+        "name": "unknown route",
+        "route": "/not-allowlisted",
+        "method": "GET",
+        "status": 404,
+        "bytes": 455,
+        "sha256": "fe9cc07233143bc2c61cbd6e3f5c61ecb31a696252b78ac7406bca60efa5f827"
+      },
+      {
+        "name": "encoded traversal",
+        "route": "/frontend/node_modules/three/%2e%2e/%2e%2e/secrets.txt",
+        "method": "GET",
+        "status": 400,
+        "bytes": 468,
+        "sha256": "6bda9b555ee4565b7638c2e6a0e65ea4d311055b9fb5dc5eecbd2c7fbce980f4"
+      },
+      {
+        "name": "write method rejected",
+        "route": "/scripts/viewer.html",
+        "method": "POST",
+        "status": 405,
+        "bytes": 480
+      }
+    ],
+    "checkCount": 13,
+    "writesIssued": false,
+    "browserLaunched": false
+  }
+}

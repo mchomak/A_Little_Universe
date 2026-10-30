@@ -1,0 +1,2446 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "baseline": {
+    "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\baseline\\lily_004_animated.glb",
+    "bytes": 1592136,
+    "sha256": "8152f8094a30c3af6eee4ecbcb8e94bafb4c93536828ea1ea9d0f2f8349a143c",
+    "worldBounds": {
+      "pose": "base POSITION accessors; morph weights not evaluated",
+      "min": [
+        -0.25076024660115737,
+        -0.016592323780059814,
+        -0.259973357624246
+      ],
+      "max": [
+        0.40720887830117836,
+        0.8230000138282776,
+        0.22017261385917664
+      ],
+      "dimensions": [
+        0.6579691249023357,
+        0.8395923376083374,
+        0.48014597148342264
+      ]
+    },
+    "defaultWeightsBounds": {
+      "pose": "POSITION plus glTF node/mesh default weights; static node transforms",
+      "min": [
+        -0.25076024660115737,
+        -0.016592323780059814,
+        -0.259973357624246
+      ],
+      "max": [
+        0.40720887830117836,
+        0.8230000138282776,
+        0.22017261385917664
+      ],
+      "dimensions": [
+        0.6579691249023357,
+        0.8395923376083374,
+        0.48014597148342264
+      ]
+    },
+    "morphEnvelopeBounds": {
+      "pose": "conservative independent morph weights in [0,1]; static node transforms",
+      "min": [
+        -0.25627240538597107,
+        -0.8379999995231628,
+        -0.27051831036806107
+      ],
+      "max": [
+        0.40720887830117836,
+        0.8230000138282776,
+        0.26211321353912354
+      ],
+      "dimensions": [
+        0.6634812836871494,
+        1.6610000133514404,
+        0.5326315239071846
+      ]
+    },
+    "triangleCount": 19188,
+    "drawCalls": 8
+  },
+  "geometryStage": {
+    "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\export\\lily_004_geometry.glb",
+    "bytes": 2308936,
+    "sha256": "6ba2d48d6ef3465fb7c82aae77f8c017450d8590c4e8c227c75ac1de01a22ecf",
+    "worldBounds": {
+      "pose": "base POSITION accessors; morph weights not evaluated",
+      "min": [
+        -0.24116102379953164,
+        0.0,
+        -0.26046024375302923
+      ],
+      "max": [
+        0.43209503566483154,
+        0.9857525120035181,
+        0.4001491814851761
+      ],
+      "dimensions": [
+        0.6732560594643632,
+        0.9857525120035181,
+        0.6606094252382053
+      ]
+    },
+    "defaultWeightsBounds": {
+      "pose": "POSITION plus glTF node/mesh default weights; static node transforms",
+      "min": [
+        -0.24116102379953164,
+        0.0,
+        -0.26046024375302923
+      ],
+      "max": [
+        0.43209503566483154,
+        0.9857525120035181,
+        0.4121556729078293
+      ],
+      "dimensions": [
+        0.6732560594643632,
+        0.9857525120035181,
+        0.6726159166608585
+      ]
+    },
+    "morphEnvelopeBounds": {
+      "pose": "conservative independent morph weights in [0,1]; static node transforms",
+      "min": [
+        -0.2881000339984894,
+        -0.8379999995231628,
+        -0.26046024375302923
+      ],
+      "max": [
+        0.4600098133087158,
+        1.3161611557006836,
+        0.5718465894460678
+      ],
+      "dimensions": [
+        0.7481098473072052,
+        2.1541611552238464,
+        0.832306833199097
+      ]
+    },
+    "triangleCount": 19188,
+    "drawCalls": 8
+  },
+  "finalBlend": {
+    "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\source\\lily_004_refined.blend",
+    "bytes": 5116583,
+    "sha256": "3f60ecbf59cbbf4095d73901069cb001418b3ad0f65bc2022f5c41217fc86f89"
+  },
+  "finalGLB": {
+    "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\export\\lily_004_refined.glb",
+    "bytes": 2560052,
+    "sha256": "c6fd5311e45f9586efc491ea6870cc6ae4123999fd954b1a9a607927841c0d24",
+    "nodeCount": 14,
+    "meshObjectCount": 7,
+    "triangleCount": 19188,
+    "drawCalls": 8,
+    "sceneRoots": [
+      "Lily_Root"
+    ],
+    "worldBounds": {
+      "pose": "base POSITION accessors; morph weights not evaluated",
+      "min": [
+        -0.24116102379953164,
+        0.0,
+        -0.26046024375302923
+      ],
+      "max": [
+        0.43209503566483154,
+        0.9857525120035181,
+        0.4001491814851761
+      ],
+      "dimensions": [
+        0.6732560594643632,
+        0.9857525120035181,
+        0.6606094252382053
+      ]
+    },
+    "defaultWeightsBounds": {
+      "pose": "POSITION plus glTF node/mesh default weights; static node transforms",
+      "min": [
+        -0.24116102379953164,
+        0.0,
+        -0.26046024375302923
+      ],
+      "max": [
+        0.43209503566483154,
+        0.9857525120035181,
+        0.4121556729078293
+      ],
+      "dimensions": [
+        0.6732560594643632,
+        0.9857525120035181,
+        0.6726159166608585
+      ]
+    },
+    "morphEnvelopeBounds": {
+      "pose": "conservative independent morph weights in [0,1]; static node transforms",
+      "min": [
+        -0.2881000339984894,
+        -0.8379999995231628,
+        -0.26046024375302923
+      ],
+      "max": [
+        0.4600098133087158,
+        1.3161611557006836,
+        0.5718465894460678
+      ],
+      "dimensions": [
+        0.7481098473072052,
+        2.1541611552238464,
+        0.832306833199097
+      ]
+    }
+  },
+  "assetComparison": {
+    "v13ToFinal": {
+      "status": "PASS",
+      "hierarchyMatchesBaseline": true,
+      "root": {
+        "name": "Lily_Root",
+        "matchesBaseline": true,
+        "identityTRS": true,
+        "transform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "transformChangesFromBaseline": [
+        {
+          "node": "Head_Root",
+          "before": {
+            "translation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "after": {
+            "translation": [
+              0.09000000357627869,
+              0.8230000138282776,
+              0.17999999225139618
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "node": "Leaf_A_Pivot",
+          "before": {
+            "translation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "after": {
+            "translation": [
+              0.024886155501008034,
+              0.20690375566482544,
+              0.01648590713739395
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "node": "Leaf_B_Pivot",
+          "before": {
+            "translation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "after": {
+            "translation": [
+              0.009599222801625729,
+              0.05534220114350319,
+              -0.000486886128783226
+            ],
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        }
+      ],
+      "units": {
+        "coordinateSystem": "glTF Y-up",
+        "unit": "meter by Blender pipeline contract",
+        "scale": 1.0,
+        "unitExplicitInGLB": false
+      },
+      "bounds": {
+        "baseAccessor": {
+          "baseline": {
+            "pose": "base POSITION accessors; morph weights not evaluated",
+            "min": [
+              -0.25076024660115737,
+              -0.016592323780059814,
+              -0.259973357624246
+            ],
+            "max": [
+              0.40720887830117836,
+              0.8230000138282776,
+              0.22017261385917664
+            ],
+            "dimensions": [
+              0.6579691249023357,
+              0.8395923376083374,
+              0.48014597148342264
+            ]
+          },
+          "final": {
+            "pose": "base POSITION accessors; morph weights not evaluated",
+            "min": [
+              -0.24116102379953164,
+              0.0,
+              -0.26046024375302923
+            ],
+            "max": [
+              0.43209503566483154,
+              0.9857525120035181,
+              0.4001491814851761
+            ],
+            "dimensions": [
+              0.6732560594643632,
+              0.9857525120035181,
+              0.6606094252382053
+            ]
+          },
+          "dimensionDelta": [
+            0.015286934562027454,
+            0.1461601743951807,
+            0.18046345375478268
+          ]
+        },
+        "defaultWeights": {
+          "baseline": {
+            "pose": "POSITION plus glTF node/mesh default weights; static node transforms",
+            "min": [
+              -0.25076024660115737,
+              -0.016592323780059814,
+              -0.259973357624246
+            ],
+            "max": [
+              0.40720887830117836,
+              0.8230000138282776,
+              0.22017261385917664
+            ],
+            "dimensions": [
+              0.6579691249023357,
+              0.8395923376083374,
+              0.48014597148342264
+            ]
+          },
+          "final": {
+            "pose": "POSITION plus glTF node/mesh default weights; static node transforms",
+            "min": [
+              -0.24116102379953164,
+              0.0,
+              -0.26046024375302923
+            ],
+            "max": [
+              0.43209503566483154,
+              0.9857525120035181,
+              0.4121556729078293
+            ],
+            "dimensions": [
+              0.6732560594643632,
+              0.9857525120035181,
+              0.6726159166608585
+            ]
+          },
+          "dimensionDelta": [
+            0.015286934562027454,
+            0.1461601743951807,
+            0.19246994517743587
+          ]
+        },
+        "morphEnvelope": {
+          "baseline": {
+            "pose": "conservative independent morph weights in [0,1]; static node transforms",
+            "min": [
+              -0.25627240538597107,
+              -0.8379999995231628,
+              -0.27051831036806107
+            ],
+            "max": [
+              0.40720887830117836,
+              0.8230000138282776,
+              0.26211321353912354
+            ],
+            "dimensions": [
+              0.6634812836871494,
+              1.6610000133514404,
+              0.5326315239071846
+            ]
+          },
+          "final": {
+            "pose": "conservative independent morph weights in [0,1]; static node transforms",
+            "min": [
+              -0.2881000339984894,
+              -0.8379999995231628,
+              -0.26046024375302923
+            ],
+            "max": [
+              0.4600098133087158,
+              1.3161611557006836,
+              0.5718465894460678
+            ],
+            "dimensions": [
+              0.7481098473072052,
+              2.1541611552238464,
+              0.832306833199097
+            ]
+          },
+          "dimensionDelta": [
+            0.08462856362005577,
+            0.493161141872406,
+            0.29967530929191244
+          ]
+        }
+      },
+      "topology": {
+        "fixedTriangleConnectivityMatchesBaseline": true,
+        "differentMeshes": []
+      },
+      "budgets": {
+        "triangleCount": 19188,
+        "triangleLimit": 24000,
+        "drawCalls": 8,
+        "drawCallRange": [
+          8,
+          10
+        ]
+      },
+      "failures": []
+    },
+    "geometryStageToFinal": {
+      "status": "PASS",
+      "hierarchyMatchesBaseline": true,
+      "root": {
+        "name": "Lily_Root",
+        "matchesBaseline": true,
+        "identityTRS": true,
+        "transform": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "transformChangesFromBaseline": [],
+      "units": {
+        "coordinateSystem": "glTF Y-up",
+        "unit": "meter by Blender pipeline contract",
+        "scale": 1.0,
+        "unitExplicitInGLB": false
+      },
+      "bounds": {
+        "baseAccessor": {
+          "baseline": {
+            "pose": "base POSITION accessors; morph weights not evaluated",
+            "min": [
+              -0.24116102379953164,
+              0.0,
+              -0.26046024375302923
+            ],
+            "max": [
+              0.43209503566483154,
+              0.9857525120035181,
+              0.4001491814851761
+            ],
+            "dimensions": [
+              0.6732560594643632,
+              0.9857525120035181,
+              0.6606094252382053
+            ]
+          },
+          "final": {
+            "pose": "base POSITION accessors; morph weights not evaluated",
+            "min": [
+              -0.24116102379953164,
+              0.0,
+              -0.26046024375302923
+            ],
+            "max": [
+              0.43209503566483154,
+              0.9857525120035181,
+              0.4001491814851761
+            ],
+            "dimensions": [
+              0.6732560594643632,
+              0.9857525120035181,
+              0.6606094252382053
+            ]
+          },
+          "dimensionDelta": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "defaultWeights": {
+          "baseline": {
+            "pose": "POSITION plus glTF node/mesh default weights; static node transforms",
+            "min": [
+              -0.24116102379953164,
+              0.0,
+              -0.26046024375302923
+            ],
+            "max": [
+              0.43209503566483154,
+              0.9857525120035181,
+              0.4121556729078293
+            ],
+            "dimensions": [
+              0.6732560594643632,
+              0.9857525120035181,
+              0.6726159166608585
+            ]
+          },
+          "final": {
+            "pose": "POSITION plus glTF node/mesh default weights; static node transforms",
+            "min": [
+              -0.24116102379953164,
+              0.0,
+              -0.26046024375302923
+            ],
+            "max": [
+              0.43209503566483154,
+              0.9857525120035181,
+              0.4121556729078293
+            ],
+            "dimensions": [
+              0.6732560594643632,
+              0.9857525120035181,
+              0.6726159166608585
+            ]
+          },
+          "dimensionDelta": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "morphEnvelope": {
+          "baseline": {
+            "pose": "conservative independent morph weights in [0,1]; static node transforms",
+            "min": [
+              -0.2881000339984894,
+              -0.8379999995231628,
+              -0.26046024375302923
+            ],
+            "max": [
+              0.4600098133087158,
+              1.3161611557006836,
+              0.5718465894460678
+            ],
+            "dimensions": [
+              0.7481098473072052,
+              2.1541611552238464,
+              0.832306833199097
+            ]
+          },
+          "final": {
+            "pose": "conservative independent morph weights in [0,1]; static node transforms",
+            "min": [
+              -0.2881000339984894,
+              -0.8379999995231628,
+              -0.26046024375302923
+            ],
+            "max": [
+              0.4600098133087158,
+              1.3161611557006836,
+              0.5718465894460678
+            ],
+            "dimensions": [
+              0.7481098473072052,
+              2.1541611552238464,
+              0.832306833199097
+            ]
+          },
+          "dimensionDelta": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "topology": {
+        "fixedTriangleConnectivityMatchesBaseline": true,
+        "differentMeshes": []
+      },
+      "budgets": {
+        "triangleCount": 19188,
+        "triangleLimit": 24000,
+        "drawCalls": 8,
+        "drawCallRange": [
+          8,
+          10
+        ]
+      },
+      "failures": []
+    }
+  },
+  "clipInventory": {
+    "Growth": {
+      "startSeconds": 0.0,
+      "endSeconds": 9.0,
+      "durationSeconds": 9.0
+    },
+    "IdleClosed": {
+      "startSeconds": 0.0,
+      "endSeconds": 8.0,
+      "durationSeconds": 8.0
+    },
+    "TouchResponse": {
+      "startSeconds": 0.0,
+      "endSeconds": 2.0,
+      "durationSeconds": 2.0
+    },
+    "Bloom": {
+      "startSeconds": 0.0,
+      "endSeconds": 8.0,
+      "durationSeconds": 8.0
+    },
+    "IdleOpen": {
+      "startSeconds": 0.0,
+      "endSeconds": 8.0,
+      "durationSeconds": 8.0
+    },
+    "DissolveReady": {
+      "startSeconds": 0.0,
+      "endSeconds": 1.0,
+      "durationSeconds": 1.0
+    }
+  },
+  "geometryEvidence": {
+    "boundaries": [
+      {
+        "boundary": "Growth->IdleClosed",
+        "max_vertex_delta_m": 0.0,
+        "tolerance_m": 1e-05,
+        "pass": true
+      },
+      {
+        "boundary": "IdleClosed->TouchResponse",
+        "max_vertex_delta_m": 0.0,
+        "tolerance_m": 1e-05,
+        "pass": true
+      },
+      {
+        "boundary": "TouchResponse->Bloom",
+        "max_vertex_delta_m": 0.0,
+        "tolerance_m": 1e-05,
+        "pass": true
+      },
+      {
+        "boundary": "Bloom->IdleOpen",
+        "max_vertex_delta_m": 0.0,
+        "tolerance_m": 1e-05,
+        "pass": true
+      },
+      {
+        "boundary": "IdleOpen->DissolveReady",
+        "max_vertex_delta_m": 0.0,
+        "tolerance_m": 1e-05,
+        "pass": true
+      }
+    ],
+    "denseGeometry": {
+      "frames_checked": 410,
+      "curvature_peak_m": 0.0038195264170902874,
+      "curvature_worst": {
+        "clip": "Growth",
+        "time_seconds": 0.0,
+        "island": 2,
+        "magnitude_m": 0.0038195264170902874,
+        "row": 1
+      },
+      "max_frame_step_m": 0.00996512694529589,
+      "frame_step_worst": {
+        "clip": "Growth",
+        "frame": 185,
+        "delta_m": 0.00996512694529589
+      },
+      "max_paired_surface_delta_m": 0.0,
+      "normal_alignment_min": -1.000000275671482,
+      "triangle_tessellation": "evaluated mesh.loop_triangles",
+      "triangle_quality_measure": "twice-area / longest-edge-squared (scale independent)",
+      "triangle_quality_limit": 1e-06,
+      "minimum_triangle_area_m2": 2.9400032646973364e-13,
+      "minimum_triangle_area_ratio": 8.950941162563145e-05,
+      "triangle_quality_worst": {
+        "clip": "Bloom",
+        "time_seconds": 7.458333,
+        "surface": "Petals",
+        "triangle": 2247,
+        "vertices": [
+          2483,
+          2497,
+          2482
+        ],
+        "area_m2": 2.6554859269678513e-09,
+        "area_ratio": 8.950941162563145e-05
+      },
+      "degenerate_triangle_count": 0,
+      "triangle_count_per_surface": {
+        "Petals": 5376,
+        "Petals_Outside": 5376
+      },
+      "normal_fold_dot_limit": -0.25,
+      "root_attachment_definition": "all vertices lie in tepal rows 0-1",
+      "root_attachment_normal_discontinuities": 206,
+      "root_attachment_normal_discontinuities_by_clip_island": {
+        "Bloom:island6": {
+          "count": 180,
+          "worst_normal_dot": -0.9999810308218002,
+          "worst_frame": 833
+        },
+        "Bloom:island5": {
+          "count": 26,
+          "worst_normal_dot": -0.7063532173633575,
+          "worst_frame": 839
+        }
+      },
+      "normal_fold_events_outside_attachment": 0,
+      "normal_fold_samples_outside_attachment": [],
+      "root_attachment_normal_samples": [
+        {
+          "clip": "Bloom",
+          "frame": 825,
+          "time_seconds": 6.333333,
+          "islands": [
+            6
+          ],
+          "rows": [
+            0,
+            1
+          ],
+          "normal_dot": -0.38215352734550834
+        },
+        {
+          "clip": "Bloom",
+          "frame": 826,
+          "time_seconds": 6.375,
+          "islands": [
+            6
+          ],
+          "rows": [
+            0,
+            1
+          ],
+          "normal_dot": -0.38947029411792755
+        },
+        {
+          "clip": "Bloom",
+          "frame": 826,
+          "time_seconds": 6.375,
+          "islands": [
+            6
+          ],
+          "rows": [
+            0,
+            1
+          ],
+          "normal_dot": -0.6676869690418243
+        },
+        {
+          "clip": "Bloom",
+          "frame": 827,
+          "time_seconds": 6.416667,
+          "islands": [
+            6
+          ],
+          "rows": [
+            0,
+            1
+          ],
+          "normal_dot": -0.25868649780750275
+        },
+        {
+          "clip": "Bloom",
+          "frame": 827,
+          "time_seconds": 6.416667,
+          "islands": [
+            6
+          ],
+          "rows": [
+            0,
+            1
+          ],
+          "normal_dot": -0.6148592047393322
+        },
+        {
+          "clip": "Bloom",
+          "frame": 827,
+          "time_seconds": 6.416667,
+          "islands": [
+            6
+          ],
+          "rows": [
+            0,
+            1
+          ],
+          "normal_dot": -0.838251531124115
+        },
+        {
+          "clip": "Bloom",
+          "frame": 827,
+          "time_seconds": 6.416667,
+          "islands": [
+            6
+          ],
+          "rows": [
+            0,
+            1
+          ],
+          "normal_dot": -0.25173867121338844
+        },
+        {
+          "clip": "Bloom",
+          "frame": 828,
+          "time_seconds": 6.458333,
+          "islands": [
+            6
+          ],
+          "rows": [
+            0,
+            1
+          ],
+          "normal_dot": -0.4311605989933014
+        },
+        {
+          "clip": "Bloom",
+          "frame": 828,
+          "time_seconds": 6.458333,
+          "islands": [
+            6
+          ],
+          "rows": [
+            0,
+            1
+          ],
+          "normal_dot": -0.7492123711854219
+        },
+        {
+          "clip": "Bloom",
+          "frame": 828,
+          "time_seconds": 6.458333,
+          "islands": [
+            6
+          ],
+          "rows": [
+            0,
+            1
+          ],
+          "normal_dot": -0.9243903160095215
+        }
+      ],
+      "normal_flip_events": 0,
+      "root_attachment_temporal_normal_discontinuities": 0,
+      "temporal_normal_flip_events_outside_attachment": 0,
+      "root_attachment_temporal_normal_samples": [],
+      "temporal_normal_flip_samples_outside_attachment": [],
+      "intersection_events": [],
+      "allowed_root_contacts": 0,
+      "frames_per_clip": {
+        "Growth": 217,
+        "Bloom": 193
+      },
+      "limits": {
+        "curvature_m": 0.005,
+        "sync_m": 1e-05,
+        "boundary_m": 1e-05,
+        "max_frame_step_m": 0.03
+      }
+    }
+  },
+  "materialReimport": {
+    "materials": {
+      "Anther_SoftGold": {
+        "doubleSided": false,
+        "metallic": 0.0,
+        "imageNodes": []
+      },
+      "Filament_Ivory": {
+        "doubleSided": false,
+        "metallic": 0.0,
+        "imageNodes": []
+      },
+      "Leaf_SoftGreen": {
+        "doubleSided": true,
+        "metallic": 0.0,
+        "imageNodes": [
+          "lily_leaf_base",
+          "lily_leaf_roughness"
+        ]
+      },
+      "Petal_Outside": {
+        "doubleSided": false,
+        "metallic": 0.0,
+        "imageNodes": [
+          "lily_petal_outside_base",
+          "lily_petal_roughness"
+        ]
+      },
+      "Petal_Pearl": {
+        "doubleSided": false,
+        "metallic": 0.0,
+        "imageNodes": [
+          "lily_petal_pearl_base",
+          "lily_petal_roughness"
+        ]
+      },
+      "Stem_SoftGreen": {
+        "doubleSided": false,
+        "metallic": 0.0,
+        "imageNodes": [
+          "lily_stem_base",
+          "lily_stem_roughness"
+        ]
+      }
+    },
+    "decodedEmbeddedImages": [
+      {
+        "name": "lily_leaf_base",
+        "width": 256,
+        "height": 512,
+        "hasDataAfterPixelRead": true,
+        "decodedFloatCount": 524288
+      },
+      {
+        "name": "lily_leaf_roughness",
+        "width": 256,
+        "height": 512,
+        "hasDataAfterPixelRead": true,
+        "decodedFloatCount": 524288
+      },
+      {
+        "name": "lily_petal_outside_base",
+        "width": 512,
+        "height": 512,
+        "hasDataAfterPixelRead": true,
+        "decodedFloatCount": 1048576
+      },
+      {
+        "name": "lily_petal_pearl_base",
+        "width": 512,
+        "height": 512,
+        "hasDataAfterPixelRead": true,
+        "decodedFloatCount": 1048576
+      },
+      {
+        "name": "lily_petal_roughness",
+        "width": 512,
+        "height": 512,
+        "hasDataAfterPixelRead": true,
+        "decodedFloatCount": 1048576
+      },
+      {
+        "name": "lily_stem_base",
+        "width": 128,
+        "height": 512,
+        "hasDataAfterPixelRead": true,
+        "decodedFloatCount": 262144
+      },
+      {
+        "name": "lily_stem_roughness",
+        "width": 128,
+        "height": 512,
+        "hasDataAfterPixelRead": true,
+        "decodedFloatCount": 262144
+      }
+    ],
+    "rootMaturationExtra": {
+      "schemaVersion": 1,
+      "clip": "Growth",
+      "durationSeconds": 9.0,
+      "colorSpace": "linear-sRGB",
+      "materialNames": [
+        "Petal_Outside",
+        "Petal_Pearl"
+      ]
+    }
+  },
+  "viewerEvidence": {
+    "webgl": {
+      "webgl2": true,
+      "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "renderer": "WebKit WebGL"
+    },
+    "animations": {
+      "durationsSeconds": {
+        "Growth": 9,
+        "IdleClosed": 8,
+        "TouchResponse": 2,
+        "Bloom": 8,
+        "IdleOpen": 8,
+        "DissolveReady": 1
+      },
+      "boundaryMaxDeltaMeters": {
+        "Growth→IdleClosed": 0,
+        "IdleClosed→TouchResponse": 0,
+        "TouchResponse→Bloom": 0,
+        "Bloom→IdleOpen": 0,
+        "IdleOpen→DissolveReady": 0
+      },
+      "idleLoopMaxDeltaMeters": {
+        "IdleClosed": 0,
+        "IdleOpen": 0,
+        "DissolveReady": 0
+      },
+      "sampledVertices": 11015,
+      "renderCalls": 8,
+      "renderedTriangles": 19188
+    },
+    "crossfadeTests": {
+      "durationSeconds": 0.25,
+      "phasesSeconds": [
+        2,
+        6
+      ],
+      "IdleClosed@2s→TouchResponse": {
+        "initialJumpMeters": 0,
+        "maxStepAt60HzMeters": 0.002131619093797963
+      },
+      "IdleClosed@6s→TouchResponse": {
+        "initialJumpMeters": 0,
+        "maxStepAt60HzMeters": 0.004973973453325975
+      },
+      "IdleOpen@2s→DissolveReady": {
+        "initialJumpMeters": 0,
+        "maxStepAt60HzMeters": 0.00047633619326854196
+      },
+      "IdleOpen@6s→DissolveReady": {
+        "initialJumpMeters": 0,
+        "maxStepAt60HzMeters": 0.0004220316246065372
+      }
+    },
+    "pageErrors": []
+  },
+  "growthBvhEvidence": {
+    "clip": "Growth",
+    "durationSeconds": 9.0,
+    "framesChecked": 217,
+    "intersectionEvents": 0,
+    "allowedRootContacts": 0,
+    "glbSha256": "c6fd5311e45f9586efc491ea6870cc6ae4123999fd954b1a9a607927841c0d24"
+  },
+  "poseBoundsEvidence": {
+    "coordinateSystem": "glTF Y-up (bounds converted from Blender Z-up import)",
+    "unit": "meter by Blender pipeline contract",
+    "assets": {
+      "baseline": {
+        "sha256": "8152f8094a30c3af6eee4ecbcb8e94bafb4c93536828ea1ea9d0f2f8349a143c",
+        "baseAccessorBounds": {
+          "pose": "base POSITION accessors; morph weights not evaluated",
+          "min": [
+            -0.25076024660115737,
+            -0.016592323780059814,
+            -0.259973357624246
+          ],
+          "max": [
+            0.40720887830117836,
+            0.8230000138282776,
+            0.22017261385917664
+          ],
+          "dimensions": [
+            0.6579691249023357,
+            0.8395923376083374,
+            0.48014597148342264
+          ]
+        },
+        "defaultWeightsBounds": {
+          "pose": "POSITION plus glTF node/mesh default weights; static node transforms",
+          "min": [
+            -0.25076024660115737,
+            -0.016592323780059814,
+            -0.259973357624246
+          ],
+          "max": [
+            0.40720887830117836,
+            0.8230000138282776,
+            0.22017261385917664
+          ],
+          "dimensions": [
+            0.6579691249023357,
+            0.8395923376083374,
+            0.48014597148342264
+          ]
+        },
+        "morphEnvelopeBounds": {
+          "pose": "conservative independent morph weights in [0,1]; static node transforms",
+          "min": [
+            -0.25627240538597107,
+            -0.8379999995231628,
+            -0.27051831036806107
+          ],
+          "max": [
+            0.40720887830117836,
+            0.8230000138282776,
+            0.26211321353912354
+          ],
+          "dimensions": [
+            0.6634812836871494,
+            1.6610000133514404,
+            0.5326315239071846
+          ]
+        },
+        "poses": {
+          "base": {
+            "min": [
+              -0.2507602870464325,
+              -0.016592323780059814,
+              -0.25997331738471985
+            ],
+            "max": [
+              0.4072088599205017,
+              0.8230000138282776,
+              0.22017261385917664
+            ],
+            "dimensions": [
+              0.6579691469669342,
+              0.8395923376083374,
+              0.4801459312438965
+            ],
+            "pose": "imported rest transforms and shape keys; actions/slots cleared and NLA muted"
+          },
+          "Growth@0s": {
+            "min": [
+              -0.00014872197061777115,
+              0.0,
+              -0.0002901945845223963
+            ],
+            "max": [
+              0.005366519093513489,
+              0.019544566050171852,
+              0.004494711756706238
+            ],
+            "dimensions": [
+              0.00551524106413126,
+              0.019544566050171852,
+              0.004784906341228634
+            ],
+            "clip": "Growth",
+            "absoluteSeconds": 0.0,
+            "durationSeconds": 16.0,
+            "frame": 1
+          },
+          "Growth@8s": {
+            "min": [
+              -0.24376477301120758,
+              0.0,
+              -0.2580203115940094
+            ],
+            "max": [
+              0.15582910180091858,
+              0.5474865436553955,
+              0.12010271847248077
+            ],
+            "dimensions": [
+              0.39959387481212616,
+              0.5474865436553955,
+              0.3781230300664902
+            ],
+            "clip": "Growth",
+            "absoluteSeconds": 8.0,
+            "durationSeconds": 16.0,
+            "frame": 193
+          },
+          "Growth@16s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.080425500869751,
+              0.2374950498342514
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.080425500869751,
+              0.49795524775981903
+            ],
+            "clip": "Growth",
+            "absoluteSeconds": 16.0,
+            "durationSeconds": 16.0,
+            "frame": 385
+          },
+          "IdleClosed@0s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.080425500869751,
+              0.2374950498342514
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.080425500869751,
+              0.49795524775981903
+            ],
+            "clip": "IdleClosed",
+            "absoluteSeconds": 0.0,
+            "durationSeconds": 8.0,
+            "frame": 1
+          },
+          "IdleClosed@4s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.080425500869751,
+              0.2374950498342514
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.080425500869751,
+              0.49795524775981903
+            ],
+            "clip": "IdleClosed",
+            "absoluteSeconds": 4.0,
+            "durationSeconds": 8.0,
+            "frame": 97
+          },
+          "IdleClosed@8s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.080425500869751,
+              0.2374950498342514
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.080425500869751,
+              0.49795524775981903
+            ],
+            "clip": "IdleClosed",
+            "absoluteSeconds": 8.0,
+            "durationSeconds": 8.0,
+            "frame": 193
+          },
+          "Bloom@0s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.080425500869751,
+              0.2374950498342514
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.080425500869751,
+              0.49795524775981903
+            ],
+            "clip": "Bloom",
+            "absoluteSeconds": 0.0,
+            "durationSeconds": 16.0,
+            "frame": 1
+          },
+          "Bloom@8s": {
+            "min": [
+              -0.2411453276872635,
+              0.0,
+              -0.2604615092277527
+            ],
+            "max": [
+              0.43219104409217834,
+              1.088257908821106,
+              0.27775508165359497
+            ],
+            "dimensions": [
+              0.6733363717794418,
+              1.088257908821106,
+              0.5382165908813477
+            ],
+            "clip": "Bloom",
+            "absoluteSeconds": 8.0,
+            "durationSeconds": 16.0,
+            "frame": 193
+          },
+          "Bloom@16s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556282043457
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158261299133
+            ],
+            "clip": "Bloom",
+            "absoluteSeconds": 16.0,
+            "durationSeconds": 16.0,
+            "frame": 385
+          },
+          "IdleOpen@0s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556282043457
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158261299133
+            ],
+            "clip": "IdleOpen",
+            "absoluteSeconds": 0.0,
+            "durationSeconds": 8.0,
+            "frame": 1
+          },
+          "IdleOpen@4s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556282043457
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158261299133
+            ],
+            "clip": "IdleOpen",
+            "absoluteSeconds": 4.0,
+            "durationSeconds": 8.0,
+            "frame": 97
+          },
+          "IdleOpen@8s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556282043457
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158261299133
+            ],
+            "clip": "IdleOpen",
+            "absoluteSeconds": 8.0,
+            "durationSeconds": 8.0,
+            "frame": 193
+          }
+        }
+      },
+      "geometry": {
+        "sha256": "6ba2d48d6ef3465fb7c82aae77f8c017450d8590c4e8c227c75ac1de01a22ecf",
+        "baseAccessorBounds": {
+          "pose": "base POSITION accessors; morph weights not evaluated",
+          "min": [
+            -0.24116102379953164,
+            0.0,
+            -0.26046024375302923
+          ],
+          "max": [
+            0.43209503566483154,
+            0.9857525120035181,
+            0.4001491814851761
+          ],
+          "dimensions": [
+            0.6732560594643632,
+            0.9857525120035181,
+            0.6606094252382053
+          ]
+        },
+        "defaultWeightsBounds": {
+          "pose": "POSITION plus glTF node/mesh default weights; static node transforms",
+          "min": [
+            -0.24116102379953164,
+            0.0,
+            -0.26046024375302923
+          ],
+          "max": [
+            0.43209503566483154,
+            0.9857525120035181,
+            0.4121556729078293
+          ],
+          "dimensions": [
+            0.6732560594643632,
+            0.9857525120035181,
+            0.6726159166608585
+          ]
+        },
+        "morphEnvelopeBounds": {
+          "pose": "conservative independent morph weights in [0,1]; static node transforms",
+          "min": [
+            -0.2881000339984894,
+            -0.8379999995231628,
+            -0.26046024375302923
+          ],
+          "max": [
+            0.4600098133087158,
+            1.3161611557006836,
+            0.5718465894460678
+          ],
+          "dimensions": [
+            0.7481098473072052,
+            2.1541611552238464,
+            0.832306833199097
+          ]
+        },
+        "poses": {
+          "base": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556878089905
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158857345581
+            ],
+            "pose": "imported rest transforms and shape keys; actions/slots cleared and NLA muted"
+          },
+          "Growth@0s": {
+            "min": [
+              -0.00014872197061777115,
+              0.0,
+              -0.00024339936499018222
+            ],
+            "max": [
+              0.005366519093513489,
+              0.018255013972520828,
+              0.004494711756706238
+            ],
+            "dimensions": [
+              0.00551524106413126,
+              0.018255013972520828,
+              0.00473811112169642
+            ],
+            "clip": "Growth",
+            "absoluteSeconds": 0.0,
+            "durationSeconds": 9.0,
+            "frame": 1
+          },
+          "Growth@4.5s": {
+            "min": [
+              -0.1483738124370575,
+              0.0,
+              -0.1591310352087021
+            ],
+            "max": [
+              0.057490814477205276,
+              0.4698846638202667,
+              0.11726950109004974
+            ],
+            "dimensions": [
+              0.20586462691426277,
+              0.4698846638202667,
+              0.27640053629875183
+            ],
+            "clip": "Growth",
+            "absoluteSeconds": 4.5,
+            "durationSeconds": 9.0,
+            "frame": 109
+          },
+          "Growth@9s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.0779999494552612,
+              0.24075987935066223
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.0779999494552612,
+              0.5012200772762299
+            ],
+            "clip": "Growth",
+            "absoluteSeconds": 9.0,
+            "durationSeconds": 9.0,
+            "frame": 217
+          },
+          "IdleClosed@0s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.0779999494552612,
+              0.24075987935066223
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.0779999494552612,
+              0.5012200772762299
+            ],
+            "clip": "IdleClosed",
+            "absoluteSeconds": 0.0,
+            "durationSeconds": 8.0,
+            "frame": 1
+          },
+          "IdleClosed@4s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.0779999494552612,
+              0.24075987935066223
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.0779999494552612,
+              0.5012200772762299
+            ],
+            "clip": "IdleClosed",
+            "absoluteSeconds": 4.0,
+            "durationSeconds": 8.0,
+            "frame": 97
+          },
+          "IdleClosed@8s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.0779999494552612,
+              0.24075987935066223
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.0779999494552612,
+              0.5012200772762299
+            ],
+            "clip": "IdleClosed",
+            "absoluteSeconds": 8.0,
+            "durationSeconds": 8.0,
+            "frame": 193
+          },
+          "Bloom@0s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.0779999494552612,
+              0.24075987935066223
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.0779999494552612,
+              0.5012200772762299
+            ],
+            "clip": "Bloom",
+            "absoluteSeconds": 0.0,
+            "durationSeconds": 8.0,
+            "frame": 1
+          },
+          "Bloom@4s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.43219104409217834,
+              1.138658881187439,
+              0.32895922660827637
+            ],
+            "dimensions": [
+              0.6733521223068237,
+              1.138658881187439,
+              0.589419424533844
+            ],
+            "clip": "Bloom",
+            "absoluteSeconds": 4.0,
+            "durationSeconds": 8.0,
+            "frame": 97
+          },
+          "Bloom@8s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556878089905
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158857345581
+            ],
+            "clip": "Bloom",
+            "absoluteSeconds": 8.0,
+            "durationSeconds": 8.0,
+            "frame": 193
+          },
+          "IdleOpen@0s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556878089905
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158857345581
+            ],
+            "clip": "IdleOpen",
+            "absoluteSeconds": 0.0,
+            "durationSeconds": 8.0,
+            "frame": 1
+          },
+          "IdleOpen@4s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556878089905
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158857345581
+            ],
+            "clip": "IdleOpen",
+            "absoluteSeconds": 4.0,
+            "durationSeconds": 8.0,
+            "frame": 97
+          },
+          "IdleOpen@8s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556878089905
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158857345581
+            ],
+            "clip": "IdleOpen",
+            "absoluteSeconds": 8.0,
+            "durationSeconds": 8.0,
+            "frame": 193
+          }
+        }
+      },
+      "final": {
+        "sha256": "c6fd5311e45f9586efc491ea6870cc6ae4123999fd954b1a9a607927841c0d24",
+        "baseAccessorBounds": {
+          "pose": "base POSITION accessors; morph weights not evaluated",
+          "min": [
+            -0.24116102379953164,
+            0.0,
+            -0.26046024375302923
+          ],
+          "max": [
+            0.43209503566483154,
+            0.9857525120035181,
+            0.4001491814851761
+          ],
+          "dimensions": [
+            0.6732560594643632,
+            0.9857525120035181,
+            0.6606094252382053
+          ]
+        },
+        "defaultWeightsBounds": {
+          "pose": "POSITION plus glTF node/mesh default weights; static node transforms",
+          "min": [
+            -0.24116102379953164,
+            0.0,
+            -0.26046024375302923
+          ],
+          "max": [
+            0.43209503566483154,
+            0.9857525120035181,
+            0.4121556729078293
+          ],
+          "dimensions": [
+            0.6732560594643632,
+            0.9857525120035181,
+            0.6726159166608585
+          ]
+        },
+        "morphEnvelopeBounds": {
+          "pose": "conservative independent morph weights in [0,1]; static node transforms",
+          "min": [
+            -0.2881000339984894,
+            -0.8379999995231628,
+            -0.26046024375302923
+          ],
+          "max": [
+            0.4600098133087158,
+            1.3161611557006836,
+            0.5718465894460678
+          ],
+          "dimensions": [
+            0.7481098473072052,
+            2.1541611552238464,
+            0.832306833199097
+          ]
+        },
+        "poses": {
+          "base": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556878089905
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158857345581
+            ],
+            "pose": "imported rest transforms and shape keys; actions/slots cleared and NLA muted"
+          },
+          "Growth@0s": {
+            "min": [
+              -0.00014872197061777115,
+              0.0,
+              -0.00024339936499018222
+            ],
+            "max": [
+              0.005366519093513489,
+              0.018255013972520828,
+              0.004494711756706238
+            ],
+            "dimensions": [
+              0.00551524106413126,
+              0.018255013972520828,
+              0.00473811112169642
+            ],
+            "clip": "Growth",
+            "absoluteSeconds": 0.0,
+            "durationSeconds": 9.0,
+            "frame": 1
+          },
+          "Growth@4.5s": {
+            "min": [
+              -0.1483738124370575,
+              0.0,
+              -0.1591310352087021
+            ],
+            "max": [
+              0.057490814477205276,
+              0.4698846638202667,
+              0.11726950109004974
+            ],
+            "dimensions": [
+              0.20586462691426277,
+              0.4698846638202667,
+              0.27640053629875183
+            ],
+            "clip": "Growth",
+            "absoluteSeconds": 4.5,
+            "durationSeconds": 9.0,
+            "frame": 109
+          },
+          "Growth@9s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.0779999494552612,
+              0.24075987935066223
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.0779999494552612,
+              0.5012200772762299
+            ],
+            "clip": "Growth",
+            "absoluteSeconds": 9.0,
+            "durationSeconds": 9.0,
+            "frame": 217
+          },
+          "IdleClosed@0s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.0779999494552612,
+              0.24075987935066223
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.0779999494552612,
+              0.5012200772762299
+            ],
+            "clip": "IdleClosed",
+            "absoluteSeconds": 0.0,
+            "durationSeconds": 8.0,
+            "frame": 1
+          },
+          "IdleClosed@4s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.0779999494552612,
+              0.24075987935066223
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.0779999494552612,
+              0.5012200772762299
+            ],
+            "clip": "IdleClosed",
+            "absoluteSeconds": 4.0,
+            "durationSeconds": 8.0,
+            "frame": 97
+          },
+          "IdleClosed@8s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.0779999494552612,
+              0.24075987935066223
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.0779999494552612,
+              0.5012200772762299
+            ],
+            "clip": "IdleClosed",
+            "absoluteSeconds": 8.0,
+            "durationSeconds": 8.0,
+            "frame": 193
+          },
+          "Bloom@0s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              1.0779999494552612,
+              0.24075987935066223
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              1.0779999494552612,
+              0.5012200772762299
+            ],
+            "clip": "Bloom",
+            "absoluteSeconds": 0.0,
+            "durationSeconds": 8.0,
+            "frame": 1
+          },
+          "Bloom@4s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.43219104409217834,
+              1.138658881187439,
+              0.32895922660827637
+            ],
+            "dimensions": [
+              0.6733521223068237,
+              1.138658881187439,
+              0.589419424533844
+            ],
+            "clip": "Bloom",
+            "absoluteSeconds": 4.0,
+            "durationSeconds": 8.0,
+            "frame": 97
+          },
+          "Bloom@8s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556878089905
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158857345581
+            ],
+            "clip": "Bloom",
+            "absoluteSeconds": 8.0,
+            "durationSeconds": 8.0,
+            "frame": 193
+          },
+          "IdleOpen@0s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556878089905
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158857345581
+            ],
+            "clip": "IdleOpen",
+            "absoluteSeconds": 0.0,
+            "durationSeconds": 8.0,
+            "frame": 1
+          },
+          "IdleOpen@4s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556878089905
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158857345581
+            ],
+            "clip": "IdleOpen",
+            "absoluteSeconds": 4.0,
+            "durationSeconds": 8.0,
+            "frame": 97
+          },
+          "IdleOpen@8s": {
+            "min": [
+              -0.24116107821464539,
+              0.0,
+              -0.2604601979255676
+            ],
+            "max": [
+              0.4320950210094452,
+              0.985752522945404,
+              0.4121556878089905
+            ],
+            "dimensions": [
+              0.6732560992240906,
+              0.985752522945404,
+              0.6726158857345581
+            ],
+            "clip": "IdleOpen",
+            "absoluteSeconds": 8.0,
+            "durationSeconds": 8.0,
+            "frame": 193
+          }
+        }
+      }
+    },
+    "geometryStageBoundsPreservedByMaterials": true
+  },
+  "renderEvidence": {
+    "renderer": "BLENDER_EEVEE",
+    "resolution": [
+      720,
+      900
+    ],
+    "camera": {
+      "position": [
+        1.7550000000000001,
+        -3.0250000000000004,
+        2.178
+      ],
+      "target": [
+        0.0,
+        -0.1,
+        0.54
+      ],
+      "sourceCoordinates": "stock viewer glTF Y-up",
+      "projection": "orthographic",
+      "orthoScale": 1.25,
+      "elevationDegrees": 25.65,
+      "distanceScale": 1.3
+    },
+    "lighting": "same temporary camera/world/area lights for both GLBs",
+    "checkpoints": [
+      {
+        "clip": "Growth",
+        "label": "end",
+        "beforeSeconds": 16.0,
+        "afterSeconds": 9.0,
+        "before": {
+          "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\growth_end_before.png",
+          "bytes": 600364,
+          "sha256": "af0f0e051e5345083a14c6ac02bd2f44d25fadefa61f935ef78b0b6655558d78"
+        },
+        "after": {
+          "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\growth_end_after.png",
+          "bytes": 599247,
+          "sha256": "4657c980d6d461b17f63786376f3e3e8d3ea96d586c7e64111d50ac375321769"
+        }
+      },
+      {
+        "clip": "Bloom",
+        "label": "start",
+        "beforeSeconds": 0.0,
+        "afterSeconds": 0.0,
+        "before": {
+          "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_start_before.png",
+          "bytes": 600368,
+          "sha256": "efc4c34258b572ff7dab130eeaf6265c3377528dab23ebb4dc79fd0bf069c676"
+        },
+        "after": {
+          "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_start_after.png",
+          "bytes": 599238,
+          "sha256": "c5b534e322025f7823dbed91d0978022a46341fb049d0f2d366a41ff0c5a6540"
+        }
+      },
+      {
+        "clip": "Bloom",
+        "label": "mid",
+        "beforeSeconds": 8.0,
+        "afterSeconds": 4.0,
+        "before": {
+          "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_mid_before.png",
+          "bytes": 609160,
+          "sha256": "13f00fceec80cdb4b90bb00e5acaabc186ef887905348d9287677311be9a4a40"
+        },
+        "after": {
+          "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_mid_after.png",
+          "bytes": 621950,
+          "sha256": "d8a189b08c5f08e4dde9125fec44fa5a196d67677450647165f44c7403575e9d"
+        }
+      },
+      {
+        "clip": "Bloom",
+        "label": "end",
+        "beforeSeconds": 16.0,
+        "afterSeconds": 8.0,
+        "before": {
+          "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_end_before.png",
+          "bytes": 617070,
+          "sha256": "d059da37d7d1aef67438525ff38163ba5f29a63e7000f1a29226fb27bf80598f"
+        },
+        "after": {
+          "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_end_after.png",
+          "bytes": 619579,
+          "sha256": "2258caac93fdda290cefe787a63294ce59d2e184cbc899de895564c4b83a7cc7"
+        }
+      }
+    ],
+    "colorMetadata": {
+      "contract": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\export\\bud_maturation.json",
+      "schemaVersion": 1,
+      "sampling": {
+        "mode": "absolute-clip-time",
+        "interpolation": "piecewise-linear",
+        "formula": "factor(t)=lerp(k[i].linearSrgbFactor,k[i+1].linearSrgbFactor,(clamp(t,0,9)-t[i])/(t[i+1]-t[i])); interpolate each RGB channel independently",
+        "endpointClamping": true,
+        "nonGrowth": "mature",
+        "crossfade": {
+          "durationSeconds": 0.25,
+          "space": "linear-sRGB",
+          "formula": "lerp(sourceFactor,targetFactor,clamp(transitionElapsedSeconds/0.25,0,1))",
+          "sourceAndTarget": "sample each clip at its absolute clip time; non-Growth clips use their mature factor",
+          "reverseScrub": "recompute from source/target absolute clip times and transition elapsed time; do not accumulate frame deltas"
+        }
+      },
+      "plainGLTFLoaderDefault": "mature material; the viewer does not consume this metadata",
+      "samples": [
+        {
+          "label": "young",
+          "clip": "Growth",
+          "absoluteSeconds": 0.0,
+          "metadataSampling": "absolute clip time; piecewise-linear in linear-sRGB",
+          "materialFactors": {
+            "Petal_Pearl": [
+              0.2,
+              0.47,
+              0.2
+            ],
+            "Petal_Outside": [
+              0.2,
+              0.47,
+              0.2
+            ]
+          },
+          "geometryPose": "same final GLB; Growth end pose held fixed for a color-only metadata comparison",
+          "geometryPoseSeconds": 9.0,
+          "image": {
+            "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\growth_young_metadata.png",
+            "bytes": 600992,
+            "sha256": "a1343700cec41fa86903648d260917d8eb1ea11b771f26ca218caccb70ab540a"
+          }
+        },
+        {
+          "label": "mature",
+          "clip": "Growth",
+          "absoluteSeconds": 9.0,
+          "metadataSampling": "absolute clip time; piecewise-linear in linear-sRGB",
+          "materialFactors": {
+            "Petal_Pearl": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "Petal_Outside": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "geometryPose": "same final GLB; Growth end pose held fixed for a color-only metadata comparison",
+          "geometryPoseSeconds": 9.0,
+          "image": {
+            "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\growth_mature_metadata.png",
+            "bytes": 599238,
+            "sha256": "4cbd7bbf8ca7a316df515f931467074dbf4d8ad4981a5e8176d30aff76445b6f"
+          }
+        }
+      ]
+    },
+    "contactSheet": {
+      "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\comparison_sheet.png",
+      "bytes": 982051,
+      "sha256": "34b72558af98161e19a6409724020b7f5668510a644734c0f870f155282e2c8e",
+      "resolution": [
+        720,
+        2250
+      ],
+      "layout": "rows 1-4: BEFORE/AFTER checkpoints; row 5: young/mature metadata pair"
+    },
+    "verifiedImages": [
+      {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\growth_end_before.png",
+        "bytes": 600364,
+        "sha256": "af0f0e051e5345083a14c6ac02bd2f44d25fadefa61f935ef78b0b6655558d78"
+      },
+      {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\growth_end_after.png",
+        "bytes": 599247,
+        "sha256": "4657c980d6d461b17f63786376f3e3e8d3ea96d586c7e64111d50ac375321769"
+      },
+      {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_start_before.png",
+        "bytes": 600368,
+        "sha256": "efc4c34258b572ff7dab130eeaf6265c3377528dab23ebb4dc79fd0bf069c676"
+      },
+      {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_start_after.png",
+        "bytes": 599238,
+        "sha256": "c5b534e322025f7823dbed91d0978022a46341fb049d0f2d366a41ff0c5a6540"
+      },
+      {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_mid_before.png",
+        "bytes": 609160,
+        "sha256": "13f00fceec80cdb4b90bb00e5acaabc186ef887905348d9287677311be9a4a40"
+      },
+      {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_mid_after.png",
+        "bytes": 621950,
+        "sha256": "d8a189b08c5f08e4dde9125fec44fa5a196d67677450647165f44c7403575e9d"
+      },
+      {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_end_before.png",
+        "bytes": 617070,
+        "sha256": "d059da37d7d1aef67438525ff38163ba5f29a63e7000f1a29226fb27bf80598f"
+      },
+      {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\bloom_end_after.png",
+        "bytes": 619579,
+        "sha256": "2258caac93fdda290cefe787a63294ce59d2e184cbc899de895564c4b83a7cc7"
+      },
+      {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\growth_young_metadata.png",
+        "bytes": 600992,
+        "sha256": "a1343700cec41fa86903648d260917d8eb1ea11b771f26ca218caccb70ab540a"
+      },
+      {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\growth_mature_metadata.png",
+        "bytes": 599238,
+        "sha256": "4cbd7bbf8ca7a316df515f931467074dbf4d8ad4981a5e8176d30aff76445b6f"
+      },
+      {
+        "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\screenshots\\comparison\\comparison_sheet.png",
+        "bytes": 982051,
+        "sha256": "34b72558af98161e19a6409724020b7f5668510a644734c0f870f155282e2c8e"
+      }
+    ]
+  },
+  "maturationContract": {
+    "schemaVersion": 1,
+    "clip": "Growth",
+    "durationSeconds": 9.0,
+    "colorSpace": "linear-sRGB",
+    "sampling": {
+      "mode": "absolute-clip-time",
+      "interpolation": "piecewise-linear",
+      "formula": "factor(t)=lerp(k[i].linearSrgbFactor,k[i+1].linearSrgbFactor,(clamp(t,0,9)-t[i])/(t[i+1]-t[i])); interpolate each RGB channel independently",
+      "endpointClamping": true,
+      "nonGrowth": "mature",
+      "crossfade": {
+        "durationSeconds": 0.25,
+        "space": "linear-sRGB",
+        "formula": "lerp(sourceFactor,targetFactor,clamp(transitionElapsedSeconds/0.25,0,1))",
+        "sourceAndTarget": "sample each clip at its absolute clip time; non-Growth clips use their mature factor",
+        "reverseScrub": "recompute from source/target absolute clip times and transition elapsed time; do not accumulate frame deltas"
+      }
+    },
+    "materialFactors": [
+      {
+        "material": "Petal_Pearl",
+        "target": "pbrMetallicRoughness.baseColorFactor.rgb",
+        "keyframes": [
+          {
+            "timeSeconds": 0.0,
+            "linearSrgbFactor": [
+              0.2,
+              0.47,
+              0.2
+            ]
+          },
+          {
+            "timeSeconds": 4.5,
+            "linearSrgbFactor": [
+              0.38,
+              0.59,
+              0.31
+            ]
+          },
+          {
+            "timeSeconds": 6.75,
+            "linearSrgbFactor": [
+              0.83,
+              0.79,
+              0.7
+            ]
+          },
+          {
+            "timeSeconds": 9.0,
+            "linearSrgbFactor": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      },
+      {
+        "material": "Petal_Outside",
+        "target": "pbrMetallicRoughness.baseColorFactor.rgb",
+        "keyframes": [
+          {
+            "timeSeconds": 0.0,
+            "linearSrgbFactor": [
+              0.2,
+              0.47,
+              0.2
+            ]
+          },
+          {
+            "timeSeconds": 4.5,
+            "linearSrgbFactor": [
+              0.38,
+              0.59,
+              0.31
+            ]
+          },
+          {
+            "timeSeconds": 6.75,
+            "linearSrgbFactor": [
+              0.82,
+              0.8,
+              0.74
+            ]
+          },
+          {
+            "timeSeconds": 9.0,
+            "linearSrgbFactor": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "knownLimitations": [
+    "Physical iPad/Safari behavior and performance were not tested.",
+    "Plain GLTFLoader consumers show the mature baked material; Growth coloration requires sampling bud_maturation.json by absolute clip time."
+  ],
+  "failures": []
+}

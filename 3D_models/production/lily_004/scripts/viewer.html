@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080a16">
+  <link rel="icon" href="data:,">
+  <title>Lily 004 — финальный контроль</title>
+  <style>
+    :root { color-scheme: dark; font: 14px/1.45 system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #080a16; color: #f7f0ed; }
+    canvas { display: block; width: 100%; height: 100%; }
+    aside {
+      position: absolute; z-index: 1; top: 16px; left: 16px;
+      width: min(360px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto;
+      padding: 18px; background: linear-gradient(145deg, #111a30f2, #0d1224ed);
+      border: 1px solid #d5c1c633; border-radius: 12px; box-shadow: 0 18px 60px #0007;
+      backdrop-filter: blur(16px);
+    }
+    h1 { margin: 0 0 4px; font-size: 20px; line-height: 1.2; letter-spacing: .01em; }
+    .subtitle { margin: 0 0 14px; color: #c7c7d6; font-size: 14px; }
+    .eyebrow { color: #dcafc2; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+    label { display: block; margin-top: 13px; }
+    select, button, input { font: inherit; }
+    select, button { min-height: 36px; padding: 7px 10px; border: 1px solid #8590a8; border-radius: 6px; }
+    select { width: 100%; margin-top: 5px; background: #151d32; color: inherit; }
+    button { background: #1a243c; color: inherit; cursor: pointer; transition: background .15s, border-color .15s; }
+    button:hover:not(:disabled) { background: #28334d; border-color: #e0c7d0; }
+    button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid #e3b5c8; outline-offset: 2px; }
+    button:disabled, select:disabled, input:disabled { cursor: not-allowed; opacity: .48; }
+    .variants, .transport { display: flex; gap: 7px; margin-top: 8px; }
+    .variants button { flex: 1; background: #171f35; }
+    .variants button[aria-pressed="true"] { background: #d9adbf; border-color: #f4dce5; color: #18111a; }
+    .transport button { flex: 1; padding-inline: 7px; }
+    .transport .primary { background: #e0b8c7; border-color: #f6dce6; color: #1c151a; }
+    input[type=range] { display: block; width: 100%; margin: 6px 0 0; accent-color: #ddb5c6; }
+    .time-line { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; color: #d3cede; font-variant-numeric: tabular-nums; }
+    #time-label { color: #f3dbe3; }
+    #status { min-height: 2.8em; margin: 14px 0 0; color: #c7c7d6; font-size: 14px; white-space: pre-wrap; }
+    #status[data-state="error"] { color: #ffb2a9; }
+    #status[data-state="ready"] { color: #c1d8cc; }
+    .hint { margin: 12px 0 0; color: #aeb4c8; font-size: 11px; }
+    @media (max-width: 600px) {
+      aside { top: 8px; left: 8px; width: min(340px, calc(100vw - 16px)); max-height: min(70dvh, 600px); padding: 14px; }
+      h1 { font-size: 18px; }
+    }
+    @media (max-width: 380px) {
+      .transport { flex-wrap: wrap; }
+      .transport #play { flex-basis: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+  </style>
+  <script type="importmap">{"imports":{"three":"/frontend/node_modules/three/build/three.module.js","three/addons/":"/frontend/node_modules/three/examples/jsm/"}}</script>
+</head>
+<body>
+  <aside aria-label="Управление тестовой моделью лилии">
+    <div class="eyebrow">Lily 004 · Asset Review</div>
+    <h1>Финальная проверка модели</h1>
+    <p class="subtitle">Сравнение появления тычинок при одинаковой камере и времени клипа.</p>
+
+    <div class="eyebrow" id="variant-label">Модель</div>
+    <div class="variants" role="group" aria-labelledby="variant-label">
+      <button id="original-variant" type="button" aria-pressed="true">Предыдущая</button>
+      <button id="final-variant" type="button" aria-pressed="false" disabled>Новая</button>
+    </div>
+
+    <label for="clip">Анимация</label>
+    <select id="clip" disabled></select>
+
+    <div class="transport" aria-label="Управление воспроизведением">
+      <button id="play" class="primary" type="button" disabled>Пуск / продолжить</button>
+      <button id="pause" type="button" disabled>Пауза</button>
+      <button id="restart" type="button" disabled>Сначала</button>
+    </div>
+
+    <label for="time">
+      <span class="time-line"><span>Позиция клипа</span><span><span id="time-label">0.00</span> / <span id="duration-label">0.00</span> с</span></span>
+      <input id="time" type="range" min="0" max="1" step="0.001" value="0" disabled aria-label="Перемотка клипа">
+    </label>
+
+    <p id="status" role="status" aria-live="polite">Загружаю исходную модель…</p>
+    <p class="hint">Для сравнения выбирайте одинаковый клип и время. Переключение модели не сбрасывает Timeline и камеру.</p>
+  </aside>
+  <script type="module" src="./viewer.js"></script>
+</body>
+</html>

@@ -1,5 +1,4 @@
 import { ramp, smooth } from './progress'
-import { nameSparkPosition } from './identityName'
 
 /** Only 04.5 owns this treatment. Match the existing endpoints exactly. */
 export function portraitPresence(time: number) {
@@ -24,15 +23,6 @@ export function portraitTone(light: number, contrast: number) {
 
 export function portraitMotion(time: number, reduced = false) {
   return reduced ? 0 : 1 - smooth(ramp(time, [18, 21.3]))
-}
-
-export function portraitSpark(time: number, scale = 1, motion = true): [number, number, number] {
-  const base = nameSparkPosition(time, scale, motion)
-  const weight = portraitPresence(time)
-  if (!weight) return base
-  // Left of the entire 2.795-wide portrait, including its wisps; no eye crossing.
-  const target = [-1.64 - Math.sin((time - 17) * .5) * .06, -.22 + Math.sin(time * .4) * .22, .12]
-  return base.map((value, i) => value + (target[i]! - value) * weight) as [number, number, number]
 }
 
 export const portraitPointsVertex = `

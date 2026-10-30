@@ -1,4 +1,4 @@
-import { TIMING } from '../../engine/filmConfig'
+import { getGrowthSceneFrames } from '../../engine/filmConfig'
 import type { CameraPose } from '../shared/galleryMotion'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, type SceneComposerConfig } from '../../systems/scene-config/config'
 
@@ -20,24 +20,7 @@ export interface GrowthFrames {
 
 /** Formation edits remain inside scene 02 and the fall always waits for completion. */
 export function getGrowthFrames(settings: GrowthSettings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth): GrowthFrames {
-  const duration = TIMING.growth.duration
-  const round = (value: number) => Number(value.toFixed(2))
-  const formationEnd = round(Math.min(3.5, Math.max(2.5, settings.formationDuration)))
-  const fallEnd = round(formationEnd + 1.2)
-  const landingEnd = round(fallEnd + 0.5)
-  const handoffEnd = round(fallEnd + 1.45)
-  const sproutEnd = 14.2
-  return {
-    duration,
-    formation: [0, formationEnd],
-    fall: [formationEnd, fallEnd],
-    landing: [fallEnd, landingEnd],
-    moonlight: [round(fallEnd + 0.5), round(fallEnd + 2)],
-    handoff: [round(fallEnd + 0.7), handoffEnd],
-    sprout: [handoffEnd, sproutEnd],
-    stem: [sproutEnd - 4.2, sproutEnd],
-    settle: [sproutEnd, duration],
-  }
+  return getGrowthSceneFrames(settings)
 }
 
 export function getSeedParticleCount(deviceQuality: 'standard' | 'low', quality: GrowthSettings['particleQuality']): number {
@@ -128,7 +111,7 @@ export function getGrowthCameraPose(time: number, reducedMotion: boolean, settin
   const follow = reducedMotion ? 0 : progress(time, [frames.fall[0] + 0.32, frames.landing[1]])
   const settle = reducedMotion ? 0 : progress(time, [frames.handoff[1], frames.duration])
   return {
-    x: 0, y: -0.42 * follow * (1 - settle) + 0.2 * settle, z: 5.6,
+    x: 0, y: -0.42 * follow * (1 - settle) + 0.2 * settle, z: 5.6 + 0.6 * settle,
     tx: 0, ty: -0.42 * follow * (1 - settle) + 0.1 * settle, tz: 0,
   }
 }
