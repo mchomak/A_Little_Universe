@@ -1,0 +1,638 @@
+{
+  "test": "Three.js GLTFLoader scene/animation verification through existing Lily test page",
+  "date": "2026-10-30T10:49:56.408Z",
+  "positionToleranceMeters": 0.0001,
+  "passed": true,
+  "animations": {
+    "original": {
+      "Growth": 16,
+      "IdleClosed": 8,
+      "TouchResponse": 2,
+      "Bloom": 16,
+      "IdleOpen": 8,
+      "DissolveReady": 1
+    },
+    "final": {
+      "Growth": 16,
+      "IdleClosed": 8,
+      "TouchResponse": 2,
+      "Bloom": 16,
+      "IdleOpen": 8,
+      "DissolveReady": 1
+    }
+  },
+  "samples": [
+    {
+      "clip": "Growth",
+      "fraction": 0,
+      "originalSeconds": 0,
+      "finalSeconds": 0,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.3283064365386963e-10,
+        "rmsWorldVertexDistance": 3.84245256960826e-12,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "Growth",
+      "fraction": 0.5,
+      "originalSeconds": 8,
+      "finalSeconds": 8,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 1.4901161193847656e-8,
+        "rmsWorldVertexDistance": 4.99302033266523e-10,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "Growth",
+      "fraction": 1,
+      "originalSeconds": 16,
+      "finalSeconds": 16,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "IdleClosed",
+      "fraction": 0,
+      "originalSeconds": 0,
+      "finalSeconds": 0,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "IdleClosed",
+      "fraction": 0.5,
+      "originalSeconds": 4,
+      "finalSeconds": 4,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "IdleClosed",
+      "fraction": 1,
+      "originalSeconds": 8,
+      "finalSeconds": 8,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "TouchResponse",
+      "fraction": 0,
+      "originalSeconds": 0,
+      "finalSeconds": 0,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "TouchResponse",
+      "fraction": 0.5,
+      "originalSeconds": 1,
+      "finalSeconds": 1,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 1.2013700229374393e-7,
+        "rmsWorldVertexDistance": 3.082460571806325e-8,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "TouchResponse",
+      "fraction": 1,
+      "originalSeconds": 2,
+      "finalSeconds": 2,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "Bloom",
+      "fraction": 0,
+      "originalSeconds": 0,
+      "finalSeconds": 0,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "Bloom",
+      "fraction": 0.25,
+      "originalSeconds": 4,
+      "finalSeconds": 4,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 0.00004369023765498314,
+        "rmsWorldVertexDistance": 0.0000060351599159576536,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "Bloom",
+      "fraction": 0.5,
+      "originalSeconds": 8,
+      "finalSeconds": 8,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 0.00001854463729185093,
+        "rmsWorldVertexDistance": 0.000002562040085286216,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "Bloom",
+      "fraction": 0.75,
+      "originalSeconds": 12,
+      "finalSeconds": 12,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 0.00002583400697355112,
+        "rmsWorldVertexDistance": 0.000003565773905623786,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "Bloom",
+      "fraction": 1,
+      "originalSeconds": 16,
+      "finalSeconds": 16,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "IdleOpen",
+      "fraction": 0,
+      "originalSeconds": 0,
+      "finalSeconds": 0,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "IdleOpen",
+      "fraction": 0.5,
+      "originalSeconds": 4,
+      "finalSeconds": 4,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "IdleOpen",
+      "fraction": 1,
+      "originalSeconds": 8,
+      "finalSeconds": 8,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "DissolveReady",
+      "fraction": 0,
+      "originalSeconds": 0,
+      "finalSeconds": 0,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "DissolveReady",
+      "fraction": 0.5,
+      "originalSeconds": 0.5,
+      "finalSeconds": 0.5,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    },
+    {
+      "clip": "DissolveReady",
+      "fraction": 1,
+      "originalSeconds": 1,
+      "finalSeconds": 1,
+      "comparison": {
+        "meshCount": 8,
+        "vertexCount": 11015,
+        "maxWorldVertexDistance": 2.9802322387695312e-8,
+        "rmsWorldVertexDistance": 1.080560699549119e-9,
+        "structuralDifferences": [],
+        "issues": []
+      }
+    }
+  ],
+  "clipSeams": [
+    {
+      "from": "Growth@1",
+      "to": "IdleClosed@0",
+      "results": {
+        "original": {
+          "meshCount": 8,
+          "vertexCount": 11015,
+          "maxWorldVertexDistance": 0,
+          "rmsWorldVertexDistance": 0,
+          "structuralDifferences": [],
+          "issues": []
+        },
+        "final": {
+          "meshCount": 8,
+          "vertexCount": 11015,
+          "maxWorldVertexDistance": 0,
+          "rmsWorldVertexDistance": 0,
+          "structuralDifferences": [],
+          "issues": []
+        }
+      }
+    },
+    {
+      "from": "IdleClosed@1",
+      "to": "IdleClosed@0",
+      "results": {
+        "original": {
+          "meshCount": 8,
+          "vertexCount": 11015,
+          "maxWorldVertexDistance": 0,
+          "rmsWorldVertexDistance": 0,
+          "structuralDifferences": [],
+          "issues": []
+        },
+        "final": {
+          "meshCount": 8,
+          "vertexCount": 11015,
+          "maxWorldVertexDistance": 0,
+          "rmsWorldVertexDistance": 0,
+          "structuralDifferences": [],
+          "issues": []
+        }
+      }
+    },
+    {
+      "from": "IdleClosed@1",
+      "to": "TouchResponse@0",
+      "results": {
+        "original": {
+          "meshCount": 8,
+          "vertexCount": 11015,
+          "maxWorldVertexDistance": 0,
+          "rmsWorldVertexDistance": 0,
+          "structuralDifferences": [],
+          "issues": []
+        },
+        "final": {
+          "meshCount": 8,
+          "vertexCount": 11015,
+          "maxWorldVertexDistance": 0,
+          "rmsWorldVertexDistance": 0,
+          "structuralDifferences": [],
+          "issues": []
+        }
+      }
+    },
+    {
+      "from": "TouchResponse@1",
+      "to": "Bloom@0",
+      "results": {
+        "original": {
+          "meshCount": 8,
+          "vertexCount": 11015,
+          "maxWorldVertexDistance": 0,
+          "rmsWorldVertexDistance": 0,
+          "structuralDifferences": [],
+          "issues": []
+        },
+        "final": {
+          "meshCount": 8,
+          "vertexCount": 11015,
+          "maxWorldVertexDistance": 0,
+          "rmsWorldVertexDistance": 0,
+          "structuralDifferences": [],
+          "issues": []
+        }
+      }
+    },
+    {
+      "from": "Bloom@1",
+      "to": "IdleOpen@0",
+      "results": {
+        "original": {
+          "meshCount": 8,
+          "vertexCount": 11015,
+          "maxWorldVertexDistance": 0,
+          "rmsWorldVertexDistance": 0,
+          "structuralDifferences": [],
+          "issues": []
+        },
+        "final": {
+          "meshCount": 8,
+          "vertexCount": 11015,
+          "maxWorldVertexDistance": 0,
+          "rmsWorldVertexDistance": 0,
+          "structuralDifferences": [],
+          "issues": []
+        }
+      }
+    },
+    {
+      "from": "IdleOpen@1",
+      "to": "DissolveReady@0",
+      "results": {
+        "original": {
+          "meshCount": 8,
+          "vertexCount": 11015,
+          "maxWorldVertexDistance": 0,
+          "rmsWorldVertexDistance": 0,
+          "structuralDifferences": [],
+          "issues": []
+        },
+        "final": {
+          "meshCount": 8,
+          "vertexCount": 11015,
+          "maxWorldVertexDistance": 0,
+          "rmsWorldVertexDistance": 0,
+          "structuralDifferences": [],
+          "issues": []
+        }
+      }
+    }
+  ],
+  "materialSummary": {
+    "original": [
+      {
+        "mesh": "Calyx",
+        "material": "Stem_SoftGreen",
+        "color": "5a8261",
+        "metalness": 0,
+        "roughness": 0.5,
+        "baseColorTexture": null,
+        "roughnessTexture": null
+      },
+      {
+        "mesh": "Cube003",
+        "material": "Anther_SoftGold",
+        "color": "d2ae69",
+        "metalness": 0.11999999731779099,
+        "roughness": 0.4000000059604645,
+        "baseColorTexture": null,
+        "roughnessTexture": null
+      },
+      {
+        "mesh": "Cube003_1",
+        "material": "Filament_Ivory",
+        "color": "f6e2d0",
+        "metalness": 0,
+        "roughness": 0.47999998927116394,
+        "baseColorTexture": null,
+        "roughnessTexture": null
+      },
+      {
+        "mesh": "Petals",
+        "material": "Petal_Pearl",
+        "color": "ffffff",
+        "metalness": 0,
+        "roughness": 0.4000000059604645,
+        "baseColorTexture": {
+          "width": 512,
+          "height": 512
+        },
+        "roughnessTexture": null
+      },
+      {
+        "mesh": "Petals_Outside",
+        "material": "Petal_Outside",
+        "color": "ffffff",
+        "metalness": 0,
+        "roughness": 0.4000000059604645,
+        "baseColorTexture": {
+          "width": 512,
+          "height": 512
+        },
+        "roughnessTexture": null
+      },
+      {
+        "mesh": "Leaf_A",
+        "material": "Leaf_SoftGreen",
+        "color": "ffffff",
+        "metalness": 0,
+        "roughness": 0.5199999809265137,
+        "baseColorTexture": {
+          "width": 256,
+          "height": 512
+        },
+        "roughnessTexture": null
+      },
+      {
+        "mesh": "Leaf_B",
+        "material": "Leaf_SoftGreen",
+        "color": "ffffff",
+        "metalness": 0,
+        "roughness": 0.5199999809265137,
+        "baseColorTexture": {
+          "width": 256,
+          "height": 512
+        },
+        "roughnessTexture": null
+      },
+      {
+        "mesh": "Stem",
+        "material": "Stem_SoftGreen",
+        "color": "5a8261",
+        "metalness": 0,
+        "roughness": 0.5,
+        "baseColorTexture": null,
+        "roughnessTexture": null
+      }
+    ],
+    "final": [
+      {
+        "mesh": "Calyx",
+        "material": "Stem_SoftGreen",
+        "color": "ffffff",
+        "metalness": 0,
+        "roughness": 1,
+        "baseColorTexture": {
+          "width": 128,
+          "height": 512
+        },
+        "roughnessTexture": {
+          "width": 128,
+          "height": 512
+        }
+      },
+      {
+        "mesh": "Cube003",
+        "material": "Anther_SoftGold",
+        "color": "cca24c",
+        "metalness": 0,
+        "roughness": 0.4399999976158142,
+        "baseColorTexture": null,
+        "roughnessTexture": null
+      },
+      {
+        "mesh": "Cube003_1",
+        "material": "Filament_Ivory",
+        "color": "efdfc7",
+        "metalness": 0,
+        "roughness": 0.5199999809265137,
+        "baseColorTexture": null,
+        "roughnessTexture": null
+      },
+      {
+        "mesh": "Petals",
+        "material": "Petal_Pearl",
+        "color": "ffffff",
+        "metalness": 0,
+        "roughness": 1,
+        "baseColorTexture": {
+          "width": 512,
+          "height": 512
+        },
+        "roughnessTexture": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      {
+        "mesh": "Petals_Outside",
+        "material": "Petal_Outside",
+        "color": "ffffff",
+        "metalness": 0,
+        "roughness": 1,
+        "baseColorTexture": {
+          "width": 512,
+          "height": 512
+        },
+        "roughnessTexture": {
+          "width": 512,
+          "height": 512
+        }
+      },
+      {
+        "mesh": "Leaf_A",
+        "material": "Leaf_SoftGreen",
+        "color": "ffffff",
+        "metalness": 0,
+        "roughness": 1,
+        "baseColorTexture": {
+          "width": 256,
+          "height": 512
+        },
+        "roughnessTexture": {
+          "width": 256,
+          "height": 512
+        }
+      },
+      {
+        "mesh": "Leaf_B",
+        "material": "Leaf_SoftGreen",
+        "color": "ffffff",
+        "metalness": 0,
+        "roughness": 1,
+        "baseColorTexture": {
+          "width": 256,
+          "height": 512
+        },
+        "roughnessTexture": {
+          "width": 256,
+          "height": 512
+        }
+      },
+      {
+        "mesh": "Stem",
+        "material": "Stem_SoftGreen",
+        "color": "ffffff",
+        "metalness": 0,
+        "roughness": 1,
+        "baseColorTexture": {
+          "width": 128,
+          "height": 512
+        },
+        "roughnessTexture": {
+          "width": 128,
+          "height": 512
+        }
+      }
+    ]
+  }
+}

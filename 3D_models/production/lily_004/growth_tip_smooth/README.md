@@ -1,0 +1,7 @@
+# Lily 004 — smoothed tip growth
+
+The prior nine-second growth version is backed up in baseline/ and was verified byte-for-byte before modification. The candidate keeps the same timing, materials and six animation clips. Early stem shapes are re-centred into a smooth curve, while the animated bending wave is concentrated toward the tip; head and leaf-pivot trajectories are corrected to follow the stem. The full-growth pose is preserved.
+
+Validation: Khronos glTF Validator 0 errors, 0 warnings, 4 informational notices. Three.js samples at 24 fps: all 216 growth-height increments positive; Growth-to-IdleClosed and all other checked clip boundaries and idle loops show zero sampled vertex delta. The five non-Growth clips have zero position difference from the previous version at their start, midpoint and end. Visual comparisons of 3 s and 6 s were made in the existing viewer. Physical iPad, complete collision checks and GPU performance remain unverified.
+
+Preview: http://127.0.0.1:5192/3D_models/production/lily_004/scripts/viewer.html?growth=tip2 — choose Growth and switch Предыдущая / Новая. Authoring script: refine_tip.py. The unchanged previous-version GLB and blend are in baseline/.
