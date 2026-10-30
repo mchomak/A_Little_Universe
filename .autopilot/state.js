@@ -1,7 +1,7 @@
 window.STATE =
 {
   "slug": "lily-film-integration",
-  "dir": "2026-10-30-lily-film-integration--wip",
+  "dir": "2026-10-30-lily-film-integration",
   "title": "Интеграция лилии в фильм",
   "mode": "full",
   "depth": "normal",
@@ -11,8 +11,8 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-10-30T16:09:38+03:00",
-  "updatedAt": "2026-10-30T18:16:20+03:00",
-  "finishedAt": null,
+  "updatedAt": "2026-10-30T19:04:14+03:00",
+  "finishedAt": "2026-10-30T19:04:14+03:00",
   "stages": [
     {
       "id": "preflight",
@@ -45,22 +45,27 @@ window.STATE =
     },
     {
       "id": "build",
-      "status": "active",
-      "startedAt": "2026-10-30T16:09:38+03:00"
+      "status": "done",
+      "startedAt": "2026-10-30T16:09:38+03:00",
+      "finishedAt": "2026-10-30T19:04:14+03:00"
     },
     {
       "id": "review",
-      "status": "pending"
+      "status": "done",
+      "startedAt": "2026-10-30T19:04:14+03:00",
+      "finishedAt": "2026-10-30T19:04:14+03:00"
     },
     {
       "id": "final",
-      "status": "pending"
+      "status": "done",
+      "startedAt": "2026-10-30T19:04:14+03:00",
+      "finishedAt": "2026-10-30T19:04:14+03:00"
     }
   ],
   "requirements": {
     "total": 13,
-    "done": 0,
-    "inTicket": 13,
+    "done": 13,
+    "inTicket": 0,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
@@ -70,7 +75,7 @@ window.STATE =
     {
       "id": "01",
       "title": "Интеграция модели и анимаций",
-      "status": "in-progress",
+      "status": "done",
       "startedAt": "2026-10-30T16:09:38+03:00",
       "requirements": [
         "R01",
@@ -90,11 +95,16 @@ window.STATE =
       "wave": 1,
       "blockedBy": [],
       "repairs": 0,
-      "handoffs": 0
+      "handoffs": 0,
+      "finishedAt": "2026-10-30T19:04:14+03:00"
     }
   ],
   "singlePass": null,
-  "tests": null,
+  "tests": {
+    "status": "passed",
+    "command": "npm run check",
+    "result": "229 tests / 59 files; lint, typecheck, production build; repeated after merge into main"
+  },
   "debt": {
     "placeholders": [],
     "assumptions": [],
@@ -112,5 +122,9 @@ window.STATE =
     "manifestSpec": null,
     "craft": null
   },
-  "blind": null
+  "blind": {
+    "status": "passed",
+    "reviewer": "/root/audit",
+    "note": "Clips, model, duration controls and checkpoints confirmed. Merge and push were pending at review; main merge and post-merge checks completed subsequently. Browser visual checks performed by coordinator; physical iPad/Safari unverified."
+  }
 }
