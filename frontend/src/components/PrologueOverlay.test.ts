@@ -23,7 +23,7 @@ it('scales the configured prologue font size into the responsive text rule', asy
   }
 })
 
-it('renders each handwritten phrase as one connected line and gives the touch prompt the same script face', async () => {
+it('keeps each narrative phrase whole and preserves Marck Script for the touch prompt', async () => {
   const markup = renderToStaticMarkup(createElement(PrologueOverlay, {
     state: initialFilmState, dispatch: () => undefined, runtime: createFilmRuntime(), reducedMotion: false,
   }))

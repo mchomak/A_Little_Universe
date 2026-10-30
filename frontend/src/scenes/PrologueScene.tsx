@@ -1,10 +1,11 @@
 import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useThree } from '@react-three/fiber'
-import { AdditiveBlending, BufferGeometry, DataTexture, Float32BufferAttribute, LinearFilter, RGBAFormat, Vector2, Vector4, type ShaderMaterial } from 'three'
+import { AdditiveBlending, BufferGeometry, DataTexture, Float32BufferAttribute, LinearFilter, RGBAFormat, Vector2, Vector3, Vector4, type ShaderMaterial } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
 import { getPrologueFrames } from '../engine/filmConfig'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { loadArtFont } from '../systems/scene-config/fontCatalog'
+import { DEFAULT_DISSOLVE_STYLE, DISSOLVE_GLSL, normalizeDissolveStyle } from './shared/dissolve'
 import { resolvePrologueParticleCount } from './prologue/particleMath'
 import { rasterizeLetter, sampleLetterMatter, seededRandom, type LetterRaster } from './prologue/letterMatter'
 import { PrologueAtmosphere } from './prologue/PrologueAtmosphere'
@@ -26,24 +27,33 @@ uniform sampler2D uMatter;
 uniform float uTime;
 uniform vec2 uWrite;
 uniform vec2 uFracture;
-uniform float uEnd;
 uniform float uGlow;
 uniform float uReduced;
+uniform float uSeed;
+uniform float uNoiseScale;
+uniform float uNoiseStrength;
+uniform float uZoneWidth;
+uniform float uEdgeWidth;
+uniform float uEdgeIntensity;
+uniform vec3 uEdgeColor;
+${DISSOLVE_GLSL}
 varying vec2 vUv;
 void main(){
  vec4 matter=texture2D(uMatter,vUv);
  float write=clamp((uTime-uWrite.x)/max(0.01,uWrite.y-uWrite.x),0.0,1.0);
  float visible=smoothstep(matter.g-0.014,matter.g+0.018,write)*step(uWrite.x,uTime);
  if(uReduced>0.5) visible=step(uWrite.x,uTime);
- float birth=uFracture.x+matter.b*uFracture.y;
- float intact=1.0-smoothstep(birth-0.025,birth+0.075,uTime);
- if(uReduced>0.5) intact=1.0-smoothstep(uFracture.x,uFracture.x+0.7,uTime);
- float edge=exp(-pow((uTime-birth)/0.085,2.0))*0.12;
+ float progress=clamp((uTime-uFracture.x)/max(0.1,uFracture.y),0.0,1.0);
+ float noiseValue=dissolveNoise(vUv,uSeed,uNoiseScale);
+ float threshold=dissolveThreshold(matter.b,noiseValue,uZoneWidth,uNoiseStrength,uEdgeWidth);
+ float dissolve=dissolveReveal(progress,threshold,uEdgeWidth);
+ float edge=dissolveEdge(progress,threshold,uEdgeWidth,uEdgeIntensity);
+ if(uReduced>0.5){dissolve=smoothstep(uFracture.x,uFracture.x+0.7,uTime);edge=0.0;}
  float pen=exp(-pow((write-matter.g)/0.022,2.0))*step(uTime,uWrite.y);
- float alpha=(matter.r*(0.95+edge)+matter.a*uGlow*(0.3+pen*0.65))*visible*intact;
- alpha*=1.0-smoothstep(uEnd-0.25,uEnd,uTime);
+ float alpha=(matter.r*(0.95+edge*0.12)+matter.a*uGlow*(0.3+pen*0.65))*visible*(1.0-dissolve);
  if(alpha<0.001)discard;
- gl_FragColor=vec4(vec3(1.0,0.913,0.873),alpha);
+ vec3 inkColor=vec3(1.0,0.913,0.873);
+ gl_FragColor=vec4(inkColor+uEdgeColor*edge*0.22,alpha);
  #include <colorspace_fragment>
 }`
 const dustVertex = `
@@ -109,7 +119,24 @@ function LetterLayer({ resource, runtime, reducedMotion }: { resource: LetterRes
   const size = useThree(s => s.size), dpr = useThree(s => s.viewport.dpr), invalidate = useThree(s => s.invalidate)
   const ink = useRef<ShaderMaterial>(null), dust = useRef<ShaderMaterial>(null)
   const rect = resource.raster.rect
-  const uniforms = useMemo(() => ({ uResolution: { value: new Vector2(size.width, size.height) }, uRect: { value: new Vector4(rect.x, rect.y, rect.width, rect.height) }, uMatter: { value: resource.texture }, uTime: { value: 0 }, uWrite: { value: new Vector2(...(resource.index === 0 ? frames.first : frames.second)) }, uFracture: { value: new Vector2(frames.dissolve[0], Math.min(config.fractureDuration, Math.max(.1, frames.dissolve[1] - frames.dissolve[0] - .55))) }, uEnd: { value: frames.dissolve[1] }, uGlow: { value: config.textGlow }, uReduced: { value: Number(reducedMotion) } }), [config, frames, rect, resource, reducedMotion, size.width, size.height])
+  const dissolveStyle = useMemo(() => normalizeDissolveStyle({ ...DEFAULT_DISSOLVE_STYLE, seed: config.seed + resource.index * 71 }), [config.seed, resource.index])
+  const uniforms = useMemo(() => ({
+    uResolution: { value: new Vector2(size.width, size.height) },
+    uRect: { value: new Vector4(rect.x, rect.y, rect.width, rect.height) },
+    uMatter: { value: resource.texture },
+    uTime: { value: 0 },
+    uWrite: { value: new Vector2(...(resource.index === 0 ? frames.first : frames.second)) },
+    uFracture: { value: new Vector2(frames.dissolve[0], Math.min(config.fractureDuration, Math.max(.1, frames.dissolve[1] - frames.dissolve[0] - .55))) },
+    uGlow: { value: config.textGlow },
+    uReduced: { value: Number(reducedMotion) },
+    uSeed: { value: dissolveStyle.seed },
+    uNoiseScale: { value: dissolveStyle.noiseScale },
+    uNoiseStrength: { value: dissolveStyle.noiseStrength },
+    uZoneWidth: { value: resource.raster.zoneWidth },
+    uEdgeWidth: { value: dissolveStyle.edgeWidth },
+    uEdgeIntensity: { value: dissolveStyle.edgeIntensity },
+    uEdgeColor: { value: new Vector3(...dissolveStyle.edgeColor) },
+  }), [config, dissolveStyle, frames, rect, resource, reducedMotion, size.width, size.height])
   const dustUniforms = useMemo(() => ({ uResolution: uniforms.uResolution, uTime: { value: 0 }, uEnd: { value: frames.dissolve[1] }, uTravel: { value: frames.particleTravelDuration }, uFade: { value: config.particleFadeDuration }, uWind: { value: config.windStrength }, uTurbulence: { value: config.turbulence }, uGlow: { value: config.particleGlow }, uDpr: { value: dpr } }), [config, frames, dpr, uniforms.uResolution])
   useLayoutEffect(() => {
     const draw = (time: number) => { if (ink.current) ink.current.uniforms.uTime!.value = time; if (dust.current) dust.current.uniforms.uTime!.value = time; invalidate() }

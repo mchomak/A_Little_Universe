@@ -42,3 +42,6 @@ Thumbs.db
 
 # Private, reproducible Iris Lab derivatives
 /frontend/dev-assets/iris/
+
+!.autopilot/2026-10-30-prologue-emissive-dissolve--wip/
+!.autopilot/2026-10-30-prologue-emissive-dissolve--wip/**

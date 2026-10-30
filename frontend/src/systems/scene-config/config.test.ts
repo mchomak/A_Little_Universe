@@ -2,9 +2,9 @@ import { expect, it, vi } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, normalizeConfig } from './config'
 import * as configApi from './config'
 
-it('uses immutable schema v2 defaults and the local Marck Script face', () => {
+it('uses immutable schema v2 defaults and the local Great Vibes prologue face', () => {
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(2)
-  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('marck-script')
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('great-vibes')
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue).toMatchObject({
     particleCount: 1800,
     windStrength: 1.15,

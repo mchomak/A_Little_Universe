@@ -96,7 +96,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
     preparation: { fontFamily: 'marck-script', spacing: 24, entranceDuration: 0.8, typeScale: 1, lineHeight: 1.08, cardOpacity: 1 },
     prologue: {
-      fontFamily: 'marck-script', fontSize: 48, lineHeight: 1.3, positionY: 40,
+      fontFamily: 'great-vibes', fontSize: 48, lineHeight: 1.3, positionY: 40,
       handwritingDuration: 3.5, handwritingRhythm: 0.82, interphraseInterval: 1.5, readableHold: 2,
       particleCount: 1800, windStrength: 1.15, turbulence: 0.3, fractureWidth: 0.08,
       fractureDuration: 1.5, particleDuration: 2.2, particleFadeDuration: 1.2, promptHandwritingDuration: 0.65,

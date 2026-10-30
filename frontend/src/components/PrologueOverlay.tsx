@@ -130,6 +130,7 @@ export function PrologueOverlay({ state, runtime, reducedMotion }: SceneProps) {
   const frames = useMemo(() => getPrologueFrames(prologue), [prologue])
   const copy = getPrologueCopy(prologue)
   const fontFamily = ART_FONT_CATALOG.find((font) => font.id === prologue.fontFamily)?.family ?? 'Marck Script'
+  const promptFontFamily = ART_FONT_CATALOG.find((font) => font.id === 'marck-script')?.family ?? 'Marck Script'
   const viewportFontSize = formatNumber(5.3 * prologue.fontSize / DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontSize)
   const phrasesStyle: CSSProperties = { inset: 0 }
   const copyStyle = (top: string, transform: CSSProperties['transform'], scale = 1): CSSProperties => ({
@@ -140,7 +141,7 @@ export function PrologueOverlay({ state, runtime, reducedMotion }: SceneProps) {
     '--write-progress': '0%', '--fracture-progress': '0%', '--fracture-clip': 'none',
   } as CSSProperties)
   const promptStyle: CSSProperties = {
-    fontFamily: `"${fontFamily}"`, fontSize: 'clamp(18px, 2.4vw, 32px)',
+    fontFamily: `"${promptFontFamily}"`, fontSize: 'clamp(18px, 2.4vw, 32px)',
     textShadow: `0 0 ${Math.max(2, prologue.glow * 12)}px rgba(255, 240, 232, ${Math.min(0.5, prologue.glow * 0.16)})`,
     '--write-progress': '0%', '--fracture-clip': 'none',
     top: `calc(50% + ${Math.max(54, prologue.innerGlowRadius + prologue.textGap + 10)}px)`,

@@ -42,26 +42,48 @@ export function seededRandom(seed: number) {
   }
 }
 
-interface Glyph { text: string; left: number; right: number; top: number; bottom: number; index: number }
+interface Glyph { text: string; left: number; right: number; top: number; bottom: number; index: number; layoutIndex: number; zone: number }
+export interface GraphemePosition { left: number; top: number }
 export interface LetterRaster {
   width: number; height: number; scale: number
   rect: { x: number; y: number; width: number; height: number }
-  data: Uint8Array; alpha: Uint8Array
+  /** RGBA channels: ink coverage, handwriting progress, grapheme dissolve zone, soft halo. */
+  data: Uint8Array
+  alpha: Uint8Array
+  particleBirths: Uint8Array
+  graphemeCount: number
+  zoneWidth: number
 }
 
-/** Pixel position and birth time are read from the immutable visible-ink atlas, not a second noise field. */
+/** Returns normalized dissolve order in the input layout's grapheme order. */
+export function createGraphemeZones(glyphs: readonly GraphemePosition[], lineHeight: number): Float32Array {
+  const threshold = Math.max(1, Number.isFinite(lineHeight) ? lineHeight * 0.4 : 19.2)
+  const lines: Array<{ top: number; glyphs: Array<{ position: GraphemePosition; index: number }> }> = []
+  glyphs.forEach((position, index) => {
+    const line = lines.find((candidate) => Math.abs(candidate.top - position.top) < threshold)
+    if (line) line.glyphs.push({ position, index })
+    else lines.push({ top: position.top, glyphs: [{ position, index }] })
+  })
+  lines.sort((a, b) => a.top - b.top)
+  const readingOrder = lines.flatMap((line) => line.glyphs.sort((a, b) => a.position.left - b.position.left || a.index - b.index))
+  const zones = new Float32Array(glyphs.length)
+  readingOrder.forEach((glyph, order) => { zones[glyph.index] = order / Math.max(1, glyphs.length) })
+  return zones
+}
+
+/** Particle position and its existing release time come from the same immutable visible-ink raster pass. */
 export function sampleLetterMatter(raster: LetterRaster, count: number, seed: number, start: number, fractureDuration: number): Float32Array {
   const pixels = sampleGlyphParticlePixels(raster.alpha, raster.width, raster.height, count, seed)
   const samples = new Float32Array(pixels.length / 2 * 3)
   for (let i = 0; i < pixels.length / 2; i++) {
     const x = pixels[i * 2]!, y = pixels[i * 2 + 1]!
-    const texel = (Math.floor(y) * raster.width + Math.floor(x)) * 4
-    samples.set([raster.rect.x + x / raster.scale, raster.rect.y + y / raster.scale, start + raster.data[texel + 2]! / 255 * fractureDuration], i * 3)
+    const pixel = Math.floor(y) * raster.width + Math.floor(x)
+    samples.set([raster.rect.x + x / raster.scale, raster.rect.y + y / raster.scale, start + raster.particleBirths[pixel]! / 255 * fractureDuration], i * 3)
   }
   return samples
 }
 
-/** One immutable ink/write/fracture/halo atlas; both visible ink and dust read these exact texels. */
+/** One whole-line atlas for GPU ink, with separately retained legacy particle release samples. */
 export function rasterizeLetter(element: HTMLElement, viewport: DOMRect, rhythm: number, fractureWidth: number, seed: number): LetterRaster | null {
   const rect = element.getBoundingClientRect(), style = getComputedStyle(element)
   const fontSize = Number.parseFloat(style.fontSize) || 48
@@ -77,17 +99,20 @@ export function rasterizeLetter(element: HTMLElement, viewport: DOMRect, rhythm:
   let node = walker.nextNode(), index = 0
   while (node) {
     const text = node.textContent ?? ''
-    for (let offset = 0; offset < text.length;) {
-      const glyph = String.fromCodePoint(text.codePointAt(offset)!)
-      range.setStart(node, offset); range.setEnd(node, offset + glyph.length)
+    let offset = 0
+    for (const grapheme of getGraphemes(text)) {
+      const codePointCount = Array.from(grapheme).length
+      range.setStart(node, offset); range.setEnd(node, offset + grapheme.length)
       const bounds = range.getBoundingClientRect()
-      if (bounds.width > 0) glyphs.push({ text: glyph, left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom, index })
-      offset += glyph.length; index++
+      if (bounds.width > 0) glyphs.push({ text: grapheme, left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom, index, layoutIndex: glyphs.length, zone: 0 })
+      offset += grapheme.length; index += codePointCount
     }
     node = walker.nextNode()
   }
   range.detach()
   if (!glyphs.length) return null
+  const zones = createGraphemeZones(glyphs, fontSize)
+  for (const glyph of glyphs) glyph.zone = zones[glyph.layoutIndex] ?? 0
   context.scale(scale, scale)
   context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
   context.fillStyle = '#fff'; context.textBaseline = 'alphabetic'
@@ -108,7 +133,7 @@ export function rasterizeLetter(element: HTMLElement, viewport: DOMRect, rhythm:
   const haloContext = haloCanvas.getContext('2d', { willReadFrequently: true })
   if (haloContext) { haloContext.filter = `blur(${2.2 * scale}px)`; haloContext.drawImage(canvas, 0, 0) }
   const halo = haloContext?.getImageData(0, 0, width, height).data
-  const alpha = new Uint8Array(width * height), data = new Uint8Array(width * height * 4)
+  const alpha = new Uint8Array(width * height), particleBirths = new Uint8Array(width * height), data = new Uint8Array(width * height * 4)
   const schedule = createHandwritingSchedule(element.textContent ?? '', 1, rhythm)
   for (let y = 0; y < height; y++) {
     const screenY = rect.top - padding + (y + 0.5) / scale
@@ -128,14 +153,21 @@ export function rasterizeLetter(element: HTMLElement, viewport: DOMRect, rhythm:
       // Low-coverage edges release a few grains before the solid stroke interior.
       const birth = clamp(getMatterBirthProgress(x / width, y / height, fractureWidth, seed, width / height) - (coverage < 140 ? 0.085 : 0))
       alpha[pixel] = coverage
+      particleBirths[pixel] = Math.round(birth * 255)
       data[pixel * 4] = coverage
       data[pixel * 4 + 1] = Math.round(write * 255)
-      data[pixel * 4 + 2] = Math.round(birth * 255)
+      data[pixel * 4 + 2] = Math.round(glyph.zone * 255)
       data[pixel * 4 + 3] = glow
     }
   }
   canvas.width = 0; canvas.height = 0; haloCanvas.width = 0; haloCanvas.height = 0
-  return { width, height, scale, alpha, data, rect: { x: rect.left - viewport.left - padding, y: rect.top - viewport.top - padding, width: width / scale, height: height / scale } }
+  return { width, height, scale, alpha, particleBirths, data, graphemeCount: glyphs.length, zoneWidth: 1 / glyphs.length, rect: { x: rect.left - viewport.left - padding, y: rect.top - viewport.top - padding, width: width / scale, height: height / scale } }
+}
+
+function getGraphemes(text: string): string[] {
+  const Segmenter = (Intl as unknown as { Segmenter?: new (locales?: string | string[], options?: { granularity: 'grapheme' }) => { segment(input: string): Iterable<{ segment: string }> } }).Segmenter
+  if (Segmenter) return Array.from(new Segmenter(undefined, { granularity: 'grapheme' }).segment(text), ({ segment }) => segment)
+  return Array.from(text)
 }
 
 function hash(x: number, y: number, seed: number) { const n = Math.sin(x * 127.1 + y * 311.7 + seed * 0.0137) * 43758.5453; return n - Math.floor(n) }
