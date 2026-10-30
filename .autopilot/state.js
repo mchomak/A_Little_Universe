@@ -1,7 +1,7 @@
 window.STATE =
 {
   "slug": "prologue-emissive-dissolve",
-  "dir": "2026-10-30-prologue-emissive-dissolve--wip",
+  "dir": "2026-10-30-prologue-emissive-dissolve",
   "title": "Побуквенное превращение текста Пролога в свет",
   "mode": "full",
   "depth": "normal",
@@ -11,7 +11,7 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:\\Users\\McHomak\\.agents\\skills\\autopilot",
   "startedAt": "2026-10-30T19:14:17+03:00",
-  "updatedAt": "2026-10-30T23:58:46+03:00",
+  "updatedAt": "2026-10-31T00:55:08+03:00",
   "finishedAt": null,
   "stages": [
     {
@@ -47,23 +47,29 @@ window.STATE =
     },
     {
       "id": "build",
-      "status": "active",
-      "startedAt": "2026-10-30T20:09:02+03:00"
+      "status": "done",
+      "startedAt": "2026-10-31T00:03:31+03:00",
+      "finishedAt": "2026-10-31T00:19:04+03:00",
+      "note": "3 ?? 3 ?????? ???????????; T03 ??????? ?? ?????."
     },
     {
       "id": "review",
-      "status": "active",
-      "startedAt": "2026-10-30T22:15:00+03:00"
+      "status": "done",
+      "startedAt": "2026-10-31T00:19:04+03:00",
+      "finishedAt": "2026-10-31T00:42:51+03:00",
+      "note": "3 ?? 3 ?????? ?????? ?????; ???? frontend check ???????."
     },
     {
       "id": "final",
-      "status": "pending"
+      "status": "active",
+      "note": "No remaining copy drift; G4 visual motion check is partial because the independent browser profile was unavailable and the dissolve screenshot timed out.",
+      "startedAt": "2026-10-31T00:42:51+03:00"
     }
   ],
   "requirements": {
     "total": 69,
-    "done": 28,
-    "inTicket": 41,
+    "done": 68,
+    "inTicket": 1,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
@@ -200,23 +206,56 @@ window.STATE =
         "frontend/src/systems/scene-config/",
         "frontend/src/components/"
       ],
-      "status": "review",
+      "status": "done",
       "retries": 0,
       "repairs": 1,
       "handoffs": 0,
       "startedAt": "2026-10-30T22:46:12+03:00",
-      "finishedAt": "2026-10-30T23:57:22+03:00",
+      "finishedAt": "2026-10-30T23:59:32+03:00",
       "tests": {
         "passed": 216,
         "failed": 0
       },
       "concerns": [
         "Runtime visual review unavailable because Playwright/Chrome DevTools profiles were occupied."
-      ]
+      ],
+      "commit": "5fdad19"
+    },
+    {
+      "id": "03",
+      "title": "??????? ???????????? ?????? ?????",
+      "requirements": [
+        "R64"
+      ],
+      "blockedBy": [
+        "02"
+      ],
+      "wave": 3,
+      "zone": [
+        "frontend/src/engine/",
+        "frontend/src/systems/scene-config/",
+        "frontend/src/components/",
+        "frontend/src/scenes/prologue/"
+      ],
+      "status": "done",
+      "startedAt": "2026-10-31T00:03:31+03:00",
+      "retries": 0,
+      "repairs": 0,
+      "handoffs": 0,
+      "finishedAt": "2026-10-31T00:42:51+03:00",
+      "tests": {
+        "passed": 217,
+        "failed": 0
+      },
+      "commit": "06fc570"
     }
   ],
   "singlePass": null,
-  "tests": null,
+  "tests": {
+    "passed": 217,
+    "failed": 0,
+    "command": "npm run check"
+  },
   "debt": {
     "placeholders": [],
     "assumptions": [],
@@ -238,44 +277,45 @@ window.STATE =
   },
   "concerns": [
     {
-      "ticket": "01",
+      "ticket": "01?02",
       "kind": "visual review",
-      "note": "Runtime shader visual review was not completed because port 5174 was occupied; attempt isolated preview on another port before final acceptance."
+      "status": "report",
+      "note": "Coordinator visually confirmed Great Vibes phrases, point light, and seed handoff; independent browser access was blocked and the mid-dissolve screenshot hung during timeline seek, so dissolve/particle aesthetics remain unverified."
     },
     {
       "ticket": "01",
       "kind": "spec",
-      "note": "frontend/src/scenes/prologue/letterMatter.ts:154 ? particleBirths uses an atlas-wide noise field rather than the per-grapheme dissolve threshold. Ticket 02 must align emission to the shared threshold before using it."
+      "status": "resolved",
+      "note": "Ticket 02 aligns per-pixel emission timing with the shared per-grapheme dissolve threshold; tests and review passed."
     },
     {
       "ticket": "01",
       "kind": "craft",
-      "note": "frontend/src/systems/scene-config/fontCatalog.test.ts:58 ? test does not assert document.fonts.add occurs before load/check."
+      "status": "report",
+      "note": "The font readiness test does not assert registration order; the runtime rendered the requested Great Vibes copy."
     },
     {
       "ticket": "01",
       "kind": "craft",
-      "note": "frontend/src/scenes/prologue/letterMatter.ts:170 ? Array.from fallback may split combining graphemes when Intl.Segmenter is unavailable."
-    },
-    {
-      "ticket": "01",
-      "kind": "visual review",
-      "note": "Runtime dissolve screenshot could not be captured: Playwright and Chrome DevTools profiles are in use; isolated page creation also failed. Reviewer server was at 127.0.0.1:5187."
-    },
-    {
-      "ticket": "02",
-      "kind": "visual review",
-      "note": "Runtime visual review remains unavailable because the shared browser profiles are occupied."
+      "status": "report",
+      "note": "The grapheme fallback may split combining marks when Intl.Segmenter is unavailable; current Russian phrases rendered correctly."
     },
     {
       "ticket": "02",
       "kind": "craft",
-      "note": "frontend/src/scenes/prologue/letterMatter.test.ts:16 ? fixture injects particleBirths directly and lacks a halo-only texel, so it does not exercise the raster-to-alpha sampler seam."
+      "status": "report",
+      "note": "One particle test injects a birth-time fixture instead of exercising the full raster-to-alpha seam; pixel sampling and emission timing have separate checks."
     }
   ],
   "reviewers": {
     "manifestSpec": "/root/review_01_manifest_spec",
     "craft": "/root/review_01_craft"
   },
-  "blind": null
+  "blind": {
+    "status": "partial",
+    "reviewer": "/root/blind_acceptance_g4",
+    "checkedAgainst": "original brief only",
+    "disagreements": [],
+    "finding": "The earlier R64 copy drift was corrected in commit 06fc570. The blind reviewer could not access its browser profile; the coordinator observed both approved phrases, central light, and the seed handoff. A mid-dissolve frame and particle motion could not be visually captured."
+  }
 };
