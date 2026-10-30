@@ -10,6 +10,7 @@ import type { CameraPose } from '../scenes/shared/galleryMotion'
 import { GALLERY, GALLERY_MEMORIES, memoryPosition } from '../scenes/gallery/content'
 import { advanceGallery, galleryMotion, gallerySnapshot } from '../scenes/gallery/controller'
 import { focusCamera } from '../scenes/gallery/camera'
+import { GALLERY_ART } from '../scenes/gallery/artDirection'
 import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
 import { getGrowthCameraPose } from '../scenes/growth/seedProcedure'
@@ -99,7 +100,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     p.tx = x * focal; p.ty = (y - .2) * focal
     p.tz = (z - 8) * (1 - focal) + mz * focal
     if (opening < 1) { p.tx *= eased; p.ty *= eased; p.tz = -8 * eased }
-    const focused = focusCamera([p.x, p.y, p.z], [x, y, mz], focal)
+    const focused = focusCamera([p.x, p.y, p.z], [x, y, mz], focal, -memory.side * GALLERY_ART.wallYaw)
     camera.position.set(focused.x, focused.y, focused.z)
     camera.lookAt(p.tx, p.ty, p.tz)
     if (camera instanceof PerspectiveCamera) {
