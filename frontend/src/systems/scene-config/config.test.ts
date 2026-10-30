@@ -100,7 +100,7 @@ it('fills additive awakening settings in old documents while preserving previous
     expect(old.scenes.prologue).toMatchObject({
       glow: 1.1, fontSize: 64, particleDuration: 4,
       coreIntensity: 1, innerGlowRadius: 16, outerGlowRadius: 95,
-      touchDuration: 0.85, copyVariant: 'awakening', secondFontScale: 0.86,
+      touchDuration: 0.85, copyVariant: 'legacy', secondFontScale: 0.86,
       atmosphereDensity: 42, particleSizeMin: 0.6, particleSizeMax: 1.8,
     })
   }
@@ -109,7 +109,7 @@ it('fills additive awakening settings in old documents while preserving previous
     particleSizeMin: 2, particleSizeMax: 0.5,
   } } })
   expect(invalid.scenes.prologue).toMatchObject({ coreIntensity: 1, touchDuration: 0.85,
-    atmosphereDensity: 42, copyVariant: 'awakening', particleSizeMin: 2, particleSizeMax: 2 })
+    atmosphereDensity: 42, copyVariant: 'legacy', particleSizeMin: 2, particleSizeMax: 2 })
   expect(normalizeConfig({ schemaVersion: 2, scenes: { prologue: { copyVariant: 'legacy' } } }).scenes.prologue.copyVariant).toBe('legacy')
 })
 

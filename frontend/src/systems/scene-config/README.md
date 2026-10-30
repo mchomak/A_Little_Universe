@@ -70,7 +70,7 @@ An optional production override can contain only values that differ from the def
 | Interaction | Touch intensity / duration | 0–1.5 (0.55) / 0.7–1 s (0.85) |
 | Interaction | Wave strength / radius | 0–0.5 (0.14) / 30–120 CSS px (70) |
 
-Default breathing uses amplitude `0.035` and frequency `0.22` Hz (about 4.5 seconds). The canonical prologue gate remains fixed at 18 seconds; configured reveal/hold/fracture windows are fitted inside it, with the dust gone by the invitation at 16 seconds. Touch duration is captured at activation, so editing it during a transition does not change that transition. `copyVariant: "legacy"` restores the previous second phrase; the default reads «И решил начать с одной маленькой искры.».
+Default breathing uses amplitude `0.035` and frequency `0.22` Hz (about 4.5 seconds). The canonical prologue gate remains fixed at 18 seconds; configured reveal/hold/fracture windows are fitted inside it, with the dust gone by the invitation at 16 seconds. Touch duration is captured at activation, so editing it during a transition does not change that transition. The default uses the approved second phrase; `copyVariant: "awakening"` remains available as an explicit alternate wording.
 
 The existing `Moonlit Letter` and `Stardust` presets remain available. Global quality, DPR and playback settings remain global and are not changed by prologue-specific controls. The store owns neither a playback clock nor a canvas.
 

@@ -104,7 +104,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       coreIntensity: 1, innerGlowRadius: 16, outerGlowRadius: 95, phraseResponse: 0.12,
       touchIntensity: 0.55, touchDuration: 0.85, waveStrength: 0.14, waveRadius: 70,
       atmosphereDensity: 42, hazeIntensity: 0.035, spaceDepth: 0.35, driftSpeed: 0.035,
-      secondFontScale: 0.86, textGap: 34, textGlow: 0.22, copyVariant: 'awakening',
+      secondFontScale: 0.86, textGap: 34, textGlow: 0.22, copyVariant: 'legacy',
       particleSizeMin: 0.6, particleSizeMax: 1.8, particleGlow: 0.95,
     },
     growth: {

@@ -52,6 +52,12 @@ describe('prologue frames', () => {
     expect(getPrologueCopy({ copyVariant: 'legacy' }).second).toBe('И решил, что ты заслуживаешь чего-то особенного:')
   })
 
+  it('uses the approved phrases in the default prologue copy', () => {
+    const copy = getPrologueCopy(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)
+    expect(copy.first).toBe('Я долго думал, что тебе подарить…')
+    expect(copy.second).toBe('И решил, что ты заслуживаешь чего-то особенного:')
+  })
+
   it('leaves the invitation free of text dust before the gate opens', () => {
     const frames = getPrologueFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)
     expect(getPrologueParticleOpacity(14, frames, false)).toBeGreaterThan(0)
