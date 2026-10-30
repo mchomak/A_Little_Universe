@@ -17,6 +17,101 @@ export const TIMING = {
   camera: { bloom: 16, gallery: 1.2, eye: 3, cosmos: 26 },
 } as const
 
+export interface GrowthSceneFrames {
+  duration: number
+  formation: readonly [number, number]
+  fall: readonly [number, number]
+  landing: readonly [number, number]
+  moonlight: readonly [number, number]
+  handoff: readonly [number, number]
+  sprout: readonly [number, number]
+  stem: readonly [number, number]
+  settle: readonly [number, number]
+  model: readonly [number, number]
+}
+
+export interface BloomSceneFrames {
+  duration: number
+  opening: readonly [number, number]
+  contemplate: readonly [number, number]
+}
+
+const LILY_GROWTH_SETTLE_DURATION = 1.9
+const LILY_BLOOM_CONTEMPLATE_DURATION = TIMING.bloom.duration - TIMING.bloom.opening[1]
+const clamp = (value: number, min: number, max: number, fallback: number) => Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback
+const round = (value: number) => Number(value.toFixed(2))
+
+/** Model growth begins with the seed-to-sprout handoff; the existing settle beat remains after the GLB clip. */
+export function getGrowthSceneFrames(settings: SceneComposerConfig['scenes']['growth'] = getConfig().scenes.growth): GrowthSceneFrames {
+  const formationEnd = round(clamp(settings.formationDuration, 2.5, 3.5, 3.2))
+  const fallEnd = round(formationEnd + 1.2)
+  const modelStart = round(fallEnd + 0.7)
+  const handoffEnd = round(fallEnd + 1.45)
+  const modelEnd = round(modelStart + clamp(settings.flowerGrowthDuration, 4, 14, 9))
+  const duration = round(modelEnd + LILY_GROWTH_SETTLE_DURATION)
+  return {
+    duration,
+    formation: [0, formationEnd],
+    fall: [formationEnd, fallEnd],
+    landing: [fallEnd, round(fallEnd + 0.5)],
+    moonlight: [round(fallEnd + 0.5), round(fallEnd + 2)],
+    handoff: [modelStart, handoffEnd],
+    sprout: [handoffEnd, modelEnd],
+    stem: [round(modelEnd - 4.2), modelEnd],
+    settle: [modelEnd, duration],
+    model: [modelStart, modelEnd],
+  }
+}
+
+export function getBloomSceneFrames(settings: SceneComposerConfig['scenes']['bloom'] = getConfig().scenes.bloom): BloomSceneFrames {
+  const openingDuration = clamp(settings.flowerBloomDuration, 6, 24, 16)
+  return {
+    duration: openingDuration + LILY_BLOOM_CONTEMPLATE_DURATION,
+    opening: [0, openingDuration],
+    contemplate: [openingDuration, openingDuration + LILY_BLOOM_CONTEMPLATE_DURATION],
+  }
+}
+
+export function getSceneDuration(scene: SceneId, config: SceneComposerConfig = getConfig()): number {
+  if (scene === 'growth') return getGrowthSceneFrames(config.scenes.growth).duration
+  if (scene === 'bloom') return getBloomSceneFrames(config.scenes.bloom).duration
+  return SCENES[scene].duration
+}
+
+/** Remaps a live duration edit to the same seed phase or animation progress without a pose jump. */
+export function retimeSceneElapsed(
+  scene: SceneId,
+  elapsed: number,
+  previous: SceneComposerConfig,
+  next: SceneComposerConfig,
+  mode: FilmState['mode'],
+): number {
+  if (!Number.isFinite(elapsed)) return 0
+  if (scene === 'growth') {
+    const before = getGrowthSceneFrames(previous.scenes.growth)
+    const after = getGrowthSceneFrames(next.scenes.growth)
+    if (elapsed < before.formation[1]) return remapRange(elapsed, [0, before.formation[1]], [0, after.formation[1]])
+    if (elapsed < before.fall[1]) return remapRange(elapsed, before.fall, after.fall)
+    if (elapsed < before.handoff[0]) return remapRange(elapsed, [before.fall[1], before.handoff[0]], [after.fall[1], after.handoff[0]])
+    if (elapsed < before.handoff[1]) return remapRange(elapsed, before.handoff, after.handoff)
+    if (elapsed < before.model[1]) return remapRange(elapsed, [before.handoff[1], before.model[1]], [after.handoff[1], after.model[1]])
+    return Math.min(after.duration, after.model[1] + elapsed - before.model[1])
+  }
+  if (scene === 'bloom') {
+    if (mode === 'waiting') return 0
+    const before = getBloomSceneFrames(previous.scenes.bloom)
+    const after = getBloomSceneFrames(next.scenes.bloom)
+    if (elapsed <= before.opening[1]) return remapRange(elapsed, before.opening, after.opening)
+    return Math.min(after.duration, after.opening[1] + elapsed - before.opening[1])
+  }
+  return Math.max(0, elapsed)
+}
+
+function remapRange(value: number, before: readonly [number, number], after: readonly [number, number]): number {
+  const progress = Math.min(1, Math.max(0, (value - before[0]) / Math.max(0.001, before[1] - before[0])))
+  return after[0] + (after[1] - after[0]) * progress
+}
+
 export type PrologueFrameSettings = Pick<SceneComposerConfig['scenes']['prologue'],
   'handwritingDuration' | 'interphraseInterval' | 'readableHold' | 'particleDuration'>
 
@@ -130,7 +225,7 @@ export const COPY = {
   greetingWish: 'Пусть в твоей жизни всегда будет место для чего-то по-настоящему волшебного',
   letterTitle: 'Временный текст поздравления',
   letter: 'Здесь появится личное письмо. Сейчас это обозначенное место для будущего текста.',
-  credits: 'A Little Universe for You · Development placeholders', ending: 'Маленькая вселенная для тебя',
+  credits: 'Lily: “White lily” by Nmn9 · Blend Swap #74582 · CC BY 3.0 · modified for A Little Universe for You · blendswap.com/blends/view/74582 · creativecommons.org/licenses/by/3.0/', ending: 'Маленькая вселенная для тебя',
 } as const
 
 export function getPrologueCopy(settings: Pick<SceneComposerConfig['scenes']['prologue'], 'copyVariant'>) {

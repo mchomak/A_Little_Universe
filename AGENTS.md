@@ -217,7 +217,7 @@ When the task introduces a durable rule that will matter across future work, upd
 <!-- autopilot:start -->
 ## Current implementation
 
-A Little Universe for You is a private, tablet-first cinematic React/Three.js birthday film. Preload (00), preparation (00.1), prologue (01), scene 02 RecStudio seed formation/fall/handoff, and the particle-to-first-memory sequence (04.2–04.7) are implemented. Scene 02 plant growth remains a placeholder; scene 03 and scenes 06–09 remain navigable placeholders. The 04.1 lily is procedural. Scene 05 is an interactive gallery with the first real photo and 11 generated development placeholders; music, gaze tracking, and video upload are not connected. The active storyboard is A_Little_Universe_for_Vasilisa_Storyboard_v3.0.md; key_frames/splitting the text.png is an art reference, not a runtime texture.
+A Little Universe for You is a private, tablet-first cinematic React/Three.js birthday film. Preload (00), preparation (00.1), prologue (01), scene 02 RecStudio seed formation/fall/handoff, and the particle-to-first-memory sequence (04.2–04.7) are implemented. Scene 02 uses the animated Lily 004 GLB for plant growth; scene 03 continues the same lily through its touch gate and opening. Scenes 06–09 remain navigable placeholders. The 04.1 lily is procedural. Scene 05 is an interactive gallery with the first real photo and 11 generated development placeholders; music, gaze tracking, and video upload are not connected. The active storyboard is A_Little_Universe_for_Vasilisa_Storyboard_v3.0.md; key_frames/splitting the text.png is an art reference, not a runtime texture.
 
 ### Working commands
 
@@ -271,6 +271,35 @@ Environment variable names only: frontend/.env.example defines public VITE_APP_T
 
 - RecStudio curl noise, per-particle spring attraction and damping run in a deterministic 30 Hz GPU ping-pong simulation on the shared WebGL2 renderer. Float targets require `EXT_color_buffer_float`; otherwise the scene uses its analytic fallback.
 - GPU checkpoints are saved every 0.5 s. Backward seek and physics edits restore/reset and replay to film time; replay is bounded to 2.5–3.5 s formation plus a 0.95 s spark tail. Procedural targets describe an asymmetric 3D seed with surface and interior particles.
-- Scene duration is 16 s. Formation defaults to 3.2 s and is bounded to 2.5–3.5 s; fall starts at formation end, leaving 8–10 s for plant growth. DEV Inspector exposes quality (2304/4096/9216), size, opacity, cloud, noise, attraction, ramp, damping, formation, free-particle fraction, colors, core glow and seed scale.
+- Scene duration defaults to 16 s and follows the configurable lily growth duration. Formation defaults to 3.2 s and is bounded to 2.5–3.5 s; fall starts at formation end. DEV Inspector exposes quality (2304/4096/9216), size, opacity, cloud, noise, attraction, ramp, damping, formation, free-particle fraction, colors, core glow and seed scale.
 - `npm run check` passed on 2026-10-30: 209 tests in 54 files, lint, strict typecheck and production build. Chrome 4:3 checks covered formation, backward seek and fall handoff without WebGL console errors. Physical iPad/Safari performance and hardware without `EXT_color_buffer_float` remain unverified. See `docs/scene-02-seed.md`.
+
+### Lily 004 film integration
+
+- Runtime asset: `frontend/src/assets/lily/lily_004_final.glb`, copied from the early-interior candidate; attribution is in the adjacent `ATTRIBUTION.md` and film credits. Growth plays in scene 02; IdleClosed plays at the scene 03 touch gate and Bloom begins only after touch. The DEV Inspector exposes Growth (default 9 s) and Bloom (default 16 s) durations. The same model persists across the transition; scene 04.1 remains procedural. Desktop browser checks passed; physical iPad/Safari remains unverified. Existing petal gaps and low front petal remain artistic limitations.
+
+### Lily 004 Blender candidate
+
+- Reviewed asset: `3D_models/production/lily_004/refinement_03/export/lily_004_refined.glb`; editable source: `3D_models/production/lily_004/refinement_03/source/lily_004_refined.blend`. Frontend scene 04.1 remains procedural; GLB runtime integration is a separate change.
+- Blender 5.2.3 was used. Blender CLI calls use absolute `--python` paths and `--python-exit-code 1`.
+- The GLB is glTF Y-up with identity `Lily_Root` TRS. Clip durations: Growth 9 s, IdleClosed 8 s, TouchResponse 2 s, Bloom 8 s, IdleOpen 8 s, DissolveReady 1 s.
+- `3D_models/production/lily_004/refinement_03/export/bud_maturation.json` mirrors `Lily_Root.extras.ALU_budMaturation` schema 1; a runtime consumer samples absolute Growth clip time in linear-sRGB, with mature factors for other clips.
+- GLB defaults and the stock viewer are mature-colored; the viewer ignores this metadata. No runtime color consumer is included.
+- `Petals` and `Petals_Outside` use verified fixed Basis diagonals (5,376 triangles per surface); preserve that connectivity and do not re-diagonalize during export.
+- Blender GLB imports can show an evaluated Growth pose instead of file defaults; restore glTF node TRS and node/mesh default morph weights before comparing the base pose (`3D_models/production/lily_004/refinement_03/scripts/render_comparison.py`).
+- `3D_models/production/lily_004/refinement_03/scripts/material_viewer_adapter.py` runs the unchanged stock viewer. Its `--three-root` may point to an existing Three.js 0.186.1 directory in this worktree or the primary checkout; absent worktree dependencies do not by themselves require installation.
+- `3D_models/production/lily_004/refinement_03/HANDOFF.md` contains the full reproducible asset pipeline. From the repository root, these final verification commands use resolved absolute paths:
+
+```powershell
+$AssetRoot = (Resolve-Path '3D_models/production/lily_004/refinement_03').Path
+$HostPython = 'C:/Users/McHomak/AppData/Roaming/uv/python/cpython-3.14.6-windows-x86_64-none/python.exe'
+$BlenderExe = 'C:/Program Files/Blender Foundation/Blender 5.2/blender.exe'
+& $HostPython "$AssetRoot/scripts/verify_final.py" --root "$AssetRoot"
+Push-Location "$AssetRoot/scripts"
+& $HostPython -m unittest test_verify_final test_render_comparison test_geometry_path_safety test_material_contract test_material_reimport_safety test_material_viewer_adapter test_refine_materials_petal_pairing
+Pop-Location
+& $BlenderExe --background --factory-startup --python-exit-code 1 --python "$AssetRoot/scripts/verify_final.py" -- --root "$AssetRoot" --blender-evidence
+```
+
+- Verified: 39 host tests, aggregate verification, and 217-frame Growth BVH with zero intersection events passed. Physical iPad/Safari performance remains unmeasured.
 <!-- autopilot:end -->

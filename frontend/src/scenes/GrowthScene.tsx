@@ -2,9 +2,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExterna
 import { useThree } from '@react-three/fiber'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, GLSL3, Group, MeshBasicMaterial, RawShaderMaterial, Sphere, Vector2, Vector3, type Mesh, type ShaderMaterial, type SpotLight } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
-import { TIMING } from '../engine/filmConfig'
 import { useSceneAnimation } from './shared/animation'
-import { Lily } from './shared/Primitives'
 import { getGrowthFrames, getGrowthViewportHeight, getSeedParticleCount, getSeedPose, sampleSeedParticleSeeds, SEED_ROOT, type GrowthSettings } from './growth/seedProcedure'
 import { coreFragment, groundFragment, haloFragment, moonFragment, particleFragment, particleVertex, seedFragment, surfaceVertex } from './growth/seedShaders'
 import { createSeedParticleReferences } from './growth/seedTargets'
@@ -135,7 +133,6 @@ export function GrowthScene({ state, runtime, reducedMotion }: SceneProps) {
   const dpr = useThree(({ viewport }) => viewport.dpr)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const growthSettings = config.scenes.growth
-  const plant = useRef<Group>(null)
   const seed = useRef<Group>(null)
   const shell = useRef<ShaderMaterial>(null)
   const core = useRef<ShaderMaterial>(null)
@@ -209,10 +206,9 @@ export function GrowthScene({ state, runtime, reducedMotion }: SceneProps) {
     }
     if (moundMaterial.current) moundMaterial.current.opacity = pose.mound * 0.16
     if (moon.current) { moon.current.intensity = pose.moonlight * 4; if (target.current) moon.current.target = target.current }
-    if (plant.current) plant.current.scale.setScalar(Math.max(0.00001, pose.growthWeight))
   }, [height, dpr, reducedMotion, growthSettings, fallRange])
 
-  useSceneAnimation(runtime, TIMING.growth.duration, draw)
+  useSceneAnimation(runtime, getGrowthFrames(growthSettings).duration, draw)
   return <group position={SEED_ROOT}>
     {gpuStatus !== 'ready' && <SeedParticles mode={0} count={low ? 28 : 76} materialRef={orbit} fallRange={fallRange} />}
     {!reducedMotion && <>
@@ -248,8 +244,5 @@ export function GrowthScene({ state, runtime, reducedMotion }: SceneProps) {
       <planeGeometry args={[3.4, 5.7]} />
       <shaderMaterial ref={moonBeam} vertexShader={surfaceVertex} fragmentShader={moonFragment} uniforms={moonUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
     </mesh>
-    <group ref={plant} scale={0.00001}>
-      <group position={[0, -SEED_ROOT[1], 0]}><Lily /></group>
-    </group>
   </group>
 }

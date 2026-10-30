@@ -28,8 +28,8 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
   let completed = false
   let lastDispatch = -Infinity
   const revision = initial.revision
-  const waiting = initial.scene === 'prologue' && initial.mode === 'waiting'
-  const start = waiting ? filmDuration(initial) : initial.mode === 'transitioning' ? initial.elapsed : 0
+  const waiting = initial.mode === 'waiting' && (initial.scene === 'prologue' || initial.scene === 'bloom')
+  const start = initial.scene === 'prologue' && initial.mode === 'waiting' ? filmDuration(initial) : initial.mode === 'transitioning' ? initial.elapsed : 0
   const duration = waiting ? 1 : filmDuration(initial) - start
   const endpoint = start + duration
   const presentationStart = (waiting || initial.mode === 'transitioning') && runtime.time === start

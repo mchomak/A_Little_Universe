@@ -16,6 +16,8 @@ it('uses immutable schema v2 defaults and the local Marck Script face', () => {
     promptHandwritingDuration: 0.65,
     glow: 0.45,
   })
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.flowerGrowthDuration).toBe(9)
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.flowerBloomDuration).toBe(16)
   expect(getConfig()).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
   expect(normalizeConfig({})).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
   expect(Object.isFrozen(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)).toBe(true)
@@ -121,6 +123,23 @@ it('normalizes the seed formation controls and a bounded scene-local quality tie
   expect(normalizeConfig({ schemaVersion: 2, scenes: { growth: {
     particleQuality: 'ultra', formationDuration: 3.6, cloudRadius: -1,
   } } }).scenes.growth).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth)
+})
+
+it('normalizes animation durations with backward-compatible defaults and bounds', () => {
+  expect(normalizeConfig({ schemaVersion: 2 }).scenes).toMatchObject({
+    growth: { flowerGrowthDuration: 9 }, bloom: { flowerBloomDuration: 16 },
+  })
+  expect(normalizeConfig({ schemaVersion: 2, scenes: {
+    growth: { flowerGrowthDuration: 2 }, bloom: { flowerBloomDuration: 30 },
+  } }).scenes).toMatchObject({
+    growth: { flowerGrowthDuration: 9 }, bloom: { flowerBloomDuration: 16 },
+  })
+  expect(normalizeConfig({ schemaVersion: 2, scenes: {
+    growth: { flowerGrowthDuration: 4 }, bloom: { flowerBloomDuration: 24 },
+  } }).scenes).toMatchObject({
+    growth: { flowerGrowthDuration: 4 }, bloom: { flowerBloomDuration: 24 },
+  })
+  expect(normalizeConfig({ schemaVersion: 1, scenes: { bloom: { flowerBloomDuration: 12 } } }).scenes.bloom.flowerBloomDuration).toBe(12)
 })
 
 it('exposes an observable immutable store with scoped reset', async () => {

@@ -1,4 +1,4 @@
-import { getPrologueTouchDuration, MEMORIES, SCENES, SCENE_ORDER, TIMING } from './filmConfig'
+import { getPrologueTouchDuration, getSceneDuration, MEMORIES, SCENES, SCENE_ORDER, TIMING } from './filmConfig'
 
 export type SceneId = 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'eye' | 'cosmos' | 'greeting' | 'ending'
 export type Quality = 'standard' | 'low'
@@ -35,7 +35,7 @@ export const initialFilmState: FilmState = {
 }
 
 export function filmDuration(state: FilmState) {
-  return SCENES[state.scene].duration + (state.scene === 'prologue' && state.mode === 'transitioning'
+  return getSceneDuration(state.scene) + (state.scene === 'prologue' && state.mode === 'transitioning'
     ? state.prologueTouchDuration ?? getPrologueTouchDuration() : 0)
 }
 
@@ -56,7 +56,7 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
     }
     case 'dev-seek': {
       if (!Number.isFinite(action.time)) return state
-      const duration = SCENES[state.scene].duration
+      const duration = getSceneDuration(state.scene)
       const closedBud = state.scene === 'bloom' && state.mode === 'waiting'
       const elapsed = closedBud ? 0 : Math.max(0, Math.min(action.time, duration))
       const resumeTimed = !closedBud && duration > 0 && (state.mode === 'waiting' || state.mode === 'ready')

@@ -2,16 +2,19 @@ import { describe, expect, it } from 'vitest'
 import { getGrowthCameraPose, getGrowthHandoff, getGrowthViewportHeight, getSeedPose, sampleSeedParticleSeeds, SEED_ROOT } from './seedProcedure'
 import { getPrologueLightPose } from '../prologue/lightPose'
 import { getConfig } from '../../systems/scene-config/config'
-import { TIMING } from '../../engine/filmConfig'
+import { getGrowthSceneFrames, TIMING } from '../../engine/filmConfig'
 
 describe('scene 02 seed procedure', () => {
   it('fits seed formation and a full plant growth pass inside the v3 scene window', () => {
+    const frames = getGrowthSceneFrames(getConfig().scenes.growth)
     expect(TIMING.growth.duration).toBe(16)
     expect(TIMING.growth.formation).toEqual([0, 3.2])
     expect(TIMING.growth.fall[0]).toBe(TIMING.growth.formation[1])
     expect(TIMING.growth.sprout[1] - TIMING.growth.handoff[1]).toBeGreaterThanOrEqual(8)
     expect(TIMING.growth.sprout[1] - TIMING.growth.handoff[1]).toBeLessThanOrEqual(10)
     expect(TIMING.growth.sprout[1]).toBeLessThan(TIMING.growth.duration)
+    expect(frames.model).toEqual([5.1, 14.1])
+    expect(frames.duration).toBe(16)
   })
 
   it('forms from the center, lands on the shared plant root, and hands off to growth', () => {
@@ -69,8 +72,9 @@ describe('scene 02 seed procedure', () => {
     expect(getGrowthCameraPose(start + 0.15, false).y).toBe(0)
     expect(getGrowthCameraPose(start + 0.8, false).y).toBeLessThan(0)
     expect(getGrowthCameraPose(23, false)).toMatchObject({ y: 0.2, ty: 0.1 })
+    expect(getGrowthCameraPose(23, false).z).toBeCloseTo(6.2)
     expect(getGrowthCameraPose(end + 0.1, true).y).toBe(0)
-    expect(getGrowthCameraPose(23, true)).toMatchObject({ y: 0, ty: 0 })
+    expect(getGrowthCameraPose(23, true)).toMatchObject({ y: 0, ty: 0, z: 5.6 })
     const before = getGrowthCameraPose(end - 0.001, false)
     const after = getGrowthCameraPose(end + 0.001, false)
     expect(Math.abs(before.y - after.y)).toBeLessThan(0.01)

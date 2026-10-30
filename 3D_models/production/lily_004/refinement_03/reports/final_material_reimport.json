@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "glb": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\export\\lily_004_refined.glb",
+  "glbBytes": 2560052,
+  "glbSha256": "c6fd5311e45f9586efc491ea6870cc6ae4123999fd954b1a9a607927841c0d24",
+  "importedObjects": [
+    "Calyx",
+    "Flower_Details",
+    "Flower_Interior",
+    "Head_Root",
+    "Leaf_A",
+    "Leaf_A_Pivot",
+    "Leaf_B",
+    "Leaf_B_Pivot",
+    "Lily_Root",
+    "Petals",
+    "Petals_Outside",
+    "Stem",
+    "VFX_FlowerCenter",
+    "VFX_StemBase"
+  ],
+  "pairedPetalSurfaces": {
+    "verticesPerSurface": 2970,
+    "facesPerSurface": 5376,
+    "maxCorrespondingVertexGap": 0.0,
+    "normalDotRange": [
+      -1.0000002142041922,
+      -0.9999998211860657
+    ],
+    "complementaryOneSidedMaterials": true
+  },
+  "importedMaterials": {
+    "Anther_SoftGold": {
+      "doubleSided": false,
+      "metallic": 0.0,
+      "imageNodes": []
+    },
+    "Filament_Ivory": {
+      "doubleSided": false,
+      "metallic": 0.0,
+      "imageNodes": []
+    },
+    "Leaf_SoftGreen": {
+      "doubleSided": true,
+      "metallic": 0.0,
+      "imageNodes": [
+        "lily_leaf_base",
+        "lily_leaf_roughness"
+      ]
+    },
+    "Petal_Outside": {
+      "doubleSided": false,
+      "metallic": 0.0,
+      "imageNodes": [
+        "lily_petal_outside_base",
+        "lily_petal_roughness"
+      ]
+    },
+    "Petal_Pearl": {
+      "doubleSided": false,
+      "metallic": 0.0,
+      "imageNodes": [
+        "lily_petal_pearl_base",
+        "lily_petal_roughness"
+      ]
+    },
+    "Stem_SoftGreen": {
+      "doubleSided": false,
+      "metallic": 0.0,
+      "imageNodes": [
+        "lily_stem_base",
+        "lily_stem_roughness"
+      ]
+    }
+  },
+  "images": [
+    {
+      "name": "lily_leaf_base",
+      "width": 256,
+      "height": 512,
+      "hasDataAfterPixelRead": true,
+      "decodedFloatCount": 524288
+    },
+    {
+      "name": "lily_leaf_roughness",
+      "width": 256,
+      "height": 512,
+      "hasDataAfterPixelRead": true,
+      "decodedFloatCount": 524288
+    },
+    {
+      "name": "lily_petal_outside_base",
+      "width": 512,
+      "height": 512,
+      "hasDataAfterPixelRead": true,
+      "decodedFloatCount": 1048576
+    },
+    {
+      "name": "lily_petal_pearl_base",
+      "width": 512,
+      "height": 512,
+      "hasDataAfterPixelRead": true,
+      "decodedFloatCount": 1048576
+    },
+    {
+      "name": "lily_petal_roughness",
+      "width": 512,
+      "height": 512,
+      "hasDataAfterPixelRead": true,
+      "decodedFloatCount": 1048576
+    },
+    {
+      "name": "lily_stem_base",
+      "width": 128,
+      "height": 512,
+      "hasDataAfterPixelRead": true,
+      "decodedFloatCount": 262144
+    },
+    {
+      "name": "lily_stem_roughness",
+      "width": 128,
+      "height": 512,
+      "hasDataAfterPixelRead": true,
+      "decodedFloatCount": 262144
+    }
+  ],
+  "rootMaturationExtra": {
+    "schemaVersion": 1,
+    "clip": "Growth",
+    "durationSeconds": 9.0,
+    "colorSpace": "linear-sRGB",
+    "materialNames": [
+      "Petal_Outside",
+      "Petal_Pearl"
+    ]
+  },
+  "result": "PASS"
+}

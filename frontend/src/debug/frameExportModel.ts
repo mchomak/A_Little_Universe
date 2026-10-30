@@ -1,4 +1,4 @@
-import { getPrologueFrames, SCENES, type SceneId } from '../engine/filmConfig'
+import { getPrologueFrames, getSceneDuration, SCENES, type SceneId } from '../engine/filmConfig'
 import type { SceneComposerConfig } from '../systems/scene-config/config'
 import { timelineFrames } from './timelineModel'
 
@@ -10,7 +10,7 @@ export interface FrameExportCheckpoint {
 
 /** Captures authored beat boundaries, with denser samples for prologue lettering and dissolve. */
 export function frameExportCheckpoints(sceneId: SceneId, config: SceneComposerConfig): FrameExportCheckpoint[] {
-  const duration = SCENES[sceneId].duration
+  const duration = getSceneDuration(sceneId, config)
   const frames = timelineFrames(sceneId, config)
 
   if (duration === 0) {

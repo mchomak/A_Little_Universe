@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type Dispatch } from
 import type { FilmAction, FilmState } from '../engine/film'
 import type { FilmRuntime } from '../engine/runtime'
 import { useReviewNotes } from './useReviewNotes'
-import { SCENES, SCENE_ORDER } from '../engine/filmConfig'
+import { getSceneDuration, SCENES, SCENE_ORDER } from '../engine/filmConfig'
 import { getConfig, subscribeConfig, updateConfig } from '../systems/scene-config/config'
 import { activeFrameIndex, canSeekTimeline, timelineFrames } from './timelineModel'
 import { createLoopListener, validLoop } from './timelinePlayback'
@@ -28,8 +28,8 @@ export default function SceneTimeline({ state, dispatch, runtime, route, onPrelo
   const frames = timelineFrames(state.scene, config)
   const index = activeFrameIndex(frames, state.elapsed)
   const nextFrame = frames[index + 1]
-  const duration = SCENES[state.scene].duration
-  const seekable = canSeekTimeline(state, filmVisible)
+  const duration = getSceneDuration(state.scene, config)
+  const seekable = canSeekTimeline(state, filmVisible, config)
   const activeLoop = loop?.scene === state.scene && filmVisible ? loop : null
   const loopAllowed = seekable && state.mode === 'playing' && !state.reading
   useEffect(() => {

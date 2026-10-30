@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "clip": "Growth",
+  "durationSeconds": 9.0,
+  "colorSpace": "linear-sRGB",
+  "sampling": {
+    "mode": "absolute-clip-time",
+    "interpolation": "piecewise-linear",
+    "formula": "factor(t)=lerp(k[i].linearSrgbFactor,k[i+1].linearSrgbFactor,(clamp(t,0,9)-t[i])/(t[i+1]-t[i])); interpolate each RGB channel independently",
+    "endpointClamping": true,
+    "nonGrowth": "mature",
+    "crossfade": {
+      "durationSeconds": 0.25,
+      "space": "linear-sRGB",
+      "formula": "lerp(sourceFactor,targetFactor,clamp(transitionElapsedSeconds/0.25,0,1))",
+      "sourceAndTarget": "sample each clip at its absolute clip time; non-Growth clips use their mature factor",
+      "reverseScrub": "recompute from source/target absolute clip times and transition elapsed time; do not accumulate frame deltas"
+    }
+  },
+  "materialFactors": [
+    {
+      "material": "Petal_Pearl",
+      "target": "pbrMetallicRoughness.baseColorFactor.rgb",
+      "keyframes": [
+        {
+          "timeSeconds": 0.0,
+          "linearSrgbFactor": [
+            0.2,
+            0.47,
+            0.2
+          ]
+        },
+        {
+          "timeSeconds": 4.5,
+          "linearSrgbFactor": [
+            0.38,
+            0.59,
+            0.31
+          ]
+        },
+        {
+          "timeSeconds": 6.75,
+          "linearSrgbFactor": [
+            0.83,
+            0.79,
+            0.7
+          ]
+        },
+        {
+          "timeSeconds": 9.0,
+          "linearSrgbFactor": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "material": "Petal_Outside",
+      "target": "pbrMetallicRoughness.baseColorFactor.rgb",
+      "keyframes": [
+        {
+          "timeSeconds": 0.0,
+          "linearSrgbFactor": [
+            0.2,
+            0.47,
+            0.2
+          ]
+        },
+        {
+          "timeSeconds": 4.5,
+          "linearSrgbFactor": [
+            0.38,
+            0.59,
+            0.31
+          ]
+        },
+        {
+          "timeSeconds": 6.75,
+          "linearSrgbFactor": [
+            0.82,
+            0.8,
+            0.74
+          ]
+        },
+        {
+          "timeSeconds": 9.0,
+          "linearSrgbFactor": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    }
+  ]
+}

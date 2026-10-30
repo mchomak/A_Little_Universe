@@ -1,0 +1,204 @@
+{
+  "sourceBlend": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\final_qa\\baseline\\lily_004_v13_final_original.blend",
+  "sourceBlendSha256": "a6373f7395a9f3d46ef51bfb1eef9426efaae1d9a27182dfdb7333d0f3503e83",
+  "finalBlend": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\final_qa\\source\\lily_004_final.blend",
+  "finalGlb": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\final_qa\\export\\lily_004_final.glb",
+  "finalGlbSha256": "fbf63a526f4fd2cbbf04ee4dbc75e4b7de68f32b7b33131b5644845c56160202",
+  "finalGlbBytes": 1732192,
+  "geometryAndRigSignaturePreserved": true,
+  "sceneFrameRange": [
+    1,
+    1305
+  ],
+  "fps": 24,
+  "meshes": {
+    "Calyx": {
+      "vertices": 114,
+      "triangles": 224,
+      "shapeKeys": [],
+      "materials": [
+        "Stem_SoftGreen"
+      ]
+    },
+    "Flower_Details": {
+      "vertices": 2825,
+      "triangles": 5488,
+      "shapeKeys": [],
+      "materials": [
+        "Anther_SoftGold",
+        "Filament_Ivory"
+      ]
+    },
+    "Leaf_A": {
+      "vertices": 425,
+      "triangles": 768,
+      "shapeKeys": [],
+      "materials": [
+        "Leaf_SoftGreen"
+      ]
+    },
+    "Leaf_B": {
+      "vertices": 425,
+      "triangles": 768,
+      "shapeKeys": [],
+      "materials": [
+        "Leaf_SoftGreen"
+      ]
+    },
+    "Petals": {
+      "vertices": 2970,
+      "triangles": 5376,
+      "shapeKeys": [
+        "Basis",
+        "Closed_01",
+        "Closed_02",
+        "Closed_03",
+        "Closed_04",
+        "Closed_05",
+        "Closed_06",
+        "TipCurl",
+        "TipArc"
+      ],
+      "materials": [
+        "Petal_Pearl"
+      ]
+    },
+    "Petals_Outside": {
+      "vertices": 2970,
+      "triangles": 5376,
+      "shapeKeys": [
+        "Basis",
+        "Closed_01",
+        "Closed_02",
+        "Closed_03",
+        "Closed_04",
+        "Closed_05",
+        "Closed_06",
+        "TipCurl",
+        "TipArc"
+      ],
+      "materials": [
+        "Petal_Outside"
+      ]
+    },
+    "Stem": {
+      "vertices": 628,
+      "triangles": 1188,
+      "shapeKeys": [
+        "Basis",
+        "Sprout",
+        "EarlyShoot",
+        "MidShoot",
+        "Sway"
+      ],
+      "materials": [
+        "Stem_SoftGreen"
+      ]
+    }
+  },
+  "materials": {
+    "Petal_Pearl": {
+      "metallic": 0.0,
+      "roughness": 0.43,
+      "baseColorFactorLinear": [
+        0.95,
+        0.91,
+        0.9
+      ],
+      "textureFiles": [
+        "textures/lily_petal_pearl_base.png",
+        "textures/lily_petal_roughness.png"
+      ]
+    },
+    "Petal_Outside": {
+      "metallic": 0.0,
+      "roughness": 0.43,
+      "baseColorFactorLinear": [
+        0.93,
+        0.91,
+        0.96
+      ],
+      "textureFiles": [
+        "textures/lily_petal_outside_base.png",
+        "textures/lily_petal_roughness.png"
+      ]
+    },
+    "Leaf_SoftGreen": {
+      "metallic": 0.0,
+      "roughness": 0.52,
+      "baseColorFactorLinear": [
+        0.17464740365558504,
+        0.3613067797835095,
+        0.1946178304415758
+      ],
+      "textureFiles": [
+        "textures/lily_leaf_base.png",
+        "textures/lily_leaf_roughness.png"
+      ]
+    },
+    "Stem_SoftGreen": {
+      "metallic": 0.0,
+      "roughness": 0.53,
+      "baseColorFactorLinear": [
+        0.13843161503245183,
+        0.27467731206038465,
+        0.14126329114027164
+      ],
+      "textureFiles": [
+        "textures/lily_stem_base.png",
+        "textures/lily_stem_roughness.png"
+      ]
+    },
+    "Anther_SoftGold": {
+      "metallic": 0.0,
+      "roughness": 0.44,
+      "baseColorFactorLinear": [
+        0.6038273388553378,
+        0.3613067797835095,
+        0.07227185068231748
+      ],
+      "textureFiles": []
+    },
+    "Filament_Ivory": {
+      "metallic": 0.0,
+      "roughness": 0.52,
+      "baseColorFactorLinear": [
+        0.8631572134541023,
+        0.7379104087727308,
+        0.5711248294648731
+      ],
+      "textureFiles": []
+    }
+  },
+  "textureInventory": [
+    {
+      "path": "textures\\lily_leaf_base.png",
+      "bytes": 45304
+    },
+    {
+      "path": "textures\\lily_leaf_roughness.png",
+      "bytes": 37645
+    },
+    {
+      "path": "textures\\lily_petal_outside_base.png",
+      "bytes": 64042
+    },
+    {
+      "path": "textures\\lily_petal_pearl_base.png",
+      "bytes": 71061
+    },
+    {
+      "path": "textures\\lily_petal_roughness.png",
+      "bytes": 44829
+    },
+    {
+      "path": "textures\\lily_stem_base.png",
+      "bytes": 24589
+    },
+    {
+      "path": "textures\\lily_stem_roughness.png",
+      "bytes": 21199
+    }
+  ],
+  "extensionsExpected": "Standard metallic-roughness maps only; no decoder required"
+}

@@ -1,14 +1,13 @@
-import { getPrologueFrames, SCENES, TIMING, type SceneId } from '../engine/filmConfig'
+import { getBloomSceneFrames, getGrowthSceneFrames, getPrologueFrames, getSceneDuration, TIMING, type SceneId } from '../engine/filmConfig'
 import type { FilmState } from '../engine/film'
 import type { SceneComposerConfig } from '../systems/scene-config/config'
-import { getGrowthFrames } from '../scenes/growth/seedProcedure'
 
 export interface TimelineFrame { label: string; start: number }
 
 /** Only boundaries represented by the current film timing model. */
 export function timelineFrames(scene: SceneId, config: SceneComposerConfig): TimelineFrame[] {
   const p = getPrologueFrames(config.scenes.prologue)
-  const g = getGrowthFrames(config.scenes.growth)
+  const g = getGrowthSceneFrames(config.scenes.growth)
   switch (scene) {
     case 'prologue': return [
       { label: '01.1 Первый свет', start: 0 }, { label: '01.2 Первая фраза', start: p.first[0] },
@@ -23,7 +22,7 @@ export function timelineFrames(scene: SceneId, config: SceneComposerConfig): Tim
       { label: '02.4 Рост и передача', start: g.handoff[0] },
       { label: '02.5 Завершение роста', start: g.settle[0] },
     ]
-    case 'bloom': return [{ label: '03 Ожидание / раскрытие', start: 0 }, { label: '03.6 Созерцание', start: TIMING.bloom.contemplate[0] }]
+    case 'bloom': return [{ label: '03 Ожидание / раскрытие', start: 0 }, { label: '03.6 Созерцание', start: getBloomSceneFrames(config.scenes.bloom).contemplate[0] }]
     case 'identity': return [
       { label: '04.1 Лилия', start: 0 }, { label: '04.2 Спираль', start: TIMING.identity.particles[0] },
       { label: '04.3 Имя', start: TIMING.identity.name[0] }, { label: '04.4 Превращение', start: TIMING.identity.morph[0] },
@@ -42,8 +41,8 @@ export function timelineFrames(scene: SceneId, config: SceneComposerConfig): Tim
   }
 }
 
-export function canSeekTimeline(state: FilmState, filmVisible: boolean): boolean {
-  return filmVisible && SCENES[state.scene].duration > 0 && state.mode !== 'ready' && state.mode !== 'transitioning'
+export function canSeekTimeline(state: FilmState, filmVisible: boolean, config?: SceneComposerConfig): boolean {
+  return filmVisible && getSceneDuration(state.scene, config) > 0 && state.mode !== 'ready' && state.mode !== 'transitioning'
     && !(state.scene === 'bloom' && state.mode === 'waiting') && !state.reading
 }
 
