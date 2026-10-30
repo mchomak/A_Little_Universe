@@ -290,8 +290,8 @@
     "result": "PASS",
     "server": {
       "host": "127.0.0.1",
-      "port": 5182,
-      "url": "http://127.0.0.1:5182/scripts/viewer.html?asset=final",
+      "port": 5190,
+      "url": "http://127.0.0.1:5190/scripts/viewer.html?asset=final",
       "bindScope": "loopback-only"
     },
     "readOnlyPolicy": {
@@ -324,9 +324,9 @@
       }
     ],
     "asset": {
-      "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\export\\lily_004_material_study.glb",
-      "bytes": 2407440,
-      "sha256": "61f40893994793746a18f111da9cc15ece3034a034118b76163e7df25d08dc8a",
+      "path": "C:\\Users\\McHomak\\.codex\\worktrees\\lily004-refinement\\A_Little_Universe\\3D_models\\production\\lily_004\\refinement_03\\export\\lily_004_refined.glb",
+      "bytes": 2560052,
+      "sha256": "c6fd5311e45f9586efc491ea6870cc6ae4123999fd954b1a9a607927841c0d24",
       "virtualRoute": "/export/lily_004_animated.glb"
     },
     "three": {
@@ -397,7 +397,7 @@
     ],
     "httpReadiness": {
       "result": "PASS",
-      "baseUrl": "http://127.0.0.1:5182",
+      "baseUrl": "http://127.0.0.1:5190",
       "checks": [
         {
           "name": "viewer html",
@@ -436,8 +436,8 @@
           "route": "/export/lily_004_animated.glb",
           "method": "GET",
           "status": 200,
-          "bytes": 2407440,
-          "sha256": "61f40893994793746a18f111da9cc15ece3034a034118b76163e7df25d08dc8a"
+          "bytes": 2560052,
+          "sha256": "c6fd5311e45f9586efc491ea6870cc6ae4123999fd954b1a9a607927841c0d24"
         },
         {
           "name": "GLB HEAD",

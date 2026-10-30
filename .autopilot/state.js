@@ -11,7 +11,7 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-10-29T20:19:14+03:00",
-  "updatedAt": "2026-10-29T23:31:57+03:00",
+  "updatedAt": "2026-10-30T03:30:54.5523497+03:00",
   "finishedAt": null,
   "stages": [
     {
@@ -44,26 +44,29 @@ window.STATE =
       "finishedAt": "2026-10-29T20:34:55+03:00"
     },
     {
-      "status": "active",
+      "status": "done",
       "id": "build",
-      "startedAt": "2026-10-29T20:34:55+03:00"
+      "startedAt": "2026-10-29T20:34:55+03:00",
+      "finishedAt": "2026-10-30T03:30:54.5523497+03:00"
+    },
+    {
+      "status": "done",
+      "id": "review",
+      "startedAt": "2026-10-29T21:22:57+03:00",
+      "finishedAt": "2026-10-30T03:30:54.5523497+03:00"
     },
     {
       "status": "active",
-      "id": "review",
-      "startedAt": "2026-10-29T21:22:57+03:00"
-    },
-    {
-      "status": "pending",
-      "id": "final"
+      "id": "final",
+      "startedAt": "2026-10-30T03:30:54.5523497+03:00"
     }
   ],
   "requirements": {
     "total": 61,
-    "done": 31,
+    "done": 61,
     "inSpec": 0,
     "deferred": 0,
-    "inTicket": 30,
+    "inTicket": 0,
     "dropped": 0,
     "placeholder": 0
   },
@@ -117,7 +120,8 @@ window.STATE =
         "note": "RootfullverifierPASS44clip/5boundary/410frames/0intersections;8guards;UVboth2970unique1;M+Sclean,Craftre-reviewclean"
       },
       "agent": "/root/lily_geometry_final",
-      "finishedAt": "2026-10-29T23:31:57+03:00"
+      "finishedAt": "2026-10-29T23:31:57+03:00",
+      "commit": "f4092f1"
     },
     {
       "wave": 1,
@@ -163,7 +167,7 @@ window.STATE =
     },
     {
       "wave": 2,
-      "repairs": 0,
+      "repairs": 1,
       "requirements": [
         "R01",
         "R02",
@@ -205,10 +209,16 @@ window.STATE =
       "zone": [
         "final-verification"
       ],
-      "handoffs": 0,
-      "status": "in-progress",
+      "handoffs": 2,
+      "status": "done",
       "startedAt": "2026-10-29T23:17:52+03:00",
-      "agent": "/root/lily_export_verify"
+      "agent": "/root/lily_delivery_finish",
+      "tests": {
+        "passed": 39,
+        "failed": 0,
+        "note": "RootaggregatePASS0failures;39hostunitPASS;217GrowthBVH0;410normalframes0;exactGLTFLoaderboundaries/loops/crossfadePASS;M+S clean/Craftnoblockers;rootvisualaccepted"
+      },
+      "finishedAt": "2026-10-30T03:30:54.5523497+03:00"
     }
   ],
   "singlePass": null,
@@ -271,7 +281,7 @@ window.STATE =
       "ticket": "03",
       "axis": "spec",
       "decision": "fix-now",
-      "status": "pending",
+      "status": "resolved",
       "finding": "Finalverification must include idleloops and crossfade0.25 fromarbitraryidlephases, notonlyendpointcomparisons",
       "reason": "S5 proof delegatedtoT03, notmissinggeometryimplementation"
     },
@@ -287,9 +297,33 @@ window.STATE =
       "ticket": "03",
       "axis": "craft",
       "decision": "fix-now",
-      "status": "in-progress",
+      "status": "resolved",
       "finding": "FinalGLB needs actualendpoint/zerostart/connectivity, fullhierarchy/rootunits andGrowthBVH proof",
       "reason": "Source-stage checks alone insufficient; assignedfinalverificationzone"
+    },
+    {
+      "ticket": "03",
+      "axis": "verification",
+      "decision": "fix-now",
+      "status": "resolved",
+      "finding": "Blender pose sampler retains unkeyed state between clip samples, making pose-bounds/GrowthBVH/comparison evidence unreliable",
+      "reason": "Reset imported rest state and share correct NLA activation; assert real endpoint geometry, regenerate evidence without GLB changes"
+    },
+    {
+      "ticket": "03",
+      "axis": "spec",
+      "decision": "fix-now",
+      "status": "resolved",
+      "finding": "Publish six baseline clip behavior descriptions, decoded texture/morph costs, and complete reproduction commands; link existing multi-view geometry proof",
+      "reason": "Bounded delivery documentation completeness per R49/S1/S3/S7"
+    },
+    {
+      "ticket": "03",
+      "axis": "craft",
+      "decision": "report",
+      "status": "open",
+      "finding": "test_render_comparison.py:108 and test_verify_final.py:38 cover helper behavior, not production call wiring; deleting the production reset/assert call would leave helper tests green",
+      "reason": "Current candidate verified by real Blender/render/GLTFLoader evidence; regression-test wiring depth is nonblocking and explicitly reported"
     }
   ],
   "reviewers": {
@@ -301,10 +335,10 @@ window.STATE =
   "branch": "codex/lily004-refinement",
   "scope": "Existing Blender lily assets only; frontend untouched",
   "preview": {
-    "material": "http://127.0.0.1:5182/scripts/viewer.html?asset=final",
+    "material": "http://127.0.0.1:5190/scripts/viewer.html?asset=final",
     "rootIabPreview": 2,
-    "dashboard": "http://127.0.0.1:5181/.autopilot/dashboard.html",
-    "materialSession": 13442,
+    "dashboard": "http://127.0.0.1:5191/dashboard.html",
+    "materialSession": 5983,
     "rootIabOriginal": 1
   }
 }
