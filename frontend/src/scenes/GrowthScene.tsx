@@ -2,7 +2,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExterna
 import { useThree } from '@react-three/fiber'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, GLSL3, Group, MeshBasicMaterial, RawShaderMaterial, Sphere, Vector2, Vector3, type Mesh, type ShaderMaterial, type SpotLight } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
-import { TIMING } from '../engine/filmConfig'
+import { getIdentityEnvironmentOpacity } from '../engine/sceneContinuity'
 import { useSceneAnimation } from './shared/animation'
 import { getGrowthFrames, getGrowthViewportHeight, getSeedParticleCount, getSeedPose, sampleSeedParticleSeeds, SEED_ROOT, type GrowthSettings } from './growth/seedProcedure'
 import { coreFragment, groundFragment, haloFragment, moonFragment, particleFragment, particleVertex, seedFragment, surfaceVertex } from './growth/seedShaders'
@@ -170,7 +170,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
     const frames = getGrowthFrames(growthSettings)
     const poseTime = environmentOnly ? frames.duration : time
     const pose = getSeedPose(poseTime, height, reducedMotion, growthSettings)
-    const environmentOpacity = identityScene ? 1 - Math.min(1, Math.max(0, time / TIMING.identity.flower[1])) : 1
+    const environmentOpacity = identityScene ? getIdentityEnvironmentOpacity(time, config.scenes.identity.dissolveDuration) : 1
     if (!environmentOnly) {
       matterSyncRef.current?.(time, growthSettings)
       for (const [material, opacity] of [[orbit.current, 0.95], [trail.current, pose.trailOpacity], [sparks.current, pose.sparkOpacity]] as const) {
@@ -213,7 +213,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
     }
     if (moundMaterial.current) moundMaterial.current.opacity = pose.mound * 0.16 * environmentOpacity
     if (moon.current) { moon.current.intensity = pose.moonlight * 4 * environmentOpacity; if (target.current) moon.current.target = target.current }
-  }, [height, dpr, reducedMotion, growthSettings, fallRange, environmentOnly, identityScene])
+  }, [height, dpr, reducedMotion, growthSettings, fallRange, environmentOnly, identityScene, config.scenes.identity.dissolveDuration])
 
   useSceneAnimation(runtime, getGrowthFrames(growthSettings).duration, draw)
   return <group position={SEED_ROOT}>

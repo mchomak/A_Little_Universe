@@ -1,6 +1,8 @@
 import { BufferAttribute, BufferGeometry, Color, Material, ShaderMaterial, Vector3, AdditiveBlending } from 'three'
 import type { LilySurfaceSource } from './particleSource'
 
+export const LILY_PARTICLE_TAIL_SECONDS = 6.5
+
 /** The same world-space threshold drives the GLB fragments and its sampled particles. */
 export const LILY_FIELD = /* glsl */ `
 uniform vec3 uLilyCenter;
@@ -28,7 +30,7 @@ export interface LilyDissolveUniforms {
 
 export function createLilyDissolveUniforms(): LilyDissolveUniforms {
   return { uLilyActive: { value: 0 }, uLilyProgress: { value: 0 }, uLilyEdge: { value: 0.035 },
-    uLilyDuration: { value: 4 }, uLilyCenter: { value: new Vector3() }, uLilyRadius: { value: 1 },
+    uLilyDuration: { value: 12 }, uLilyCenter: { value: new Vector3() }, uLilyRadius: { value: 1 },
     uLilyMinY: { value: 0 }, uLilyMaxY: { value: 1 }, uLilySize: { value: 2.3 }, uLilyDpr: { value: 1 } }
 }
 
@@ -94,16 +96,31 @@ export function createLilyParticleMaterial(uniforms: LilyDissolveUniforms) {
       attribute float aPart; attribute float aSeed; varying float vAlpha; varying float vSeed; varying float vPart;
       void main() {
         float front = lilyThreshold(position, aPart);
-        float age = (uLilyProgress - front + uLilyEdge) * uLilyDuration;
+        float age = max(0.0, (uLilyProgress - front + uLilyEdge) * uLilyDuration);
         float birth = smoothstep(0.0, 0.16, age);
-        float fade = 1.0 - smoothstep(0.5, 1.7, age);
+        float fade = 1.0 - smoothstep(4.5, ${LILY_PARTICLE_TAIL_SECONDS}, age);
         vAlpha = birth * fade; vSeed = aSeed; vPart = aPart;
-        float drift = max(0.0, age - 0.12);
-        vec3 direction = normalize(vec3(sin(aSeed * 31.0), 0.65 + aSeed * 0.4, cos(aSeed * 23.0)));
-        vec3 p = position + direction * min(0.22, drift * 0.12);
+        // Preserve the flower outline as particles form, then let every particle
+        // join the same upward spiral. Positive XZ angular travel is clockwise
+        // from above in Three.js world coordinates (+X right, +Z down-screen).
+        float detach = smoothstep(0.08, 0.72, age);
+        vec3 relative = position - uLilyCenter;
+        float sourceRadius = length(relative.xz);
+        float startAngle = sourceRadius > 0.001 ? atan(relative.z, relative.x) : aSeed * 6.2831853;
+        float angularSpeed = 1.75 + aSeed * 0.65;
+        float turn = angularSpeed * age + 0.5 * 0.34 * age * age;
+        float targetRadius = uLilyRadius * (0.28 + aSeed * 0.42);
+        float orbitRadius = mix(sourceRadius, targetRadius, detach);
+        float verticalRise = age * (0.38 + aSeed * 0.1) + 0.045 * age * age;
+        float funnel = mix(1.0, 0.62, smoothstep(1.2, 4.8, verticalRise));
+        float angle = startAngle + turn * detach;
+        vec2 orbit = vec2(cos(angle), sin(angle)) * orbitRadius * funnel;
+        vec3 p = position;
+        p.xz = uLilyCenter.xz + orbit;
+        p.y += verticalRise * detach;
         vec4 view = viewMatrix * vec4(p, 1.0);
         gl_Position = projectionMatrix * view;
-        gl_PointSize = clamp(uLilySize * uLilyDpr * (1.0 - 0.45 * clamp(age / 1.7, 0.0, 1.0)) * 4.0 / max(0.5, -view.z), 1.0, 12.0);
+        gl_PointSize = clamp(uLilySize * uLilyDpr * (1.0 - 0.5 * clamp(age / ${LILY_PARTICLE_TAIL_SECONDS}, 0.0, 1.0)) * 4.0 / max(0.5, -view.z), 1.0, 12.0);
       }`,
     fragmentShader: /* glsl */ `
       uniform vec3 uPearl; uniform vec3 uPink; uniform vec3 uGold;

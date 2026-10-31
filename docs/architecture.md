@@ -58,14 +58,14 @@ Canvas2D используется только при пересборке ре�
 | prologue | 18 с, затем бесконечное ожидание касания/keyboard activation. Default окна: свет 0–2, первая фраза 2–5,5, вторая 7–10,5, удержание 10,5–12,5, dissolve 12,5–16, приглашение 16–18. Touch запускает настраиваемый transition 0,7–1 с (default 0,85), затем growth. |
 | `growth` | 23 с автоматически; затем закрытый бутон. |
 | `bloom` | Неограниченное ожидание касания бутона/кнопки; после него 22 с раскрытия и созерцания. |
-| `identity` | 34 с: GPU-частицы → имя → ASCII-портрет → исходная фотография. В 28–34 с — сборка подписи, тонкая кромка и отъезд камеры к галерее. |
+| `identity` | 34 с: первые 12 с — растворение реальной раскрытой GLB-лилии в поверхностные частицы и восходящий вихрь; после ухода и затухания частиц до конца сцены остаётся пустой фон. |
 | `gallery` | Без таймера. В навигацию входят только предоставленные воспоминания: сейчас одна реальная фотография. Касание и swipe сохраняют допустимые границы; «Назад»/«Вперёд» отключены, если соседней фотографии нет. Продолжение доступно на последней имеющейся фотографии. |
 | `eye` | 18 с; указатель слегка наклоняет радужку, последние 3 с — приближение камеры. Камера устройства не используется. |
 | `cosmos` | 26 с: радужка, спираль частиц, схематичный букет. |
 | `greeting` | 50 с показа поздравления/титров, затем ожидание кнопки «Завершить». Чтение доступно без таймера в modal dialog. |
 | `ending` | Повтор фильма, повторный вход в галерею и чтение. Закрытие повторного просмотра возвращает сюда. |
 
-GLB Lily 004 remains the same cloned object from growth through bloom; its gold-ring ground and moonlight remain mounted across the 02→03 boundary and the opening seconds of identity. `LilyAnimationPlayer` resets its active action for every absolute mixer seek, so LoopOnce endpoints remain stable after forward/backward scrubbing. Identity starts from the fully open GLB. Its existing particle geometry now samples the posed GLB surface in the same world coordinates, then uses the existing legacy vortex motion as the flower begins to dissolve. The remaining Scene 04 dependency is the full v3 choreography and portrait/photo transition; this local handoff does not claim to implement those shots.
+GLB Lily 004 remains the same cloned object from growth through bloom; its gold-ring ground and moonlight remain mounted across the 02→03 boundary and the opening seconds of identity. `LilyAnimationPlayer` resets its active action for every absolute mixer seek, so LoopOnce endpoints remain stable after forward/backward scrubbing. Identity starts from the fully open GLB. Its particle geometry samples the posed GLB surface in the same world coordinates. Over 12 seconds the flower dissolves into a clockwise upward spiral whose particles accelerate and fade as they leave the frame. The camera starts from the bloom end pose, then pulls back and rises over the same interval; its height, distance, focus point, travel and duration are adjustable in the DEV inspector. The remaining Scene 04 dependency is the later v3 choreography and portrait/photo transition; these shots are not implemented.
 
 Пауза не сбрасывает playhead. Чтение замораживает часы независимо от ручной паузы; закрытие сохраняет её прежнее значение. Повтор начинает пролог сразу, сбрасывая film state, и не начинает запись заново. Browser reload возвращает подготовку и сбрасывает согласия; записи живут отдельно в IndexedDB. History API и URL-маршруты сцен не используются; browser Back не является переходом между сценами.
 
@@ -105,9 +105,9 @@ Canvas использует `frameloop="demand"`; анимации вызыва�
 
 ### Передача частиц лилии в сцену 04
 
-`scenes/lily/particleSource.ts` снимает финальную морфированную позу GLB в координатах сцены и детерминированно выбирает точки по площади треугольников. Классификация мешей разделяет лепестки, центр и листву со стеблем. `lily/dissolve.ts` задаёт единое поле фронта для фрагментов исходных материалов и частиц; частицы аналитически двигаются от исходных точек по времени FilmRuntime. Геометрия и материал частиц освобождаются при размонтировании, качество low ограничено 5000 точками. Параметры хранятся в `scenes.identity` и доступны в DEV-инспекторе.
+`scenes/lily/particleSource.ts` снимает финальную морфированную позу GLB в координатах сцены и детерминированно выбирает точки по площади треугольников. Классификация мешей разделяет лепестки, центр и листву со стеблем. `lily/dissolve.ts` задаёт единое поле фронта для фрагментов исходных материалов и частиц; точки остаются на поверхности в начале отделения, затем аналитически закручиваются по часовой стрелке, ускоряются и поднимаются по времени FilmRuntime. По умолчанию растворение длится 12 с, создаёт 36 000 точек (до 9 000 в профиле low). Геометрия и материал частиц освобождаются при размонтировании. Параметры растворения и движения камеры доступны в DEV-инспекторе.
 
-На этом этапе `IdentityScene`, старые имя, портрет, фото и спирали не входят в активный маршрут. После затухания частиц до конца прежних 34 секунд сцены остаётся пустой фон; следующие художественные этапы не реализованы. Физический iPad/Safari и производительность не проверялись.
+На этом этапе `IdentityScene`, старые имя, портрет, фото и спирали не входят в активный маршрут. После 12-секундного распада и ухода частиц до конца 34-секундной сцены остаётся пустой фон; следующие художественные этапы не реализованы. Физический iPad/Safari и производительность не проверялись.
 
 ## Сеть, звук и optional media
 

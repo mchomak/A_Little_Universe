@@ -102,7 +102,15 @@ export interface SceneComposerConfig {
       textWritingDuration: number
       textParticleCount: number
     }>
-    identity: Readonly<{ dissolveDuration: number; particleCount: number; particleSize: number; edgeWidth: number }>
+    identity: Readonly<{
+      dissolveDuration: number
+      particleCount: number
+      particleSize: number
+      edgeWidth: number
+      cameraPullback: number
+      cameraRise: number
+      cameraMoveDuration: number
+    }>
     galaxy: Readonly<{
       quality: SeedQuality
       seed: string
@@ -207,11 +215,14 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
     },
     bloom: {
       flowerBloomDuration: 16, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,
-      cameraFinalDistance: 2.3, cameraFinalHeight: 2.3, cameraTargetX: 0.27, cameraTargetY: 1.25,
+      cameraFinalDistance: 2.3, cameraFinalHeight: 2.55, cameraTargetX: 0.27, cameraTargetY: 1.25,
       textPositionX: 0.1, textPositionY: 0.52, textSize: 36, textColor: '#C7AD77',
       textWritingDuration: 4.2, textParticleCount: 1800,
     },
-    identity: { dissolveDuration: 4, particleCount: 12000, particleSize: 2.3, edgeWidth: 0.035 },
+    identity: {
+      dissolveDuration: 12, particleCount: 36000, particleSize: 2.3, edgeWidth: 0.035,
+      cameraPullback: 1.8, cameraRise: 0.65, cameraMoveDuration: 12,
+    },
     galaxy: {
       quality: 'standard', seed: 'andromeda', starCount: 32000, arms: 5, radius: 8.2,
       spin: 4.6, armWidth: 0.16, randomness: 0.065, randomnessPower: 3.6, coreSize: 0.24, coreDensity: 0.2,
@@ -394,10 +405,13 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       textParticleCount: numberValue(asRecord(scenesInput?.bloom)?.textParticleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textParticleCount, 300, 6000, true),
     },
     identity: {
-      dissolveDuration: numberValue(identityInput?.dissolveDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.dissolveDuration, 2, 8),
-      particleCount: numberValue(identityInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleCount, 1000, 24000, true),
+      dissolveDuration: numberValue(identityInput?.dissolveDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.dissolveDuration, 2, 18),
+      particleCount: numberValue(identityInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleCount, 1000, 48000, true),
       particleSize: numberValue(identityInput?.particleSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleSize, 0.5, 6),
       edgeWidth: numberValue(identityInput?.edgeWidth, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.edgeWidth, 0.005, 0.1),
+      cameraPullback: numberValue(identityInput?.cameraPullback, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.cameraPullback, 0, 5),
+      cameraRise: numberValue(identityInput?.cameraRise, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.cameraRise, 0, 3),
+      cameraMoveDuration: numberValue(identityInput?.cameraMoveDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.cameraMoveDuration, 1, 18),
     },
     galaxy: normalizeGalaxy(galaxySettingsInput),
   }

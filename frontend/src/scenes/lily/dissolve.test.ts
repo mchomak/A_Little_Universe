@@ -1,7 +1,10 @@
-import { BufferAttribute, BufferGeometry, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, type WebGLRenderer } from 'three'
+import { BufferAttribute, BufferGeometry, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PerspectiveCamera, Vector3, type WebGLRenderer } from 'three'
 import { expect, it } from 'vitest'
+import { getBloomCloseupPose } from '../../engine/bloomCamera'
+import { getIdentityCameraMoveTarget } from '../../engine/identityCamera'
 import { createLilyGeometryParticleSource } from './particleSource'
-import { createLilyDissolveUniforms, createLilyParticleGeometry, createLilyParticleMaterial, patchLilyMaterial, updateLilyDissolve } from './dissolve'
+import { createLilyDissolveUniforms, createLilyParticleGeometry, createLilyParticleMaterial, LILY_PARTICLE_TAIL_SECONDS, patchLilyMaterial, updateLilyDissolve } from './dissolve'
+import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 
 it('samples particles from posed flower triangles with their correct dissolve phase', () => {
   const geometry = new BufferGeometry()
@@ -25,18 +28,41 @@ it('samples particles from posed flower triangles with their correct dissolve ph
   particles.dispose(); geometry.dispose(); (petal.material as MeshBasicMaterial).dispose()
 })
 
-it('uses the same field for surface and particles and supports deterministic backwards seeks', () => {
+it('uses the same field for surface and particles and supports deterministic backwards seeks through the slower dissolve', () => {
   const uniforms = createLilyDissolveUniforms()
   const material = createLilyParticleMaterial(uniforms)
   expect(material.vertexShader).toContain('lilyThreshold(position, aPart)')
-  updateLilyDissolve(uniforms, true, 4, 4, 0.035)
+  expect(uniforms.uLilyDuration.value).toBe(12)
+  updateLilyDissolve(uniforms, true, 12, 12, 0.035)
   expect(uniforms.uLilyProgress.value).toBe(1)
-  updateLilyDissolve(uniforms, true, 1, 4, 0.035)
+  updateLilyDissolve(uniforms, true, 3, 12, 0.035)
   expect(uniforms.uLilyProgress.value).toBe(0.25)
-  updateLilyDissolve(uniforms, false, 1, 4, 0.035)
+  expect(material.vertexShader).toContain('float turn = angularSpeed * age + 0.5 * 0.34 * age * age')
+  expect(material.vertexShader).toContain('verticalRise * detach')
+  expect(material.vertexShader).toContain('float fade = 1.0 - smoothstep(4.5, 6.5, age)')
+  expect(LILY_PARTICLE_TAIL_SECONDS).toBe(6.5)
+  updateLilyDissolve(uniforms, false, 3, 12, 0.035)
   expect(uniforms.uLilyActive.value).toBe(0)
   expect(uniforms.uLilyProgress.value).toBe(0)
   material.dispose()
+})
+
+it('projects positive XZ swirl clockwise in the elevated camera view', () => {
+  const settings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes
+  const start = getBloomCloseupPose(settings.bloom)
+  const end = getIdentityCameraMoveTarget(start, settings.identity)
+  const camera = new PerspectiveCamera(38, 4 / 3, 0.1, 100)
+  camera.position.set(end.x, end.y, end.z)
+  camera.lookAt(end.tx, end.ty, end.tz)
+
+  const center = new Vector3(start.tx, start.ty, start.tz)
+  const radius = 0.5, angle = 0.15
+  const atRight = center.clone().add(new Vector3(radius, 0, 0)).project(camera)
+  const afterPositiveTurn = center.clone().add(new Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius)).project(camera)
+
+  // With +X at screen-right, a clockwise turn moves the point down the image.
+  expect(atRight.x).toBeGreaterThan(0)
+  expect(afterPositiveTurn.y).toBeLessThan(atRight.y)
 })
 
 it('adds the common dissolve threshold to the original GLB material after morph transforms', () => {

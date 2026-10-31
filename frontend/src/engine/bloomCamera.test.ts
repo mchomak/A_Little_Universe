@@ -4,7 +4,7 @@ import { getBloomCameraMoveDuration, getBloomCloseupPose } from './bloomCamera'
 
 it('aims the bloom close-up at the flower cup using configured distance and height', () => {
   expect(getBloomCloseupPose(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom)).toEqual({
-    x: 0.27, y: 2.3, z: 2.3, tx: 0.27, ty: 1.25, tz: 0,
+    x: 0.27, y: 2.55, z: 2.3, tx: 0.27, ty: 1.25, tz: 0,
   })
 })
 

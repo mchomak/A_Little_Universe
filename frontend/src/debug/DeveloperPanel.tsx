@@ -146,10 +146,20 @@ const BLOOM_CONTROLS: readonly NumericControl[] = [
 ]
 
 const DISSOLVE_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.identity.dissolveDuration', label: 'Длительность растворения', unit: 'с', min: 2, max: 8, step: 0.1 },
-  { path: 'scenes.identity.particleCount', label: 'Плотность частиц', unit: 'шт.', min: 1000, max: 24000, step: 500 },
+  { path: 'scenes.identity.dissolveDuration', label: 'Длительность растворения', unit: 'с', min: 2, max: 18, step: 0.1 },
+  { path: 'scenes.identity.particleCount', label: 'Плотность частиц', unit: 'шт.', min: 1000, max: 48000, step: 1000 },
   { path: 'scenes.identity.particleSize', label: 'Размер частиц', unit: 'px', min: 0.5, max: 6, step: 0.1 },
   { path: 'scenes.identity.edgeWidth', label: 'Ширина светящейся границы', unit: '', min: 0.005, max: 0.1, step: 0.005 },
+]
+
+const IDENTITY_CAMERA_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.bloom.cameraFinalHeight', label: 'Высота камеры / наклон взгляда', unit: '', min: 0.5, max: 4, step: 0.05 },
+  { path: 'scenes.bloom.cameraFinalDistance', label: 'Дистанция камеры', unit: '', min: 1.5, max: 5, step: 0.05 },
+  { path: 'scenes.bloom.cameraTargetX', label: 'Точка фокуса · X', unit: '', min: -1, max: 1, step: 0.02 },
+  { path: 'scenes.bloom.cameraTargetY', label: 'Точка фокуса · высота', unit: '', min: -0.5, max: 3, step: 0.02 },
+  { path: 'scenes.identity.cameraPullback', label: 'Отъезд назад', unit: '', min: 0, max: 5, step: 0.05 },
+  { path: 'scenes.identity.cameraRise', label: 'Подъём камеры', unit: '', min: 0, max: 3, step: 0.05 },
+  { path: 'scenes.identity.cameraMoveDuration', label: 'Длительность движения камеры', unit: 'с', min: 1, max: 18, step: 0.1 },
 ]
 
 const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
@@ -626,7 +636,13 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           <details open><summary>Текст ожидания</summary>{BLOOM_CONTROLS.slice(7).map(range)}{color('scenes.bloom.textColor', 'Цвет текста')}</details>
           <p>IdleClosed ждёт завершения письма и жеста. Камера доезжает до крупного плана на заданной доле раскрытия.</p>
         </details>}
-        {selected === 'identity' && <details open><summary>Растворение лилии</summary>{DISSOLVE_CONTROLS.map(range)}</details>}
+        {selected === 'identity' && <>
+          <details open><summary>Растворение лилии и вихрь</summary>{DISSOLVE_CONTROLS.map(range)}</details>
+          <details open><summary>Камера · кадр и отъезд</summary>
+            {IDENTITY_CAMERA_CONTROLS.map(range)}
+            <p>Наклон взгляда задаётся высотой камеры, дистанцией и точкой фокуса. Параметры кадра общие с концом сцены 03, поэтому первый кадр сцены 04 остаётся непрерывным.</p>
+          </details>
+        </>}
         {selected === 'cosmos' && <>
           <details open><summary>Scene 07 — Galaxy</summary>
             {GALAXY_SELECTS.map((control) => <SelectConfigControl key={control.path} control={control} value={valueAtPath(config, control.path) as string} onChange={(path, value) => { void (path === 'scenes.galaxy.palette' ? changeGalaxyPalette(value as GalaxyPalette) : changeField(path, value)) }} onReset={(path) => { void resetField(path) }} />)}

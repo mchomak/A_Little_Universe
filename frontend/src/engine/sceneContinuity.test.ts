@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shouldKeepGrowthWorld } from './sceneContinuity'
+import { getIdentityEnvironmentOpacity, shouldKeepGrowthWorld } from './sceneContinuity'
 
 describe('growth world continuity', () => {
   it('keeps the same environment through growth, bloom and the opening of identity', () => {
@@ -10,5 +10,16 @@ describe('growth world continuity', () => {
     expect(shouldKeepGrowthWorld('identity', 4)).toBe(false)
     expect(shouldKeepGrowthWorld('gallery', 0)).toBe(false)
     expect(shouldKeepGrowthWorld('identity', Number.NaN)).toBe(false)
+  })
+})
+
+describe('growth environment handoff', () => {
+  it('keeps the scene 02 environment visible through the slower scene 04 dissolve', () => {
+    expect(getIdentityEnvironmentOpacity(0, 12)).toBe(1)
+    expect(getIdentityEnvironmentOpacity(4, 12)).toBeCloseTo(2 / 3)
+    expect(getIdentityEnvironmentOpacity(12, 12)).toBe(0)
+    expect(getIdentityEnvironmentOpacity(16, 12)).toBe(0)
+    expect(getIdentityEnvironmentOpacity(-2, 12)).toBe(1)
+    expect(getIdentityEnvironmentOpacity(Number.NaN, 12)).toBe(1)
   })
 })

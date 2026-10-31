@@ -3,10 +3,12 @@ import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, normalizeConfig, SCENE_CONFIG
 import * as configApi from './config'
 
 it('migrates old configs to bounded scene 04 dissolve settings', () => {
-  expect(normalizeConfig({ schemaVersion: 4 }).scenes.identity).toEqual({ dissolveDuration: 4, particleCount: 12000, particleSize: 2.3, edgeWidth: 0.035 })
+  expect(normalizeConfig({ schemaVersion: 4 }).scenes.identity).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity)
   expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: { dissolveDuration: 6, particleCount: 4000, particleSize: 3, edgeWidth: 0.06 } } }).scenes.identity)
-    .toEqual({ dissolveDuration: 6, particleCount: 4000, particleSize: 3, edgeWidth: 0.06 })
-  expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: { dissolveDuration: 100, particleCount: -1, particleSize: 0, edgeWidth: 1 } } }).scenes.identity)
+    .toMatchObject({ dissolveDuration: 6, particleCount: 4000, particleSize: 3, edgeWidth: 0.06 })
+  expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: { dissolveDuration: 4, particleCount: 12000 } } }).scenes.identity)
+    .toMatchObject({ dissolveDuration: 4, particleCount: 12000 })
+  expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: { dissolveDuration: 100, particleCount: 90000, particleSize: 0, edgeWidth: 1 } } }).scenes.identity)
     .toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity)
 })
 
@@ -28,7 +30,7 @@ it('uses immutable schema v5 defaults and the local Great Vibes prologue face', 
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.flowerGrowthDuration).toBe(9)
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom).toMatchObject({
     flowerBloomDuration: 16, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,
-    cameraFinalDistance: 2.3, cameraFinalHeight: 2.3, cameraTargetX: 0.27, cameraTargetY: 1.25,
+    cameraFinalDistance: 2.3, cameraFinalHeight: 2.55, cameraTargetX: 0.27, cameraTargetY: 1.25,
     textPositionX: 0.1, textPositionY: 0.52, textSize: 36, textColor: '#C7AD77',
     textWritingDuration: 4.2, textParticleCount: 1800,
   })
