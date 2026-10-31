@@ -28,7 +28,15 @@ export class LilyAnimationPlayer {
   }
 
   seek(time: number): void {
-    if (!this.disposed && Number.isFinite(time)) this.mixer.setTime(Math.max(0, time))
+    if (this.disposed || !Number.isFinite(time)) return
+    // AnimationMixer.setTime rewinds the mixer clock to zero before applying an
+    // absolute sample. A LoopOnce action that previously reached its endpoint is
+    // paused, so the next seek otherwise restores its bound objects to the base
+    // pose. Resetting just the active action makes every sample independent of
+    // the direction and history of the film timeline.
+    const action = this.active ? this.actions.get(this.active) : undefined
+    if (action) action.reset().play()
+    this.mixer.setTime(Math.max(0, time))
   }
 
   stop(): void {
