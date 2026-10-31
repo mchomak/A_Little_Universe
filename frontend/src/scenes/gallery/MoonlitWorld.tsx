@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AdditiveBlending, Color, DoubleSide, MeshBasicMaterial, MeshStandardMaterial, Object3D, ShaderMaterial, SphereGeometry, SRGBColorSpace, TextureLoader, Vector3 } from 'three'
+import { useFrame } from '@react-three/fiber'
 import type { CanvasTexture, Texture } from 'three'
 import moonAlbedoUrl from '../../assets/gallery-moonlit/lroc-color-2k.jpg'
 import moonHeightUrl from '../../assets/gallery-moonlit/ldem-3-8bit.jpg'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
-import { createGalleryAtmosphereMaterial } from './cloudMaterial'
+import { createGalleryAtmosphereMaterial, setGalleryAtmosphereTime } from './cloudMaterial'
 import { createMoonHaloTexture } from './worldTextures'
 import { GALLERY_WORLD, getGalleryCloudWisps, getGalleryHazeMasses, getGalleryMoonScatteringLayers, type GalleryQuality } from './world'
 import { WetFloor } from './WetFloor'
+import { galleryMotion } from './controller'
 
 type GallerySettings = SceneComposerConfig['scenes']['gallery']
 
@@ -80,7 +82,7 @@ export function MoonlitWorld({
   const lightTarget = useMemo(() => [settings.moonTargetX, settings.moonTargetY, settings.moonTargetZ] as const,
     [settings.moonTargetX, settings.moonTargetY, settings.moonTargetZ])
   const hazeMasses = useMemo(() => getGalleryHazeMasses(quality), [quality])
-  const atmosphereGeometry = useMemo(() => new SphereGeometry(1, quality === 'low' ? 20 : 28, quality === 'low' ? 14 : 18), [quality])
+  const atmosphereGeometry = useMemo(() => new SphereGeometry(1, quality === 'low' ? 30 : 48, quality === 'low' ? 20 : 32), [quality])
   const cloudMaterials = useMemo(() => cloudWisps.map((mass) => createGalleryAtmosphereMaterial({
     kind: 'cloud',
     seed: mass.seed,
@@ -89,7 +91,8 @@ export function MoonlitWorld({
     moonPosition,
     moonColor: settings.moonLightColor,
     moonLightIntensity: settings.moonLightIntensity * settings.coldLightIntensity * settings.moonCloudLightIntensity,
-  })), [cloudWisps, moonPosition, settings.cloudDensity, settings.cloudIntensity, settings.coldLightIntensity, settings.moonCloudLightIntensity, settings.moonLightColor, settings.moonLightIntensity])
+    driftSpeed: settings.cloudDriftSpeed,
+  })), [cloudWisps, moonPosition, settings.cloudDensity, settings.cloudDriftSpeed, settings.cloudIntensity, settings.coldLightIntensity, settings.moonCloudLightIntensity, settings.moonLightColor, settings.moonLightIntensity])
   const hazeMaterials = useMemo(() => hazeMasses.map((mass) => createGalleryAtmosphereMaterial({
     kind: 'haze',
     seed: mass.seed,
@@ -159,6 +162,9 @@ export function MoonlitWorld({
     moonHaloTexture.dispose()
   }, [moonHaloTexture])
   useEffect(() => () => cloudMaterials.forEach((material) => material.dispose()), [cloudMaterials])
+  useFrame(() => {
+    setGalleryAtmosphereTime(cloudMaterials, galleryMotion.time)
+  })
   useEffect(() => () => hazeMaterials.forEach((material) => material.dispose()), [hazeMaterials])
   useEffect(() => () => moonMaterial.dispose(), [moonMaterial])
   useEffect(() => () => haloMaterial.dispose(), [haloMaterial])

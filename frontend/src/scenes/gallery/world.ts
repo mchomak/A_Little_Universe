@@ -33,17 +33,12 @@ export const GALLERY_WORLD = {
   moon: { position: [0.2, 16, -126] as const, radius: 2.15, haloRadius: 6.5 },
   clouds: [
     // These lateral masses remain outside the photo corridor but show clear parallax while walking.
-    { id: 'side-west-near', position: [-27, 4.7, -32] as const, radii: [12, 5.3, 7.5] as const, opacity: 0.52, seed: 13, lowQuality: true },
-    { id: 'side-east-near', position: [28, 5.4, -48] as const, radii: [13, 6.2, 8] as const, opacity: 0.5, seed: 37, lowQuality: false },
-    { id: 'side-west-mid', position: [-30, 6.1, -69] as const, radii: [15, 6.5, 9] as const, opacity: 0.48, seed: 61, lowQuality: true },
-    { id: 'side-east-mid', position: [30, 7.1, -83] as const, radii: [16, 7, 10] as const, opacity: 0.46, seed: 83, lowQuality: false },
-    // Broad distant banks frame the moon while leaving generous dark sky above it.
-    { id: 'far-west', position: [-20, 8.3, -104] as const, radii: [24, 8.5, 11] as const, opacity: 0.53, seed: 107, lowQuality: true },
-    { id: 'far-east', position: [24, 8.8, -112] as const, radii: [26, 9, 12] as const, opacity: 0.5, seed: 131, lowQuality: false },
-    { id: 'deep-west', position: [-25, 10.4, -144] as const, radii: [30, 10.5, 14] as const, opacity: 0.44, seed: 149, lowQuality: true },
-    { id: 'deep-east', position: [29, 11.2, -155] as const, radii: [32, 11, 15] as const, opacity: 0.42, seed: 151, lowQuality: false },
-    // A low, broken wisp partly veils the fixed moon without covering its centre.
-    { id: 'moon-veil', position: [0.6, 14.8, -124.4] as const, radii: [5.7, 1.55, 2.2] as const, opacity: 0.35, seed: 173, lowQuality: true },
+    { id: 'side-west-near', position: [-27, 4.7, -32] as const, radii: [12, 5.3, 7.5] as const, opacity: 0.48, seed: 13, lowQuality: true },
+    { id: 'side-east-near', position: [28, 5.4, -48] as const, radii: [13, 6.2, 8] as const, opacity: 0.46, seed: 37, lowQuality: true },
+    { id: 'side-west-mid', position: [-30, 6.1, -69] as const, radii: [15, 6.5, 9] as const, opacity: 0.44, seed: 61, lowQuality: true },
+    { id: 'side-east-mid', position: [30, 7.1, -83] as const, radii: [16, 7, 10] as const, opacity: 0.42, seed: 83, lowQuality: true },
+    { id: 'side-west-far', position: [-34, 8, -108] as const, radii: [18, 7.8, 10.5] as const, opacity: 0.38, seed: 107, lowQuality: false },
+    { id: 'side-east-far', position: [35, 8.7, -119] as const, radii: [19, 8.2, 11] as const, opacity: 0.36, seed: 131, lowQuality: false },
   ] satisfies readonly GalleryAtmosphereMass[],
 } as const
 
@@ -102,7 +97,7 @@ export function getGalleryCloudWisps(quality: GalleryQuality, bankCount = GALLER
       const scaleVariation = 0.94 + seededFraction(bank.seed, salt + 3) * 0.13
       const radiusScale = lobe.scale * scaleVariation
       const opacityVariation = 0.92 + seededFraction(bank.seed, salt + 4) * 0.16
-      const opacity = bank.opacity * (1 / count) * opacityVariation
+      const opacity = bank.opacity * 0.68 * opacityVariation
 
       return {
         id: `${bank.id}-wisp-${index + 1}`,

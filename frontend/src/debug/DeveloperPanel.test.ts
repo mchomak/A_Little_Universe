@@ -96,7 +96,8 @@ it('exposes all bounded moonlit gallery settings in the existing Scene Inspector
 
   expect(markup).toContain('Лунная галерея')
   expect(markup).toContain('Интенсивность облаков')
-  expect(markup).toContain('Количество слоёв облаков')
+  expect(markup).toContain('Количество облачных масс')
+  expect(markup).toContain('Скорость дрейфа облаков')
   expect(markup).toContain('Высота дымки')
   expect(markup).toContain('Лунный свет на облаках')
   expect(markup).toContain('Общий лунный свет')
@@ -114,7 +115,7 @@ it('exposes all bounded moonlit gallery settings in the existing Scene Inspector
   expect(markup).toMatch(/id="composer-scenes-gallery-moonSize"[^>]*min="0.4" max="1.8" step="0.05" value="1"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-cloudIntensity"[^>]*min="0" max="2" step="0.05" value="1"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-cloudDensity"[^>]*min="0" max="1.8" step="0.05" value="0.85"/)
-  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayerCount"[^>]*min="0" max="9" step="1" value="9"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayerCount"[^>]*min="0" max="6" step="1" value="6"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-hazeDensity"[^>]*min="0" max="1.8" step="0.05" value="0.7"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-hazeHeight"[^>]*min="-3" max="3" step="0.1" value="0"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-reflectionStrength"[^>]*min="0" max="0.6" step="0.01" value="0.24"/)

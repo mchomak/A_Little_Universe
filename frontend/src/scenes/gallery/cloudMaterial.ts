@@ -8,11 +8,14 @@ export interface GalleryAtmosphereMaterialOptions {
   moonPosition: readonly [number, number, number]
   moonColor?: string
   moonLightIntensity: number
+  driftSpeed?: number
 }
 
 const atmosphereVertexShader = `
   uniform float uSeed;
   uniform float uContourStrength;
+  uniform float uTime;
+  uniform float uDriftSpeed;
   varying vec3 vCloudPosition;
   varying vec3 vContourPosition;
   varying vec3 vBoundaryPosition;
@@ -43,25 +46,32 @@ const atmosphereVertexShader = `
   }
 
   void main() {
-    float broadNoise = noise3(position * 2.4 + vec3(uSeed));
-    float detailNoise = noise3(position * 6.8 + vec3(uSeed * 0.37));
+    float t = uTime * uDriftSpeed;
+    vec3 animatedPosition = position + vec3(
+      sin(t * 0.07 + uSeed) * 0.018,
+      sin(t * 0.11 + uSeed * 0.31) * 0.012,
+      cos(t * 0.06 + uSeed * 0.23) * 0.02
+    );
+    float broadNoise = noise3(animatedPosition * 2.4 + vec3(uSeed));
+    float detailNoise = noise3(animatedPosition * 6.8 + vec3(uSeed * 0.37));
     float baseDisplacement = (broadNoise - 0.5) * 0.16 + (detailNoise - 0.5) * 0.055;
 
     // The contour field is seeded per wisp to give each volume a soft, uneven edge.
     vec3 warp = vec3(
-      noise3(position * 1.8 + vec3(uSeed * 0.11, uSeed * 0.07, uSeed * 0.03)),
-      noise3(position * 1.8 + vec3(7.1, uSeed * 0.13, 2.7)),
-      noise3(position * 1.8 + vec3(1.4, 4.8, uSeed * 0.09))
+      noise3(animatedPosition * 1.8 + vec3(uSeed * 0.11, uSeed * 0.07, uSeed * 0.03)),
+      noise3(animatedPosition * 1.8 + vec3(7.1, uSeed * 0.13, 2.7)),
+      noise3(animatedPosition * 1.8 + vec3(1.4, 4.8, uSeed * 0.09))
     ) - 0.5;
     vec3 warpedPosition = position + warp * 0.86;
 
-    float broadLobe = noise3(position * 1.65 + vec3(uSeed * 0.031, uSeed * 0.017, uSeed * 0.023));
+    float broadLobe = noise3(animatedPosition * 1.65 + vec3(uSeed * 0.031, uSeed * 0.017, uSeed * 0.023));
     vec3 asymmetryAxis = normalize(vec3(sin(uSeed * 0.71), cos(uSeed * 0.37), sin(uSeed * 0.19 + 1.7)));
     float oneSidedLobe = dot(position, asymmetryAxis) * 0.22;
-    float contourDisplacement = ((broadLobe - 0.5) * 0.56 + oneSidedLobe) * uContourStrength;
+    float contourDisplacement = ((broadLobe - 0.5) * 0.42 + oneSidedLobe * 0.78) * uContourStrength;
 
-    vec3 shadingPosition = position * (1.0 + baseDisplacement);
-    vec3 boundaryPosition = position * (1.0 + baseDisplacement + contourDisplacement);
+    float breathing = sin(t * 0.09 + uSeed * 0.17) * 0.008;
+    vec3 shadingPosition = animatedPosition * (1.0 + baseDisplacement + breathing);
+    vec3 boundaryPosition = animatedPosition * (1.0 + baseDisplacement + contourDisplacement + breathing);
     vec4 worldPosition = modelMatrix * vec4(boundaryPosition, 1.0);
     vCloudPosition = shadingPosition;
     vContourPosition = warpedPosition;
@@ -80,6 +90,8 @@ const atmosphereFragmentShader = `
   uniform float uOpacity;
   uniform float uCloudIntensity;
   uniform float uContourStrength;
+  uniform float uTime;
+  uniform float uDriftSpeed;
   uniform float uMoonLightIntensity;
   uniform float uIsHaze;
   varying vec3 vCloudPosition;
@@ -119,11 +131,13 @@ const atmosphereFragmentShader = `
   }
 
   void main() {
-    float broadDensity = fbm(vCloudPosition + vec3(uSeed * 0.017));
-    float contourShape = fbm(vContourPosition * 1.1 + vec3(uSeed * 0.013));
-    float contourDetail = noise3(vContourPosition * 6.0 + vec3(uSeed * 0.19));
-    float edgeOffset = ((contourShape - 0.5) * 0.36 + (contourDetail - 0.5) * 0.14) * uContourStrength;
-    float edge = 1.0 - smoothstep(0.94 + edgeOffset, 1.075 + edgeOffset, length(vBoundaryPosition));
+    float t = uTime * uDriftSpeed;
+    vec3 cloudDrift = vec3(t * 0.0018, sin(t * 0.08 + uSeed) * 0.014, t * 0.0011);
+    float broadDensity = fbm(vCloudPosition + cloudDrift + vec3(uSeed * 0.017));
+    float contourShape = fbm(vContourPosition + cloudDrift * 0.8 + vec3(uSeed * 0.013));
+    float contourDetail = noise3((vContourPosition + cloudDrift) * 6.0 + vec3(uSeed * 0.19));
+    float edgeOffset = ((contourShape - 0.5) * 0.26 + (contourDetail - 0.5) * 0.08) * uContourStrength;
+    float edge = 1.0 - smoothstep(0.86 + edgeOffset * 0.55, 1.16 + edgeOffset * 0.55, length(vBoundaryPosition));
     float cloudBody = smoothstep(0.27, 0.67, broadDensity);
     float detail = noise3(vCloudPosition * 13.0 + vec3(uSeed * 0.31));
     float cloudDensity = edge * cloudBody * (0.66 + detail * 0.34);
@@ -138,7 +152,7 @@ const atmosphereFragmentShader = `
     vec3 toCamera = normalize(cameraPosition - vWorldPosition);
     float viewFacing = max(dot(normal, toCamera), 0.0);
     float softRim = pow(1.0 - viewFacing, 1.7) * (0.24 + moonFacing * 0.76);
-    float lunarLift = clamp(moonFacing * uMoonLightIntensity * 0.38 + softRim * 0.16, 0.0, 0.82);
+    float lunarLift = clamp(moonFacing * uMoonLightIntensity * 0.38 + softRim * 0.08, 0.0, 0.82);
     vec3 color = mix(uBaseColor, uMoonColor, lunarLift);
     color *= (0.86 + broadDensity * 0.27) * uCloudIntensity;
 
@@ -157,9 +171,11 @@ export function createGalleryAtmosphereMaterial(options: GalleryAtmosphereMateri
       uMoonColor: { value: new Color(options.moonColor ?? '#adc8e9') },
       uBaseColor: { value: new Color(options.kind === 'haze' ? '#192742' : '#101a2d') },
       uSeed: { value: options.seed },
+      uTime: { value: 0 },
+      uDriftSpeed: { value: Math.max(0, Math.min(2, options.driftSpeed ?? 0.7)) },
       uOpacity: { value: Math.max(0, Math.min(1.5, options.opacity)) },
       uCloudIntensity: { value: Math.max(0, Math.min(2, options.intensity)) },
-      uContourStrength: { value: options.kind === 'cloud' ? 1 : 0 },
+      uContourStrength: { value: options.kind === 'cloud' ? 0.7 : 0 },
       uMoonLightIntensity: { value: Math.max(0, options.moonLightIntensity) },
       uIsHaze: { value: options.kind === 'haze' ? 1 : 0 },
     },
@@ -172,4 +188,9 @@ export function createGalleryAtmosphereMaterial(options: GalleryAtmosphereMateri
     side: DoubleSide,
     toneMapped: false,
   })
+}
+
+export function setGalleryAtmosphereTime(materials: readonly ShaderMaterial[], time: number) {
+  const safeTime = Number.isFinite(time) ? time : 0
+  for (const material of materials) material.uniforms.uTime!.value = safeTime
 }

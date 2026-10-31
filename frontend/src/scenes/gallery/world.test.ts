@@ -25,19 +25,17 @@ describe('moonlit gallery world layout', () => {
     expect(GALLERY_WORLD.moon.radius).toBeLessThan(2.5)
   })
 
-  it('uses world-space cloud masses and a separate set of distant haze volumes', () => {
+  it('keeps three world-space cloud banks on each side and reserves the centre for the gallery', () => {
     const clouds = getGalleryCloudMasses('standard')
     const zPositions = clouds.map(({ position }) => position[2])
-    const skyClouds = clouds.filter(({ id }) => id.startsWith('far-') || id.startsWith('deep-'))
     const sideClouds = clouds.filter(({ id }) => id.startsWith('side-'))
     const haze = getGalleryHazeMasses('standard')
 
-    expect(clouds.length).toBeGreaterThanOrEqual(8)
-    expect(Math.max(...zPositions) - Math.min(...zPositions)).toBeGreaterThan(90)
-    expect(clouds.some(({ id, position }) => id === 'moon-veil' && position[2] > GALLERY_WORLD.moon.position[2])).toBe(true)
-    expect(skyClouds.length).toBeGreaterThanOrEqual(4)
-    expect(skyClouds.every(({ position }) => position[2] < GALLERY.startZ - GALLERY.travel - 30)).toBe(true)
-    expect(sideClouds.length).toBeGreaterThanOrEqual(4)
+    expect(clouds).toHaveLength(6)
+    expect(Math.max(...zPositions) - Math.min(...zPositions)).toBeGreaterThan(70)
+    expect(sideClouds).toHaveLength(6)
+    expect(sideClouds.filter(({ position }) => position[0] < 0)).toHaveLength(3)
+    expect(sideClouds.filter(({ position }) => position[0] > 0)).toHaveLength(3)
     expect(sideClouds.every(({ position, radii }) => Math.abs(position[0]) - radii[0] > 5)).toBe(true)
     expect(haze.length).toBeGreaterThanOrEqual(3)
     expect(haze.every(({ position, radii }) => position[1] < 1 && radii[1] < 6)).toBe(true)
@@ -47,17 +45,15 @@ describe('moonlit gallery world layout', () => {
     const masses = getGalleryCloudMasses('standard')
     const zPositions = masses.map(({ position }) => position[2])
     const sideMasses = masses.filter(({ id }) => id.startsWith('side-'))
-    const moonVeil = masses.find(({ id }) => id === 'moon-veil')
-
-    expect(masses.length).toBeGreaterThanOrEqual(8)
-    expect(Math.max(...zPositions) - Math.min(...zPositions)).toBeGreaterThan(80)
+    expect(masses).toHaveLength(6)
+    expect(Math.max(...zPositions) - Math.min(...zPositions)).toBeGreaterThan(70)
     expect(new Set(zPositions).size).toBeGreaterThanOrEqual(5)
-    expect(sideMasses.length).toBeGreaterThanOrEqual(4)
+    expect(sideMasses).toHaveLength(6)
     expect(sideMasses.every(({ position, radii }) => Math.abs(position[0]) - radii[0] > 5)).toBe(true)
-    expect(moonVeil).toBeDefined()
-    expect(Math.abs(moonVeil!.position[1] - GALLERY_WORLD.moon.position[1])).toBeLessThan(3)
     expect(masses.every(({ radii }) => radii[0] > radii[2] && radii[2] > 0)).toBe(true)
-    expect(getGalleryCloudMasses('low').length).toBeLessThan(masses.length)
+    expect(getGalleryCloudMasses('low')).toHaveLength(4)
+    expect(getGalleryCloudMasses('low').filter(({ position }) => position[0] < 0)).toHaveLength(2)
+    expect(getGalleryCloudMasses('low').filter(({ position }) => position[0] > 0)).toHaveLength(2)
   })
 
   it('places sparse scattering pools along the fixed moon-to-gallery direction', () => {
@@ -79,9 +75,9 @@ describe('moonlit gallery world layout', () => {
     expect(layers[3]!.position[2]).toBeCloseTo(-42.6)
   })
 
-  it('scales decorative atmosphere in low quality while keeping the moon veil', () => {
+  it('scales cloud and haze layers for low quality without losing either side of the corridor', () => {
     expect(getGalleryCloudMasses('low').length).toBeLessThan(getGalleryCloudMasses('standard').length)
-    expect(getGalleryCloudMasses('low').some(({ id }) => id === 'moon-veil')).toBe(true)
+    expect(getGalleryCloudMasses('low').every(({ id }) => id.includes('near') || id.includes('mid'))).toBe(true)
     expect(getGalleryHazeMasses('low').length).toBeLessThan(getGalleryHazeMasses('standard').length)
   })
 
@@ -97,7 +93,7 @@ describe('moonlit gallery world layout', () => {
       const daughters = wisps.filter(({ bankId }) => bankId === bank.id)
       expect(daughters).toHaveLength(3)
       expect(new Set(daughters.map(({ position }) => position.join(','))).size).toBe(daughters.length)
-      expect(daughters.every(({ opacity }) => opacity < bank.opacity)).toBe(true)
+      expect(daughters.every(({ opacity }) => opacity > bank.opacity * 0.5)).toBe(true)
       const furthestLobeOffset = Math.max(...daughters.map(({ position }) => Math.hypot(
         (position[0] - bank.position[0]) / bank.radii[0],
         (position[1] - bank.position[1]) / bank.radii[1],
