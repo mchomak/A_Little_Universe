@@ -10,8 +10,10 @@ export interface LilySurfaceSource extends LilyParticleSource {
 }
 
 /** Petals first, floral centre second, foliage and stem last. */
-export function lilyDissolvePart(name: string): number {
-  return name.startsWith('Petals') ? 0 : name === 'Flower_Details' || name === 'Calyx' ? 1 : 2
+export function lilyDissolvePart(name: string, materialNames: readonly string[] = []): number {
+  const isCenterMaterial = materialNames.some((materialName) => /anther|filament|pistil/i.test(materialName))
+  return name.startsWith('Petals') ? 0
+    : name === 'Flower_Details' || name === 'Calyx' || isCenterMaterial ? 1 : 2
 }
 
 /**
@@ -31,7 +33,8 @@ export function createLilyGeometryParticleSource(root: Object3D): LilySurfaceSou
 
   root.traverse((object) => {
     if (!(object instanceof Mesh)) return
-    const part = lilyDissolvePart(object.name)
+    const materials = Array.isArray(object.material) ? object.material : [object.material]
+    const part = lilyDissolvePart(object.name, materials.map((material) => material.name))
     const geometry = object.geometry
     const positions = geometry.getAttribute('position')
     const index = geometry.getIndex()

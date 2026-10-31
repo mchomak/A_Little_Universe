@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { createVortexAttributes } from './identityVortex'
+import { createVortexAttributes, identityLegacyReveal, identityLegacyRevealGLSL } from './identityVortex'
 
 describe('04.2 vortex particle identities', () => {
+  it('keeps the old particle field out of the GLB dissolve and fades it in after 12 seconds', () => {
+    expect(identityLegacyReveal(0)).toBe(0)
+    expect(identityLegacyReveal(6)).toBe(0)
+    expect(identityLegacyReveal(12)).toBe(0)
+    expect(identityLegacyReveal(12.5)).toBeCloseTo(0.5)
+    expect(identityLegacyReveal(13)).toBe(1)
+    expect(identityLegacyRevealGLSL).toContain('smoothstep(12.0, 13.0, time)')
+  })
+
   it('rebuilds identical finite attributes for replay at both existing quality budgets', () => {
     for (const count of [7000, 16000]) {
       const first = createVortexAttributes(count)

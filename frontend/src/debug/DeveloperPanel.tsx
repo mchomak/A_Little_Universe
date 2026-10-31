@@ -147,9 +147,15 @@ const BLOOM_CONTROLS: readonly NumericControl[] = [
 
 const DISSOLVE_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.identity.dissolveDuration', label: 'Длительность растворения', unit: 'с', min: 2, max: 18, step: 0.1 },
-  { path: 'scenes.identity.particleCount', label: 'Плотность частиц', unit: 'шт.', min: 1000, max: 48000, step: 1000 },
+  { path: 'scenes.identity.particleCount', label: 'Плотность частиц', unit: 'шт.', min: 1000, max: 64000, step: 1000 },
   { path: 'scenes.identity.particleSize', label: 'Размер частиц', unit: 'px', min: 0.5, max: 6, step: 0.1 },
+  { path: 'scenes.identity.particleBrightness', label: 'Яркость частиц', unit: '×', min: 0.25, max: 2, step: 0.05 },
   { path: 'scenes.identity.edgeWidth', label: 'Ширина светящейся границы', unit: '', min: 0.005, max: 0.1, step: 0.005 },
+  { path: 'scenes.identity.vortexRadius', label: 'Радиус вихря', unit: '× радиуса цветка', min: 0.5, max: 3, step: 0.05 },
+  { path: 'scenes.identity.vortexExpansion', label: 'Расширение вверх', unit: '× / м', min: 0, max: 1.5, step: 0.05 },
+  { path: 'scenes.identity.swirlSpeed', label: 'Начальная скорость вращения', unit: 'рад/с', min: 0, max: 8, step: 0.05 },
+  { path: 'scenes.identity.swirlAcceleration', label: 'Ускорение вращения', unit: 'рад/с²', min: 0, max: 3, step: 0.01 },
+  { path: 'scenes.identity.centerDissolveAt', label: 'Распад центра при растворении лепестков', unit: '%', min: 10, max: 90, step: 1, displayScale: 100 },
 ]
 
 const IDENTITY_CAMERA_CONTROLS: readonly NumericControl[] = [

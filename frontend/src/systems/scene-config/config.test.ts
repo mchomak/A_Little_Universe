@@ -12,6 +12,24 @@ it('migrates old configs to bounded scene 04 dissolve settings', () => {
     .toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity)
 })
 
+it('provides bounded scene 04 vortex controls with center dissolve at half petal progress', () => {
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity).toMatchObject({
+    particleCount: 48000, particleBrightness: 1.25, vortexRadius: 0.8, vortexExpansion: 0.45,
+    swirlSpeed: 1, swirlAcceleration: 0.1, centerDissolveAt: 0.5,
+  })
+  expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: {
+    particleCount: 64000, particleBrightness: 2, vortexRadius: 3, vortexExpansion: 1.5,
+    swirlSpeed: 8, swirlAcceleration: 3, centerDissolveAt: 0.9,
+  } } }).scenes.identity).toMatchObject({
+    particleCount: 64000, particleBrightness: 2, vortexRadius: 3, vortexExpansion: 1.5,
+    swirlSpeed: 8, swirlAcceleration: 3, centerDissolveAt: 0.9,
+  })
+  expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: {
+    particleCount: 65000, particleBrightness: 2.1, vortexRadius: 0.4, vortexExpansion: -0.1,
+    swirlSpeed: 9, swirlAcceleration: 4, centerDissolveAt: 1,
+  } } }).scenes.identity).toMatchObject(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity)
+})
+
 it('uses immutable schema v5 defaults and the local Great Vibes prologue face', () => {
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(5)
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('great-vibes')

@@ -11,7 +11,7 @@ export function LilyDissolveParticles({ source, uniforms, low, runtime }: { sour
   const dpr = useThree((state) => state.viewport.dpr)
   const invalidate = useThree((state) => state.invalidate)
   const points = useRef<Points>(null)
-  const count = low ? Math.min(9000, config.scenes.identity.particleCount) : config.scenes.identity.particleCount
+  const count = low ? Math.min(12000, config.scenes.identity.particleCount) : config.scenes.identity.particleCount
   const geometry = useMemo(() => createLilyParticleGeometry(source, count), [source, count])
   const material = useMemo(() => createLilyParticleMaterial(uniforms), [uniforms])
   useLayoutEffect(() => { updateLilyParticleSize(uniforms, config.scenes.identity.particleSize, dpr) }, [uniforms, config.scenes.identity.particleSize, dpr])

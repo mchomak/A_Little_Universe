@@ -8,7 +8,7 @@ import { identityFrame } from './shared/identityFrame'
 import { identityNameGLSL } from './shared/identityName'
 import { identityMorphGLSL, portraitCell, portraitFragment, portraitSample, portraitVertex } from './shared/identityMorph'
 import { mockLilyParticles, type LilyParticleSource } from './shared/identityParticles'
-import { createVortexAttributes, identityVortexGLSL } from './shared/identityVortex'
+import { createVortexAttributes, identityLegacyRevealGLSL, identityVortexGLSL } from './shared/identityVortex'
 import { IdentityTrails } from './shared/IdentityTrails'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
 import { IdentityAtmosphere } from './shared/IdentityAtmosphere'
@@ -118,6 +118,7 @@ varying float vGlyphBlend;
 varying float vMorphLight;
 varying vec2 vPhotoUv;
 ${restorationGLSL}
+${identityLegacyRevealGLSL}
 void main() {
   float r = length(gl_PointCoord - vec2(0.5));
   float glow = exp(-r * 7.0) + (1.0 - smoothstep(0.0, 0.19, r)) * 0.8;
@@ -125,6 +126,7 @@ void main() {
   float glyphBlend = vGlyphBlend;
   float opacity = uParticleReveal * (1.0 - smoothstep(23.0, 28.0, uTime)) * (1.0 - uPortraitPresence);
   if (uTime > 23.0 && uTime < 28.0) opacity = 1.0 - photographicRecovery(vec2(vPhotoUv.x, 1.0 - vPhotoUv.y), uTime);
+  opacity *= identityLegacyReveal(uTime);
   vec3 color = mix(vec3(1.0, 0.66, 0.75), vec3(1.0, 0.94, 0.89), vSeed);
   float accent = step(.978, vSeed);
   vec2 uv = gl_PointCoord - .5;

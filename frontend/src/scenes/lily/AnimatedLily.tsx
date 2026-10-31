@@ -11,7 +11,7 @@ import { getGrowthClipTime, getIdleClosedClipTime, getSyncedBloomClipTime } from
 import { attachLilyAnimationPlayer, LilyAnimationPlayer } from './animationPlayer'
 import { subscribeLilyAnimationClock } from './animationClock'
 import { createLilyGeometryParticleSource, lilyDissolvePart, type LilySurfaceSource } from './particleSource'
-import { patchLilyMaterial, setLilySurfaceBounds, updateLilyDissolve, type LilyDissolveUniforms } from './dissolve'
+import { patchLilyMaterial, setLilySurfaceBounds, updateLilyDissolve, updateLilyParticleSettings, type LilyDissolveUniforms } from './dissolve'
 
 const MODEL_POSITION: [number, number, number] = [0, -1.45, 0]
 const MODEL_SCALE = 3
@@ -27,7 +27,8 @@ function cloneLilyMaterials(root: Group, uniforms: LilyDissolveUniforms): LilyMa
   const clones = new Map<Material, Map<number, Material>>()
   root.traverse((object) => {
     if (!(object instanceof Mesh)) return
-    const part = lilyDissolvePart(object.name)
+    const materials = Array.isArray(object.material) ? object.material : [object.material]
+    const part = lilyDissolvePart(object.name, materials.map((material) => material.name))
     const replace = (material: Material) => {
       let variants = clones.get(material)
       if (!variants) { variants = new Map(); clones.set(material, variants) }
@@ -103,6 +104,7 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
     if (!modelObject || !player) return
     const scene = currentState.scene
     updateLilyDissolve(dissolveUniforms, scene === 'identity', time, config.scenes.identity.dissolveDuration, config.scenes.identity.edgeWidth)
+    updateLilyParticleSettings(dissolveUniforms, config.scenes.identity)
     if (scene === 'growth') {
       const frames = getGrowthSceneFrames(config.scenes.growth)
       const clip = gltf.animations.find((animation) => animation.name === 'Growth')

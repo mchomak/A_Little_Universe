@@ -107,6 +107,12 @@ export interface SceneComposerConfig {
       particleCount: number
       particleSize: number
       edgeWidth: number
+      particleBrightness: number
+      vortexRadius: number
+      vortexExpansion: number
+      swirlSpeed: number
+      swirlAcceleration: number
+      centerDissolveAt: number
       cameraPullback: number
       cameraRise: number
       cameraMoveDuration: number
@@ -220,7 +226,9 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       textWritingDuration: 4.2, textParticleCount: 1800,
     },
     identity: {
-      dissolveDuration: 12, particleCount: 36000, particleSize: 2.3, edgeWidth: 0.035,
+      dissolveDuration: 12, particleCount: 48000, particleSize: 2.3, edgeWidth: 0.035,
+      particleBrightness: 1.25, vortexRadius: 0.8, vortexExpansion: 0.45,
+      swirlSpeed: 1, swirlAcceleration: 0.1, centerDissolveAt: 0.5,
       cameraPullback: 1.8, cameraRise: 0.65, cameraMoveDuration: 12,
     },
     galaxy: {
@@ -406,9 +414,15 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
     },
     identity: {
       dissolveDuration: numberValue(identityInput?.dissolveDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.dissolveDuration, 2, 18),
-      particleCount: numberValue(identityInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleCount, 1000, 48000, true),
+      particleCount: numberValue(identityInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleCount, 1000, 64000, true),
       particleSize: numberValue(identityInput?.particleSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleSize, 0.5, 6),
       edgeWidth: numberValue(identityInput?.edgeWidth, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.edgeWidth, 0.005, 0.1),
+      particleBrightness: numberValue(identityInput?.particleBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleBrightness, 0.25, 2),
+      vortexRadius: numberValue(identityInput?.vortexRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.vortexRadius, 0.5, 3),
+      vortexExpansion: numberValue(identityInput?.vortexExpansion, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.vortexExpansion, 0, 1.5),
+      swirlSpeed: numberValue(identityInput?.swirlSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.swirlSpeed, 0, 8),
+      swirlAcceleration: numberValue(identityInput?.swirlAcceleration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.swirlAcceleration, 0, 3),
+      centerDissolveAt: numberValue(identityInput?.centerDissolveAt, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.centerDissolveAt, 0.1, 0.9),
       cameraPullback: numberValue(identityInput?.cameraPullback, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.cameraPullback, 0, 5),
       cameraRise: numberValue(identityInput?.cameraRise, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.cameraRise, 0, 3),
       cameraMoveDuration: numberValue(identityInput?.cameraMoveDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.cameraMoveDuration, 1, 18),

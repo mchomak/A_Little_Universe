@@ -3,7 +3,7 @@ import { AdditiveBlending, BufferAttribute, BufferGeometry, ShaderMaterial } fro
 import type { FilmRuntime } from '../../engine/runtime'
 import { TIMING } from '../../engine/filmConfig'
 import { useSceneAnimation } from './animation'
-import { identityVortexGLSL } from './identityVortex'
+import { identityLegacyRevealGLSL, identityVortexGLSL } from './identityVortex'
 
 const vertex = `
 attribute vec3 aOrigin;
@@ -17,13 +17,14 @@ uniform float uVortexScale;
 varying float vOpacity;
 varying float vWarmth;
 ${identityVortexGLSL}
+${identityLegacyRevealGLSL}
 void main() {
   float time = max(4.0, uTime - aTail * (.035 + aSeed * .055));
   vec3 p = identityVortexPosition(aOrigin, aSpiral, aVortex, aImpulse, aSeed, time, 1.0);
   p *= mix(1.0, uVortexScale, identityVortexEnvelope(time));
   p.z += sin(time * .8 + aSeed * 25.0) * .035;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
-  vOpacity = pow(1.0 - aTail, 1.6) * identityVortexEnvelope(uTime) * (1.0 - smoothstep(7.55, 8.0, uTime)) * .38;
+  vOpacity = pow(1.0 - aTail, 1.6) * identityVortexEnvelope(uTime) * (1.0 - smoothstep(7.55, 8.0, uTime)) * .38 * identityLegacyReveal(uTime);
   vWarmth = aSeed;
 }`
 const fragment = `

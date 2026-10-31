@@ -1,4 +1,19 @@
 /** Fixed particle identities; no simulation history, random frame state or extra points. */
+export const IDENTITY_LEGACY_REVEAL_START_SECONDS = 12
+export const IDENTITY_LEGACY_REVEAL_END_SECONDS = 13
+
+export function identityLegacyReveal(time: number) {
+  const progress = Math.min(1, Math.max(0, (time - IDENTITY_LEGACY_REVEAL_START_SECONDS)
+    / (IDENTITY_LEGACY_REVEAL_END_SECONDS - IDENTITY_LEGACY_REVEAL_START_SECONDS)))
+  return progress * progress * (3 - 2 * progress)
+}
+
+export const identityLegacyRevealGLSL = `
+float identityLegacyReveal(float time) {
+  return smoothstep(${IDENTITY_LEGACY_REVEAL_START_SECONDS.toFixed(1)}, ${IDENTITY_LEGACY_REVEAL_END_SECONDS.toFixed(1)}, time);
+}
+`
+
 export function createVortexAttributes(count: number) {
   const orbit = new Float32Array(count * 4)
   const impulse = new Float32Array(count * 4)
