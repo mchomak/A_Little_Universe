@@ -1,84 +1,63 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Color, DoubleSide, MeshBasicMaterial, SRGBColorSpace, TextureLoader } from 'three'
-import type { CanvasTexture, Mesh, Texture } from 'three'
-import cloudAtlasUrl from '../../assets/gallery-moonlit/gallery05-moonlit-cloud-atlas-v02.png'
+import { useEffect, useMemo, useState } from 'react'
+import { AdditiveBlending, Color, DoubleSide, MeshBasicMaterial, MeshStandardMaterial, Object3D, ShaderMaterial, SphereGeometry, SRGBColorSpace, TextureLoader, Vector3 } from 'three'
+import type { CanvasTexture, Texture } from 'three'
+import moonAlbedoUrl from '../../assets/gallery-moonlit/lroc-color-2k.jpg'
+import moonHeightUrl from '../../assets/gallery-moonlit/ldem-3-8bit.jpg'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
-import { applyGalleryCloudAtlasUvs, createCloudTexture, createMoonHaloTexture, createMoonTexture } from './worldTextures'
-import { GALLERY_WORLD, getGalleryCloudPlanes, getGalleryCloudTextureDimensions, type GalleryCloudPlane, type GalleryQuality } from './world'
+import { createGalleryAtmosphereMaterial } from './cloudMaterial'
+import { createMoonHaloTexture } from './worldTextures'
+import { GALLERY_WORLD, getGalleryCloudMasses, getGalleryHazeMasses, getGalleryMoonScatteringLayers, type GalleryQuality } from './world'
 import { WetFloor } from './WetFloor'
 
 type GallerySettings = SceneComposerConfig['scenes']['gallery']
 
 const ignoreRaycast = () => undefined
 
-type CloudAtlasState =
-  | { status: 'loading' }
-  | { status: 'failed' }
-  | { status: 'ready'; texture: Texture }
+const scatterVertexShader = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
 
-function useCloudAtlas(): CloudAtlasState {
-  const [state, setState] = useState<CloudAtlasState>({ status: 'loading' })
+const scatterFragmentShader = `
+  uniform float uIntensity;
+  uniform float uSeed;
+  varying vec2 vUv;
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7)) + uSeed) * 43758.5453); }
+  void main() {
+    vec2 p = (vUv - 0.5) * 2.0;
+    float r = dot(p, p);
+    float halo = exp(-r * 2.8) * (1.0 - smoothstep(0.62, 1.0, r));
+    float grain = 0.88 + hash(floor(vUv * 34.0)) * 0.12;
+    float alpha = min(0.18, halo * grain * uIntensity);
+    // Additive blending applies source alpha to RGB; keep the source color
+    // unpremultiplied so the haze does not lose its energy twice.
+    gl_FragColor = vec4(vec3(0.54, 0.68, 0.9), alpha);
+    #include <colorspace_fragment>
+  }
+`
 
+function useMoonSurfaceTextures() {
+  const [textures, setTextures] = useState<{ color: Texture; height: Texture } | null>(null)
   useEffect(() => {
     let active = true
-    const texture = new TextureLoader().load(cloudAtlasUrl, (loaded) => {
-      if (!active) {
-        loaded.dispose()
-        return
-      }
-      loaded.colorSpace = SRGBColorSpace
-      setState({ status: 'ready', texture: loaded })
-    }, undefined, () => {
-      if (active) setState({ status: 'failed' })
-    })
-
+    const loader = new TextureLoader()
+    let loaded: { color: Texture; height: Texture } | null = null
+    Promise.all([loader.loadAsync(moonAlbedoUrl), loader.loadAsync(moonHeightUrl)]).then(([color, height]) => {
+      color.colorSpace = SRGBColorSpace
+      loaded = { color, height }
+      if (active) setTextures(loaded)
+      else { color.dispose(); height.dispose() }
+    }).catch(() => { if (active) setTextures(null) })
     return () => {
       active = false
-      texture.dispose()
+      loaded?.color.dispose()
+      loaded?.height.dispose()
     }
   }, [])
-
-  return state
-}
-
-function suppressBlueCloudFringe(material: MeshBasicMaterial) {
-  material.onBeforeCompile = (shader) => {
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <color_fragment>',
-      '#include <color_fragment>\n diffuseColor.b = min(diffuseColor.b, diffuseColor.g * 1.16);',
-    )
-  }
-  material.customProgramCacheKey = () => 'gallery-moonlit-cloud-blue-fringe-v1'
-}
-
-function CloudPlane({
-  plane,
-  material,
-  useAtlasUvs,
-  visible,
-}: {
-  plane: GalleryCloudPlane
-  material: MeshBasicMaterial
-  useAtlasUvs: boolean
-  visible: boolean
-}) {
-  const mesh = useRef<Mesh>(null)
-
-  useLayoutEffect(() => {
-    if (useAtlasUvs && mesh.current) applyGalleryCloudAtlasUvs(mesh.current.geometry, plane.atlasSprite)
-  }, [plane.atlasSprite, useAtlasUvs])
-
-  return <mesh
-    ref={mesh}
-    position={plane.position}
-    rotation={[0, plane.rotationY, 0]}
-    visible={visible}
-    raycast={ignoreRaycast}
-    renderOrder={plane.id === 'moon-veil' ? -1 : -3}
-  >
-    <planeGeometry args={plane.size} />
-    <primitive object={material} attach="material" />
-  </mesh>
+  return textures
 }
 
 export function MoonlitWorld({
@@ -90,34 +69,49 @@ export function MoonlitWorld({
   quality: GalleryQuality
   halo: CanvasTexture
 }) {
-  const cloudPlanes = useMemo(() => getGalleryCloudPlanes(quality), [quality])
-  const cloudAtlasState = useCloudAtlas()
-  const cloudAtlas = cloudAtlasState.status === 'ready' ? cloudAtlasState.texture : null
-  const [textureWidth, textureHeight] = getGalleryCloudTextureDimensions(quality)
-  const cloudTextures = useMemo(
-    () => cloudAtlasState.status === 'failed'
-      ? cloudPlanes.map((plane) => createCloudTexture(plane.seed, textureWidth, textureHeight))
-      : [],
-    [cloudAtlasState.status, cloudPlanes, textureHeight, textureWidth],
-  )
-  const hazeTextureWidth = quality === 'low' ? 256 : 512
-  const hazeTextureHeight = quality === 'low' ? 64 : 128
-  const hazeTexture = useMemo(
-    () => createCloudTexture(GALLERY_WORLD.haze.seed, hazeTextureWidth, hazeTextureHeight),
-    [hazeTextureHeight, hazeTextureWidth],
-  )
-  const moonTexture = useMemo(() => createMoonTexture(), [])
+  const cloudMasses = useMemo(() => getGalleryCloudMasses(quality), [quality])
+  const hazeMasses = useMemo(() => getGalleryHazeMasses(quality), [quality])
+  const atmosphereGeometry = useMemo(() => new SphereGeometry(1, quality === 'low' ? 20 : 28, quality === 'low' ? 14 : 18), [quality])
+  const cloudMaterials = useMemo(() => cloudMasses.map((mass) => createGalleryAtmosphereMaterial({
+    kind: 'cloud',
+    seed: mass.seed,
+    opacity: mass.opacity * settings.cloudDensity,
+    moonPosition: GALLERY_WORLD.moon.position,
+    moonLightIntensity: settings.moonLightIntensity * settings.coldLightIntensity,
+  })), [cloudMasses, settings.cloudDensity, settings.coldLightIntensity, settings.moonLightIntensity])
+  const hazeMaterials = useMemo(() => hazeMasses.map((mass) => createGalleryAtmosphereMaterial({
+    kind: 'haze',
+    seed: mass.seed,
+    opacity: mass.opacity * settings.hazeDensity,
+    moonPosition: GALLERY_WORLD.moon.position,
+    moonLightIntensity: settings.moonLightIntensity * settings.coldLightIntensity * 0.72,
+  })), [hazeMasses, settings.coldLightIntensity, settings.hazeDensity, settings.moonLightIntensity])
+  const moonSurface = useMoonSurfaceTextures()
   const moonHaloTexture = useMemo(() => createMoonHaloTexture(), [])
-  const moonBrightness = Math.max(0, settings.moonBrightness)
-  const moonMaterial = useMemo(() => new MeshBasicMaterial({
-    map: moonTexture,
-    color: new Color(moonBrightness * 0.82, moonBrightness * 0.88, moonBrightness * 1.02),
+  const scatteringLayers = useMemo(() => getGalleryMoonScatteringLayers(), [])
+  const scatteringMaterials = useMemo(() => scatteringLayers.map((layer) => new ShaderMaterial({
+    uniforms: { uIntensity: { value: layer.intensity * settings.moonScatteringIntensity }, uSeed: { value: layer.seed } },
+    vertexShader: scatterVertexShader,
+    fragmentShader: scatterFragmentShader,
     transparent: true,
-    opacity: 1,
-    depthWrite: true,
-    fog: false,
+    depthWrite: false,
+    blending: AdditiveBlending,
     toneMapped: false,
-  }), [moonBrightness, moonTexture])
+    side: DoubleSide,
+  })), [scatteringLayers, settings.moonScatteringIntensity])
+  const moonBrightness = Math.max(0, settings.moonBrightness)
+  const moonMaterial = useMemo(() => new MeshStandardMaterial({
+    map: moonSurface?.color ?? null,
+    bumpMap: moonSurface?.height ?? null,
+    bumpScale: 0.035,
+    color: new Color(0.86, 0.88, 0.91),
+    roughness: 1,
+    metalness: 0,
+    emissive: '#8395ac',
+    emissiveMap: moonSurface?.color ?? null,
+    emissiveIntensity: Math.min(0.48, moonBrightness * 0.52),
+    fog: false,
+  }), [moonBrightness, moonSurface])
   const haloMaterial = useMemo(() => new MeshBasicMaterial({
     map: halo,
     color: '#d3e1f5',
@@ -131,63 +125,54 @@ export function MoonlitWorld({
     map: moonHaloTexture,
     color: '#d9e7fa',
     transparent: true,
-    opacity: Math.min(0.82, moonBrightness * settings.coldLightIntensity * 0.8),
+    opacity: Math.min(0.5, settings.moonHaloIntensity * 0.4),
     depthWrite: false,
     fog: false,
     toneMapped: false,
-  }), [moonBrightness, moonHaloTexture, settings.coldLightIntensity])
-  const cloudMaterials = useMemo(() => cloudPlanes.map((plane, index) => {
-    const material = new MeshBasicMaterial({
-      map: cloudAtlas ?? cloudTextures[index] ?? null,
-      color: plane.tint,
-      transparent: true,
-      opacity: Math.min(1, plane.opacity * settings.cloudDensity),
-      depthWrite: false,
-      side: DoubleSide,
-      toneMapped: false,
-    })
-    material.color.multiplyScalar(settings.coldLightIntensity)
-    suppressBlueCloudFringe(material)
-    return material
-  }), [cloudAtlas, cloudPlanes, cloudTextures, settings.cloudDensity, settings.coldLightIntensity])
-
+  }), [moonHaloTexture, settings.moonHaloIntensity])
+  const moonLightPosition = useMemo(() => new Vector3(...GALLERY_WORLD.moon.position), [])
+  const moonLightTarget = useMemo(() => {
+    const target = new Object3D()
+    target.position.set(0, GALLERY_WORLD.floor.y, -34)
+    return target
+  }, [])
+  useEffect(() => () => atmosphereGeometry.dispose(), [atmosphereGeometry])
   useEffect(() => () => {
-    cloudTextures.forEach((texture) => texture.dispose())
-    hazeTexture.dispose()
-  }, [cloudTextures, hazeTexture])
-  useEffect(() => () => {
-    moonTexture.dispose()
     moonHaloTexture.dispose()
-  }, [moonHaloTexture, moonTexture])
+  }, [moonHaloTexture])
   useEffect(() => () => cloudMaterials.forEach((material) => material.dispose()), [cloudMaterials])
+  useEffect(() => () => hazeMaterials.forEach((material) => material.dispose()), [hazeMaterials])
   useEffect(() => () => moonMaterial.dispose(), [moonMaterial])
   useEffect(() => () => haloMaterial.dispose(), [haloMaterial])
   useEffect(() => () => moonHaloMaterial.dispose(), [moonHaloMaterial])
+  useEffect(() => () => scatteringMaterials.forEach((material) => material.dispose()), [scatteringMaterials])
 
   const moon = GALLERY_WORLD.moon
   const moonScale = settings.moonSize
   return <group>
     <WetFloor settings={settings} />
-    {cloudAtlasState.status !== 'loading' && cloudPlanes.map((plane, index) => <CloudPlane
-      key={plane.id}
-      plane={plane}
-      material={cloudMaterials[index]!}
-      useAtlasUvs={cloudAtlas !== null}
+    {cloudMasses.map((mass, index) => <mesh
+      key={mass.id}
+      position={mass.position}
+      scale={mass.radii}
       visible={settings.cloudDensity > 0}
-    />)}
-    <mesh position={GALLERY_WORLD.haze.position} raycast={ignoreRaycast} renderOrder={-1}>
-      <planeGeometry args={GALLERY_WORLD.haze.size} />
-      <meshBasicMaterial
-        map={hazeTexture}
-        color="#a2b6d3"
-        transparent
-        opacity={Math.min(0.27, settings.hazeDensity * 0.36)}
-        depthWrite={false}
-        side={DoubleSide}
-        fog={false}
-        toneMapped={false}
-      />
-    </mesh>
+      raycast={ignoreRaycast}
+      renderOrder={-3}
+    >
+      <primitive object={atmosphereGeometry} attach="geometry" />
+      <primitive object={cloudMaterials[index]!} attach="material" />
+    </mesh>)}
+    {hazeMasses.map((mass, index) => <mesh
+      key={mass.id}
+      position={mass.position}
+      scale={mass.radii}
+      visible={settings.hazeDensity > 0}
+      raycast={ignoreRaycast}
+      renderOrder={-1}
+    >
+      <primitive object={atmosphereGeometry} attach="geometry" />
+      <primitive object={hazeMaterials[index]!} attach="material" />
+    </mesh>)}
     <mesh position={[moon.position[0], moon.position[1], moon.position[2] - 0.26]} scale={moonScale} raycast={ignoreRaycast} renderOrder={-2}>
       <planeGeometry args={[moon.haloRadius * 2, moon.haloRadius * 2]} />
       <primitive object={moonHaloMaterial} attach="material" />
@@ -196,8 +181,32 @@ export function MoonlitWorld({
       <planeGeometry args={[moon.radius * 8, moon.radius * 8]} />
       <primitive object={haloMaterial} attach="material" />
     </mesh>
+    <primitive object={moonLightTarget} />
+    <hemisphereLight
+      color="#9eb5d5"
+      groundColor="#101827"
+      intensity={settings.moonFillIntensity}
+    />
+    <directionalLight
+      position={moonLightPosition}
+      target={moonLightTarget}
+      color="#c3d8f2"
+      intensity={settings.moonLightIntensity * moonBrightness}
+      castShadow={false}
+    />
+    {scatteringLayers.map((layer, index) => <mesh
+      key={layer.seed}
+      position={layer.position}
+      rotation={[0, 0, 0]}
+      scale={moonScale}
+      raycast={ignoreRaycast}
+      renderOrder={-1}
+    >
+      <planeGeometry args={[layer.size, layer.size]} />
+      <primitive object={scatteringMaterials[index]!} attach="material" />
+    </mesh>)}
     <mesh position={moon.position} scale={moonScale} visible={moonBrightness > 0} raycast={ignoreRaycast} renderOrder={-2}>
-      <circleGeometry args={[moon.radius, 64]} />
+      <sphereGeometry args={[moon.radius, 48, 32]} />
       <primitive object={moonMaterial} attach="material" />
     </mesh>
   </group>

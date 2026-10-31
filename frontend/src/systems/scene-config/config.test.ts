@@ -29,6 +29,7 @@ it('adds bounded moonlit gallery settings to schema v1-v5 imports', () => {
     frameIntensity: 1, particleCount: 220, moonBrightness: 0.8, moonSize: 1,
     cloudDensity: 0.85, hazeDensity: 0.7, reflectionStrength: 0.24,
     reflectionBlur: 0.8, threadOpacity: 0.38, coldLightIntensity: 0.8,
+    moonLightIntensity: 1.8, moonFillIntensity: 0.45, moonHaloIntensity: 1.2, moonScatteringIntensity: 0.85,
   }
   for (const schemaVersion of [1, 2, 3, 4, 5]) {
     const imported = normalizeConfig({ schemaVersion, scenes: { gallery: { moonBrightness: 1.1 } } })
@@ -40,17 +41,20 @@ it('adds bounded moonlit gallery settings to schema v1-v5 imports', () => {
     frameIntensity: 0, particleCount: 600, moonBrightness: 2, moonSize: 0.4,
     cloudDensity: 1.8, hazeDensity: 0, reflectionStrength: 0,
     reflectionBlur: 1, threadOpacity: 0, coldLightIntensity: 0,
+    moonLightIntensity: 0, moonFillIntensity: 0, moonHaloIntensity: 0, moonScatteringIntensity: 0,
   } } })
   expect(bounds.scenes.gallery).toEqual({
     frameIntensity: 0, particleCount: 600, moonBrightness: 2, moonSize: 0.4,
     cloudDensity: 1.8, hazeDensity: 0, reflectionStrength: 0,
     reflectionBlur: 1, threadOpacity: 0, coldLightIntensity: 0,
+    moonLightIntensity: 0, moonFillIntensity: 0, moonHaloIntensity: 0, moonScatteringIntensity: 0,
   })
 
   const invalid = normalizeConfig({ schemaVersion: 5, scenes: { gallery: {
     frameIntensity: 2.01, particleCount: 600.5, moonBrightness: -0.01, moonSize: 1.81,
     cloudDensity: -0.01, hazeDensity: 1.81, reflectionStrength: 0.61,
     reflectionBlur: 0.29, threadOpacity: 0.81, coldLightIntensity: Infinity,
+    moonLightIntensity: 3.01, moonFillIntensity: -0.01, moonHaloIntensity: Infinity, moonScatteringIntensity: 1.51,
   } } })
   expect(invalid.scenes.gallery).toEqual(defaults)
 })

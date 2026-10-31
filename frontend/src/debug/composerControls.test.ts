@@ -102,6 +102,7 @@ describe('Scene Composer controls', () => {
       frameIntensity: 1, particleCount: 220, moonBrightness: 0.8, moonSize: 1,
       cloudDensity: 0.85, hazeDensity: 0.7, reflectionStrength: 0.24,
       reflectionBlur: 0.8, threadOpacity: 0.38, coldLightIntensity: 0.8,
+      moonLightIntensity: 1.8, moonFillIntensity: 0.45, moonHaloIntensity: 1.2, moonScatteringIntensity: 0.85,
     })
   })
 

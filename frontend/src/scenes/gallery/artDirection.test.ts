@@ -24,8 +24,10 @@ describe('gallery photo finish', () => {
     expect(galleryPhotoLightAtFocus(12, 0.5)).toBeLessThan(galleryPhotoLightAtFocus(12, 1))
   })
 
-  it('keeps opposing wall angles in the requested range', () => {
-    expect(GALLERY_ART.wallYaw * 180 / Math.PI).toBeGreaterThanOrEqual(35)
-    expect(GALLERY_ART.wallYaw * 180 / Math.PI).toBeLessThanOrEqual(55)
+  it('turns both photo rows toward the passage while keeping them oblique in the walk view', () => {
+    const yawDegrees = GALLERY_ART.wallYaw * 180 / Math.PI
+    expect(yawDegrees).toBeGreaterThanOrEqual(60)
+    expect(yawDegrees).toBeLessThanOrEqual(70)
+    expect(Math.sin(GALLERY_ART.wallYaw)).toBeGreaterThan(0.9)
   })
 })

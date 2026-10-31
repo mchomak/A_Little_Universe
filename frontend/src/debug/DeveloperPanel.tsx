@@ -145,6 +145,10 @@ const GALLERY_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.reflectionBlur', label: 'Размытие отражений', unit: '×', min: 0.3, max: 1, step: 0.01 },
   { path: 'scenes.gallery.threadOpacity', label: 'Прозрачность световых нитей', unit: '×', min: 0, max: 0.8, step: 0.01 },
   { path: 'scenes.gallery.coldLightIntensity', label: 'Интенсивность холодного света', unit: '×', min: 0, max: 1.8, step: 0.05 },
+  { path: 'scenes.gallery.moonLightIntensity', label: 'Направленный свет Луны', unit: '×', min: 0, max: 3, step: 0.05 },
+  { path: 'scenes.gallery.moonFillIntensity', label: 'Заполняющий лунный свет', unit: '×', min: 0, max: 1.2, step: 0.025 },
+  { path: 'scenes.gallery.moonHaloIntensity', label: 'Интенсивность ореола Луны', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.gallery.moonScatteringIntensity', label: 'Атмосферное рассеяние Луны', unit: '×', min: 0, max: 1.5, step: 0.025 },
 ]
 
 const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [

@@ -1,6 +1,8 @@
 /** Scene 05 visual tuning. Values stay local to the gallery. */
 export const GALLERY_ART = {
-  wallYaw: 0.72,
+  // Photo planes sit close to the two corridor walls and turn inward toward
+  // the passage. Keep this shared by the walk pose and the focus camera.
+  wallYaw: 1.15,
   photoBlurStart: 14,
   photoBlurEnd: 30,
   photoLightStart: 9,

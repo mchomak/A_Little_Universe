@@ -99,6 +99,10 @@ export interface SceneComposerConfig {
       reflectionBlur: number
       threadOpacity: number
       coldLightIntensity: number
+      moonLightIntensity: number
+      moonFillIntensity: number
+      moonHaloIntensity: number
+      moonScatteringIntensity: number
     }>
     galaxy: Readonly<{
       quality: SeedQuality
@@ -207,6 +211,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       frameIntensity: 1, particleCount: 220, moonBrightness: 0.8, moonSize: 1,
       cloudDensity: 0.85, hazeDensity: 0.7, reflectionStrength: 0.24,
       reflectionBlur: 0.8, threadOpacity: 0.38, coldLightIntensity: 0.8,
+      moonLightIntensity: 1.8, moonFillIntensity: 0.45, moonHaloIntensity: 1.2, moonScatteringIntensity: 0.85,
     },
     galaxy: {
       quality: 'standard', seed: 'andromeda', starCount: 32000, arms: 5, radius: 8.2,
@@ -469,6 +474,10 @@ function normalizeGallery(input: Record<string, unknown> | undefined): SceneComp
     reflectionBlur: numberValue(input?.reflectionBlur, d.reflectionBlur, 0.3, 1),
     threadOpacity: numberValue(input?.threadOpacity, d.threadOpacity, 0, 0.8),
     coldLightIntensity: numberValue(input?.coldLightIntensity, d.coldLightIntensity, 0, 1.8),
+    moonLightIntensity: numberValue(input?.moonLightIntensity, d.moonLightIntensity, 0, 3),
+    moonFillIntensity: numberValue(input?.moonFillIntensity, d.moonFillIntensity, 0, 1.2),
+    moonHaloIntensity: numberValue(input?.moonHaloIntensity, d.moonHaloIntensity, 0, 2),
+    moonScatteringIntensity: numberValue(input?.moonScatteringIntensity, d.moonScatteringIntensity, 0, 1.5),
   }
 }
 
