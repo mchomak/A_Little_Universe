@@ -1,10 +1,14 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useLoader, useThree } from '@react-three/fiber'
 import type { RefObject } from 'react'
 import { galleryDistanceOpacity, galleryFocusOpacity } from './gallery/visibility'
 import { galleryPhotoBlurAtFocus, galleryPhotoLightAtFocus, GALLERY_ART } from './gallery/artDirection'
 import { createFrameParticleGeometry } from './gallery/frameParticles'
-import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, DoubleSide, Group, Material, Mesh, MeshBasicMaterial, Points, SRGBColorSpace, Texture, TextureLoader, Vector3, ShaderMaterial } from 'three'
+import { createGalleryDustGeometry, getGalleryDustCount } from './gallery/dust'
+import { createFrameFootprintMaterial, createPhotoReflectionLayout, createPhotoReflectionMaterial, updateFrameFootprintMaterial, updatePhotoReflectionMaterial, PHOTO_REFLECTION_PLANE_ROTATION_X, type GalleryArtSettings } from './gallery/reflections'
+import { createMemoryThreadAccentGeometry, createMemoryThreadGeometry, createMemoryThreadMaterial, createMemoryThreadPaths, GALLERY_MEMORY_RENDER_ORDER, GALLERY_THREAD_RENDER_ORDER, memoryThreadOpacity, updateMemoryThreadMaterial } from './gallery/threads'
+import { GALLERY_WORLD } from './gallery/world'
+import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, DoubleSide, Group, Material, Mesh, MeshBasicMaterial, Points, PointsMaterial, SRGBColorSpace, Texture, TextureLoader, Vector3, ShaderMaterial } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
 import { useSyncExternalStore } from 'react'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
@@ -122,34 +126,61 @@ function frameShaderMaterial() {
     toneMapped: false,
   })
 }
-function Photo({ url, width, height, fallback, onAspect, material }: { url: string; width: number; height: number; fallback: CanvasTexture | null; onAspect: (value: number) => void; material: RefObject<ShaderMaterial | null> }) {
+function Photo({ url, width, height, fallback, onAspect, material, reflectionMaterial }: { url: string; width: number; height: number; fallback: CanvasTexture | null; onAspect: (value: number) => void; material: RefObject<ShaderMaterial | null>; reflectionMaterial: RefObject<ShaderMaterial | null> }) {
   const [texture, setTexture] = useState<Texture | null>(null)
   useEffect(() => {
     let active = true; let loaded: Texture | null = null
-    new TextureLoader().load(url, (value) => { if (!active) { value.dispose(); return } loaded = value; setColorSpace(value); const image = value.image as HTMLImageElement; if (image.naturalWidth && image.naturalHeight) onAspect(image.naturalWidth / image.naturalHeight); setShaderUniform(material.current, 'map', value); setTexture(value) }, undefined, () => { if (active) setTexture(null) })
+    new TextureLoader().load(url, (value) => { if (!active) { value.dispose(); return } loaded = value; setColorSpace(value); const image = value.image as HTMLImageElement; if (image.naturalWidth && image.naturalHeight) onAspect(image.naturalWidth / image.naturalHeight); setShaderUniform(material.current, 'map', value); setShaderUniform(reflectionMaterial.current, 'map', value); setTexture(value) }, undefined, () => { if (active) setTexture(null) })
     return () => { active = false; loaded?.dispose() }
-  }, [url, onAspect, material])
-  useEffect(() => { setShaderUniform(material.current, 'map', texture ?? fallback) }, [fallback, material, texture])
+  }, [url, onAspect, material, reflectionMaterial])
+  useEffect(() => { setShaderUniform(material.current, 'map', texture ?? fallback); setShaderUniform(reflectionMaterial.current, 'map', texture ?? fallback) }, [fallback, material, reflectionMaterial, texture])
   return <mesh><planeGeometry args={[width, height]} /><primitive object={material.current!} attach="material" /></mesh>
 }
 function setMaterialAlpha(saved: { material: Material; opacity: number; transparent: boolean; depthWrite: boolean }, alpha: number) { saved.material.opacity = saved.opacity * alpha; saved.material.transparent = alpha < 1 || saved.transparent; saved.material.depthWrite = alpha < 1 ? false : saved.depthWrite }
 function setFocusFog(material: Material, focus: boolean) { if (material instanceof MeshBasicMaterial && material.fog === focus) { material.fog = !focus; material.needsUpdate = true } }
-function Memory({ memory, reducedMotion, halo, paused }: { memory: GalleryMemory; reducedMotion: boolean; halo: CanvasTexture; paused: boolean }) {
+function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: GalleryMemory; reducedMotion: boolean; halo: CanvasTexture; paused: boolean; settings: GalleryArtSettings }) {
   const materials = useRef<{ material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[]>([])
-  const group = useRef<Group>(null); const glow = useRef<MeshBasicMaterial>(null); const edge = useRef<MeshBasicMaterial>(null); const captionMaterial = useRef<MeshBasicMaterial>(null)
+  const group = useRef<Group>(null)
+  const glow = useRef<MeshBasicMaterial>(null)
+  const captionMaterial = useRef<MeshBasicMaterial>(null)
+  const reflectionRoot = useRef<Group>(null)
+  const reflection = useRef<Mesh>(null)
+  const frameFootprint = useRef<Mesh>(null)
+  const contourMaterials = useRef<(MeshBasicMaterial | null)[]>([])
+  const frameHaloMaterials = useRef<(MeshBasicMaterial | null)[]>([])
   const worldPosition = useMemo(() => new Vector3(), [])
   const firstPhoto = useLoader(TextureLoader, firstPhotoUrl)
   const image = useMemo(() => memory.order === 0 ? null : placeholder(memory), [memory])
   const caption = useMemo(() => captionTexture(memory.caption), [memory.caption])
   const photoMaterial = useMemo(() => photoShaderMaterial(memory.order === 0 ? firstPhoto : image ?? firstPhoto), [firstPhoto, image, memory.order])
   const photoMaterialRef = useRef(photoMaterial)
+  const [reflectionMaterial] = useState(() => createPhotoReflectionMaterial(memory.order === 0 ? firstPhoto : image ?? firstPhoto, settings))
+  const [frameFootprintMaterial] = useState(() => createFrameFootprintMaterial(halo))
+  const reflectionMaterialRef = useRef(reflectionMaterial)
   const frameMaterial = useMemo(() => frameShaderMaterial(), [])
   const frameMaterialRef = useRef(frameMaterial)
-  useEffect(() => () => { image?.dispose(); caption.dispose(); photoMaterial.dispose(); frameMaterial.dispose() }, [image, caption, photoMaterial, frameMaterial])
+  const visual = useRef({ alpha: 0, focusAmount: 0 })
+
+  useEffect(() => {
+    photoMaterialRef.current = photoMaterial
+    reflectionMaterialRef.current = reflectionMaterial
+  }, [photoMaterial, reflectionMaterial])
+  useEffect(() => () => {
+    image?.dispose()
+    caption.dispose()
+    photoMaterial.dispose()
+    reflectionMaterial.dispose()
+    frameFootprintMaterial.dispose()
+    frameMaterial.dispose()
+  }, [image, caption, photoMaterial, reflectionMaterial, frameFootprintMaterial, frameMaterial])
   useEffect(() => { setColorSpace(firstPhoto) }, [firstPhoto])
   useEffect(() => {
     const saved: { material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[] = []
-    group.current?.traverse((child) => { if (!(child instanceof Mesh) && !(child instanceof Points)) return; const list = Array.isArray(child.material) ? child.material : [child.material]; for (const material of list) saved.push({ material, opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite }) })
+    group.current?.traverse((child) => {
+      if (!(child instanceof Mesh) && !(child instanceof Points)) return
+      const list = Array.isArray(child.material) ? child.material : [child.material]
+      for (const material of list) saved.push({ material, opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite })
+    })
     materials.current = saved
     return () => { materials.current = [] }
   }, [])
@@ -166,114 +197,219 @@ function Memory({ memory, reducedMotion, halo, paused }: { memory: GalleryMemory
     })
     return () => restore.forEach((dispose) => dispose())
   }, [memory.order])
+
   const size = memory.order === 0 ? 2.15 : 3.3
   const [aspect, setAspect] = useState(memory.aspect)
   const width = aspect >= 1 ? size : size * aspect
   const height = aspect >= 1 ? size / aspect : size
-  const frameParticles = useMemo(() => createFrameParticleGeometry(width, height, memory.order + 17), [height, memory.order, width])
+  const frameParticles = useMemo(
+    () => createFrameParticleGeometry(width, height, memory.order + 17, { frameIntensity: settings.frameIntensity }),
+    [height, memory.order, settings.frameIntensity, width],
+  )
   useEffect(() => () => frameParticles.dispose(), [frameParticles])
   const [x, y, z] = memoryPosition(memory)
+
+  const applyArtSettings = useCallback((alpha = visual.current.alpha, focusAmount = visual.current.focusAmount) => {
+    const frameIntensity = Math.max(0, Math.min(2, settings.frameIntensity))
+    const focusGlow = 1 + focusAmount * 0.16
+    for (const material of contourMaterials.current) {
+      if (material) material.opacity = Math.min(1, alpha * 0.85 * frameIntensity * focusGlow)
+    }
+    for (const material of frameHaloMaterials.current) {
+      if (material) material.opacity = Math.min(1, alpha * 0.5 * frameIntensity * focusGlow)
+    }
+    if (glow.current) glow.current.opacity = Math.min(1, alpha * 0.2 * frameIntensity * focusGlow)
+    updateFrameFootprintMaterial(frameFootprintMaterial, alpha * settings.reflectionStrength * frameIntensity)
+    setShaderUniform(frameMaterialRef.current, 'uOpacity', alpha * (0.48 + 0.2 * focusAmount))
+    setShaderUniform(frameMaterialRef.current, 'uFocus', focusAmount)
+    if (reflectionMaterialRef.current) updatePhotoReflectionMaterial(reflectionMaterialRef.current, settings, alpha)
+  }, [frameFootprintMaterial, settings])
+  useEffect(() => { applyArtSettings() }, [applyArtSettings])
+
   useFrame(({ camera }) => {
     if (!group.current || paused || document.hidden) return
-    const m = galleryMotion;
-    const t = Math.min(1, m.intro / (reducedMotion ? .35 : GALLERY.intro)); const e = t * t * (3 - 2 * t)
+    const m = galleryMotion
+    const t = Math.min(1, m.intro / (reducedMotion ? 0.35 : GALLERY.intro))
+    const e = t * t * (3 - 2 * t)
     const first = memory.order === 0
-    group.current.position.set(first ? x * e : x, y + (reducedMotion ? 0 : Math.sin(m.time * .3 + memory.order) * .025), first ? z * e : z)
-    if (first) group.current.scale.setScalar(1 + .35 * e)
-    if (first) group.current.rotation.set(reducedMotion ? 0 : -.022 * (1 - e), (reducedMotion ? 0 : .065 * (1 - e)) - memory.side * GALLERY_ART.wallYaw * e, reducedMotion ? 0 : -.009 * (1 - e))
+    group.current.position.set(first ? x * e : x, y + (reducedMotion ? 0 : Math.sin(m.time * 0.3 + memory.order) * 0.025), first ? z * e : z)
+    if (first) group.current.scale.setScalar(1 + 0.35 * e)
+    if (first) group.current.rotation.set(reducedMotion ? 0 : -0.022 * (1 - e), (reducedMotion ? 0 : 0.065 * (1 - e)) - memory.side * GALLERY_ART.wallYaw * e, reducedMotion ? 0 : -0.009 * (1 - e))
     else group.current.rotation.y = -memory.side * GALLERY_ART.wallYaw
-    const visible = first ? 1 : Math.max(0, Math.min(1, (m.intro - memory.order * .15) / 1.4))
+
+    const visible = first ? 1 : Math.max(0, Math.min(1, (m.intro - memory.order * 0.15) / 1.4))
     const selected = gallerySnapshot().focus === memory.order
-    const focusTarget = m.focusMix > .001 && m.focusIndex === memory.order
+    const focusTarget = m.focusMix > 0.001 && m.focusIndex === memory.order
     const focusAmount = m.focusIndex === memory.order ? Math.max(0, Math.min(1, m.focusMix)) : 0
-    const distanceAlpha = galleryDistanceOpacity(camera.position.distanceTo(group.current.getWorldPosition(worldPosition)))
+    const photoPosition = group.current.getWorldPosition(worldPosition)
+    const photoDistance = camera.position.distanceTo(photoPosition)
+    const distanceAlpha = galleryDistanceOpacity(photoDistance)
     const focusAlpha = galleryFocusOpacity(m.focusMix, selected)
     const alpha = visible * (1 - m.exit / GALLERY.exit) * focusAlpha * distanceAlpha
-    for (const saved of materials.current) { setMaterialAlpha(saved, alpha); setFocusFog(saved.material, focusTarget) }
-    const photoDistance = camera.position.distanceTo(group.current.getWorldPosition(worldPosition))
+    for (const saved of materials.current) {
+      setMaterialAlpha(saved, alpha)
+      setFocusFog(saved.material, focusTarget)
+    }
+    group.current.visible = visible > 0 && distanceAlpha > 0 && alpha > 0.001
+    visual.current = { alpha, focusAmount }
+
     setShaderUniform(photoMaterialRef.current, 'uAlpha', alpha)
     setShaderUniform(photoMaterialRef.current, 'uBlur', galleryPhotoBlurAtFocus(photoDistance, focusAmount))
     setShaderUniform(photoMaterialRef.current, 'uLight', galleryPhotoLightAtFocus(photoDistance, focusAmount))
     setShaderUniform(frameMaterialRef.current, 'uTime', reducedMotion ? 0 : m.time)
-    setShaderUniform(frameMaterialRef.current, 'uOpacity', alpha * (.25 + .21 * focusAmount))
-    setShaderUniform(frameMaterialRef.current, 'uFocus', focusAmount)
-    group.current.visible = visible > 0 && distanceAlpha > 0 && alpha > .001
-    if (captionMaterial.current) captionMaterial.current.opacity = visible * (.65 + .35 * focusAmount) * focusAlpha * distanceAlpha * (1 - m.exit / GALLERY.exit)
-    if (glow.current) glow.current.opacity = visible * (.28 + .27 * focusAmount) * focusAlpha * distanceAlpha * (1 - m.exit / GALLERY.exit)
-    if (edge.current) edge.current.opacity = visible * .32 * (.62 + .38 * focusAmount) * focusAlpha * distanceAlpha * (1 - m.exit / GALLERY.exit)
-  })
-  return <group ref={group} onClick={(event) => { event.stopPropagation(); if (!paused) galleryFocus(memory.order) }}>
-    <mesh position={[0, 0, -.04]}><boxGeometry args={[width + .08, height + .08, .07]} /><meshStandardMaterial color="#171b23" roughness={.96} metalness={.02} /></mesh>
-    <mesh position={[0, 0, -.07]}><planeGeometry args={[width + 2, height + 2]} /><meshBasicMaterial ref={glow} map={halo} color="#ffb58f" transparent opacity={.1} depthWrite={false} blending={AdditiveBlending} /></mesh>
-    {memory.order === 0 ? <FirstMemoryCard photoMaterial={photoMaterial} frameTone="moonlight" /> : memory.image ? <Photo url={memory.image} width={width} height={height} fallback={image} onAspect={setAspect} material={photoMaterialRef} /> : <mesh><planeGeometry args={[width, height]} /><primitive object={photoMaterial} attach="material" /></mesh>}
-    {([-1, 1] as const).map(side => <group key={side}>
-      <mesh position={[0, side * (height / 2 + .025), -.005]}><planeGeometry args={[width + 1.1, .55]} /><meshBasicMaterial map={halo} color="#dce5f0" transparent opacity={.16} blending={AdditiveBlending} depthWrite={false} toneMapped={false} /></mesh>
-      <mesh position={[side * (width / 2 + .025), 0, -.005]}><planeGeometry args={[.55, height + 1.1]} /><meshBasicMaterial map={halo} color="#dce5f0" transparent opacity={.16} blending={AdditiveBlending} depthWrite={false} toneMapped={false} /></mesh>
-      <mesh position={[0, side * (height / 2 + .025), .02]}><planeGeometry args={[width + .1, .018]} /><meshBasicMaterial ref={side === 1 ? edge : null} color="#dce4ef" transparent opacity={.32} toneMapped={false} /></mesh>
-      <mesh position={[side * (width / 2 + .025), 0, .02]}><planeGeometry args={[.018, height + .1]} /><meshBasicMaterial color="#dce4ef" transparent opacity={.32} toneMapped={false} /></mesh>
-    </group>)}
-    <points geometry={frameParticles}><primitive object={frameMaterial} attach="material" /></points>
-    <mesh position={[0, -height / 2 - .34, .02]}><planeGeometry args={[3.4, .33]} /><meshBasicMaterial ref={captionMaterial} map={caption} transparent opacity={.65} depthWrite={false} toneMapped={false} /></mesh>
-  </group>
-}
-function Dust({ low, reducedMotion }: { low: boolean; reducedMotion: boolean }) {
-  const material = useRef<ShaderMaterial>(null)
-  const geometry = useMemo(() => {
-    const count = low || reducedMotion ? GALLERY_ART.lowDustCount : GALLERY_ART.dustCount
-    const positions = new Float32Array(count * 3); const sizes = new Float32Array(count); const phases = new Float32Array(count)
-    const speeds = new Float32Array(count); const alphas = new Float32Array(count); const drift = new Float32Array(count * 3)
-    const randomFor = (i: number, n: number) => { const value = Math.sin((i + n) * 127.1) * 43758.5453; return value - Math.floor(value) }
-    for (let i = 0; i < count; i++) {
-      positions.set([(randomFor(i, 1) - .5) * 19, (randomFor(i, 2) - .5) * 10, -randomFor(i, 3) * 73 + 5], i * 3)
-      sizes[i] = .026 + randomFor(i, 4) * .03; phases[i] = randomFor(i, 5) * Math.PI * 2
-      speeds[i] = .035 + randomFor(i, 6) * .065; alphas[i] = .08 + randomFor(i, 7) * .16
-      drift.set([.035 + randomFor(i, 8) * .04, .03 + randomFor(i, 9) * .04, .018 + randomFor(i, 10) * .025], i * 3)
+    applyArtSettings(alpha, focusAmount)
+    if (captionMaterial.current) captionMaterial.current.opacity = visible * (0.65 + 0.35 * focusAmount) * focusAlpha * distanceAlpha * (1 - m.exit / GALLERY.exit)
+
+    const reflectionLayout = createPhotoReflectionLayout({
+      position: photoPosition,
+      yaw: group.current.rotation.y,
+      width,
+      height,
+      scale: group.current.scale.x,
+      floorY: GALLERY_WORLD.floor.y,
+    })
+    if (reflectionRoot.current) {
+      reflectionRoot.current.position.set(...reflectionLayout.position)
+      reflectionRoot.current.rotation.set(0, reflectionLayout.yaw, 0)
+      reflectionRoot.current.scale.setScalar(reflectionLayout.scale)
+      reflectionRoot.current.visible = group.current.visible
     }
-    const g = new BufferGeometry()
-    g.setAttribute('position', new BufferAttribute(positions, 3)); g.setAttribute('size', new BufferAttribute(sizes, 1))
-    g.setAttribute('phase', new BufferAttribute(phases, 1)); g.setAttribute('speed', new BufferAttribute(speeds, 1))
-    g.setAttribute('particleAlpha', new BufferAttribute(alphas, 1)); g.setAttribute('drift', new BufferAttribute(drift, 3))
-    return g
-  }, [low, reducedMotion])
+  })
+
+  return <>
+    <group ref={group} renderOrder={GALLERY_MEMORY_RENDER_ORDER} onClick={(event) => { event.stopPropagation(); if (!paused) galleryFocus(memory.order) }}>
+      <mesh position={[0, 0, -0.04]}><boxGeometry args={[width + 0.08, height + 0.08, 0.07]} /><meshStandardMaterial color="#171b23" roughness={0.96} metalness={0.02} /></mesh>
+      <mesh position={[0, 0, -0.07]}><planeGeometry args={[width + 0.36, height + 0.36]} /><meshBasicMaterial ref={glow} map={halo} color="#ffd7b0" transparent opacity={0.2} depthWrite={false} blending={AdditiveBlending} toneMapped={false} /></mesh>
+      {memory.order === 0 ? <FirstMemoryCard photoMaterial={photoMaterial} frameTone="moonlight" /> : memory.image ? <Photo url={memory.image} width={width} height={height} fallback={image} onAspect={setAspect} material={photoMaterialRef} reflectionMaterial={reflectionMaterialRef} /> : <mesh><planeGeometry args={[width, height]} /><primitive object={photoMaterial} attach="material" /></mesh>}
+      {([-1, 1] as const).map(side => <group key={side}>
+        <mesh position={[0, side * (height / 2 + 0.025), 0.01]}>
+          <planeGeometry args={[width + 0.36, 0.16]} />
+          <meshBasicMaterial ref={(material) => { frameHaloMaterials.current[side === -1 ? 0 : 1] = material }} map={halo} color="#efcba8" transparent opacity={0.1} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+        </mesh>
+        <mesh position={[side * (width / 2 + 0.025), 0, 0.01]}>
+          <planeGeometry args={[0.16, height + 0.36]} />
+          <meshBasicMaterial ref={(material) => { frameHaloMaterials.current[side === -1 ? 2 : 3] = material }} map={halo} color="#efcba8" transparent opacity={0.1} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+        </mesh>
+        <mesh position={[0, side * (height / 2 + 0.025), 0.02]}>
+          <planeGeometry args={[width + 0.1, 0.018]} />
+          <meshBasicMaterial ref={(material) => { contourMaterials.current[side === -1 ? 0 : 1] = material }} color="#f4dcc0" transparent opacity={0.62} depthWrite={false} toneMapped={false} blending={AdditiveBlending} />
+        </mesh>
+        <mesh position={[side * (width / 2 + 0.025), 0, 0.02]}>
+          <planeGeometry args={[0.018, height + 0.1]} />
+          <meshBasicMaterial ref={(material) => { contourMaterials.current[side === -1 ? 2 : 3] = material }} color="#f4dcc0" transparent opacity={0.62} depthWrite={false} toneMapped={false} blending={AdditiveBlending} />
+        </mesh>
+      </group>)}
+      <points geometry={frameParticles}><primitive object={frameMaterial} attach="material" /></points>
+      <mesh position={[0, -height / 2 - 0.34, 0.02]}><planeGeometry args={[3.4, 0.33]} /><meshBasicMaterial ref={captionMaterial} map={caption} transparent opacity={0.65} depthWrite={false} toneMapped={false} /></mesh>
+    </group>
+    <group ref={reflectionRoot} visible={false}>
+      <mesh ref={reflection} position={[0, 0.006, 0]} rotation={[PHOTO_REFLECTION_PLANE_ROTATION_X, 0, 0]} raycast={() => undefined}>
+        <planeGeometry args={[width, height * 0.85]} />
+        <primitive object={reflectionMaterial} attach="material" />
+      </mesh>
+      <mesh ref={frameFootprint} position={[0, 0.002, 0]} rotation={[PHOTO_REFLECTION_PLANE_ROTATION_X, 0, 0]} raycast={() => undefined}>
+        <planeGeometry args={[width * 1.12, height * 0.85 * 1.25]} />
+        <primitive object={frameFootprintMaterial} attach="material" />
+      </mesh>
+    </group>
+  </>
+}
+const dustVertexShader = [
+  'uniform float uTime;',
+  'attribute float size;',
+  'attribute float phase;',
+  'attribute float speed;',
+  'attribute float particleAlpha;',
+  'attribute vec3 drift;',
+  'attribute vec3 color;',
+  'varying float vAlpha;',
+  'varying float vDepth;',
+  'varying vec3 vColor;',
+  'void main() {',
+  '  float t = uTime * speed + phase;',
+  '  vec3 moved = position + drift * vec3(sin(t), cos(t * 0.83), sin(t * 0.57)) * 0.5;',
+  '  vec4 view = modelViewMatrix * vec4(moved, 1.0);',
+  '  gl_Position = projectionMatrix * view;',
+  '  gl_PointSize = size * 280.0 / max(1.0, -view.z);',
+  '  vAlpha = particleAlpha * (0.76 + 0.24 * sin(t));',
+  '  vDepth = -view.z;',
+  '  vColor = color;',
+  '}',
+].join('\n')
+
+const dustFragmentShader = [
+  'varying float vAlpha;',
+  'varying float vDepth;',
+  'varying vec3 vColor;',
+  'void main() {',
+  '  float radius = length(gl_PointCoord - 0.5);',
+  '  float softPoint = 1.0 - smoothstep(0.08, 0.5, radius);',
+  '  float distanceFade = 1.0 - smoothstep(30.0, 76.0, vDepth);',
+  '  float alpha = softPoint * vAlpha * mix(0.18, 1.0, distanceFade);',
+  '  gl_FragColor = vec4(vColor, alpha);',
+  '  #include <colorspace_fragment>',
+  '}',
+].join('\n')
+
+function Dust({ low, reducedMotion, settings }: { low: boolean; reducedMotion: boolean; settings: GalleryArtSettings }) {
+  const material = useRef<ShaderMaterial>(null)
+  const count = getGalleryDustCount(settings.particleCount, low, reducedMotion)
+  const geometry = useMemo(() => createGalleryDustGeometry(count), [count])
   useEffect(() => () => geometry.dispose(), [geometry])
   useFrame(() => { setShaderUniform(material.current, 'uTime', reducedMotion ? 0 : galleryMotion.time) })
-  return <points geometry={geometry}>
-    <shaderMaterial ref={material} uniforms={{ uTime: { value: 0 } }} vertexShader={`
-      uniform float uTime;
-      attribute float size;
-      attribute float phase;
-      attribute float speed;
-      attribute float particleAlpha;
-      attribute vec3 drift;
-      varying float vAlpha;
-      varying float vDepth;
-      void main() {
-        float t = uTime * speed + phase;
-        vec3 moved = position + drift * vec3(sin(t), cos(t * 0.83), sin(t * 0.57)) * 0.5;
-        vec4 view = modelViewMatrix * vec4(moved, 1.0);
-        gl_Position = projectionMatrix * view;
-        gl_PointSize = size * 280.0 / max(1.0, -view.z);
-        vAlpha = particleAlpha * (0.76 + 0.24 * sin(t));
-        vDepth = -view.z;
-      }
-    `} fragmentShader={`
-      varying float vAlpha;
-      varying float vDepth;
-      void main() {
-        float radius = length(gl_PointCoord - 0.5);
-        float softPoint = 1.0 - smoothstep(0.08, 0.5, radius);
-        float distanceFade = 1.0 - smoothstep(30.0, 76.0, vDepth);
-        float alpha = softPoint * vAlpha * mix(0.18, 1.0, distanceFade);
-        gl_FragColor = vec4(0.72, 0.78, 0.87, alpha);
-        #include <colorspace_fragment>
-      }
-    `} transparent depthWrite={false} />
+  return <points geometry={geometry} raycast={() => undefined}>
+    <shaderMaterial ref={material} uniforms={{ uTime: { value: 0 } }} vertexShader={dustVertexShader} fragmentShader={dustFragmentShader} transparent depthWrite={false} />
   </points>
+}
+function MemoryThreads({ settings, low, paused, halo }: { settings: GalleryArtSettings; low: boolean; paused: boolean; halo: CanvasTexture }) {
+  const paths = useMemo(() => createMemoryThreadPaths(GALLERY_MEMORIES), [])
+  const geometries = useMemo(
+    () => paths.map(path => createMemoryThreadGeometry(path, { segments: low ? 22 : 38, radius: 0.01, radialSegments: 4 })),
+    [low, paths],
+  )
+  const accentGeometry = useMemo(() => createMemoryThreadAccentGeometry(paths), [paths])
+  const material = useMemo(() => createMemoryThreadMaterial(settings, galleryMotion.focusMix), [settings])
+  const accentMaterial = useRef<PointsMaterial>(null)
+
+  useEffect(() => () => {
+    geometries.forEach(geometry => geometry.dispose())
+    accentGeometry.dispose()
+    material.dispose()
+  }, [geometries, accentGeometry, material])
+  useEffect(() => {
+    const focus = galleryMotion.focusMix
+    updateMemoryThreadMaterial(material, settings, focus)
+    if (accentMaterial.current) accentMaterial.current.opacity = memoryThreadOpacity(settings, focus) * 1.25
+  }, [material, settings])
+
+  useFrame(() => {
+    if (paused || document.hidden) return
+    const focus = galleryMotion.focusMix
+    updateMemoryThreadMaterial(material, settings, focus)
+    if (accentMaterial.current) accentMaterial.current.opacity = memoryThreadOpacity(settings, focus) * 1.25
+  })
+
+  return <group raycast={() => undefined}>
+    {geometries.map((geometry, index) => <mesh key={index} geometry={geometry} material={material} renderOrder={GALLERY_THREAD_RENDER_ORDER} raycast={() => undefined} />)}
+    <points geometry={accentGeometry} renderOrder={GALLERY_THREAD_RENDER_ORDER} raycast={() => undefined}>
+      <pointsMaterial
+        ref={accentMaterial}
+        map={halo}
+        color="#ead8bd"
+        size={0.13}
+        transparent
+        opacity={memoryThreadOpacity(settings, galleryMotion.focusMix) * 1.25}
+        depthWrite={false}
+        blending={AdditiveBlending}
+      />
+    </points>
+  </group>
 }
 
 export function GalleryScene({ state, reducedMotion }: SceneProps) {
   const gl = useThree(s => s.gl)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
+  const settings = config.scenes.gallery
   const quality = state.quality === 'low' || config.global.quality === 'low' ? 'low' : 'standard'
   const halo = useMemo(() => canvasTexture((ctx, w, h) => { const gradient = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gradient.addColorStop(0, 'rgba(244,248,255,.34)'); gradient.addColorStop(.24, 'rgba(219,229,244,.13)'); gradient.addColorStop(1, 'rgba(206,220,239,0)'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h) }, 256, 256), [])
   useEffect(() => () => halo.dispose(), [halo])
@@ -281,24 +417,37 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
   useEffect(() => bindGalleryGestures(gl.domElement, () => state.paused), [gl, state.paused])
   return <>
     <fog attach="fog" args={['#080914', 55, 208]} />
-    <MoonlitWorld settings={config.scenes.gallery} quality={quality} halo={halo} />
-    <Dust low={quality === 'low'} reducedMotion={reducedMotion} />
-    {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} />)}
-    {GALLERY_MEMORIES.map(memory => { const [x, , z] = memoryPosition(memory); return <mesh key={`reflection-${memory.id}`} position={[x, -2.33, z]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[8, 14]} /><meshBasicMaterial map={halo} color="#c5d2e4" transparent opacity={.075} depthWrite={false} blending={AdditiveBlending} /></mesh> })}
-    <FloorLights halo={halo} low={quality === 'low' || reducedMotion} />
+    <MoonlitWorld settings={settings} quality={quality} halo={halo} />
+    <Dust low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
+    {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} />)}
+    <MemoryThreads settings={settings} low={quality === 'low'} paused={state.paused} halo={halo} />
+    <FloorLights halo={halo} low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
     <Outro />
   </>
 }
-
-
 function Outro() {
   const mesh = useRef<Mesh>(null); const material = useRef<MeshBasicMaterial>(null); const direction = useMemo(() => new Vector3(), [])
   useFrame(({ camera }) => { if (!mesh.current || !material.current) return; const progress = galleryMotion.exit / GALLERY.exit; mesh.current.visible = progress > 0; camera.getWorldDirection(direction); mesh.current.position.copy(camera.position).addScaledVector(direction, .4); mesh.current.quaternion.copy(camera.quaternion); material.current.opacity = Math.min(.93, progress * .93) })
   return <mesh ref={mesh} visible={false} renderOrder={999}><planeGeometry args={[5, 5]} /><meshBasicMaterial ref={material} color="#071225" transparent opacity={0} depthTest={false} depthWrite={false} /></mesh>
 }
 
-function FloorLights({ halo, low }: { halo: CanvasTexture; low: boolean }) {
-  const geometry = useMemo(() => { const count = low ? GALLERY_ART.lowFloorParticleCount : GALLERY_ART.floorParticleCount; const positions = new Float32Array(count * 3); for (let i = 0; i < count; i++) { const side = i % 2 ? -1 : 1; const z = 6 - (i % 80) * 1.1; const spread = (Math.sin(i * 18.19) + 1) * 1.2; positions.set([side * (2.9 + spread), -2.27 + (i % 3) * .03, z], i * 3) } const geometry = new BufferGeometry(); geometry.setAttribute('position', new BufferAttribute(positions, 3)); return geometry }, [low])
+function FloorLights({ halo, low, reducedMotion, settings }: { halo: CanvasTexture; low: boolean; reducedMotion: boolean; settings: GalleryArtSettings }) {
+  const count = Math.round(getGalleryDustCount(settings.particleCount, low, reducedMotion) * 0.09)
+  const geometry = useMemo(() => {
+    const positions = new Float32Array(count * 3)
+    for (let i = 0; i < count; i++) {
+      const spread = (Math.sin(i * 18.19) + 1) * 1.1
+      const progress = count > 1 ? i / (count - 1) : 0.5
+      const side = i % 2 ? -1 : 1
+      const z = GALLERY.startZ - progress * (GALLERY.travel - 4)
+      positions.set([side * (2.9 + spread), GALLERY_WORLD.floor.y + 0.055, z], i * 3)
+    }
+    const result = new BufferGeometry()
+    result.setAttribute('position', new BufferAttribute(positions, 3))
+    return result
+  }, [count])
   useEffect(() => () => geometry.dispose(), [geometry])
-  return <points geometry={geometry}><pointsMaterial map={halo} color="#c7d4e6" size={.13} transparent opacity={.2} depthWrite={false} blending={AdditiveBlending} /></points>
+  return <points geometry={geometry} raycast={() => undefined}>
+    <pointsMaterial map={halo} color="#d8c8b3" size={0.14} transparent opacity={0.16} depthWrite={false} blending={AdditiveBlending} />
+  </points>
 }

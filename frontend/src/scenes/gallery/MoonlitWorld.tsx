@@ -1,14 +1,85 @@
-import { useEffect, useMemo } from 'react'
-import { Color, DoubleSide, MeshBasicMaterial } from 'three'
-import type { CanvasTexture } from 'three'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Color, DoubleSide, MeshBasicMaterial, SRGBColorSpace, TextureLoader } from 'three'
+import type { CanvasTexture, Mesh, Texture } from 'three'
+import cloudAtlasUrl from '../../assets/gallery-moonlit/gallery05-moonlit-cloud-atlas-v02.png'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
-import { createCloudTexture, createMoonHaloTexture, createMoonTexture } from './worldTextures'
-import { GALLERY_WORLD, getGalleryCloudPlanes, getGalleryCloudTextureDimensions, type GalleryQuality } from './world'
+import { applyGalleryCloudAtlasUvs, createCloudTexture, createMoonHaloTexture, createMoonTexture } from './worldTextures'
+import { GALLERY_WORLD, getGalleryCloudPlanes, getGalleryCloudTextureDimensions, type GalleryCloudPlane, type GalleryQuality } from './world'
 import { WetFloor } from './WetFloor'
 
 type GallerySettings = SceneComposerConfig['scenes']['gallery']
 
 const ignoreRaycast = () => undefined
+
+type CloudAtlasState =
+  | { status: 'loading' }
+  | { status: 'failed' }
+  | { status: 'ready'; texture: Texture }
+
+function useCloudAtlas(): CloudAtlasState {
+  const [state, setState] = useState<CloudAtlasState>({ status: 'loading' })
+
+  useEffect(() => {
+    let active = true
+    const texture = new TextureLoader().load(cloudAtlasUrl, (loaded) => {
+      if (!active) {
+        loaded.dispose()
+        return
+      }
+      loaded.colorSpace = SRGBColorSpace
+      setState({ status: 'ready', texture: loaded })
+    }, undefined, () => {
+      if (active) setState({ status: 'failed' })
+    })
+
+    return () => {
+      active = false
+      texture.dispose()
+    }
+  }, [])
+
+  return state
+}
+
+function suppressBlueCloudFringe(material: MeshBasicMaterial) {
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <color_fragment>',
+      '#include <color_fragment>\n diffuseColor.b = min(diffuseColor.b, diffuseColor.g * 1.16);',
+    )
+  }
+  material.customProgramCacheKey = () => 'gallery-moonlit-cloud-blue-fringe-v1'
+}
+
+function CloudPlane({
+  plane,
+  material,
+  useAtlasUvs,
+  visible,
+}: {
+  plane: GalleryCloudPlane
+  material: MeshBasicMaterial
+  useAtlasUvs: boolean
+  visible: boolean
+}) {
+  const mesh = useRef<Mesh>(null)
+
+  useLayoutEffect(() => {
+    if (useAtlasUvs && mesh.current) applyGalleryCloudAtlasUvs(mesh.current.geometry, plane.atlasSprite)
+  }, [plane.atlasSprite, useAtlasUvs])
+
+  return <mesh
+    ref={mesh}
+    position={plane.position}
+    rotation={[0, plane.rotationY, 0]}
+    visible={visible}
+    raycast={ignoreRaycast}
+    renderOrder={plane.id === 'moon-veil' ? -1 : -3}
+  >
+    <planeGeometry args={plane.size} />
+    <primitive object={material} attach="material" />
+  </mesh>
+}
 
 export function MoonlitWorld({
   settings,
@@ -20,10 +91,14 @@ export function MoonlitWorld({
   halo: CanvasTexture
 }) {
   const cloudPlanes = useMemo(() => getGalleryCloudPlanes(quality), [quality])
+  const cloudAtlasState = useCloudAtlas()
+  const cloudAtlas = cloudAtlasState.status === 'ready' ? cloudAtlasState.texture : null
   const [textureWidth, textureHeight] = getGalleryCloudTextureDimensions(quality)
   const cloudTextures = useMemo(
-    () => cloudPlanes.map((plane) => createCloudTexture(plane.seed, textureWidth, textureHeight)),
-    [cloudPlanes, textureHeight, textureWidth],
+    () => cloudAtlasState.status === 'failed'
+      ? cloudPlanes.map((plane) => createCloudTexture(plane.seed, textureWidth, textureHeight))
+      : [],
+    [cloudAtlasState.status, cloudPlanes, textureHeight, textureWidth],
   )
   const hazeTextureWidth = quality === 'low' ? 256 : 512
   const hazeTextureHeight = quality === 'low' ? 64 : 128
@@ -63,7 +138,7 @@ export function MoonlitWorld({
   }), [moonBrightness, moonHaloTexture, settings.coldLightIntensity])
   const cloudMaterials = useMemo(() => cloudPlanes.map((plane, index) => {
     const material = new MeshBasicMaterial({
-      map: cloudTextures[index] ?? null,
+      map: cloudAtlas ?? cloudTextures[index] ?? null,
       color: plane.tint,
       transparent: true,
       opacity: Math.min(1, plane.opacity * settings.cloudDensity),
@@ -72,8 +147,9 @@ export function MoonlitWorld({
       toneMapped: false,
     })
     material.color.multiplyScalar(settings.coldLightIntensity)
+    suppressBlueCloudFringe(material)
     return material
-  }), [cloudPlanes, cloudTextures, settings.cloudDensity, settings.coldLightIntensity])
+  }), [cloudAtlas, cloudPlanes, cloudTextures, settings.cloudDensity, settings.coldLightIntensity])
 
   useEffect(() => () => {
     cloudTextures.forEach((texture) => texture.dispose())
@@ -92,17 +168,13 @@ export function MoonlitWorld({
   const moonScale = settings.moonSize
   return <group>
     <WetFloor settings={settings} />
-    {cloudPlanes.map((plane, index) => <mesh
+    {cloudAtlasState.status !== 'loading' && cloudPlanes.map((plane, index) => <CloudPlane
       key={plane.id}
-      position={plane.position}
-      rotation={[0, plane.rotationY, 0]}
+      plane={plane}
+      material={cloudMaterials[index]!}
+      useAtlasUvs={cloudAtlas !== null}
       visible={settings.cloudDensity > 0}
-      raycast={ignoreRaycast}
-      renderOrder={plane.id === 'moon-veil' ? -1 : -3}
-    >
-      <planeGeometry args={plane.size} />
-      <primitive object={cloudMaterials[index]!} attach="material" />
-    </mesh>)}
+    />)}
     <mesh position={GALLERY_WORLD.haze.position} raycast={ignoreRaycast} renderOrder={-1}>
       <planeGeometry args={GALLERY_WORLD.haze.size} />
       <meshBasicMaterial

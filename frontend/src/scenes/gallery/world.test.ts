@@ -34,12 +34,20 @@ describe('moonlit gallery world layout', () => {
     expect(GALLERY_WORLD.haze.size[1]).toBeLessThan(6)
   })
 
-  it('reduces decorative cloud geometry and texture size in low quality', () => {
+  it('assigns distinct atlas quadrants to the distant cloud banks', () => {
+    const clouds = getGalleryCloudPlanes('standard')
+    const distantClouds = clouds.filter(({ id }) => id.startsWith('far-') || id.startsWith('deep-'))
+
+    expect(distantClouds.map(({ atlasSprite }) => atlasSprite)).toEqual([0, 1, 2, 3])
+    expect(clouds.find(({ id }) => id === 'moon-veil')?.atlasSprite).toBe(0)
+  })
+
+  it('reduces decorative cloud layers in low quality while keeping the moon veil', () => {
     expect(getGalleryCloudPlanes('low').length).toBeLessThan(getGalleryCloudPlanes('standard').length)
     expect(getGalleryCloudPlanes('low').some(({ id }) => id === 'moon-veil')).toBe(true)
-    const standard = getGalleryCloudTextureDimensions('standard')
-    const low = getGalleryCloudTextureDimensions('low')
-    expect(low[0]).toBeLessThan(standard[0])
-    expect(low[1]).toBeLessThan(standard[1])
+    const standardTextureSize = getGalleryCloudTextureDimensions('standard')
+    const lowTextureSize = getGalleryCloudTextureDimensions('low')
+    expect(lowTextureSize[0]).toBeLessThan(standardTextureSize[0])
+    expect(lowTextureSize[1]).toBeLessThan(standardTextureSize[1])
   })
 })

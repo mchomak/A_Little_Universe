@@ -1,0 +1,532 @@
+{
+  "viewport": {
+    "width": 1200,
+    "height": 900
+  },
+  "errors": [],
+  "logs": [
+    {
+      "name": "K05-01-start",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "motion": {
+        "progress": 0,
+        "target": 0,
+        "intro": 4.4,
+        "exit": 0,
+        "focusMix": 0,
+        "focusIndex": 0,
+        "focusTime": 0,
+        "time": 5.495100000023838,
+        "pinching": false,
+        "suppressClick": false
+      },
+      "renderer": {
+        "far": 220,
+        "cameraPosition": [
+          0,
+          0,
+          6.15
+        ],
+        "calls": 126,
+        "triangles": 1272,
+        "points": 502,
+        "geometries": 116,
+        "textures": 19,
+        "lights": [
+          {
+            "type": "AmbientLight",
+            "intensity": 0.256,
+            "color": "ffffff"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.46399999999999997,
+            "color": "b8cde8"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.192,
+            "color": "7895bb"
+          }
+        ]
+      }
+    },
+    {
+      "name": "K05-02-middle",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "motion": {
+        "progress": 38.999995962715936,
+        "target": 39,
+        "intro": 4.4,
+        "exit": 0,
+        "focusMix": 0,
+        "focusIndex": 0,
+        "focusTime": 0,
+        "time": 8.91139999997616,
+        "pinching": false,
+        "suppressClick": false
+      },
+      "renderer": {
+        "far": 220,
+        "cameraPosition": [
+          0,
+          0,
+          -32.8499961403666
+        ],
+        "calls": 114,
+        "triangles": 634,
+        "points": 526,
+        "geometries": 206,
+        "textures": 31,
+        "lights": [
+          {
+            "type": "AmbientLight",
+            "intensity": 0.256,
+            "color": "ffffff"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.46399999999999997,
+            "color": "b8cde8"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.192,
+            "color": "7895bb"
+          }
+        ]
+      }
+    },
+    {
+      "check": "raf-standard-desktop",
+      "frames": 120,
+      "medianMs": 8.300000000001091,
+      "p95Ms": 9.199999999998909
+    },
+    {
+      "name": "K05-03-vertical-focus",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "focused",
+        "focus": 4,
+        "atEnd": false
+      },
+      "motion": {
+        "progress": 38.99999999219842,
+        "target": 38.99999999219842,
+        "intro": 4.4,
+        "exit": 0,
+        "focusMix": 1,
+        "focusIndex": 4,
+        "focusTime": 2.6166999999880725,
+        "time": 12.777899999976162,
+        "pinching": false,
+        "suppressClick": false
+      },
+      "renderer": {
+        "far": 220,
+        "cameraPosition": [
+          0.06504642546307071,
+          0.12,
+          -22.491332500123704
+        ],
+        "calls": 89,
+        "triangles": 568,
+        "points": 438,
+        "geometries": 206,
+        "textures": 31,
+        "lights": [
+          {
+            "type": "AmbientLight",
+            "intensity": 0.256,
+            "color": "ffffff"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.46399999999999997,
+            "color": "b8cde8"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.192,
+            "color": "7895bb"
+          }
+        ]
+      }
+    },
+    {
+      "check": "background-focus-block",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "focused",
+        "focus": 4,
+        "atEnd": false
+      },
+      "motion": {
+        "progress": 38.99999999219842,
+        "target": 38.99999999219842,
+        "intro": 4.4,
+        "exit": 0,
+        "focusMix": 1,
+        "focusIndex": 4,
+        "focusTime": 3.0249999999999932,
+        "time": 13.186199999988085,
+        "pinching": false,
+        "suppressClick": false
+      }
+    },
+    {
+      "name": "K05-return",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "motion": {
+        "progress": 38.99999999219842,
+        "target": 38.99999999219842,
+        "intro": 4.4,
+        "exit": 0,
+        "focusMix": 0,
+        "focusIndex": 4,
+        "focusTime": 3.0249999999999932,
+        "time": 15.794500000000001,
+        "pinching": false,
+        "suppressClick": false
+      },
+      "renderer": {
+        "far": 220,
+        "cameraPosition": [
+          0,
+          0,
+          -32.84999999219842
+        ],
+        "calls": 114,
+        "triangles": 634,
+        "points": 526,
+        "geometries": 206,
+        "textures": 31,
+        "lights": [
+          {
+            "type": "AmbientLight",
+            "intensity": 0.256,
+            "color": "ffffff"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.46399999999999997,
+            "color": "b8cde8"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.192,
+            "color": "7895bb"
+          }
+        ]
+      }
+    },
+    {
+      "check": "return-route",
+      "before": 38.99999999219842,
+      "after": 38.99999999219842,
+      "error": 0
+    },
+    {
+      "name": "K05-horizontal-focus",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "focused",
+        "focus": 7,
+        "atEnd": false
+      },
+      "motion": {
+        "progress": 38.99999999219842,
+        "target": 38.99999999219842,
+        "intro": 4.4,
+        "exit": 0,
+        "focusMix": 1,
+        "focusIndex": 7,
+        "focusTime": 2.625600000023837,
+        "time": 18.679000000000162,
+        "pinching": false,
+        "suppressClick": false
+      },
+      "renderer": {
+        "far": 220,
+        "cameraPosition": [
+          -0.06504642546307071,
+          0.12,
+          -38.69133250012371
+        ],
+        "calls": 62,
+        "triangles": 444,
+        "points": 378,
+        "geometries": 206,
+        "textures": 31,
+        "lights": [
+          {
+            "type": "AmbientLight",
+            "intensity": 0.256,
+            "color": "ffffff"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.46399999999999997,
+            "color": "b8cde8"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.192,
+            "color": "7895bb"
+          }
+        ]
+      }
+    },
+    {
+      "name": "K05-04-end",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "motion": {
+        "progress": 57.99999802629964,
+        "target": 57.99999999219842,
+        "intro": 4.4,
+        "exit": 0,
+        "focusMix": 0,
+        "focusIndex": 7,
+        "focusTime": 2.899700000047677,
+        "time": 24.786000000000552,
+        "pinching": false,
+        "suppressClick": false
+      },
+      "renderer": {
+        "far": 220,
+        "cameraPosition": [
+          0,
+          0,
+          -51.849998026299644
+        ],
+        "calls": 61,
+        "triangles": 504,
+        "points": 386,
+        "geometries": 206,
+        "textures": 31,
+        "lights": [
+          {
+            "type": "AmbientLight",
+            "intensity": 0.256,
+            "color": "ffffff"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.46399999999999997,
+            "color": "b8cde8"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.192,
+            "color": "7895bb"
+          }
+        ]
+      }
+    },
+    {
+      "check": "pause",
+      "time0": 25.05250000000057,
+      "time1": 25.07739999997673,
+      "time2": 25.07739999997673,
+      "held": true
+    },
+    {
+      "name": "K05-low-end",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "motion": {
+        "progress": 57.99999999196554,
+        "target": 57.99999999219842,
+        "intro": 4.4,
+        "exit": 0,
+        "focusMix": 0,
+        "focusIndex": 7,
+        "focusTime": 2.899700000047677,
+        "time": 26.594199999988735,
+        "pinching": false,
+        "suppressClick": false
+      },
+      "renderer": {
+        "far": 220,
+        "cameraPosition": [
+          0,
+          0,
+          -51.84999999196554
+        ],
+        "calls": 55,
+        "triangles": 364,
+        "points": 252,
+        "geometries": 200,
+        "textures": 31,
+        "lights": [
+          {
+            "type": "AmbientLight",
+            "intensity": 0.256,
+            "color": "ffffff"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.46399999999999997,
+            "color": "b8cde8"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 0.192,
+            "color": "7895bb"
+          }
+        ]
+      }
+    },
+    {
+      "check": "raf-low-desktop",
+      "frames": 120,
+      "medianMs": 8.30000000000291,
+      "p95Ms": 8.600000000002183
+    },
+    {
+      "check": "explicit-end-gate",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": true
+      },
+      "motion": {
+        "progress": 74.04999962722513,
+        "target": 74.05000000000001,
+        "intro": 4.4,
+        "exit": 0,
+        "focusMix": 0,
+        "focusIndex": 7,
+        "focusTime": 2.899700000047677,
+        "time": 31.343899999977115,
+        "pinching": false,
+        "suppressClick": false
+      }
+    },
+    {
+      "check": "exit-to-eye",
+      "timeline": "Глаз · 06 Голубой глазВоспроизведение0.7 / 18.0 с⌃",
+      "renderer": {
+        "far": 100,
+        "cameraPosition": [
+          0,
+          0,
+          4.8
+        ],
+        "calls": 6,
+        "triangles": 402,
+        "points": 0,
+        "geometries": 5,
+        "textures": 2,
+        "lights": [
+          {
+            "type": "AmbientLight",
+            "intensity": 0.9,
+            "color": "ffffff"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 2.4,
+            "color": "fff0e8"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 1.1,
+            "color": "b9a4e8"
+          }
+        ]
+      }
+    },
+    {
+      "check": "non-gallery-isolation",
+      "before": {
+        "far": 100,
+        "cameraPosition": [
+          0,
+          0,
+          4.8
+        ],
+        "calls": 6,
+        "triangles": 402,
+        "points": 0,
+        "geometries": 5,
+        "textures": 2,
+        "lights": [
+          {
+            "type": "AmbientLight",
+            "intensity": 0.9,
+            "color": "ffffff"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 2.4,
+            "color": "fff0e8"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 1.1,
+            "color": "b9a4e8"
+          }
+        ]
+      },
+      "after": {
+        "far": 100,
+        "cameraPosition": [
+          0,
+          0,
+          4.8
+        ],
+        "calls": 6,
+        "triangles": 402,
+        "points": 0,
+        "geometries": 5,
+        "textures": 2,
+        "lights": [
+          {
+            "type": "AmbientLight",
+            "intensity": 0.9,
+            "color": "ffffff"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 2.4,
+            "color": "fff0e8"
+          },
+          {
+            "type": "DirectionalLight",
+            "intensity": 1.1,
+            "color": "b9a4e8"
+          }
+        ]
+      },
+      "lightsUnchanged": true,
+      "farRestored": true
+    }
+  ]
+}

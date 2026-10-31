@@ -1,4 +1,4 @@
-﻿# Autopilot
+# Autopilot
 
 Требования и история реализации; актуальное устройство проекта — в `docs/architecture.md`.
 Сценарий и AGENTS.md сохраняются. Результаты текущего прогона фиксируются в отдельной ветке; публикация и слияние выполняются отдельно.
@@ -25,4 +25,4 @@
 | 2026-10-30 | `2026-10-30-lily-film-integration` | сдан | GLB лилии в фильме, клипы роста и раскрытия, настройки длительности и проверки |
 | 2026-10-30 | `2026-10-30-scene-07-galaxy--wip` | в работе | Scene 07 — Galaxy; desktop checks passed, tablet validation pending |
 | 2026-10-30 | `2026-10-30-prologue-emissive-dissolve` | сдан | Scene 01: Great Vibes, переиспользуемый побуквенный dissolve и световые частицы; 285 тестов, lint, TypeScript и build прошли |
-| 2026-10-31 | `2026-10-31-gallery05-moonlit--wip` | в работе | Лунная галерея сцены 05 |
+| 2026-10-31 | `2026-10-31-gallery05-moonlit` | сдан | Лунная галерея сцены 05; 315 тестов, desktop Chrome и touch emulation |

@@ -1,4 +1,31 @@
 import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three'
+import type { BufferGeometry } from 'three'
+import type { GalleryCloudAtlasSprite } from './world'
+
+const CLOUD_ATLAS_CELL_INSET = 0.025
+
+/** Remaps canonical PlaneGeometry UVs into one inset cell of the 2×2 cloud atlas. */
+export function applyGalleryCloudAtlasUvs(geometry: BufferGeometry, sprite: GalleryCloudAtlasSprite) {
+  const uv = geometry.getAttribute('uv')
+  if (!uv) throw new Error('Gallery cloud planes require UV coordinates')
+
+  const baseUvs = (geometry.userData.galleryCloudAtlasBaseUvs ??= uv.clone()) as typeof uv
+  const column = sprite % 2
+  const row = sprite < 2 ? 1 : 0
+  const minU = column * 0.5 + CLOUD_ATLAS_CELL_INSET
+  const maxU = (column + 1) * 0.5 - CLOUD_ATLAS_CELL_INSET
+  const minV = row * 0.5 + CLOUD_ATLAS_CELL_INSET
+  const maxV = (row + 1) * 0.5 - CLOUD_ATLAS_CELL_INSET
+
+  for (let index = 0; index < uv.count; index++) {
+    uv.setXY(
+      index,
+      minU + baseUvs.getX(index) * (maxU - minU),
+      minV + baseUvs.getY(index) * (maxV - minV),
+    )
+  }
+  uv.needsUpdate = true
+}
 
 interface NoiseGrid {
   columns: number
