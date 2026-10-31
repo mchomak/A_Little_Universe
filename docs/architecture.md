@@ -65,6 +65,8 @@ Canvas2D используется только при пересборке ре�
 | `greeting` | 50 с показа поздравления/титров, затем ожидание кнопки «Завершить». Чтение доступно без таймера в modal dialog. |
 | `ending` | Повтор фильма, повторный вход в галерею и чтение. Закрытие повторного просмотра возвращает сюда. |
 
+GLB Lily 004 remains the same cloned object from growth through bloom; its gold-ring ground and moonlight remain mounted across the 02→03 boundary and the opening seconds of identity. `LilyAnimationPlayer` resets its active action for every absolute mixer seek, so LoopOnce endpoints remain stable after forward/backward scrubbing. Identity starts from the fully open GLB. Its existing particle geometry now samples the posed GLB surface in the same world coordinates, then uses the existing legacy vortex motion as the flower begins to dissolve. The remaining Scene 04 dependency is the full v3 choreography and portrait/photo transition; this local handoff does not claim to implement those shots.
+
 Пауза не сбрасывает playhead. Чтение замораживает часы независимо от ручной паузы; закрытие сохраняет её прежнее значение. Повтор начинает пролог сразу, сбрасывая film state, и не начинает запись заново. Browser reload возвращает подготовку и сбрасывает согласия; записи живут отдельно в IndexedDB. History API и URL-маршруты сцен не используются; browser Back не является переходом между сценами.
 
 ## Часы и cleanup

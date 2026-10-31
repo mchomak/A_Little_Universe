@@ -18,7 +18,12 @@ it('uses immutable schema v5 defaults and the local Great Vibes prologue face', 
     glow: 0.45,
   })
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.flowerGrowthDuration).toBe(9)
-  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.flowerBloomDuration).toBe(16)
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom).toMatchObject({
+    flowerBloomDuration: 16, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,
+    cameraFinalDistance: 2.3, cameraFinalHeight: 2.3, cameraTargetX: 0.27, cameraTargetY: 1.25,
+    textPositionX: 0.2, textPositionY: 0.52, textSize: 44, textColor: '#C7AD77',
+    textWritingDuration: 4.2, textParticleCount: 1800,
+  })
   expect(getConfig()).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
   expect(normalizeConfig({})).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
   expect(Object.isFrozen(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)).toBe(true)
@@ -142,6 +147,25 @@ it('normalizes animation durations with backward-compatible defaults and bounds'
     growth: { flowerGrowthDuration: 4 }, bloom: { flowerBloomDuration: 24 },
   })
   expect(normalizeConfig({ schemaVersion: 1, scenes: { bloom: { flowerBloomDuration: 12 } } }).scenes.bloom.flowerBloomDuration).toBe(12)
+})
+
+it('normalizes additive bloom camera and calligraphy fields while preserving older overrides', () => {
+  const migrated = normalizeConfig({ schemaVersion: 4, scenes: {
+    bloom: { flowerBloomDuration: 18, cameraFinalDistance: 2.8, textColor: '#aabbcc', unexpected: true },
+  } })
+  expect(migrated.scenes.bloom).toMatchObject({
+    flowerBloomDuration: 18, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,
+    cameraFinalDistance: 2.8, textPositionX: 0.2, textSize: 44, textColor: '#AABBCC',
+    textWritingDuration: 4.2, textParticleCount: 1800,
+  })
+  expect(migrated.scenes.bloom).not.toHaveProperty('unexpected')
+  const invalid = normalizeConfig({ schemaVersion: 5, scenes: { bloom: {
+    cameraApproachDuration: 40, cameraBloomSync: 0.2, cameraFinalDistance: 1, cameraFinalHeight: 99,
+    cameraTargetX: 4, cameraTargetY: -2, textPositionX: 0.8, textPositionY: 4, textSize: 10,
+    textColor: 'gold', textWritingDuration: 0, textParticleCount: 12,
+  } } }).scenes.bloom
+  expect(invalid).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom)
+  expect(Object.isFrozen(invalid)).toBe(true)
 })
 
 it('migrates schema v2 documents with galaxy defaults and bounds the new controls', () => {

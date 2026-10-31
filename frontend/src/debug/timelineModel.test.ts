@@ -36,7 +36,8 @@ describe('scene editor timeline', () => {
   })
   it('moves the Bloom contemplation marker and timeline endpoint with the configured clip', () => {
     const config = { ...DEFAULT_SCENE_COMPOSER_CONFIG, scenes: {
-      ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes, bloom: { flowerBloomDuration: 11 },
+      ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes,
+      bloom: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom, flowerBloomDuration: 11 },
     } }
     const frames = timelineFrames('bloom', config)
     expect(frames.map(({ start }) => start)).toEqual([0, 11])

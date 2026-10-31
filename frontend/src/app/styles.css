@@ -29,6 +29,7 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.7rem); line-height: 1.08; letter-spacing:
 .viewport { position: absolute; inset: 0; }
 .viewport > div { height: 100%; }
 .universe[data-scene='gallery'] .film-surface { touch-action: none; }
+.universe[data-scene='bloom'] .viewport { touch-action: none; }
 .page-header { position: absolute; inset: max(20px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) auto max(24px, env(safe-area-inset-left)); display: flex; justify-content: space-between; gap: 1rem; font-size: 0.875rem; pointer-events: none; }
 .universe[data-scene="growth"] .page-header, .universe[data-scene="growth"] .film-status { visibility: hidden; }
 .universe[data-scene="growth"] .page-footer { background: transparent; }

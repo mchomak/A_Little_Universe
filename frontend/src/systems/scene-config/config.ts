@@ -87,7 +87,21 @@ export interface SceneComposerConfig {
       seedScale: number
       flowerGrowthDuration: number
     }>
-    bloom: Readonly<{ flowerBloomDuration: number }>
+    bloom: Readonly<{
+      flowerBloomDuration: number
+      cameraApproachDuration: number
+      cameraBloomSync: number
+      cameraFinalDistance: number
+      cameraFinalHeight: number
+      cameraTargetX: number
+      cameraTargetY: number
+      textPositionX: number
+      textPositionY: number
+      textSize: number
+      textColor: string
+      textWritingDuration: number
+      textParticleCount: number
+    }>
     galaxy: Readonly<{
       quality: SeedQuality
       seed: string
@@ -190,7 +204,12 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       freeParticleFraction: 0.08, pearlColor: '#FFF4E8', roseColor: '#F4CCDA',
       lavenderColor: '#D7CCF1', coreGlow: 0.55, seedScale: 1, flowerGrowthDuration: 9,
     },
-    bloom: { flowerBloomDuration: 16 },
+    bloom: {
+      flowerBloomDuration: 16, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,
+      cameraFinalDistance: 2.3, cameraFinalHeight: 2.3, cameraTargetX: 0.27, cameraTargetY: 1.25,
+      textPositionX: 0.2, textPositionY: 0.52, textSize: 44, textColor: '#C7AD77',
+      textWritingDuration: 4.2, textParticleCount: 1800,
+    },
     galaxy: {
       quality: 'standard', seed: 'andromeda', starCount: 32000, arms: 5, radius: 8.2,
       spin: 4.6, armWidth: 0.16, randomness: 0.065, randomnessPower: 3.6, coreSize: 0.24, coreDensity: 0.2,
@@ -358,6 +377,18 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
     },
     bloom: {
       flowerBloomDuration: numberValue(asRecord(scenesInput?.bloom)?.flowerBloomDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.flowerBloomDuration, 6, 24),
+      cameraApproachDuration: numberValue(asRecord(scenesInput?.bloom)?.cameraApproachDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraApproachDuration, 1, 22),
+      cameraBloomSync: numberValue(asRecord(scenesInput?.bloom)?.cameraBloomSync, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraBloomSync, 0.5, 0.85),
+      cameraFinalDistance: numberValue(asRecord(scenesInput?.bloom)?.cameraFinalDistance, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraFinalDistance, 1.5, 5),
+      cameraFinalHeight: numberValue(asRecord(scenesInput?.bloom)?.cameraFinalHeight, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraFinalHeight, 0.5, 4),
+      cameraTargetX: numberValue(asRecord(scenesInput?.bloom)?.cameraTargetX, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraTargetX, -1, 1),
+      cameraTargetY: numberValue(asRecord(scenesInput?.bloom)?.cameraTargetY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraTargetY, -0.5, 3),
+      textPositionX: numberValue(asRecord(scenesInput?.bloom)?.textPositionX, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textPositionX, 0.05, 0.48),
+      textPositionY: numberValue(asRecord(scenesInput?.bloom)?.textPositionY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textPositionY, 0.1, 0.9),
+      textSize: numberValue(asRecord(scenesInput?.bloom)?.textSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textSize, 26, 100),
+      textColor: colorValue(asRecord(scenesInput?.bloom)?.textColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textColor),
+      textWritingDuration: numberValue(asRecord(scenesInput?.bloom)?.textWritingDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textWritingDuration, 1, 12),
+      textParticleCount: numberValue(asRecord(scenesInput?.bloom)?.textParticleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textParticleCount, 300, 6000, true),
     },
     galaxy: normalizeGalaxy(galaxySettingsInput),
   }

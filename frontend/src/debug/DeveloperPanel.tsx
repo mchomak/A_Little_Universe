@@ -132,6 +132,17 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
 
 const BLOOM_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.bloom.flowerBloomDuration', label: 'Длительность раскрытия Bloom', unit: 'с', min: 6, max: 24, step: 0.25 },
+  { path: 'scenes.bloom.cameraFinalDistance', label: 'Финальная дистанция камеры', unit: '', min: 1.5, max: 5, step: 0.05 },
+  { path: 'scenes.bloom.cameraFinalHeight', label: 'Высота камеры', unit: '', min: 0.5, max: 4, step: 0.05 },
+  { path: 'scenes.bloom.cameraTargetX', label: 'Цель камеры · X', unit: '', min: -1, max: 1, step: 0.02 },
+  { path: 'scenes.bloom.cameraTargetY', label: 'Цель камеры · Y', unit: '', min: -0.5, max: 3, step: 0.02 },
+  { path: 'scenes.bloom.cameraApproachDuration', label: 'Длительность приближения камеры', unit: 'с', min: 1, max: 22, step: 0.1 },
+  { path: 'scenes.bloom.cameraBloomSync', label: 'Раскрытие к финалу приближения', unit: '%', min: 50, max: 85, step: 1, displayScale: 100 },
+  { path: 'scenes.bloom.textPositionX', label: 'Положение текста · X', unit: '%', min: 5, max: 48, step: 1, displayScale: 100 },
+  { path: 'scenes.bloom.textPositionY', label: 'Положение текста · Y', unit: '%', min: 10, max: 90, step: 1, displayScale: 100 },
+  { path: 'scenes.bloom.textSize', label: 'Размер текста', unit: 'px', min: 26, max: 100, step: 1 },
+  { path: 'scenes.bloom.textWritingDuration', label: 'Длительность письма', unit: 'с', min: 1, max: 12, step: 0.1 },
+  { path: 'scenes.bloom.textParticleCount', label: 'Частицы растворения текста', unit: 'шт.', min: 300, max: 6000, step: 100 },
 ]
 
 const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
@@ -603,7 +614,11 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             {color('scenes.growth.lavenderColor', 'Лавандовый')}
           </details>
         </>}
-        {selected === 'bloom' && <details open><summary>Анимация раскрытия</summary>{BLOOM_CONTROLS.map(range)}<p>IdleClosed ожидает касания; Bloom начинается только после него.</p></details>}
+        {selected === 'bloom' && <details open><summary>Анимация раскрытия</summary>
+          <details open><summary>Камера · CameraDirector</summary>{BLOOM_CONTROLS.slice(0, 7).map(range)}</details>
+          <details open><summary>Текст ожидания</summary>{BLOOM_CONTROLS.slice(7).map(range)}{color('scenes.bloom.textColor', 'Цвет текста')}</details>
+          <p>IdleClosed ждёт завершения письма и жеста. Камера доезжает до крупного плана на заданной доле раскрытия.</p>
+        </details>}
         {selected === 'cosmos' && <>
           <details open><summary>Scene 07 — Galaxy</summary>
             {GALAXY_SELECTS.map((control) => <SelectConfigControl key={control.path} control={control} value={valueAtPath(config, control.path) as string} onChange={(path, value) => { void (path === 'scenes.galaxy.palette' ? changeGalaxyPalette(value as GalaxyPalette) : changeField(path, value)) }} onReset={(path) => { void resetField(path) }} />)}

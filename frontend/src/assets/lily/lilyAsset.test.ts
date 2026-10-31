@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs'
-import { AnimationClip, LoopOnce, type Object3D } from 'three'
+import { AnimationClip, Group, LoopOnce, LoopRepeat, type Object3D } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import { expect, it } from 'vitest'
 import { getBloomSceneFrames, getGrowthSceneFrames } from '../../engine/filmConfig'
-import { getBloomClipTime, getGrowthClipTime } from '../../scenes/lily/animationTiming'
+import { getGrowthClipTime, getSyncedBloomClipTime } from '../../scenes/lily/animationTiming'
 import { LilyAnimationPlayer } from '../../scenes/lily/animationPlayer'
+import { createLilyGeometryParticleSource } from '../../scenes/lily/particleSource'
 
 interface GlbDocument {
   accessors: Array<{ max?: number[] }>
@@ -61,9 +63,14 @@ it('keeps the actual Growth and Bloom clip poses stable across endpoint, forward
 
   player.play('Bloom', LoopOnce, 1)
   const bloomPose = (time: number) => {
-    player.seek(getBloomClipTime(time, bloomFrames.opening, bloomClip.duration, false))
+    player.seek(getSyncedBloomClipTime(time, bloomFrames.opening, bloomClip.duration, false, 10.7, 0.67))
     return petals.morphTargetInfluences?.[6] ?? 0
   }
+  player.seek(getSyncedBloomClipTime(10.7, bloomFrames.opening, bloomClip.duration, false, 10.7, 0.67))
+  const closedWeights = petals.morphTargetInfluences!.slice(0, 6)
+  const visualOpenness = 1 - closedWeights.reduce((sum, value) => sum + value, 0) / closedWeights.length
+  expect(visualOpenness).toBeGreaterThan(0.65)
+  expect(visualOpenness).toBeLessThan(0.7)
   expect(bloomPose(15.7)).toBeGreaterThan(0.98)
   const fullyOpen = bloomPose(16)
   expect(fullyOpen).toBeCloseTo(1, 3)
@@ -72,6 +79,45 @@ it('keeps the actual Growth and Bloom clip poses stable across endpoint, forward
   bloomPose(4)
   expect(bloomPose(20.9)).toBeCloseTo(fullyOpen, 3)
   player.dispose()
+})
+
+it('samples the actual open GLB morph and maps its vertices into the identity scene coordinates', async () => {
+  const source = readFileSync(new URL('./lily_004_final.glb', import.meta.url))
+  const gltf = await parseAnimationFixture(source)
+  const player = new LilyAnimationPlayer(gltf.scene, gltf.animations)
+  const bloomClip = gltf.animations.find(({ name }) => name === 'Bloom')!
+  player.play('IdleClosed', LoopRepeat, Infinity)
+  player.seek(0)
+  const closed = createLilyGeometryParticleSource(gltf.scene)
+  player.play('Bloom', LoopOnce, 1)
+  player.seek(bloomClip.duration)
+
+  const open = createLilyGeometryParticleSource(gltf.scene)
+  const first = open.sample(0, 1024)
+  expect(first).toEqual(open.sample(0, 1024))
+  expect(first).toHaveLength(3)
+  expect(first.every(Number.isFinite)).toBe(true)
+  expect(open.sample(1, 1024)).not.toEqual(first)
+  const changedByBloom = Array.from({ length: 128 }, (_, index) => {
+    const a = closed.sample(index, 128), b = open.sample(index, 128)
+    return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+  }).filter((distance) => distance > 0.05)
+  expect(changedByBloom.length).toBeGreaterThan(64)
+
+  const world = new Group()
+  world.position.set(0, -1.45, 0)
+  world.scale.setScalar(3)
+  world.add(clone(gltf.scene))
+  const worldPlayer = new LilyAnimationPlayer(world, gltf.animations)
+  worldPlayer.play('Bloom', LoopOnce, 1)
+  worldPlayer.seek(bloomClip.duration)
+  const worldOpen = createLilyGeometryParticleSource(world)
+  const worldSample = worldOpen.sample(0, 1024)
+  expect(worldSample[0]).toBeCloseTo(first[0] * 3, 4)
+  expect(worldSample[1]).toBeCloseTo(-1.45 + first[1] * 3, 4)
+  expect(worldSample[2]).toBeCloseTo(first[2] * 3, 4)
+  player.dispose()
+  worldPlayer.dispose()
 })
 
 async function parseAnimationFixture(source: Buffer): Promise<{ scene: Object3D; animations: AnimationClip[] }> {

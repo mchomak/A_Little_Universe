@@ -1,0 +1,7 @@
+.bloom-overlay { position: absolute; z-index: 2; inset: 0; pointer-events: none; }
+.bloom-calligraphy { position: absolute; width: min(44%, 38rem); margin: 0; transform: translateY(-50%); text-align: left; font-weight: 400; line-height: 1.34; letter-spacing: 0; white-space: normal; opacity: 0; --write-progress: 0%; -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 var(--write-progress), transparent calc(var(--write-progress) + 2%)); mask-image: linear-gradient(90deg, #000 0%, #000 var(--write-progress), transparent calc(var(--write-progress) + 2%)); -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; will-change: opacity, mask-image; }
+.bloom-accessible-hint { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.bloom-overlay[data-matter-ready='true'] .bloom-calligraphy { color: transparent !important; text-shadow: none !important; }
+@media (orientation: portrait) {
+  .bloom-calligraphy { top: max(12%, env(safe-area-inset-top)); left: 6% !important; width: 88%; transform: none; text-align: center; font-size: clamp(23px, 5vw, 34px) !important; line-height: 1.26; }
+}

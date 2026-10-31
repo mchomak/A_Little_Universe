@@ -76,5 +76,5 @@ export function IdentityTrails({ geometry: source, runtime, low, reducedMotion, 
   useSceneAnimation(runtime, TIMING.identity.duration, draw)
   useEffect(() => () => geometry.dispose(), [geometry])
   useEffect(() => () => material.dispose(), [material])
-  return <lineSegments ref={line} geometry={geometry} frustumCulled={false}><primitive ref={materialRef} object={material} attach="material" /></lineSegments>
+  return <lineSegments ref={line} geometry={geometry} frustumCulled={false} visible={false}><primitive ref={materialRef} object={material} attach="material" /></lineSegments>
 }
