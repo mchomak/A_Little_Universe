@@ -26,3 +26,5 @@
 | 2026-10-30 | `2026-10-30-scene-07-galaxy--wip` | в работе | Scene 07 — Galaxy; desktop checks passed, tablet validation pending |
 | 2026-10-30 | `2026-10-30-prologue-emissive-dissolve` | сдан | Scene 01: Great Vibes, переиспользуемый побуквенный dissolve и световые частицы; 285 тестов, lint, TypeScript и build прошли |
 | 2026-10-31 | `2026-10-31-gallery05-moonlit` | сдан | Лунная галерея сцены 05; 315 тестов, desktop Chrome и touch emulation |
+
+| 2026-10-31 | `2026-10-31-gallery05-cloud-atmosphere` | сдан | Процедурные world-space облака, лунная дымка и настройки Scene Composer для сцены 05; 320 тестов и браузерная проверка |

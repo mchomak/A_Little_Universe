@@ -9,6 +9,10 @@ export interface GalleryAtmosphereMass {
   lowQuality: boolean
 }
 
+export interface GalleryCloudWisp extends GalleryAtmosphereMass {
+  bankId: string
+}
+
 export interface GalleryMoonScatteringLayer {
   position: readonly [number, number, number]
   size: number
@@ -64,6 +68,58 @@ export function getGalleryMoonScatteringLayers(): readonly GalleryMoonScattering
 
 export function getGalleryCloudMasses(quality: GalleryQuality): readonly GalleryAtmosphereMass[] {
   return quality === 'low' ? GALLERY_WORLD.clouds.filter((mass) => mass.lowQuality) : GALLERY_WORLD.clouds
+}
+
+function seededFraction(seed: number, salt: number): number {
+  const value = Math.sin(seed * 127.1 + salt * 311.7) * 43758.5453
+  return value - Math.floor(value)
+}
+
+/** Expands selected world-space cloud banks into deterministic, overlapping silhouette lobes. */
+export function getGalleryCloudWisps(quality: GalleryQuality, bankCount = GALLERY_WORLD.clouds.length): readonly GalleryCloudWisp[] {
+  const limit = Number.isFinite(bankCount) ? Math.max(0, Math.floor(bankCount)) : 0
+  return getGalleryCloudMasses(quality).slice(0, limit).flatMap((bank) => {
+    const count = quality === 'low' ? 2 : 3
+    const phase = seededFraction(bank.seed, 2) * Math.PI * 2
+    const cos = Math.cos(phase)
+    const sin = Math.sin(phase)
+    const layout = [
+      { x: -0.04, y: 0.02, z: 0, scale: 0.62 },
+      { x: 0.47, y: 0.1, z: -0.08, scale: 0.55 },
+      { x: -0.09, y: -0.46, z: 0.12, scale: 0.5 },
+    ]
+
+    return layout.slice(0, count).map((lobe, index) => {
+      const salt = (index + 1) * 7
+      const jitterX = (seededFraction(bank.seed, salt) - 0.5) * 0.1
+      const jitterY = (seededFraction(bank.seed, salt + 1) - 0.5) * 0.08
+      const jitterZ = (seededFraction(bank.seed, salt + 2) - 0.5) * 0.1
+      const localX = lobe.x + jitterX
+      const localY = lobe.y + jitterY
+      const scaleVariation = 0.94 + seededFraction(bank.seed, salt + 3) * 0.13
+      const radiusScale = lobe.scale * scaleVariation
+      const opacityVariation = 0.92 + seededFraction(bank.seed, salt + 4) * 0.16
+      const opacity = bank.opacity * (1 / count) * opacityVariation
+
+      return {
+        id: `${bank.id}-wisp-${index + 1}`,
+        bankId: bank.id,
+        position: [
+          bank.position[0] + (localX * cos - localY * sin) * bank.radii[0],
+          bank.position[1] + (localX * sin + localY * cos) * bank.radii[1],
+          bank.position[2] + (lobe.z + jitterZ) * bank.radii[2],
+        ] as const,
+        radii: [
+          bank.radii[0] * radiusScale,
+          bank.radii[1] * radiusScale * (0.88 + seededFraction(bank.seed, salt + 5) * 0.12),
+          bank.radii[2] * radiusScale * (0.9 + seededFraction(bank.seed, salt + 6) * 0.1),
+        ] as const,
+        opacity,
+        seed: bank.seed + (index + 1) * 17.3,
+        lowQuality: bank.lowQuality,
+      }
+    })
+  })
 }
 
 export function getGalleryHazeMasses(quality: GalleryQuality): readonly GalleryAtmosphereMass[] {

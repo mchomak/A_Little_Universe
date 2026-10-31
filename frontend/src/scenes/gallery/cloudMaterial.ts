@@ -4,13 +4,17 @@ export interface GalleryAtmosphereMaterialOptions {
   kind: 'cloud' | 'haze'
   seed: number
   opacity: number
+  intensity: number
   moonPosition: readonly [number, number, number]
   moonLightIntensity: number
 }
 
 const atmosphereVertexShader = `
   uniform float uSeed;
+  uniform float uContourStrength;
   varying vec3 vCloudPosition;
+  varying vec3 vContourPosition;
+  varying vec3 vBoundaryPosition;
   varying vec3 vWorldPosition;
   varying vec3 vWorldNormal;
 
@@ -40,10 +44,27 @@ const atmosphereVertexShader = `
   void main() {
     float broadNoise = noise3(position * 2.4 + vec3(uSeed));
     float detailNoise = noise3(position * 6.8 + vec3(uSeed * 0.37));
-    float displacement = (broadNoise - 0.5) * 0.16 + (detailNoise - 0.5) * 0.055;
-    vec3 deformed = position * (1.0 + displacement);
-    vec4 worldPosition = modelMatrix * vec4(deformed, 1.0);
-    vCloudPosition = deformed;
+    float baseDisplacement = (broadNoise - 0.5) * 0.16 + (detailNoise - 0.5) * 0.055;
+
+    // The contour field is seeded per wisp to give each volume a soft, uneven edge.
+    vec3 warp = vec3(
+      noise3(position * 1.8 + vec3(uSeed * 0.11, uSeed * 0.07, uSeed * 0.03)),
+      noise3(position * 1.8 + vec3(7.1, uSeed * 0.13, 2.7)),
+      noise3(position * 1.8 + vec3(1.4, 4.8, uSeed * 0.09))
+    ) - 0.5;
+    vec3 warpedPosition = position + warp * 0.86;
+
+    float broadLobe = noise3(position * 1.65 + vec3(uSeed * 0.031, uSeed * 0.017, uSeed * 0.023));
+    vec3 asymmetryAxis = normalize(vec3(sin(uSeed * 0.71), cos(uSeed * 0.37), sin(uSeed * 0.19 + 1.7)));
+    float oneSidedLobe = dot(position, asymmetryAxis) * 0.22;
+    float contourDisplacement = ((broadLobe - 0.5) * 0.56 + oneSidedLobe) * uContourStrength;
+
+    vec3 shadingPosition = position * (1.0 + baseDisplacement);
+    vec3 boundaryPosition = position * (1.0 + baseDisplacement + contourDisplacement);
+    vec4 worldPosition = modelMatrix * vec4(boundaryPosition, 1.0);
+    vCloudPosition = shadingPosition;
+    vContourPosition = warpedPosition;
+    vBoundaryPosition = boundaryPosition;
     vWorldPosition = worldPosition.xyz;
     vWorldNormal = normalize(transpose(inverse(mat3(modelMatrix))) * normal);
     gl_Position = projectionMatrix * viewMatrix * worldPosition;
@@ -56,9 +77,13 @@ const atmosphereFragmentShader = `
   uniform vec3 uBaseColor;
   uniform float uSeed;
   uniform float uOpacity;
+  uniform float uCloudIntensity;
+  uniform float uContourStrength;
   uniform float uMoonLightIntensity;
   uniform float uIsHaze;
   varying vec3 vCloudPosition;
+  varying vec3 vContourPosition;
+  varying vec3 vBoundaryPosition;
   varying vec3 vWorldPosition;
   varying vec3 vWorldNormal;
 
@@ -94,7 +119,10 @@ const atmosphereFragmentShader = `
 
   void main() {
     float broadDensity = fbm(vCloudPosition + vec3(uSeed * 0.017));
-    float edge = 1.0 - smoothstep(0.94, 1.075, length(vCloudPosition));
+    float contourShape = fbm(vContourPosition * 1.1 + vec3(uSeed * 0.013));
+    float contourDetail = noise3(vContourPosition * 6.0 + vec3(uSeed * 0.19));
+    float edgeOffset = ((contourShape - 0.5) * 0.36 + (contourDetail - 0.5) * 0.14) * uContourStrength;
+    float edge = 1.0 - smoothstep(0.94 + edgeOffset, 1.075 + edgeOffset, length(vBoundaryPosition));
     float cloudBody = smoothstep(0.27, 0.67, broadDensity);
     float detail = noise3(vCloudPosition * 13.0 + vec3(uSeed * 0.31));
     float cloudDensity = edge * cloudBody * (0.66 + detail * 0.34);
@@ -111,7 +139,7 @@ const atmosphereFragmentShader = `
     float softRim = pow(1.0 - viewFacing, 1.7) * (0.24 + moonFacing * 0.76);
     float lunarLift = clamp(moonFacing * uMoonLightIntensity * 0.38 + softRim * 0.16, 0.0, 0.82);
     vec3 color = mix(uBaseColor, uMoonColor, lunarLift);
-    color *= 0.86 + broadDensity * 0.27;
+    color *= (0.86 + broadDensity * 0.27) * uCloudIntensity;
 
     float densityScale = mix(0.74, 0.56, isHaze);
     float alpha = clamp(uOpacity * coverage * densityScale, 0.0, 0.55);
@@ -129,6 +157,8 @@ export function createGalleryAtmosphereMaterial(options: GalleryAtmosphereMateri
       uBaseColor: { value: new Color(options.kind === 'haze' ? '#192742' : '#101a2d') },
       uSeed: { value: options.seed },
       uOpacity: { value: Math.max(0, Math.min(1.5, options.opacity)) },
+      uCloudIntensity: { value: Math.max(0, Math.min(2, options.intensity)) },
+      uContourStrength: { value: options.kind === 'cloud' ? 1 : 0 },
       uMoonLightIntensity: { value: Math.max(0, options.moonLightIntensity) },
       uIsHaze: { value: options.kind === 'haze' ? 1 : 0 },
     },

@@ -6,7 +6,7 @@ import moonHeightUrl from '../../assets/gallery-moonlit/ldem-3-8bit.jpg'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
 import { createGalleryAtmosphereMaterial } from './cloudMaterial'
 import { createMoonHaloTexture } from './worldTextures'
-import { GALLERY_WORLD, getGalleryCloudMasses, getGalleryHazeMasses, getGalleryMoonScatteringLayers, type GalleryQuality } from './world'
+import { GALLERY_WORLD, getGalleryCloudWisps, getGalleryHazeMasses, getGalleryMoonScatteringLayers, type GalleryQuality } from './world'
 import { WetFloor } from './WetFloor'
 
 type GallerySettings = SceneComposerConfig['scenes']['gallery']
@@ -69,23 +69,25 @@ export function MoonlitWorld({
   quality: GalleryQuality
   halo: CanvasTexture
 }) {
-  const cloudMasses = useMemo(() => getGalleryCloudMasses(quality), [quality])
+  const cloudWisps = useMemo(() => getGalleryCloudWisps(quality, settings.cloudLayerCount), [quality, settings.cloudLayerCount])
   const hazeMasses = useMemo(() => getGalleryHazeMasses(quality), [quality])
   const atmosphereGeometry = useMemo(() => new SphereGeometry(1, quality === 'low' ? 20 : 28, quality === 'low' ? 14 : 18), [quality])
-  const cloudMaterials = useMemo(() => cloudMasses.map((mass) => createGalleryAtmosphereMaterial({
+  const cloudMaterials = useMemo(() => cloudWisps.map((mass) => createGalleryAtmosphereMaterial({
     kind: 'cloud',
     seed: mass.seed,
     opacity: mass.opacity * settings.cloudDensity,
+    intensity: settings.cloudIntensity,
     moonPosition: GALLERY_WORLD.moon.position,
-    moonLightIntensity: settings.moonLightIntensity * settings.coldLightIntensity,
-  })), [cloudMasses, settings.cloudDensity, settings.coldLightIntensity, settings.moonLightIntensity])
+    moonLightIntensity: settings.moonLightIntensity * settings.coldLightIntensity * settings.moonCloudLightIntensity,
+  })), [cloudWisps, settings.cloudDensity, settings.cloudIntensity, settings.coldLightIntensity, settings.moonCloudLightIntensity, settings.moonLightIntensity])
   const hazeMaterials = useMemo(() => hazeMasses.map((mass) => createGalleryAtmosphereMaterial({
     kind: 'haze',
     seed: mass.seed,
     opacity: mass.opacity * settings.hazeDensity,
+    intensity: 1,
     moonPosition: GALLERY_WORLD.moon.position,
-    moonLightIntensity: settings.moonLightIntensity * settings.coldLightIntensity * 0.72,
-  })), [hazeMasses, settings.coldLightIntensity, settings.hazeDensity, settings.moonLightIntensity])
+    moonLightIntensity: settings.moonLightIntensity * settings.coldLightIntensity * settings.moonCloudLightIntensity * 0.72,
+  })), [hazeMasses, settings.coldLightIntensity, settings.hazeDensity, settings.moonCloudLightIntensity, settings.moonLightIntensity])
   const moonSurface = useMoonSurfaceTextures()
   const moonHaloTexture = useMemo(() => createMoonHaloTexture(), [])
   const scatteringLayers = useMemo(() => getGalleryMoonScatteringLayers(), [])
@@ -151,7 +153,7 @@ export function MoonlitWorld({
   const moonScale = settings.moonSize
   return <group>
     <WetFloor settings={settings} />
-    {cloudMasses.map((mass, index) => <mesh
+    {cloudWisps.map((mass, index) => <mesh
       key={mass.id}
       position={mass.position}
       scale={mass.radii}
@@ -164,7 +166,7 @@ export function MoonlitWorld({
     </mesh>)}
     {hazeMasses.map((mass, index) => <mesh
       key={mass.id}
-      position={mass.position}
+      position={[mass.position[0], mass.position[1] + settings.hazeHeight, mass.position[2]]}
       scale={mass.radii}
       visible={settings.hazeDensity > 0}
       raycast={ignoreRaycast}

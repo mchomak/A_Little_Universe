@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { GALLERY } from './content'
-import { GALLERY_WORLD, getGalleryCloudMasses, getGalleryHazeMasses, getGalleryMoonScatteringLayers } from './world'
+import { GALLERY_WORLD, getGalleryCloudMasses, getGalleryCloudWisps, getGalleryHazeMasses, getGalleryMoonScatteringLayers } from './world'
 
 describe('moonlit gallery world layout', () => {
   it('leaves the declarative moon light target attached across StrictMode effect replay', () => {
@@ -73,5 +73,33 @@ describe('moonlit gallery world layout', () => {
     expect(getGalleryCloudMasses('low').length).toBeLessThan(getGalleryCloudMasses('standard').length)
     expect(getGalleryCloudMasses('low').some(({ id }) => id === 'moon-veil')).toBe(true)
     expect(getGalleryHazeMasses('low').length).toBeLessThan(getGalleryHazeMasses('standard').length)
+  })
+
+  it('expands each selected cloud bank into three standard or two low-quality wisps', () => {
+    const banks = getGalleryCloudMasses('standard').slice(0, 3)
+    const wisps = getGalleryCloudWisps('standard', 3)
+
+    expect(wisps).toEqual(getGalleryCloudWisps('standard', 3))
+    expect([...new Set(wisps.map(({ bankId }) => bankId))]).toEqual(banks.map(({ id }) => id))
+    expect(getGalleryCloudWisps('standard').length).toBeLessThanOrEqual(27)
+    expect(getGalleryCloudWisps('standard').length).toBe(getGalleryCloudMasses('standard').length * 3)
+    for (const bank of banks) {
+      const daughters = wisps.filter(({ bankId }) => bankId === bank.id)
+      expect(daughters).toHaveLength(3)
+      expect(new Set(daughters.map(({ position }) => position.join(','))).size).toBe(daughters.length)
+      expect(daughters.every(({ opacity }) => opacity < bank.opacity)).toBe(true)
+      const furthestLobeOffset = Math.max(...daughters.map(({ position }) => Math.hypot(
+        (position[0] - bank.position[0]) / bank.radii[0],
+        (position[1] - bank.position[1]) / bank.radii[1],
+      )))
+      expect(furthestLobeOffset).toBeGreaterThan(0.38)
+    }
+
+    const standardFirstBank = getGalleryCloudWisps('standard', 1)
+    const lowFirstBank = getGalleryCloudWisps('low', 1)
+    expect(standardFirstBank).toHaveLength(3)
+    expect(lowFirstBank).toHaveLength(2)
+    expect(lowFirstBank.every(({ bankId }) => bankId === banks[0]!.id)).toBe(true)
+    expect(getGalleryCloudWisps('low').length).toBe(getGalleryCloudMasses('low').length * 2)
   })
 })
