@@ -1,5 +1,6 @@
-import { Suspense, useCallback, useState } from 'react'
+import { Suspense, useCallback, useLayoutEffect, useState } from 'react'
 import type { SceneProps } from './sceneTypes'
+import type { FilmRuntime } from './runtime'
 import { PrologueScene } from '../scenes/PrologueScene'
 import { GrowthScene } from '../scenes/GrowthScene'
 import { BloomScene } from '../scenes/BloomScene'
@@ -17,6 +18,11 @@ import { shouldKeepGrowthWorld } from './sceneContinuity'
 
 
 const modules = { prologue: PrologueScene, bloom: BloomScene, gallery: GalleryScene, eye: EyeScene, cosmos: CosmosScene, greeting: GreetingScene, ending: EndingScene }
+
+function IdentityLoading({ runtime }: { runtime: FilmRuntime }) {
+  useLayoutEffect(() => runtime.hold(), [runtime])
+  return null
+}
 
 export function SceneDirector(props: SceneProps) {
   const { scene, elapsed } = props.state
@@ -37,7 +43,9 @@ export function SceneDirector(props: SceneProps) {
     <Suspense fallback={null}><AnimatedLily {...props} onParticleSource={publishLilyParticleSource} /></Suspense>
     <BloomGestureTarget {...props} />
     <GalaxyExperience {...props} />
-    {scene === 'identity' && lilyParticleSource && <IdentityScene key={`${scene}:${props.state.revision}`} {...props} particleSource={lilyParticleSource} />}
+    {scene === 'identity' && (lilyParticleSource ? <Suspense fallback={<IdentityLoading runtime={props.runtime} />}>
+      <IdentityScene key={`${scene}:${props.state.revision}`} {...props} particleSource={lilyParticleSource} />
+    </Suspense> : <IdentityLoading runtime={props.runtime} />)}
     {Scene && <Scene key={`${scene}:${props.state.revision}`} {...props} />}
   </>
 }

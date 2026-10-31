@@ -5,8 +5,12 @@ export interface FilmRuntime {
   readonly time: number
   /** Canonical scene time while playing; continues only as decorative time at the prologue gate. */
   readonly presentationTime: number
+  readonly held: boolean
   subscribeFrame(listener: (time: number) => void): () => void
   subscribePresentation(listener: (time: number) => void): () => void
+  /** Hold scene time while a scene-local Suspense boundary prepares resources. */
+  hold(): () => void
+  subscribeHold(listener: () => void): () => void
 }
 export interface WritableFilmRuntime extends FilmRuntime {
   publish(time: number, presentationTime?: number): void
@@ -75,11 +79,12 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
     if (disposed || next.revision !== revision) return
     state = next
     timeline.timeScale(state.speed)
-    const paused = (!waiting && !ambientEnding && state.mode !== 'playing' && state.mode !== 'transitioning') || state.paused || state.reading || Boolean(visibility?.hidden)
+    const paused = (!waiting && !ambientEnding && state.mode !== 'playing' && state.mode !== 'transitioning') || state.paused || state.reading || runtime.held || Boolean(visibility?.hidden)
     timeline.paused(paused)
     if (!paused && !waiting && !ambientEnding && timeline.time() >= duration) complete()
   }
   const onVisibility = () => sync(state)
+  const unsubscribeHold = runtime.subscribeHold(() => sync(state))
   visibility?.addEventListener('visibilitychange', onVisibility)
   sync(state)
   return {
@@ -88,6 +93,7 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
       if (disposed) return
       disposed = true
       visibility?.removeEventListener('visibilitychange', onVisibility)
+      unsubscribeHold()
       context.revert()
     },
   }
@@ -96,6 +102,8 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
 export function createFilmRuntime(): WritableFilmRuntime {
   let time = 0
   let presentationTime = 0
+  let holds = 0
+  const holdListeners = new Set<() => void>()
   const listeners = new Set<(time: number) => void>()
   const presentationListeners = new Set<(time: number) => void>()
   const publishPresentation = (value: number) => {
@@ -106,6 +114,22 @@ export function createFilmRuntime(): WritableFilmRuntime {
   return {
     get time() { return time },
     get presentationTime() { return presentationTime },
+    get held() { return holds > 0 },
+    hold() {
+      holds++
+      if (holds === 1) for (const listener of holdListeners) listener()
+      let active = true
+      return () => {
+        if (!active) return
+        active = false
+        holds--
+        if (holds === 0) for (const listener of holdListeners) listener()
+      }
+    },
+    subscribeHold(listener) {
+      holdListeners.add(listener)
+      return () => { holdListeners.delete(listener) }
+    },
     subscribeFrame(listener) {
       listeners.add(listener)
       return () => { listeners.delete(listener) }
