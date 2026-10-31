@@ -48,7 +48,7 @@ export function SceneDirector(props: SceneProps) {
     <BloomGestureTarget {...props} />
     <GalaxyExperience {...props} />
     {scene === 'identity' && (lilyParticleSource
-      ? <LilyDissolveParticles source={lilyParticleSource} uniforms={dissolveUniforms} runtime={props.runtime} low={props.state.quality === 'low' || props.reducedMotion} />
+      ? <LilyDissolveParticles source={lilyParticleSource} uniforms={dissolveUniforms} runtime={props.runtime} low={props.state.quality === 'low' || props.reducedMotion} reducedMotion={props.reducedMotion} />
       : <IdentityLoading runtime={props.runtime} />)}
     {Scene && <Scene key={`${scene}:${props.state.revision}`} {...props} />}
   </>

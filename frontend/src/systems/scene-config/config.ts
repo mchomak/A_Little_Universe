@@ -116,6 +116,15 @@ export interface SceneComposerConfig {
       cameraPullback: number
       cameraRise: number
       cameraMoveDuration: number
+      portraitStart: number
+      portraitDuration: number
+      portraitFraction: number
+      portraitDetail: number
+      portraitBrightness: number
+      portraitSize: number
+      portraitScale: number
+      portraitOffsetX: number
+      portraitOffsetY: number
     }>
     galaxy: Readonly<{
       quality: SeedQuality
@@ -230,6 +239,8 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       particleBrightness: 1.25, vortexRadius: 0.8, vortexExpansion: 0.45,
       swirlSpeed: 1, swirlAcceleration: 0.1, centerDissolveAt: 0.5,
       cameraPullback: 1.8, cameraRise: 0.65, cameraMoveDuration: 12,
+      portraitStart: 12, portraitDuration: 8.5, portraitFraction: 0.3, portraitDetail: 1.5,
+      portraitBrightness: 1.8, portraitSize: 1.8, portraitScale: 1.05, portraitOffsetX: 0, portraitOffsetY: 0,
     },
     galaxy: {
       quality: 'standard', seed: 'andromeda', starCount: 32000, arms: 5, radius: 8.2,
@@ -426,6 +437,15 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       cameraPullback: numberValue(identityInput?.cameraPullback, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.cameraPullback, 0, 5),
       cameraRise: numberValue(identityInput?.cameraRise, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.cameraRise, 0, 3),
       cameraMoveDuration: numberValue(identityInput?.cameraMoveDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.cameraMoveDuration, 1, 18),
+      portraitStart: numberValue(identityInput?.portraitStart, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitStart, 0, 30),
+      portraitDuration: numberValue(identityInput?.portraitDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitDuration, 2, 16),
+      portraitFraction: numberValue(identityInput?.portraitFraction, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitFraction, 0.05, 0.35),
+      portraitDetail: numberValue(identityInput?.portraitDetail, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitDetail, 0.5, 2),
+      portraitBrightness: numberValue(identityInput?.portraitBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitBrightness, 1.1, 2),
+      portraitSize: numberValue(identityInput?.portraitSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitSize, 0.6, 1.8),
+      portraitScale: numberValue(identityInput?.portraitScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitScale, 0.55, 1.25),
+      portraitOffsetX: numberValue(identityInput?.portraitOffsetX, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitOffsetX, -1, 1),
+      portraitOffsetY: numberValue(identityInput?.portraitOffsetY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitOffsetY, -1, 1),
     },
     galaxy: normalizeGalaxy(galaxySettingsInput),
   }

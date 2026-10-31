@@ -158,6 +158,18 @@ const DISSOLVE_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.identity.centerDissolveAt', label: 'Распад центра при растворении лепестков', unit: '%', min: 10, max: 90, step: 1, displayScale: 100 },
 ]
 
+const PORTRAIT_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.identity.portraitStart', label: 'Начало сборки', unit: 'с', min: 0, max: 30, step: 0.1 },
+  { path: 'scenes.identity.portraitDuration', label: 'Длительность сборки', unit: 'с', min: 2, max: 16, step: 0.1 },
+  { path: 'scenes.identity.portraitFraction', label: 'Доля вихря для портрета', unit: '%', min: 5, max: 35, step: 1, displayScale: 100 },
+  { path: 'scenes.identity.portraitDetail', label: 'Детализация портрета', unit: '×', min: 0.5, max: 2, step: 0.05 },
+  { path: 'scenes.identity.portraitBrightness', label: 'Яркость портрета', unit: '×', min: 1.1, max: 2, step: 0.05 },
+  { path: 'scenes.identity.portraitSize', label: 'Размер точек портрета', unit: '×', min: 0.6, max: 1.8, step: 0.05 },
+  { path: 'scenes.identity.portraitScale', label: 'Масштаб портрета', unit: '×', min: 0.55, max: 1.25, step: 0.05 },
+  { path: 'scenes.identity.portraitOffsetX', label: 'Положение портрета · X', unit: '× свободного поля', min: -1, max: 1, step: 0.05 },
+  { path: 'scenes.identity.portraitOffsetY', label: 'Положение портрета · Y', unit: '× свободного поля', min: -1, max: 1, step: 0.05 },
+]
+
 const IDENTITY_CAMERA_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.bloom.cameraFinalHeight', label: 'Высота камеры / наклон взгляда', unit: '', min: 0.5, max: 4, step: 0.05 },
   { path: 'scenes.bloom.cameraFinalDistance', label: 'Дистанция камеры', unit: '', min: 1.5, max: 5, step: 0.05 },
@@ -644,6 +656,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         </details>}
         {selected === 'identity' && <>
           <details open><summary>Растворение лилии и вихрь</summary>{DISSOLVE_CONTROLS.map(range)}</details>
+          <details open><summary>Сборка портрета из частиц</summary>{PORTRAIT_CONTROLS.map(range)}</details>
           <details open><summary>Камера · кадр и отъезд</summary>
             {IDENTITY_CAMERA_CONTROLS.map(range)}
             <p>Наклон взгляда задаётся высотой камеры, дистанцией и точкой фокуса. Параметры кадра общие с концом сцены 03, поэтому первый кадр сцены 04 остаётся непрерывным.</p>

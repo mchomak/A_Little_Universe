@@ -30,6 +30,27 @@ it('provides bounded scene 04 vortex controls with center dissolve at half petal
   } } }).scenes.identity).toMatchObject(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity)
 })
 
+it('normalizes bounded scene 04 portrait assembly controls', () => {
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity).toMatchObject({
+    portraitStart: 12, portraitDuration: 8.5, portraitFraction: 0.3, portraitDetail: 1.5,
+    portraitBrightness: 1.8, portraitSize: 1.8, portraitScale: 1.05, portraitOffsetX: 0, portraitOffsetY: 0,
+  })
+  expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: {
+    portraitStart: 40, portraitDuration: 0.5, portraitFraction: 0.9, portraitDetail: 3,
+    portraitBrightness: 0.5, portraitSize: 3, portraitScale: 2, portraitOffsetX: 4, portraitOffsetY: -4,
+  } } }).scenes.identity).toMatchObject({
+    portraitStart: 12, portraitDuration: 8.5, portraitFraction: 0.3, portraitDetail: 1.5,
+    portraitBrightness: 1.8, portraitSize: 1.8, portraitScale: 1.05, portraitOffsetX: 0, portraitOffsetY: 0,
+  })
+  expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: {
+    portraitStart: 0, portraitDuration: 2, portraitFraction: 0.05, portraitDetail: 0.5,
+    portraitBrightness: 1.1, portraitSize: 0.6, portraitScale: 0.55, portraitOffsetX: -1, portraitOffsetY: 1,
+  } } }).scenes.identity).toMatchObject({
+    portraitStart: 0, portraitDuration: 2, portraitFraction: 0.05, portraitDetail: 0.5,
+    portraitBrightness: 1.1, portraitSize: 0.6, portraitScale: 0.55, portraitOffsetX: -1, portraitOffsetY: 1,
+  })
+})
+
 it('uses immutable schema v5 defaults and the local Great Vibes prologue face', () => {
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(5)
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('great-vibes')
