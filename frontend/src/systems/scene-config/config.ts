@@ -5,7 +5,7 @@ export type QualityProfile = 'standard' | 'low'
 export type ScenePresetId = 'moonlit-letter' | 'stardust' | 'vasilisa-cinematic'
 export type GalaxyPalette = 'vasilisa' | 'spore' | 'ember' | 'emerald' | 'ice' | 'rose' | 'custom'
 export type SeedQuality = 'low' | 'standard' | 'high'
-export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'galaxy' | 'preset'
+export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'galaxy' | 'preset'
 
 type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T[Key]> : T[Key] }
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
@@ -102,6 +102,7 @@ export interface SceneComposerConfig {
       textWritingDuration: number
       textParticleCount: number
     }>
+    identity: Readonly<{ dissolveDuration: number; particleCount: number; particleSize: number; edgeWidth: number }>
     galaxy: Readonly<{
       quality: SeedQuality
       seed: string
@@ -210,6 +211,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       textPositionX: 0.1, textPositionY: 0.52, textSize: 36, textColor: '#C7AD77',
       textWritingDuration: 4.2, textParticleCount: 1800,
     },
+    identity: { dissolveDuration: 4, particleCount: 12000, particleSize: 2.3, edgeWidth: 0.035 },
     galaxy: {
       quality: 'standard', seed: 'andromeda', starCount: 32000, arms: 5, radius: 8.2,
       spin: 4.6, armWidth: 0.16, randomness: 0.065, randomnessPower: 3.6, coreSize: 0.24, coreDensity: 0.2,
@@ -275,6 +277,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const preparationInput = asRecord(scenesInput?.preparation)
   const prologueInput = asRecord(scenesInput?.prologue)
   const growthInput = asRecord(scenesInput?.growth)
+  const identityInput = asRecord(scenesInput?.identity)
   const galaxyInput = asRecord(scenesInput?.galaxy)
   const galaxySettingsInput = migrateGalaxySettings(galaxyInput, inputVersion)
   const legacyParticleSpeed = numberValue(prologueInput?.particleSpeed, 1, 0.1, 10)
@@ -389,6 +392,12 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       textColor: colorValue(asRecord(scenesInput?.bloom)?.textColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textColor),
       textWritingDuration: numberValue(asRecord(scenesInput?.bloom)?.textWritingDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textWritingDuration, 1, 12),
       textParticleCount: numberValue(asRecord(scenesInput?.bloom)?.textParticleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textParticleCount, 300, 6000, true),
+    },
+    identity: {
+      dissolveDuration: numberValue(identityInput?.dissolveDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.dissolveDuration, 2, 8),
+      particleCount: numberValue(identityInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleCount, 1000, 24000, true),
+      particleSize: numberValue(identityInput?.particleSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleSize, 0.5, 6),
+      edgeWidth: numberValue(identityInput?.edgeWidth, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.edgeWidth, 0.005, 0.1),
     },
     galaxy: normalizeGalaxy(galaxySettingsInput),
   }

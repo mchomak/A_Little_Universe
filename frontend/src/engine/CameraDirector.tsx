@@ -90,8 +90,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       duration: getBloomCameraMoveDuration(bloomSettings, bloomFrames.opening),
       ease: 'sine.inOut',
     })
-    if (scene === 'identity') timeline.to(p, { ...front, duration: TIMING.identity.particles[1], ease: 'sine.inOut' })
-      .to(p, { ...firstMemoryCamera(34), duration: 3, ease: (t: number) => t * t * (3 - 2 * t) }, 31)
+    // Scene 04 currently contains only the lily dissolve; keep the opening composition.
     if (scene === 'eye') timeline.to(p, { z: 0.85, duration: TIMING.camera.eye, ease: 'power2.inOut' }, TIMING.eye.approach[0])
     if (scene === 'cosmos') {
       const finish = galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)

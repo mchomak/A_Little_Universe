@@ -93,6 +93,10 @@ it('samples the actual open GLB morph and maps its vertices into the identity sc
   player.seek(bloomClip.duration)
 
   const open = createLilyGeometryParticleSource(gltf.scene)
+  const parts = new Set(Array.from({ length: 2048 }, (_, index) => open.sampleSurface(index, 2048).part))
+  expect(parts).toEqual(new Set([0, 1, 2]))
+  expect(open.radius).toBeGreaterThan(0)
+  expect(open.maxY).toBeGreaterThan(open.minY)
   const first = open.sample(0, 1024)
   expect(first).toEqual(open.sample(0, 1024))
   expect(first).toHaveLength(3)

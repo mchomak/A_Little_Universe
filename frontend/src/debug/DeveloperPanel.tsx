@@ -145,6 +145,13 @@ const BLOOM_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.bloom.textParticleCount', label: 'Частицы растворения текста', unit: 'шт.', min: 300, max: 6000, step: 100 },
 ]
 
+const DISSOLVE_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.identity.dissolveDuration', label: 'Длительность растворения', unit: 'с', min: 2, max: 8, step: 0.1 },
+  { path: 'scenes.identity.particleCount', label: 'Плотность частиц', unit: 'шт.', min: 1000, max: 24000, step: 500 },
+  { path: 'scenes.identity.particleSize', label: 'Размер частиц', unit: 'px', min: 0.5, max: 6, step: 0.1 },
+  { path: 'scenes.identity.edgeWidth', label: 'Ширина светящейся границы', unit: '', min: 0.005, max: 0.1, step: 0.005 },
+]
+
 const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
   { name: 'Galaxy Geometry · перестройка после паузы ползунка', controls: [
     { path: 'scenes.galaxy.starCount', label: 'Количество звёзд', unit: 'шт.', min: 8000, max: 90000, step: 1000 },
@@ -415,7 +422,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
     await commitGalaxySettings(selectGalaxyPalette(getConfig().scenes.galaxy, palette))
   }
 
-  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'galaxy') => {
+  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'galaxy') => {
     const before = getConfig()
     const result = await resetComposerScope(scope)
     if (!result.ok) {
@@ -494,9 +501,9 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const font = (scene: 'preparation' | 'prologue', label: string) => <FontControl path={`scenes.${scene}.fontFamily`} label={label} value={config.scenes[scene].fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
   const title = selected === 'preload' ? '00 · Загрузка' : selected === 'preparation' ? '00.1 · Подготовка' : SCENES[selected].label
   const hasSceneControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue'
-    || selected === 'growth' || selected === 'bloom' || selected === 'cosmos'
+    || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'cosmos'
   const currentScope: InspectorScope | undefined = selected === 'cosmos' ? 'galaxy'
-    : selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth' || selected === 'bloom'
+    : selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth' || selected === 'bloom' || selected === 'identity'
       ? selected : undefined
   const currentSnapshots = currentScope ? snapshots[currentScope] : undefined
   const remember = (slot: 'A' | 'B') => {
@@ -619,6 +626,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           <details open><summary>Текст ожидания</summary>{BLOOM_CONTROLS.slice(7).map(range)}{color('scenes.bloom.textColor', 'Цвет текста')}</details>
           <p>IdleClosed ждёт завершения письма и жеста. Камера доезжает до крупного плана на заданной доле раскрытия.</p>
         </details>}
+        {selected === 'identity' && <details open><summary>Растворение лилии</summary>{DISSOLVE_CONTROLS.map(range)}</details>}
         {selected === 'cosmos' && <>
           <details open><summary>Scene 07 — Galaxy</summary>
             {GALAXY_SELECTS.map((control) => <SelectConfigControl key={control.path} control={control} value={valueAtPath(config, control.path) as string} onChange={(path, value) => { void (path === 'scenes.galaxy.palette' ? changeGalaxyPalette(value as GalaxyPalette) : changeField(path, value)) }} onReset={(path) => { void resetField(path) }} />)}
@@ -639,7 +647,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             <button type="button" onClick={() => { void resetScope('galaxy') }}>Сбросить Galaxy</button>
           </details>
         </>}
-        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
+        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
       </section>
       <details className="inspector-section"><summary>Диагностика</summary>
         <div className="dev-actions"><button type="button" data-testid="dev-preload" onClick={onPreload}>Проверить загрузку</button><button type="button" data-testid="dev-permissions" onClick={onPermissions}>Настройки заново</button></div>

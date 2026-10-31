@@ -2,6 +2,14 @@ import { expect, it, vi } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, normalizeConfig, SCENE_CONFIG_PRESETS } from './config'
 import * as configApi from './config'
 
+it('migrates old configs to bounded scene 04 dissolve settings', () => {
+  expect(normalizeConfig({ schemaVersion: 4 }).scenes.identity).toEqual({ dissolveDuration: 4, particleCount: 12000, particleSize: 2.3, edgeWidth: 0.035 })
+  expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: { dissolveDuration: 6, particleCount: 4000, particleSize: 3, edgeWidth: 0.06 } } }).scenes.identity)
+    .toEqual({ dissolveDuration: 6, particleCount: 4000, particleSize: 3, edgeWidth: 0.06 })
+  expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: { dissolveDuration: 100, particleCount: -1, particleSize: 0, edgeWidth: 1 } } }).scenes.identity)
+    .toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity)
+})
+
 it('uses immutable schema v5 defaults and the local Great Vibes prologue face', () => {
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(5)
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('great-vibes')
