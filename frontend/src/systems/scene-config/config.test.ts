@@ -21,7 +21,7 @@ it('uses immutable schema v5 defaults and the local Great Vibes prologue face', 
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom).toMatchObject({
     flowerBloomDuration: 16, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,
     cameraFinalDistance: 2.3, cameraFinalHeight: 2.3, cameraTargetX: 0.27, cameraTargetY: 1.25,
-    textPositionX: 0.2, textPositionY: 0.52, textSize: 44, textColor: '#C7AD77',
+    textPositionX: 0.1, textPositionY: 0.52, textSize: 36, textColor: '#C7AD77',
     textWritingDuration: 4.2, textParticleCount: 1800,
   })
   expect(getConfig()).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
@@ -155,7 +155,7 @@ it('normalizes additive bloom camera and calligraphy fields while preserving old
   } })
   expect(migrated.scenes.bloom).toMatchObject({
     flowerBloomDuration: 18, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,
-    cameraFinalDistance: 2.8, textPositionX: 0.2, textSize: 44, textColor: '#AABBCC',
+    cameraFinalDistance: 2.8, textPositionX: 0.1, textSize: 36, textColor: '#AABBCC',
     textWritingDuration: 4.2, textParticleCount: 1800,
   })
   expect(migrated.scenes.bloom).not.toHaveProperty('unexpected')

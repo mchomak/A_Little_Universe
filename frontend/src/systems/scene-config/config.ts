@@ -207,7 +207,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
     bloom: {
       flowerBloomDuration: 16, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,
       cameraFinalDistance: 2.3, cameraFinalHeight: 2.3, cameraTargetX: 0.27, cameraTargetY: 1.25,
-      textPositionX: 0.2, textPositionY: 0.52, textSize: 44, textColor: '#C7AD77',
+      textPositionX: 0.1, textPositionY: 0.52, textSize: 36, textColor: '#C7AD77',
       textWritingDuration: 4.2, textParticleCount: 1800,
     },
     galaxy: {
