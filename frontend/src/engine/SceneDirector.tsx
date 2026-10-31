@@ -1,5 +1,7 @@
-import { Suspense } from 'react'
+import { Suspense, useSyncExternalStore } from 'react'
 import type { SceneProps } from './sceneTypes'
+import { getConfig, subscribeConfig } from '../systems/scene-config/config'
+import { getSceneLighting } from './sceneLighting'
 import { PrologueScene } from '../scenes/PrologueScene'
 import { GrowthScene } from '../scenes/GrowthScene'
 import { BloomScene } from '../scenes/BloomScene'
@@ -17,11 +19,13 @@ const modules = { prologue: PrologueScene, growth: GrowthScene, bloom: BloomScen
 
 export function SceneDirector(props: SceneProps) {
   const Scene = modules[props.state.scene]
+  const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
+  const lighting = getSceneLighting(props.state.scene, config.scenes.gallery.coldLightIntensity)
   return <>
     <color attach="background" args={['#080914']} />
-    <ambientLight intensity={0.9} />
-    <directionalLight position={[-3, 5, 4]} intensity={2.4} color="#FFF0E8" />
-    <directionalLight position={[3, 1, -2]} intensity={1.1} color="#B9A4E8" />
+    <ambientLight intensity={lighting.ambientIntensity} />
+    <directionalLight position={[-3, 5, 4]} intensity={lighting.keyIntensity} color={lighting.keyColor} />
+    <directionalLight position={[3, 1, -2]} intensity={lighting.fillIntensity} color={lighting.fillColor} />
     <Suspense fallback={null}><AnimatedLily {...props} /></Suspense>
     <GalaxyExperience {...props} />
     <Scene key={`${props.state.scene}:${props.state.revision}`} {...props} />

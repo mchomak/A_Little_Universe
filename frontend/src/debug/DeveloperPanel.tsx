@@ -134,6 +134,19 @@ const BLOOM_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.bloom.flowerBloomDuration', label: 'Длительность раскрытия Bloom', unit: 'с', min: 6, max: 24, step: 0.25 },
 ]
 
+const GALLERY_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.gallery.frameIntensity', label: 'Интенсивность рамок', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.gallery.particleCount', label: 'Количество частиц', unit: 'шт.', min: 0, max: 600, step: 1 },
+  { path: 'scenes.gallery.moonBrightness', label: 'Яркость луны', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.gallery.moonSize', label: 'Размер луны', unit: '×', min: 0.4, max: 1.8, step: 0.05 },
+  { path: 'scenes.gallery.cloudDensity', label: 'Плотность облаков', unit: '×', min: 0, max: 1.8, step: 0.05 },
+  { path: 'scenes.gallery.hazeDensity', label: 'Плотность дымки', unit: '×', min: 0, max: 1.8, step: 0.05 },
+  { path: 'scenes.gallery.reflectionStrength', label: 'Сила отражений', unit: '×', min: 0, max: 0.6, step: 0.01 },
+  { path: 'scenes.gallery.reflectionBlur', label: 'Размытие отражений', unit: '×', min: 0.3, max: 1, step: 0.01 },
+  { path: 'scenes.gallery.threadOpacity', label: 'Прозрачность световых нитей', unit: '×', min: 0, max: 0.8, step: 0.01 },
+  { path: 'scenes.gallery.coldLightIntensity', label: 'Интенсивность холодного света', unit: '×', min: 0, max: 1.8, step: 0.05 },
+]
+
 const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
   { name: 'Galaxy Geometry · перестройка после паузы ползунка', controls: [
     { path: 'scenes.galaxy.starCount', label: 'Количество звёзд', unit: 'шт.', min: 8000, max: 90000, step: 1000 },
@@ -404,7 +417,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
     await commitGalaxySettings(selectGalaxyPalette(getConfig().scenes.galaxy, palette))
   }
 
-  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'galaxy') => {
+  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'gallery' | 'galaxy') => {
     const before = getConfig()
     const result = await resetComposerScope(scope)
     if (!result.ok) {
@@ -483,9 +496,9 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const font = (scene: 'preparation' | 'prologue', label: string) => <FontControl path={`scenes.${scene}.fontFamily`} label={label} value={config.scenes[scene].fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
   const title = selected === 'preload' ? '00 · Загрузка' : selected === 'preparation' ? '00.1 · Подготовка' : SCENES[selected].label
   const hasSceneControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue'
-    || selected === 'growth' || selected === 'bloom' || selected === 'cosmos'
+    || selected === 'growth' || selected === 'bloom' || selected === 'gallery' || selected === 'cosmos'
   const currentScope: InspectorScope | undefined = selected === 'cosmos' ? 'galaxy'
-    : selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth' || selected === 'bloom'
+    : selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth' || selected === 'bloom' || selected === 'gallery'
       ? selected : undefined
   const currentSnapshots = currentScope ? snapshots[currentScope] : undefined
   const remember = (slot: 'A' | 'B') => {
@@ -564,15 +577,17 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
       </details>
       <section aria-labelledby="inspector-scene-title" className="inspector-scene">
         <h3 id="inspector-scene-title">{title}</h3>
-        {currentScope && <details className="inspector-compare"><summary>История и сравнение A/B</summary>
+        {currentScope && <details className="inspector-compare"><summary>{currentScope === 'gallery' ? 'История параметров' : 'История и сравнение A/B'}</summary>
           {historyButtons(currentScope)}
-          <p>Снимки временные и относятся к этой сцене. Сравнение останавливает фильм в текущем кадре.</p>
-          <div className="inspector-history"><button type="button" onClick={() => remember('A')}>Сохранить A</button><button type="button" onClick={() => remember('B')}>Сохранить B</button></div>
-          <div className="inspector-history"><button type="button" aria-pressed={currentSnapshots?.active === 'A' && !!currentSnapshots.A && matchesPatch(section(config, currentScope), currentSnapshots.A)} disabled={comparing || !currentSnapshots?.A || selected !== active || route !== 'film'} onClick={() => { void compare('A') }}>Показать A</button><button type="button" aria-pressed={currentSnapshots?.active === 'B' && !!currentSnapshots.B && matchesPatch(section(config, currentScope), currentSnapshots.B)} disabled={comparing || !currentSnapshots?.B || selected !== active || route !== 'film'} onClick={() => { void compare('B') }}>Показать B</button></div>
-          {comparing && <p role="status">Применяем снимок…</p>}
-          {route !== 'film' && <p>Сравнение недоступно: у загрузки и подготовки нет управляемого времени фильма.</p>}
-          {route === 'film' && currentSnapshots?.point && <p>Точка: {currentSnapshots.point.time.toFixed(2)} с <button type="button" onClick={() => setSnapshots(previous => ({ ...previous, [currentScope]: { ...previous[currentScope], point: undefined, active: undefined } }))}>Новая точка</button></p>}
-          {selected !== active && <p>Перейдите в эту сцену для сравнения.</p>}
+          {currentScope === 'gallery' ? <p>Сравнение недоступно для интерактивной галереи: у прогулки нет стабильной точки фильма.</p> : <>
+            <p>Снимки временные и относятся к этой сцене. Сравнение останавливает фильм в текущем кадре.</p>
+            <div className="inspector-history"><button type="button" onClick={() => remember('A')}>Сохранить A</button><button type="button" onClick={() => remember('B')}>Сохранить B</button></div>
+            <div className="inspector-history"><button type="button" aria-pressed={currentSnapshots?.active === 'A' && !!currentSnapshots.A && matchesPatch(section(config, currentScope), currentSnapshots.A)} disabled={comparing || !currentSnapshots?.A || selected !== active || route !== 'film'} onClick={() => { void compare('A') }}>Показать A</button><button type="button" aria-pressed={currentSnapshots?.active === 'B' && !!currentSnapshots.B && matchesPatch(section(config, currentScope), currentSnapshots.B)} disabled={comparing || !currentSnapshots?.B || selected !== active || route !== 'film'} onClick={() => { void compare('B') }}>Показать B</button></div>
+            {comparing && <p role="status">Применяем снимок…</p>}
+            {route !== 'film' && <p>Сравнение недоступно: у загрузки и подготовки нет управляемого времени фильма.</p>}
+            {route === 'film' && currentSnapshots?.point && <p>Точка: {currentSnapshots.point.time.toFixed(2)} с <button type="button" onClick={() => setSnapshots(previous => ({ ...previous, [currentScope]: { ...previous[currentScope], point: undefined, active: undefined } }))}>Новая точка</button></p>}
+            {selected !== active && <p>Перейдите в эту сцену для сравнения.</p>}
+          </>}
         </details>}
         {selected === 'preload' && <details open><summary>Свечение и движение</summary>{PRELOAD_CONTROLS.map(range)}</details>}
         {selected === 'preparation' && <>
@@ -604,6 +619,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           </details>
         </>}
         {selected === 'bloom' && <details open><summary>Анимация раскрытия</summary>{BLOOM_CONTROLS.map(range)}<p>IdleClosed ожидает касания; Bloom начинается только после него.</p></details>}
+        {selected === 'gallery' && <details open><summary>Scene 05 — Лунная галерея</summary>{GALLERY_CONTROLS.map(range)}</details>}
         {selected === 'cosmos' && <>
           <details open><summary>Scene 07 — Galaxy</summary>
             {GALAXY_SELECTS.map((control) => <SelectConfigControl key={control.path} control={control} value={valueAtPath(config, control.path) as string} onChange={(path, value) => { void (path === 'scenes.galaxy.palette' ? changeGalaxyPalette(value as GalaxyPalette) : changeField(path, value)) }} onReset={(path) => { void resetField(path) }} />)}
@@ -624,7 +640,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             <button type="button" onClick={() => { void resetScope('galaxy') }}>Сбросить Galaxy</button>
           </details>
         </>}
-        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
+        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'gallery') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
       </section>
       <details className="inspector-section"><summary>Диагностика</summary>
         <div className="dev-actions"><button type="button" data-testid="dev-preload" onClick={onPreload}>Проверить загрузку</button><button type="button" data-testid="dev-permissions" onClick={onPermissions}>Настройки заново</button></div>

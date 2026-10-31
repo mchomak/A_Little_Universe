@@ -4,12 +4,15 @@ import type { RefObject } from 'react'
 import { galleryDistanceOpacity, galleryFocusOpacity } from './gallery/visibility'
 import { galleryPhotoBlurAtFocus, galleryPhotoLightAtFocus, GALLERY_ART } from './gallery/artDirection'
 import { createFrameParticleGeometry } from './gallery/frameParticles'
-import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, DoubleSide, Group, Material, Mesh, MeshBasicMaterial, Object3D, Points, SRGBColorSpace, SpotLight, Texture, TextureLoader, Vector3, ShaderMaterial } from 'three'
+import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, DoubleSide, Group, Material, Mesh, MeshBasicMaterial, Points, SRGBColorSpace, Texture, TextureLoader, Vector3, ShaderMaterial } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
+import { useSyncExternalStore } from 'react'
+import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
 import { GALLERY, GALLERY_MEMORIES, memoryPosition, type GalleryMemory } from './gallery/content'
 import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, resetGallery } from './gallery/controller'
 import { bindGalleryGestures } from './gallery/gestures'
+import { MoonlitWorld } from './gallery/MoonlitWorld'
 import firstPhotoUrl from '../assets/start_img.jpg'
 
 function canvasTexture(draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void, w = 768, h = 768) {
@@ -268,84 +271,21 @@ function Dust({ low, reducedMotion }: { low: boolean; reducedMotion: boolean }) 
   </points>
 }
 
-function GallerySpotlight() {
-  const light = useRef<SpotLight>(null)
-  const initialized = useRef(false)
-  const target = useMemo(() => new Object3D(), [])
-  const point = useMemo(() => new Vector3(), [])
-  const desiredTarget = useMemo(() => new Vector3(), [])
-  const desiredLight = useMemo(() => new Vector3(), [])
-  const introPosition = useMemo(() => new Vector3(), [])
-  useFrame(({ camera }, delta) => {
-    const spotlight = light.current
-    if (!spotlight) return
-    const state = gallerySnapshot()
-    let index = state.focus
-    let nearestDistance = Number.POSITIVE_INFINITY
-    if (index === null) {
-      for (const memory of GALLERY_MEMORIES) {
-        const [x, y, z] = memoryPosition(memory)
-        const distance = camera.position.distanceTo(introPosition.set(memory.order === 0 ? x * Math.min(1, galleryMotion.intro / GALLERY.intro) : x, y, memory.order === 0 ? z * Math.min(1, galleryMotion.intro / GALLERY.intro) : z))
-        if (distance < nearestDistance) { nearestDistance = distance; index = memory.order }
-      }
-    } else {
-      const selected = GALLERY_MEMORIES[index]!
-      const [, , z] = memoryPosition(selected)
-      nearestDistance = camera.position.distanceTo(point.set(selected.side * GALLERY.side, 0, selected.order === 0 ? z * Math.min(1, galleryMotion.intro / GALLERY.intro) : z))
-    }
-    if (index === null) { spotlight.visible = false; return }
-    const memory = GALLERY_MEMORIES[index]!
-    const [baseX, baseY, baseZ] = memoryPosition(memory)
-    const intro = memory.order === 0 ? Math.min(1, galleryMotion.intro / GALLERY.intro) : 1
-    const x = memory.order === 0 ? baseX * intro : baseX
-    const y = baseY
-    const z = memory.order === 0 ? baseZ * intro : baseZ
-    const aspect = memory.aspect
-    const size = memory.order === 0 ? 2.15 : 3.3
-    const height = aspect >= 1 ? size / aspect : size
-    const yaw = -memory.side * GALLERY_ART.wallYaw * intro
-    const front = 0.8
-    point.set(x + front * Math.sin(yaw), y + height / 2 + 0.78, z + front * Math.cos(yaw))
-    desiredTarget.set(x + 0.18 * Math.sin(yaw), y + 0.18, z + 0.18 * Math.cos(yaw))
-    desiredLight.copy(point)
-    const proximityT = Math.max(0, Math.min(1, (22 - nearestDistance) / 13))
-    const proximity = proximityT * proximityT * (3 - 2 * proximityT)
-    const desiredIntensity = .72 * proximity + (state.focus === index ? 1.58 : 0)
-    const follow = 1 - Math.exp(-4.2 * Math.min(delta, .05))
-    if (!initialized.current) {
-      target.position.copy(desiredTarget)
-      spotlight.position.copy(desiredLight)
-      initialized.current = true
-    } else {
-      target.position.lerp(desiredTarget, follow)
-      spotlight.position.lerp(desiredLight, follow)
-    }
-    target.updateMatrixWorld()
-    spotlight.intensity += (desiredIntensity - spotlight.intensity) * follow
-    spotlight.visible = desiredIntensity > .008 || spotlight.intensity > .008
-    spotlight.angle = 0.69
-    spotlight.penumbra = 0.92
-    spotlight.distance = 8.5
-    spotlight.decay = 2
-  })
-  useEffect(() => { if (light.current) light.current.target = target }, [target])
-  return <><primitive object={target} /><spotLight ref={light} color="#dce7f4" intensity={0} angle={0.69} penumbra={0.92} distance={8.5} decay={2} castShadow={false} visible={false} /></>
-}
 export function GalleryScene({ state, reducedMotion }: SceneProps) {
   const gl = useThree(s => s.gl)
+  const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
+  const quality = state.quality === 'low' || config.global.quality === 'low' ? 'low' : 'standard'
   const halo = useMemo(() => canvasTexture((ctx, w, h) => { const gradient = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gradient.addColorStop(0, 'rgba(244,248,255,.34)'); gradient.addColorStop(.24, 'rgba(219,229,244,.13)'); gradient.addColorStop(1, 'rgba(206,220,239,0)'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h) }, 256, 256), [])
   useEffect(() => () => halo.dispose(), [halo])
   useEffect(() => { resetGallery() }, [state.revision])
   useEffect(() => bindGalleryGestures(gl.domElement, () => state.paused), [gl, state.paused])
   return <>
-    <fog attach="fog" args={['#080d1c', 20, 75]} />
-    <Dust low={state.quality === 'low'} reducedMotion={reducedMotion} />
-    <mesh position={[0, -2.35, -32]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[25, 100]} /><meshStandardMaterial color="#090d15" roughness={.98} metalness={0} /></mesh>
-    {[-6, -3.6, 3.6, 6].map((x) => <mesh key={x} position={[x, -2.32, -32]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[.025, 100]} /><meshBasicMaterial color="#b4c0d2" transparent opacity={.1} depthWrite={false} /></mesh>)}
+    <fog attach="fog" args={['#080914', 55, 208]} />
+    <MoonlitWorld settings={config.scenes.gallery} quality={quality} halo={halo} />
+    <Dust low={quality === 'low'} reducedMotion={reducedMotion} />
     {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} />)}
     {GALLERY_MEMORIES.map(memory => { const [x, , z] = memoryPosition(memory); return <mesh key={`reflection-${memory.id}`} position={[x, -2.33, z]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[8, 14]} /><meshBasicMaterial map={halo} color="#c5d2e4" transparent opacity={.075} depthWrite={false} blending={AdditiveBlending} /></mesh> })}
-    <FloorLights halo={halo} low={state.quality === 'low' || reducedMotion} />
-    <GallerySpotlight />
+    <FloorLights halo={halo} low={quality === 'low' || reducedMotion} />
     <Outro />
   </>
 }

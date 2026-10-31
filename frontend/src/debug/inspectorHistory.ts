@@ -1,5 +1,5 @@
 ﻿/** Isolated histories with field-level patches, so external edits are preserved. */
-type Scope = 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'galaxy'
+type Scope = 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'gallery' | 'galaxy'
 type Snapshot = object
 type Entry = { before: Snapshot; after: Snapshot }
 export function createInspectorHistory() {

@@ -84,3 +84,28 @@ it('exposes the imported galaxy seed and optional black center in Scene 07 Inspe
   expect(markup).toMatch(/id="composer-scenes-galaxy-backgroundStarCount"[^>]*max="10000"[^>]*value="5200"/)
 })
 
+it('exposes all bounded moonlit gallery settings in the existing Scene Inspector', () => {
+  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'gallery' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    onPermissions: () => undefined,
+    route: 'film',
+  }))
+
+  expect(markup).toContain('Лунная галерея')
+  expect(markup).toMatch(/id="composer-scenes-gallery-frameIntensity"[^>]*min="0" max="2" step="0.05" value="1"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-particleCount"[^>]*min="0" max="600" step="1" value="220"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonBrightness"[^>]*min="0" max="2" step="0.05" value="0.8"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonSize"[^>]*min="0.4" max="1.8" step="0.05" value="1"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudDensity"[^>]*min="0" max="1.8" step="0.05" value="0.85"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-hazeDensity"[^>]*min="0" max="1.8" step="0.05" value="0.7"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-reflectionStrength"[^>]*min="0" max="0.6" step="0.01" value="0.24"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-reflectionBlur"[^>]*min="0.3" max="1" step="0.01" value="0.8"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-threadOpacity"[^>]*min="0" max="0.8" step="0.01" value="0.38"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-coldLightIntensity"[^>]*min="0" max="1.8" step="0.05" value="0.8"/)
+  expect(markup).toContain('Сравнение недоступно для интерактивной галереи')
+  expect(markup).not.toContain('Показать A')
+})
+

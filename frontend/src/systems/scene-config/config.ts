@@ -5,7 +5,7 @@ export type QualityProfile = 'standard' | 'low'
 export type ScenePresetId = 'moonlit-letter' | 'stardust' | 'vasilisa-cinematic'
 export type GalaxyPalette = 'vasilisa' | 'spore' | 'ember' | 'emerald' | 'ice' | 'rose' | 'custom'
 export type SeedQuality = 'low' | 'standard' | 'high'
-export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'galaxy' | 'preset'
+export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'gallery' | 'galaxy' | 'preset'
 
 type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T[Key]> : T[Key] }
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
@@ -88,6 +88,18 @@ export interface SceneComposerConfig {
       flowerGrowthDuration: number
     }>
     bloom: Readonly<{ flowerBloomDuration: number }>
+    gallery: Readonly<{
+      frameIntensity: number
+      particleCount: number
+      moonBrightness: number
+      moonSize: number
+      cloudDensity: number
+      hazeDensity: number
+      reflectionStrength: number
+      reflectionBlur: number
+      threadOpacity: number
+      coldLightIntensity: number
+    }>
     galaxy: Readonly<{
       quality: SeedQuality
       seed: string
@@ -191,6 +203,11 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       lavenderColor: '#D7CCF1', coreGlow: 0.55, seedScale: 1, flowerGrowthDuration: 9,
     },
     bloom: { flowerBloomDuration: 16 },
+    gallery: {
+      frameIntensity: 1, particleCount: 220, moonBrightness: 0.8, moonSize: 1,
+      cloudDensity: 0.85, hazeDensity: 0.7, reflectionStrength: 0.24,
+      reflectionBlur: 0.8, threadOpacity: 0.38, coldLightIntensity: 0.8,
+    },
     galaxy: {
       quality: 'standard', seed: 'andromeda', starCount: 32000, arms: 5, radius: 8.2,
       spin: 4.6, armWidth: 0.16, randomness: 0.065, randomnessPower: 3.6, coreSize: 0.24, coreDensity: 0.2,
@@ -256,6 +273,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const preparationInput = asRecord(scenesInput?.preparation)
   const prologueInput = asRecord(scenesInput?.prologue)
   const growthInput = asRecord(scenesInput?.growth)
+  const galleryInput = asRecord(scenesInput?.gallery)
   const galaxyInput = asRecord(scenesInput?.galaxy)
   const galaxySettingsInput = migrateGalaxySettings(galaxyInput, inputVersion)
   const legacyParticleSpeed = numberValue(prologueInput?.particleSpeed, 1, 0.1, 10)
@@ -359,6 +377,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
     bloom: {
       flowerBloomDuration: numberValue(asRecord(scenesInput?.bloom)?.flowerBloomDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.flowerBloomDuration, 6, 24),
     },
+    gallery: normalizeGallery(galleryInput),
     galaxy: normalizeGalaxy(galaxySettingsInput),
   }
   if (scenes.prologue.particleSizeMin > scenes.prologue.particleSizeMax) {
@@ -434,6 +453,22 @@ function normalizeGalaxy(input: Record<string, unknown> | undefined): SceneCompo
     cameraDuration: numberValue(input?.cameraDuration, d.cameraDuration, 5, 18),
     cameraEase: enumValue(input?.cameraEase, ['sine', 'power2', 'power3'] as const, d.cameraEase),
     cameraSlowdown: numberValue(input?.cameraSlowdown, d.cameraSlowdown, 0, 8), compositionScale: numberValue(input?.compositionScale, d.compositionScale, 0.65, 1.4),
+  }
+}
+
+function normalizeGallery(input: Record<string, unknown> | undefined): SceneComposerConfig['scenes']['gallery'] {
+  const d = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery
+  return {
+    frameIntensity: numberValue(input?.frameIntensity, d.frameIntensity, 0, 2),
+    particleCount: numberValue(input?.particleCount, d.particleCount, 0, 600, true),
+    moonBrightness: numberValue(input?.moonBrightness, d.moonBrightness, 0, 2),
+    moonSize: numberValue(input?.moonSize, d.moonSize, 0.4, 1.8),
+    cloudDensity: numberValue(input?.cloudDensity, d.cloudDensity, 0, 1.8),
+    hazeDensity: numberValue(input?.hazeDensity, d.hazeDensity, 0, 1.8),
+    reflectionStrength: numberValue(input?.reflectionStrength, d.reflectionStrength, 0, 0.6),
+    reflectionBlur: numberValue(input?.reflectionBlur, d.reflectionBlur, 0.3, 1),
+    threadOpacity: numberValue(input?.threadOpacity, d.threadOpacity, 0, 0.8),
+    coldLightIntensity: numberValue(input?.coldLightIntensity, d.coldLightIntensity, 0, 1.8),
   }
 }
 
