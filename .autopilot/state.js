@@ -43,7 +43,7 @@ window.STATE = {
   },
   "slug": "gallery05-cloud-atmosphere",
   "singlePass": null,
-  "updatedAt": "2026-10-31T23:07:26+03:00",
+  "updatedAt": "2026-10-31T23:26:02+03:00",
   "tier": "T1",
   "briefFile": "2026-10-31-brief.md",
   "concerns": [
@@ -162,7 +162,8 @@ window.STATE = {
       "tests": {
         "passed": 320,
         "failed": 0
-      }
+      },
+      "commit": "4a987ba"
     }
   ],
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
@@ -215,11 +216,11 @@ window.STATE = {
       "status": "done",
       "id": "final",
       "startedAt": "2026-10-31T23:07:26+03:00",
-      "finishedAt": "2026-10-31T23:07:26+03:00",
-      "note": "Финальные captures сохранены; G4 ограничен браузерной средой blind checker, это явно указано в отчёте. Реализация остаётся в отдельной ветке без merge."
+      "finishedAt": "2026-10-31T23:26:02+03:00",
+      "note": "Финальные captures сохранены; G4 ограничен браузерной средой blind checker, это явно указано в отчёте. Реализация остаётся в отдельной ветке без merge. Реализация зафиксирована в 4a987ba."
     }
   ],
-  "finishedAt": "2026-10-31T23:07:26+03:00",
+  "finishedAt": "2026-10-31T23:26:02+03:00",
   "base": "1ab3627",
   "title": "Scene 05 — облака и лунная дымка",
   "tests": {
