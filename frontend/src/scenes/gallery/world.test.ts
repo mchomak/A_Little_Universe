@@ -69,6 +69,16 @@ describe('moonlit gallery world layout', () => {
     expect(layers.every(({ size, intensity }) => size > 19 && size < 30 && intensity > 0 && intensity < 0.2)).toBe(true)
   })
 
+  it('rebuilds the same sparse light path from Inspector moon and target coordinates', () => {
+    const layers = getGalleryMoonScatteringLayers([3, 18, -120], [5, -1, -30])
+    expect(layers[0]!.position[0]).toBeCloseTo(3.88)
+    expect(layers[0]!.position[1]).toBeCloseTo(9.64)
+    expect(layers[0]!.position[2]).toBeCloseTo(-80.4)
+    expect(layers[3]!.position[0]).toBeCloseTo(4.72)
+    expect(layers[3]!.position[1]).toBeCloseTo(1.66)
+    expect(layers[3]!.position[2]).toBeCloseTo(-42.6)
+  })
+
   it('scales decorative atmosphere in low quality while keeping the moon veil', () => {
     expect(getGalleryCloudMasses('low').length).toBeLessThan(getGalleryCloudMasses('standard').length)
     expect(getGalleryCloudMasses('low').some(({ id }) => id === 'moon-veil')).toBe(true)

@@ -153,6 +153,14 @@ const GALLERY_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.moonHaloIntensity', label: 'Интенсивность ореола Луны', unit: '×', min: 0, max: 2, step: 0.05 },
   { path: 'scenes.gallery.moonCloudLightIntensity', label: 'Лунный свет на облаках', unit: '×', min: 0, max: 2, step: 0.05 },
   { path: 'scenes.gallery.moonScatteringIntensity', label: 'Атмосферное рассеяние Луны', unit: '×', min: 0, max: 1.5, step: 0.025 },
+  { path: 'scenes.gallery.moonHaloRadius', label: 'Радиус ореола Луны', unit: '×', min: 0, max: 2.5, step: 0.05 },
+  { path: 'scenes.gallery.moonGodRaysIntensity', label: 'Интенсивность god rays', unit: '×', min: 0, max: 0.8, step: 0.01 },
+  { path: 'scenes.gallery.moonPositionX', label: 'Положение Луны X', unit: 'м', min: -12, max: 12, step: 0.1 },
+  { path: 'scenes.gallery.moonPositionY', label: 'Положение Луны Y', unit: 'м', min: 4, max: 24, step: 0.1 },
+  { path: 'scenes.gallery.moonPositionZ', label: 'Положение Луны Z', unit: 'м', min: -180, max: -80, step: 1 },
+  { path: 'scenes.gallery.moonTargetX', label: 'Цель света X', unit: 'м', min: -40, max: 40, step: 0.5 },
+  { path: 'scenes.gallery.moonTargetY', label: 'Цель света Y', unit: 'м', min: -12, max: 14, step: 0.05 },
+  { path: 'scenes.gallery.moonTargetZ', label: 'Цель света Z', unit: 'м', min: -180, max: 40, step: 1 },
 ]
 
 const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
@@ -627,7 +635,10 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           </details>
         </>}
         {selected === 'bloom' && <details open><summary>Анимация раскрытия</summary>{BLOOM_CONTROLS.map(range)}<p>IdleClosed ожидает касания; Bloom начинается только после него.</p></details>}
-        {selected === 'gallery' && <details open><summary>Scene 05 — Лунная галерея</summary>{GALLERY_CONTROLS.map(range)}</details>}
+        {selected === 'gallery' && <details open><summary>Scene 05 — Лунная галерея</summary>
+          {color('scenes.gallery.moonLightColor', 'Цвет лунного света')}
+          {GALLERY_CONTROLS.map(range)}
+        </details>}
         {selected === 'cosmos' && <>
           <details open><summary>Scene 07 — Galaxy</summary>
             {GALAXY_SELECTS.map((control) => <SelectConfigControl key={control.path} control={control} value={valueAtPath(config, control.path) as string} onChange={(path, value) => { void (path === 'scenes.galaxy.palette' ? changeGalaxyPalette(value as GalaxyPalette) : changeField(path, value)) }} onReset={(path) => { void resetField(path) }} />)}

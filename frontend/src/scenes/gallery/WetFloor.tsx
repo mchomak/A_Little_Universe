@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { DoubleSide, ShaderMaterial } from 'three'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
 import { GALLERY_WORLD } from './world'
+import { getMoonReflectionDepthSpan } from './moonLighting'
 
 type GallerySettings = SceneComposerConfig['scenes']['gallery']
 
@@ -20,6 +21,8 @@ const fragmentShader = `
   uniform float uColdLightIntensity;
   uniform float uMoonLightIntensity;
   uniform vec2 uMoonPosition;
+  uniform vec2 uMoonTarget;
+  uniform float uMoonDepthSpan;
   varying vec3 vWorldPosition;
 
   float hash(vec2 p) {
@@ -50,8 +53,9 @@ const fragmentShader = `
     float edgeFade = xFade * nearFade * farFade;
 
     float reflectionWidth = mix(0.18, 1.35, uReflectionBlur);
-    float trailProgress = clamp((world.y - uMoonPosition.y) / (-32.0 - uMoonPosition.y), 0.0, 1.0);
-    float trailCenter = mix(uMoonPosition.x, 0.0, trailProgress);
+    float trailProgress = abs(uMoonDepthSpan) < 0.0001 ? 0.5
+      : clamp((world.y - uMoonPosition.y) / uMoonDepthSpan, 0.0, 1.0);
+    float trailCenter = mix(uMoonPosition.x, uMoonTarget.x, trailProgress);
     float reflectionPath = exp(-abs(world.x - trailCenter) / reflectionWidth);
     float reflectionGlow = exp(-abs(world.x - trailCenter) / (reflectionWidth * 3.8));
     float farPath = smoothstep(-280.0, -130.0, world.y);
@@ -77,7 +81,9 @@ export function WetFloor({ settings }: { settings: GallerySettings }) {
       uReflectionBlur: { value: settings.reflectionBlur },
       uColdLightIntensity: { value: settings.coldLightIntensity },
       uMoonLightIntensity: { value: settings.moonLightIntensity },
-      uMoonPosition: { value: [GALLERY_WORLD.moon.position[0], GALLERY_WORLD.moon.position[2]] },
+      uMoonPosition: { value: [settings.moonPositionX, settings.moonPositionZ] },
+      uMoonTarget: { value: [settings.moonTargetX, settings.moonTargetZ] },
+      uMoonDepthSpan: { value: getMoonReflectionDepthSpan(settings.moonPositionZ, settings.moonTargetZ) },
     },
     vertexShader,
     fragmentShader,
@@ -85,7 +91,7 @@ export function WetFloor({ settings }: { settings: GallerySettings }) {
     depthWrite: false,
     side: DoubleSide,
     toneMapped: false,
-  }), [settings.coldLightIntensity, settings.moonLightIntensity, settings.reflectionBlur, settings.reflectionStrength])
+  }), [settings.coldLightIntensity, settings.moonLightIntensity, settings.moonPositionX, settings.moonPositionZ, settings.moonTargetX, settings.moonTargetZ, settings.reflectionBlur, settings.reflectionStrength])
 
   useEffect(() => () => floorMaterial.dispose(), [floorMaterial])
 

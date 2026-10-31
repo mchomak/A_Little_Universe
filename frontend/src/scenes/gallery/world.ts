@@ -48,9 +48,12 @@ export const GALLERY_WORLD = {
 } as const
 
 /** A few fixed, soft atmospheric pools trace the moon-to-gallery light path. */
-export function getGalleryMoonScatteringLayers(): readonly GalleryMoonScatteringLayer[] {
-  const start = GALLERY_WORLD.moon.position
-  const end = [0, GALLERY_WORLD.floor.y + 2.6, -32] as const
+export function getGalleryMoonScatteringLayers(
+  moonPosition: readonly [number, number, number] = GALLERY_WORLD.moon.position,
+  lightTarget: readonly [number, number, number] = [0, GALLERY_WORLD.floor.y, -34],
+): readonly GalleryMoonScatteringLayer[] {
+  const start = moonPosition
+  const end = lightTarget
   return Array.from({ length: 4 }, (_, index) => {
     const t = 0.44 + index * 0.14
     return {

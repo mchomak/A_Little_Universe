@@ -105,6 +105,8 @@ describe('Scene Composer controls', () => {
       reflectionBlur: 0.8, threadOpacity: 0.38, coldLightIntensity: 0.8,
       moonLightIntensity: 1.8, moonFillIntensity: 0.45, moonHaloIntensity: 1.2,
       moonCloudLightIntensity: 1, moonScatteringIntensity: 0.85,
+      moonLightColor: '#C3D8F2', moonPositionX: 0.2, moonPositionY: 16, moonPositionZ: -126,
+      moonTargetX: 0, moonTargetY: -2.35, moonTargetZ: -34, moonHaloRadius: 1, moonGodRaysIntensity: 0.12,
     })
   })
 
@@ -117,7 +119,7 @@ describe('Scene Composer controls', () => {
       scenes: { prologue: Record<string, unknown> }
     }
 
-    expect(exported.schemaVersion).toBe(6)
+    expect(exported.schemaVersion).toBe(7)
     expect(exported.global.quality).toBe('low')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpeed')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpread')
@@ -137,7 +139,7 @@ describe('Scene Composer controls', () => {
     })
 
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(6)
+    expect(exported.schemaVersion).toBe(7)
     expect(exported.scenes.gallery).toMatchObject({ cloudIntensity: 1.35, cloudLayerCount: 6, hazeHeight: -1.1, moonCloudLightIntensity: 1.4 })
 
     await resetComposerField('scenes.gallery.hazeHeight')

@@ -6,6 +6,7 @@ export interface GalleryAtmosphereMaterialOptions {
   opacity: number
   intensity: number
   moonPosition: readonly [number, number, number]
+  moonColor?: string
   moonLightIntensity: number
 }
 
@@ -153,7 +154,7 @@ export function createGalleryAtmosphereMaterial(options: GalleryAtmosphereMateri
   return new ShaderMaterial({
     uniforms: {
       uMoonPosition: { value: new Vector3(...options.moonPosition) },
-      uMoonColor: { value: new Color('#adc8e9') },
+      uMoonColor: { value: new Color(options.moonColor ?? '#adc8e9') },
       uBaseColor: { value: new Color(options.kind === 'haze' ? '#192742' : '#101a2d') },
       uSeed: { value: options.seed },
       uOpacity: { value: Math.max(0, Math.min(1.5, options.opacity)) },

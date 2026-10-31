@@ -23,6 +23,8 @@ const scatterVertexShader = `
 
 const scatterFragmentShader = `
   uniform float uIntensity;
+  uniform float uRaysIntensity;
+  uniform vec3 uMoonColor;
   uniform float uSeed;
   varying vec2 vUv;
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7)) + uSeed) * 43758.5453); }
@@ -31,10 +33,13 @@ const scatterFragmentShader = `
     float r = dot(p, p);
     float halo = exp(-r * 2.8) * (1.0 - smoothstep(0.62, 1.0, r));
     float grain = 0.88 + hash(floor(vUv * 34.0)) * 0.12;
-    float alpha = min(0.18, halo * grain * uIntensity);
+    float angle = atan(p.y, p.x);
+    float radialRays = pow(max(0.0, cos(angle * 10.0 + uSeed * 0.17)), 24.0)
+      * smoothstep(0.08, 0.24, r) * (1.0 - smoothstep(0.58, 0.96, r));
+    float alpha = min(0.18, halo * grain * uIntensity + radialRays * uRaysIntensity * 0.012);
     // Additive blending applies source alpha to RGB; keep the source color
     // unpremultiplied so the haze does not lose its energy twice.
-    gl_FragColor = vec4(vec3(0.54, 0.68, 0.9), alpha);
+    gl_FragColor = vec4(uMoonColor, alpha);
     #include <colorspace_fragment>
   }
 `
@@ -70,6 +75,10 @@ export function MoonlitWorld({
   halo: CanvasTexture
 }) {
   const cloudWisps = useMemo(() => getGalleryCloudWisps(quality, settings.cloudLayerCount), [quality, settings.cloudLayerCount])
+  const moonPosition = useMemo(() => [settings.moonPositionX, settings.moonPositionY, settings.moonPositionZ] as const,
+    [settings.moonPositionX, settings.moonPositionY, settings.moonPositionZ])
+  const lightTarget = useMemo(() => [settings.moonTargetX, settings.moonTargetY, settings.moonTargetZ] as const,
+    [settings.moonTargetX, settings.moonTargetY, settings.moonTargetZ])
   const hazeMasses = useMemo(() => getGalleryHazeMasses(quality), [quality])
   const atmosphereGeometry = useMemo(() => new SphereGeometry(1, quality === 'low' ? 20 : 28, quality === 'low' ? 14 : 18), [quality])
   const cloudMaterials = useMemo(() => cloudWisps.map((mass) => createGalleryAtmosphereMaterial({
@@ -77,22 +86,29 @@ export function MoonlitWorld({
     seed: mass.seed,
     opacity: mass.opacity * settings.cloudDensity,
     intensity: settings.cloudIntensity,
-    moonPosition: GALLERY_WORLD.moon.position,
+    moonPosition,
+    moonColor: settings.moonLightColor,
     moonLightIntensity: settings.moonLightIntensity * settings.coldLightIntensity * settings.moonCloudLightIntensity,
-  })), [cloudWisps, settings.cloudDensity, settings.cloudIntensity, settings.coldLightIntensity, settings.moonCloudLightIntensity, settings.moonLightIntensity])
+  })), [cloudWisps, moonPosition, settings.cloudDensity, settings.cloudIntensity, settings.coldLightIntensity, settings.moonCloudLightIntensity, settings.moonLightColor, settings.moonLightIntensity])
   const hazeMaterials = useMemo(() => hazeMasses.map((mass) => createGalleryAtmosphereMaterial({
     kind: 'haze',
     seed: mass.seed,
     opacity: mass.opacity * settings.hazeDensity,
     intensity: 1,
-    moonPosition: GALLERY_WORLD.moon.position,
+    moonPosition,
+    moonColor: settings.moonLightColor,
     moonLightIntensity: settings.moonLightIntensity * settings.coldLightIntensity * settings.moonCloudLightIntensity * 0.72,
-  })), [hazeMasses, settings.coldLightIntensity, settings.hazeDensity, settings.moonCloudLightIntensity, settings.moonLightIntensity])
+  })), [hazeMasses, moonPosition, settings.coldLightIntensity, settings.hazeDensity, settings.moonCloudLightIntensity, settings.moonLightColor, settings.moonLightIntensity])
   const moonSurface = useMoonSurfaceTextures()
   const moonHaloTexture = useMemo(() => createMoonHaloTexture(), [])
-  const scatteringLayers = useMemo(() => getGalleryMoonScatteringLayers(), [])
+  const scatteringLayers = useMemo(() => getGalleryMoonScatteringLayers(moonPosition, lightTarget), [lightTarget, moonPosition])
   const scatteringMaterials = useMemo(() => scatteringLayers.map((layer) => new ShaderMaterial({
-    uniforms: { uIntensity: { value: layer.intensity * settings.moonScatteringIntensity }, uSeed: { value: layer.seed } },
+    uniforms: {
+      uIntensity: { value: layer.intensity * settings.moonScatteringIntensity },
+      uRaysIntensity: { value: settings.moonGodRaysIntensity },
+      uMoonColor: { value: new Color(settings.moonLightColor) },
+      uSeed: { value: layer.seed },
+    },
     vertexShader: scatterVertexShader,
     fragmentShader: scatterFragmentShader,
     transparent: true,
@@ -100,7 +116,7 @@ export function MoonlitWorld({
     blending: AdditiveBlending,
     toneMapped: false,
     side: DoubleSide,
-  })), [scatteringLayers, settings.moonScatteringIntensity])
+  })), [scatteringLayers, settings.moonGodRaysIntensity, settings.moonLightColor, settings.moonScatteringIntensity])
   const moonBrightness = Math.max(0, settings.moonBrightness)
   const moonMaterial = useMemo(() => new MeshStandardMaterial({
     map: moonSurface?.color ?? null,
@@ -109,35 +125,35 @@ export function MoonlitWorld({
     color: new Color(0.86, 0.88, 0.91),
     roughness: 1,
     metalness: 0,
-    emissive: '#8395ac',
+    emissive: settings.moonLightColor,
     emissiveMap: moonSurface?.color ?? null,
     emissiveIntensity: Math.min(0.48, moonBrightness * 0.52),
     fog: false,
-  }), [moonBrightness, moonSurface])
+  }), [moonBrightness, moonSurface, settings.moonLightColor])
   const haloMaterial = useMemo(() => new MeshBasicMaterial({
     map: halo,
-    color: '#d3e1f5',
+    color: settings.moonLightColor,
     transparent: true,
-    opacity: Math.min(0.6, moonBrightness * settings.coldLightIntensity * 0.38),
+    opacity: Math.min(0.6, moonBrightness * settings.coldLightIntensity * settings.moonHaloIntensity * 0.28),
     depthWrite: false,
     fog: false,
     toneMapped: false,
-  }), [halo, moonBrightness, settings.coldLightIntensity])
+  }), [halo, moonBrightness, settings.coldLightIntensity, settings.moonHaloIntensity, settings.moonLightColor])
   const moonHaloMaterial = useMemo(() => new MeshBasicMaterial({
     map: moonHaloTexture,
-    color: '#d9e7fa',
+    color: settings.moonLightColor,
     transparent: true,
     opacity: Math.min(0.5, settings.moonHaloIntensity * 0.4),
     depthWrite: false,
     fog: false,
     toneMapped: false,
-  }), [moonHaloTexture, settings.moonHaloIntensity])
-  const moonLightPosition = useMemo(() => new Vector3(...GALLERY_WORLD.moon.position), [])
+  }), [moonHaloTexture, settings.moonHaloIntensity, settings.moonLightColor])
+  const moonLightPosition = useMemo(() => new Vector3(...moonPosition), [moonPosition])
   const moonLightTarget = useMemo(() => {
     const target = new Object3D()
-    target.position.set(0, GALLERY_WORLD.floor.y, -34)
+    target.position.set(...lightTarget)
     return target
-  }, [])
+  }, [lightTarget])
   useEffect(() => () => atmosphereGeometry.dispose(), [atmosphereGeometry])
   useEffect(() => () => {
     moonHaloTexture.dispose()
@@ -149,7 +165,7 @@ export function MoonlitWorld({
   useEffect(() => () => moonHaloMaterial.dispose(), [moonHaloMaterial])
   useEffect(() => () => scatteringMaterials.forEach((material) => material.dispose()), [scatteringMaterials])
 
-  const moon = GALLERY_WORLD.moon
+  const moon = { ...GALLERY_WORLD.moon, position: moonPosition }
   const moonScale = settings.moonSize
   return <group>
     <WetFloor settings={settings} />
@@ -176,7 +192,7 @@ export function MoonlitWorld({
       <primitive object={hazeMaterials[index]!} attach="material" />
     </mesh>)}
     <mesh position={[moon.position[0], moon.position[1], moon.position[2] - 0.26]} scale={moonScale} raycast={ignoreRaycast} renderOrder={-2}>
-      <planeGeometry args={[moon.haloRadius * 2, moon.haloRadius * 2]} />
+      <planeGeometry args={[moon.haloRadius * settings.moonHaloRadius * 2, moon.haloRadius * settings.moonHaloRadius * 2]} />
       <primitive object={moonHaloMaterial} attach="material" />
     </mesh>
     <mesh position={[moon.position[0], moon.position[1], moon.position[2] - 0.22]} scale={moonScale} raycast={ignoreRaycast} renderOrder={-2}>
@@ -185,14 +201,14 @@ export function MoonlitWorld({
     </mesh>
     <primitive object={moonLightTarget} />
     <hemisphereLight
-      color="#9eb5d5"
+      color={settings.moonLightColor}
       groundColor="#101827"
       intensity={settings.moonFillIntensity}
     />
     <directionalLight
       position={moonLightPosition}
       target={moonLightTarget}
-      color="#c3d8f2"
+      color={settings.moonLightColor}
       intensity={settings.moonLightIntensity * moonBrightness}
       castShadow={false}
     />

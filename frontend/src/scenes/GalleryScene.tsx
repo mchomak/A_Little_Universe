@@ -8,7 +8,8 @@ import { createGalleryDustGeometry, getGalleryDustCount } from './gallery/dust'
 import { createFrameFootprintMaterial, createPhotoReflectionLayout, createPhotoReflectionMaterial, updateFrameFootprintMaterial, updatePhotoReflectionMaterial, PHOTO_REFLECTION_PLANE_ROTATION_X, type GalleryArtSettings } from './gallery/reflections'
 import { createMemoryThreadAccentGeometry, createMemoryThreadGeometry, createMemoryThreadMaterial, createMemoryThreadPaths, GALLERY_MEMORY_RENDER_ORDER, GALLERY_THREAD_RENDER_ORDER, memoryThreadOpacity, updateMemoryThreadMaterial } from './gallery/threads'
 import { GALLERY_WORLD } from './gallery/world'
-import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, DoubleSide, Group, Material, Mesh, MeshBasicMaterial, Points, PointsMaterial, SRGBColorSpace, Texture, TextureLoader, Vector3, ShaderMaterial } from 'three'
+import { getMoonFrameTintStrength, getMoonPhotoIllumination } from './gallery/moonLighting'
+import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, Color, DoubleSide, Group, Material, Mesh, MeshBasicMaterial, Points, PointsMaterial, SRGBColorSpace, Texture, TextureLoader, Vector3, ShaderMaterial } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
 import { useSyncExternalStore } from 'react'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
@@ -39,6 +40,8 @@ function setShaderUniform(material: ShaderMaterial | null, name: string, value: 
   const uniform = material?.uniforms[name]
   if (uniform) uniform.value = value
 }
+const FRAME_CONTOUR_BASE_COLOR = new Color('#f4dcc0')
+const FRAME_HALO_BASE_COLOR = new Color('#efcba8')
 const photoVertexShader = `
   varying vec2 vUv;
   void main() {
@@ -51,6 +54,8 @@ const photoFragmentShader = `
   uniform float uAlpha;
   uniform float uBlur;
   uniform float uLight;
+  uniform float uMoonIllumination;
+  uniform vec3 uMoonColor;
   varying vec2 vUv;
   void main() {
     vec2 blur = vec2(0.0065 * uBlur);
@@ -67,6 +72,9 @@ const photoFragmentShader = `
     vec2 spotUv = vec2((vUv.x - 0.5) / 0.72, (vUv.y - 0.68) / 0.88);
     float spot = pow(max(0.0, 1.0 - dot(spotUv, spotUv)), 2.0);
     photo.rgb *= 1.0 + spot * uLight;
+    vec3 lunarTint = mix(vec3(1.0), uMoonColor, 0.28);
+    photo.rgb = mix(photo.rgb, photo.rgb * lunarTint, clamp(uMoonIllumination * 0.65, 0.0, 0.22));
+    photo.rgb *= 1.0 + uMoonIllumination;
     gl_FragColor = vec4(photo.rgb, uAlpha);
     #include <colorspace_fragment>
   }
@@ -96,17 +104,20 @@ const frameVertexShader = `
   }
 `
 const frameFragmentShader = `
+  uniform float uMoonTintStrength;
+  uniform vec3 uMoonColor;
   varying vec3 vColor;
   varying float vAlpha;
   void main() {
     float radius = length(gl_PointCoord - 0.5);
     float point = 1.0 - smoothstep(0.12, 0.5, radius);
-    gl_FragColor = vec4(vColor, point * vAlpha);
+    vec3 color = mix(vColor, uMoonColor, uMoonTintStrength);
+    gl_FragColor = vec4(color, point * vAlpha);
   }
 `
 function photoShaderMaterial(map: Texture) {
   return new ShaderMaterial({
-    uniforms: { map: { value: map }, uAlpha: { value: 1 }, uBlur: { value: 0 }, uLight: { value: 0.04 } },
+    uniforms: { map: { value: map }, uAlpha: { value: 1 }, uBlur: { value: 0 }, uLight: { value: 0.04 }, uMoonIllumination: { value: 0 }, uMoonColor: { value: new Color('#C3D8F2') } },
     vertexShader: photoVertexShader,
     fragmentShader: photoFragmentShader,
     transparent: true,
@@ -117,7 +128,10 @@ function photoShaderMaterial(map: Texture) {
 }
 function frameShaderMaterial() {
   return new ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uOpacity: { value: 0 }, uFocus: { value: 0 } },
+    uniforms: {
+      uTime: { value: 0 }, uOpacity: { value: 0 }, uFocus: { value: 0 },
+      uMoonTintStrength: { value: 0 }, uMoonColor: { value: new Color('#C3D8F2') },
+    },
     vertexShader: frameVertexShader,
     fragmentShader: frameFragmentShader,
     transparent: true,
@@ -149,6 +163,10 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   const contourMaterials = useRef<(MeshBasicMaterial | null)[]>([])
   const frameHaloMaterials = useRef<(MeshBasicMaterial | null)[]>([])
   const worldPosition = useMemo(() => new Vector3(), [])
+  const moonPosition = useMemo(() => new Vector3(), [])
+  const moonDirection = useMemo(() => new Vector3(), [])
+  const photoNormal = useMemo(() => new Vector3(), [])
+  const moonColor = useMemo(() => new Color(), [])
   const firstPhoto = useLoader(TextureLoader, firstPhotoUrl)
   const image = useMemo(() => memory.order === 0 ? null : placeholder(memory), [memory])
   const caption = useMemo(() => captionTexture(memory.caption), [memory.caption])
@@ -242,6 +260,26 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     const focusTarget = m.focusMix > 0.001 && m.focusIndex === memory.order
     const focusAmount = m.focusIndex === memory.order ? Math.max(0, Math.min(1, m.focusMix)) : 0
     const photoPosition = group.current.getWorldPosition(worldPosition)
+    moonPosition.set(settings.moonPositionX, settings.moonPositionY, settings.moonPositionZ)
+    moonDirection.subVectors(moonPosition, photoPosition)
+    group.current.getWorldDirection(photoNormal)
+    const moonIllumination = getMoonPhotoIllumination(
+      photoNormal,
+      moonDirection,
+      settings.moonLightIntensity * settings.moonBrightness,
+    )
+    const tintStrength = getMoonFrameTintStrength(moonIllumination)
+    const configuredMoonColor = moonColor.set(settings.moonLightColor)
+    setShaderUniform(photoMaterialRef.current, 'uMoonIllumination', moonIllumination)
+    setShaderUniform(photoMaterialRef.current, 'uMoonColor', configuredMoonColor)
+    setShaderUniform(frameMaterialRef.current, 'uMoonTintStrength', tintStrength)
+    setShaderUniform(frameMaterialRef.current, 'uMoonColor', configuredMoonColor)
+    for (const material of contourMaterials.current) {
+      material?.color.copy(FRAME_CONTOUR_BASE_COLOR).lerp(configuredMoonColor, tintStrength)
+    }
+    for (const material of frameHaloMaterials.current) {
+      material?.color.copy(FRAME_HALO_BASE_COLOR).lerp(configuredMoonColor, tintStrength)
+    }
     const photoDistance = camera.position.distanceTo(photoPosition)
     const distanceAlpha = galleryDistanceOpacity(photoDistance)
     const focusAlpha = galleryFocusOpacity(m.focusMix, selected)

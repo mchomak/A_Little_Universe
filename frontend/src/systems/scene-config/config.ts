@@ -11,7 +11,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 6
+  readonly schemaVersion: 7
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -107,6 +107,15 @@ export interface SceneComposerConfig {
       moonHaloIntensity: number
       moonCloudLightIntensity: number
       moonScatteringIntensity: number
+      moonLightColor: string
+      moonPositionX: number
+      moonPositionY: number
+      moonPositionZ: number
+      moonTargetX: number
+      moonTargetY: number
+      moonTargetZ: number
+      moonHaloRadius: number
+      moonGodRaysIntensity: number
     }>
     galaxy: Readonly<{
       quality: SeedQuality
@@ -186,7 +195,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 6,
+  schemaVersion: 7,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
@@ -218,6 +227,9 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       reflectionBlur: 0.8, threadOpacity: 0.38, coldLightIntensity: 0.8,
       moonLightIntensity: 1.8, moonFillIntensity: 0.45, moonHaloIntensity: 1.2,
       moonCloudLightIntensity: 1, moonScatteringIntensity: 0.85,
+      moonLightColor: '#C3D8F2', moonPositionX: 0.2, moonPositionY: 16, moonPositionZ: -126,
+      moonTargetX: 0, moonTargetY: -2.35, moonTargetZ: -34, moonHaloRadius: 1,
+      moonGodRaysIntensity: 0.12,
     },
     galaxy: {
       quality: 'standard', seed: 'andromeda', starCount: 32000, arms: 5, radius: 8.2,
@@ -276,7 +288,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || (inputVersion !== 1 && inputVersion !== 2 && inputVersion !== 3 && inputVersion !== 4 && inputVersion !== 5 && inputVersion !== 6)) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || (inputVersion !== 1 && inputVersion !== 2 && inputVersion !== 3 && inputVersion !== 4 && inputVersion !== 5 && inputVersion !== 6 && inputVersion !== 7)) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -396,7 +408,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 6, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 7, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
@@ -488,6 +500,15 @@ function normalizeGallery(input: Record<string, unknown> | undefined): SceneComp
     moonHaloIntensity: numberValue(input?.moonHaloIntensity, d.moonHaloIntensity, 0, 2),
     moonCloudLightIntensity: numberValue(input?.moonCloudLightIntensity, d.moonCloudLightIntensity, 0, 2),
     moonScatteringIntensity: numberValue(input?.moonScatteringIntensity, d.moonScatteringIntensity, 0, 1.5),
+    moonLightColor: colorValue(input?.moonLightColor, d.moonLightColor),
+    moonPositionX: numberValue(input?.moonPositionX, d.moonPositionX, -12, 12),
+    moonPositionY: numberValue(input?.moonPositionY, d.moonPositionY, 4, 24),
+    moonPositionZ: numberValue(input?.moonPositionZ, d.moonPositionZ, -180, -80),
+    moonTargetX: numberValue(input?.moonTargetX, d.moonTargetX, -40, 40),
+    moonTargetY: numberValue(input?.moonTargetY, d.moonTargetY, -12, 14),
+    moonTargetZ: numberValue(input?.moonTargetZ, d.moonTargetZ, -180, 40),
+    moonHaloRadius: numberValue(input?.moonHaloRadius, d.moonHaloRadius, 0, 2.5),
+    moonGodRaysIntensity: numberValue(input?.moonGodRaysIntensity, d.moonGodRaysIntensity, 0, 0.8),
   }
 }
 
