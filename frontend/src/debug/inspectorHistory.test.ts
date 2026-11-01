@@ -32,4 +32,14 @@ describe('inspector history', () => {
     const current = { quality: 'low', speed: 0.5 }
     expect({ ...current, ...h.undo('global') }).toEqual({ quality: 'standard', speed: 0.5 })
   })
+  it('keeps gallery history isolated and field-level for live art edits', () => {
+    const h = createInspectorHistory()
+    h.record('gallery', { moonBrightness: 0.8, threadOpacity: 0.38 }, { moonBrightness: 1.2, threadOpacity: 0.38 })
+    h.record('prologue', { fontSize: 48 }, { fontSize: 64 })
+
+    const galleryWithExternalEdit = { moonBrightness: 1.2, threadOpacity: 0.6 }
+    expect({ ...galleryWithExternalEdit, ...h.undo('gallery') }).toEqual({ moonBrightness: 0.8, threadOpacity: 0.6 })
+    expect(h.undo('prologue')).toEqual({ fontSize: 48 })
+    expect(h.redo('gallery')).toEqual({ moonBrightness: 1.2 })
+  })
 })

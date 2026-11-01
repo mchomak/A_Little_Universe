@@ -112,3 +112,74 @@ it('exposes the imported galaxy seed and optional black center in Scene 07 Inspe
   expect(markup).toMatch(/id="composer-scenes-galaxy-backgroundStarCount"[^>]*max="10000"[^>]*value="5200"/)
 })
 
+it('exposes all bounded moonlit gallery settings in the existing Scene Inspector', () => {
+  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'gallery' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    onPermissions: () => undefined,
+    route: 'film',
+  }))
+
+  expect(markup).toContain('Лунная галерея')
+  expect(markup).toContain('Контраст облачной формы')
+  expect(markup).toContain('Количество облачных масс')
+  expect(markup).toContain('Скорость дрейфа облаков')
+  expect(markup).toContain('Высота дымки')
+  expect(markup).toContain('Лунный свет на облаках')
+  expect(markup).toContain('Общий лунный свет')
+  expect(markup).toContain('Интенсивность ореола Луны')
+  expect(markup).toContain('Цвет лунного света')
+  expect(markup).toContain('Интенсивность god rays')
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonPositionY"[^>]*min="4" max="24" step="0.1" value="16"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonTargetY"[^>]*min="-12" max="14" step="0.05" value="-2.35"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonTargetZ"[^>]*min="-180" max="40" step="1" value="-34"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonGodRaysIntensity"[^>]*min="0" max="0.8" step="0.01" value="0.12"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonLightColor"[^>]*type="color"[^>]*value="#C3D8F2"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-frameIntensity"[^>]*min="0" max="2" step="0.05" value="1"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-particleCount"[^>]*min="0" max="600" step="1" value="220"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonBrightness"[^>]*min="0" max="2" step="0.05" value="0.8"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonSize"[^>]*min="0.4" max="1.8" step="0.05" value="1"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudIntensity"[^>]*min="0" max="2" step="0.05" value="1"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudDensity"[^>]*min="0" max="1.8" step="0.05" value="1.12"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudOpacity"[^>]*min="0" max="1.8" step="0.05" value="0.88"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudScale"[^>]*min="0.55" max="2" step="0.05" value="1"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayerCount"[^>]*min="0" max="18" step="1" value="18"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudDriftSpeed"[^>]*min="0" max="2" step="0.05" value="0.82"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudDriftVariation"[^>]*min="0" max="1" step="0.05" value="0.65"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudForegroundAmount"[^>]*min="0" max="1.6" step="0.05" value="1"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudBackgroundAmount"[^>]*min="0" max="1.6" step="0.05" value="0.78"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudNearFloorAmount"[^>]*min="0" max="1.6" step="0.05" value="1"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudCoolTint"[^>]*min="0" max="1.5" step="0.025" value="1"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudWhiteHighlight"[^>]*min="0" max="1.5" step="0.025" value="0.48"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-hazeDensity"[^>]*min="0" max="1.8" step="0.05" value="0.22"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-hazeHeight"[^>]*min="-3" max="3" step="0.1" value="0"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-hazeMotionSpeed"[^>]*min="0" max="1" step="0.025" value="0.2"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-reflectionStrength"[^>]*min="0" max="0.6" step="0.01" value="0.24"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-reflectionBlur"[^>]*min="0.3" max="1" step="0.01" value="0.8"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-threadOpacity"[^>]*min="0" max="0.8" step="0.01" value="0.38"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-coldLightIntensity"[^>]*min="0" max="1.8" step="0.05" value="0.8"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonLightIntensity"[^>]*min="0" max="3" step="0.05" value="1.8"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonFillIntensity"[^>]*min="0" max="1.2" step="0.025" value="0.45"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonHaloIntensity"[^>]*min="0" max="2" step="0.05" value="1.2"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonCloudLightIntensity"[^>]*min="0" max="2" step="0.05" value="1"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-moonScatteringIntensity"[^>]*min="0" max="1.5" step="0.025" value="0.85"/)
+  expect(markup).toContain('Сравнение недоступно для интерактивной галереи')
+  expect(markup).not.toContain('Показать A')
+})
+
+it('caps the cloud count control to the low-quality raymarch render limit', () => {
+  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'gallery', quality: 'low' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    onPermissions: () => undefined,
+    route: 'film',
+  }))
+
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayerCount"[^>]*min="0" max="14" step="1" value="14"/)
+  expect(markup).toContain('В сцене 24 объёмные формы; рендер ограничен 18 массами в обычном качестве и 14 в низком.')
+})
+

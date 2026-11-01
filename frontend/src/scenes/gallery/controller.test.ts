@@ -10,7 +10,13 @@ describe('gallery travel', () => {
   it('has twelve alternating, independently positioned exhibits', () => {
     expect(GALLERY_MEMORIES).toHaveLength(12)
     expect(new Set(GALLERY_MEMORIES.map(m => m.id)).size).toBe(12)
-    GALLERY_MEMORIES.forEach((m, i) => { expect(m.side).toBe(i % 2 ? 1 : -1); expect(memoryPosition(m)[2]).toBe(GALLERY.firstZ - i * GALLERY.spacing) })
+    GALLERY_MEMORIES.forEach((m, i) => {
+      const [x, , z] = memoryPosition(m)
+      expect(m.side).toBe(i % 2 ? 1 : -1)
+      expect(x).toBe(m.side * GALLERY.side)
+      expect(Math.abs(x)).toBe(3.5)
+      expect(z).toBe(GALLERY.firstZ - i * GALLERY.spacing)
+    })
   })
   it('moves forward for a spreading pinch, backward for a closing pinch and clamps both ends', () => {
     travel(5); advanceGallery(.2); expect(galleryMotion.progress).toBeGreaterThan(0)

@@ -5,13 +5,13 @@ export type QualityProfile = 'standard' | 'low'
 export type ScenePresetId = 'moonlit-letter' | 'stardust' | 'vasilisa-cinematic'
 export type GalaxyPalette = 'vasilisa' | 'spore' | 'ember' | 'emerald' | 'ice' | 'rose' | 'custom'
 export type SeedQuality = 'low' | 'standard' | 'high'
-export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'galaxy' | 'preset'
+export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy' | 'preset'
 
 type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T[Key]> : T[Key] }
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 5
+  readonly schemaVersion: 11
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -133,6 +133,45 @@ export interface SceneComposerConfig {
       portraitOffsetX: number
       portraitOffsetY: number
     }>
+    gallery: Readonly<{
+      frameIntensity: number
+      particleCount: number
+      moonBrightness: number
+      moonSize: number
+      cloudDensity: number
+      cloudOpacity: number
+      cloudIntensity: number
+      cloudScale: number
+      cloudLayerCount: number
+      cloudDriftSpeed: number
+      cloudDriftVariation: number
+      cloudForegroundAmount: number
+      cloudBackgroundAmount: number
+      cloudNearFloorAmount: number
+      cloudCoolTint: number
+      cloudWhiteHighlight: number
+      hazeDensity: number
+      hazeHeight: number
+      hazeMotionSpeed: number
+      reflectionStrength: number
+      reflectionBlur: number
+      threadOpacity: number
+      coldLightIntensity: number
+      moonLightIntensity: number
+      moonFillIntensity: number
+      moonHaloIntensity: number
+      moonCloudLightIntensity: number
+      moonScatteringIntensity: number
+      moonLightColor: string
+      moonPositionX: number
+      moonPositionY: number
+      moonPositionZ: number
+      moonTargetX: number
+      moonTargetY: number
+      moonTargetZ: number
+      moonHaloRadius: number
+      moonGodRaysIntensity: number
+    }>
     galaxy: Readonly<{
       quality: SeedQuality
       seed: string
@@ -211,7 +250,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 5,
+  schemaVersion: 11,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
@@ -250,6 +289,19 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       portraitMinTurns: 0, portraitMaxTurns: 2, portraitSteering: 1, portraitBraking: 1,
       portraitSettledBrightness: 1.15, vortexSpeedMultiplier: 0.9, portraitDetail: 1.5,
       portraitBrightness: 1.8, portraitSize: 1.8, portraitScale: 1.05, portraitOffsetX: 0, portraitOffsetY: 0,
+    },
+    gallery: {
+      frameIntensity: 1, particleCount: 220, moonBrightness: 0.8, moonSize: 1,
+      cloudDensity: 1.12, cloudOpacity: 0.88, cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 18, cloudDriftSpeed: 0.82,
+      cloudDriftVariation: 0.65, cloudForegroundAmount: 1, cloudBackgroundAmount: 0.78, cloudNearFloorAmount: 1,
+      cloudCoolTint: 1, cloudWhiteHighlight: 0.48,
+      hazeDensity: 0.22, hazeHeight: 0, hazeMotionSpeed: 0.2, reflectionStrength: 0.24,
+      reflectionBlur: 0.8, threadOpacity: 0.38, coldLightIntensity: 0.8,
+      moonLightIntensity: 1.8, moonFillIntensity: 0.45, moonHaloIntensity: 1.2,
+      moonCloudLightIntensity: 1, moonScatteringIntensity: 0.85,
+      moonLightColor: '#C3D8F2', moonPositionX: 0.2, moonPositionY: 16, moonPositionZ: -126,
+      moonTargetX: 0, moonTargetY: -2.35, moonTargetZ: -34, moonHaloRadius: 1,
+      moonGodRaysIntensity: 0.12,
     },
     galaxy: {
       quality: 'standard', seed: 'andromeda', starCount: 32000, arms: 5, radius: 8.2,
@@ -308,7 +360,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || (inputVersion !== 1 && inputVersion !== 2 && inputVersion !== 3 && inputVersion !== 4 && inputVersion !== 5)) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 11) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -317,6 +369,12 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const prologueInput = asRecord(scenesInput?.prologue)
   const growthInput = asRecord(scenesInput?.growth)
   const identityInput = asRecord(scenesInput?.identity)
+  const rawGalleryInput = asRecord(scenesInput?.gallery)
+  // Schema v9 allowed at most 12 cloud banks; expand that old default while
+  // preserving deliberate lower values, including zero.
+  const galleryInput = inputVersion === 9 && rawGalleryInput?.cloudLayerCount === 12
+    ? { ...rawGalleryInput, cloudLayerCount: DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.cloudLayerCount }
+    : rawGalleryInput
   const galaxyInput = asRecord(scenesInput?.galaxy)
   const galaxySettingsInput = migrateGalaxySettings(galaxyInput, inputVersion)
   const legacyParticleSpeed = numberValue(prologueInput?.particleSpeed, 1, 0.1, 10)
@@ -463,6 +521,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       portraitOffsetX: numberValue(identityInput?.portraitOffsetX, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitOffsetX, -1, 1),
       portraitOffsetY: numberValue(identityInput?.portraitOffsetY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitOffsetY, -1, 1),
     },
+    gallery: normalizeGallery(galleryInput),
     galaxy: normalizeGalaxy(galaxySettingsInput),
   }
   if (scenes.identity.portraitMinTurns > scenes.identity.portraitMaxTurns) {
@@ -473,11 +532,11 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 5, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 11, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
-  if (version === 5) return input
+  if (typeof version === 'number' && version >= 5) return input
   if (!input) return { blackHoleEnabled: false }
   const radius = numberValue(input.radius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.galaxy.radius, 4, 14)
   const migrated: Record<string, unknown> = {
@@ -492,6 +551,49 @@ function migrateGalaxySettings(input: Record<string, unknown> | undefined, versi
   if (typeof input.coreDensity === 'number') migrated.coreDensity = input.coreDensity * 0.62
   if (typeof input.thickness === 'number') migrated.thickness = input.thickness / radius
   return migrated
+}
+
+function normalizeGallery(input: Record<string, unknown> | undefined): SceneComposerConfig['scenes']['gallery'] {
+  const d = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery
+  return {
+    frameIntensity: numberValue(input?.frameIntensity, d.frameIntensity, 0, 2),
+    particleCount: numberValue(input?.particleCount, d.particleCount, 0, 600, true),
+    moonBrightness: numberValue(input?.moonBrightness, d.moonBrightness, 0, 2),
+    moonSize: numberValue(input?.moonSize, d.moonSize, 0.4, 1.8),
+    cloudDensity: numberValue(input?.cloudDensity, d.cloudDensity, 0, 1.8),
+    cloudOpacity: numberValue(input?.cloudOpacity, d.cloudOpacity, 0, 1.8),
+    cloudIntensity: numberValue(input?.cloudIntensity, d.cloudIntensity, 0, 2),
+    cloudScale: numberValue(input?.cloudScale, d.cloudScale, 0.55, 2),
+    cloudLayerCount: numberValue(input?.cloudLayerCount, d.cloudLayerCount, 0, 18, true),
+    cloudDriftSpeed: numberValue(input?.cloudDriftSpeed, d.cloudDriftSpeed, 0, 2),
+    cloudDriftVariation: numberValue(input?.cloudDriftVariation, d.cloudDriftVariation, 0, 1),
+    cloudForegroundAmount: numberValue(input?.cloudForegroundAmount, d.cloudForegroundAmount, 0, 1.6),
+    cloudBackgroundAmount: numberValue(input?.cloudBackgroundAmount, d.cloudBackgroundAmount, 0, 1.6),
+    cloudNearFloorAmount: numberValue(input?.cloudNearFloorAmount, d.cloudNearFloorAmount, 0, 1.6),
+    cloudCoolTint: numberValue(input?.cloudCoolTint, d.cloudCoolTint, 0, 1.5),
+    cloudWhiteHighlight: numberValue(input?.cloudWhiteHighlight, d.cloudWhiteHighlight, 0, 1.5),
+    hazeDensity: numberValue(input?.hazeDensity, d.hazeDensity, 0, 1.8),
+    hazeHeight: numberValue(input?.hazeHeight, d.hazeHeight, -3, 3),
+    hazeMotionSpeed: numberValue(input?.hazeMotionSpeed, d.hazeMotionSpeed, 0, 1),
+    reflectionStrength: numberValue(input?.reflectionStrength, d.reflectionStrength, 0, 0.6),
+    reflectionBlur: numberValue(input?.reflectionBlur, d.reflectionBlur, 0.3, 1),
+    threadOpacity: numberValue(input?.threadOpacity, d.threadOpacity, 0, 0.8),
+    coldLightIntensity: numberValue(input?.coldLightIntensity, d.coldLightIntensity, 0, 1.8),
+    moonLightIntensity: numberValue(input?.moonLightIntensity, d.moonLightIntensity, 0, 3),
+    moonFillIntensity: numberValue(input?.moonFillIntensity, d.moonFillIntensity, 0, 1.2),
+    moonHaloIntensity: numberValue(input?.moonHaloIntensity, d.moonHaloIntensity, 0, 2),
+    moonCloudLightIntensity: numberValue(input?.moonCloudLightIntensity, d.moonCloudLightIntensity, 0, 2),
+    moonScatteringIntensity: numberValue(input?.moonScatteringIntensity, d.moonScatteringIntensity, 0, 1.5),
+    moonLightColor: colorValue(input?.moonLightColor, d.moonLightColor),
+    moonPositionX: numberValue(input?.moonPositionX, d.moonPositionX, -12, 12),
+    moonPositionY: numberValue(input?.moonPositionY, d.moonPositionY, 4, 24),
+    moonPositionZ: numberValue(input?.moonPositionZ, d.moonPositionZ, -180, -80),
+    moonTargetX: numberValue(input?.moonTargetX, d.moonTargetX, -40, 40),
+    moonTargetY: numberValue(input?.moonTargetY, d.moonTargetY, -12, 14),
+    moonTargetZ: numberValue(input?.moonTargetZ, d.moonTargetZ, -180, 40),
+    moonHaloRadius: numberValue(input?.moonHaloRadius, d.moonHaloRadius, 0, 2.5),
+    moonGodRaysIntensity: numberValue(input?.moonGodRaysIntensity, d.moonGodRaysIntensity, 0, 0.8),
+  }
 }
 
 function normalizeGalaxy(input: Record<string, unknown> | undefined): SceneComposerConfig['scenes']['galaxy'] {

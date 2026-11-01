@@ -16,3 +16,24 @@ export function focusCamera(base: readonly [number, number, number], target: rea
   const amount = Math.min(12, Math.max(0, distance - 4.8)) * blend
   return { x: base[0] + dx / distance * amount, y: base[1] + dy / distance * amount, z: base[2] + dz / distance * amount, distance: distance - amount }
 }
+
+export const GALLERY_CAMERA_FAR = 220
+
+/** Extends the shared projection for the gallery's distant moon, then restores its exact prior range. */
+export function extendGalleryFarPlane(camera: { far: number; updateProjectionMatrix: () => void }): () => void {
+  const previousFar = camera.far
+  camera.far = Math.max(previousFar, GALLERY_CAMERA_FAR)
+  camera.updateProjectionMatrix()
+  return () => {
+    camera.far = previousFar
+    camera.updateProjectionMatrix()
+  }
+}
+
+/** Applies the gallery-only projection extension and returns an effect-cleanup callback. */
+export function configureCameraFarPlane(
+  camera: { far: number; updateProjectionMatrix: () => void },
+  scene: string,
+): () => void {
+  return scene === 'gallery' ? extendGalleryFarPlane(camera) : () => undefined
+}

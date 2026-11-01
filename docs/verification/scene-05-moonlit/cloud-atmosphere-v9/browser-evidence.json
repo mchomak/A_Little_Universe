@@ -1,0 +1,155 @@
+{
+  "url": "http://127.0.0.1:5186/?debug",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "errors": [],
+  "shots": [
+    {
+      "filename": "01-entry.png",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "progress": 0,
+      "camera": [
+        0,
+        0,
+        6.15
+      ],
+      "renderer": {
+        "cameraPosition": [
+          0,
+          0,
+          6.15
+        ],
+        "calls": 121,
+        "triangles": 36888,
+        "geometries": 111,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    },
+    {
+      "filename": "02-forward-parallax.png",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "progress": 37.99943963031501,
+      "camera": [
+        0,
+        0,
+        -31.84943963031501
+      ],
+      "renderer": {
+        "cameraPosition": [
+          0,
+          0,
+          -31.84943963031501
+        ],
+        "calls": 112,
+        "triangles": 33282,
+        "geometries": 201,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    },
+    {
+      "filename": "03-backward-parallax.png",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "progress": 16.00035232172375,
+      "camera": [
+        0,
+        0,
+        -9.85033799961151
+      ],
+      "renderer": {
+        "cameraPosition": [
+          0,
+          0,
+          -9.85033799961151
+        ],
+        "calls": 130,
+        "triangles": 36602,
+        "geometries": 201,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    },
+    {
+      "filename": "04-photo-focus.png",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "focused",
+        "focus": 6,
+        "atEnd": false
+      },
+      "progress": 16.000124343108194,
+      "camera": [
+        0.8812669132505002,
+        0.12,
+        -34.93926028375605
+      ],
+      "renderer": {
+        "cameraPosition": [
+          0.8812669132505002,
+          0.12,
+          -34.93926028375605
+        ],
+        "calls": 45,
+        "triangles": 21220,
+        "geometries": 201,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    },
+    {
+      "filename": "05-free-view.png",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "progress": 16.000124343108194,
+      "camera": [
+        0,
+        0,
+        -9.850124343108194
+      ],
+      "renderer": {
+        "cameraPosition": [
+          0,
+          0,
+          -9.850124343108194
+        ],
+        "calls": 130,
+        "triangles": 36602,
+        "geometries": 201,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    }
+  ]
+}

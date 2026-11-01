@@ -17,6 +17,7 @@ import { createLilyDissolveUniforms } from '../scenes/lily/dissolve'
 import { GalaxyExperience } from '../scenes/galaxy/GalaxyExperience'
 import { shouldKeepGrowthWorld } from './sceneContinuity'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
+import { getSceneLighting } from './sceneLighting'
 
 
 const modules = { prologue: PrologueScene, bloom: BloomScene, gallery: GalleryScene, eye: EyeScene, cosmos: CosmosScene, greeting: GreetingScene, ending: EndingScene }
@@ -29,6 +30,7 @@ function IdentityLoading({ runtime }: { runtime: FilmRuntime }) {
 export function SceneDirector(props: SceneProps) {
   const { scene, elapsed } = props.state
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
+  const lighting = getSceneLighting(scene, config.scenes.gallery.coldLightIntensity)
   const Scene = scene === 'growth' || scene === 'identity' ? null : modules[scene]
   const [lilyParticleSource, setLilyParticleSource] = useState<LilySurfaceSource | null>(null)
   const dissolveUniforms = useMemo(() => createLilyDissolveUniforms(), [])
@@ -40,9 +42,9 @@ export function SceneDirector(props: SceneProps) {
   const keepGrowthWorld = shouldKeepGrowthWorld(scene, elapsed, config.scenes.identity.dissolveDuration)
   return <>
     <color attach="background" args={['#080914']} />
-    <ambientLight intensity={0.9} />
-    <directionalLight position={[-3, 5, 4]} intensity={2.4} color="#FFF0E8" />
-    <directionalLight position={[3, 1, -2]} intensity={1.1} color="#B9A4E8" />
+    <ambientLight intensity={lighting.ambientIntensity} />
+    <directionalLight position={[-3, 5, 4]} intensity={lighting.keyIntensity} color={lighting.keyColor} />
+    <directionalLight position={[3, 1, -2]} intensity={lighting.fillIntensity} color={lighting.fillColor} />
     {keepGrowthWorld && <GrowthScene key="persistent-growth-world" {...props} environmentOnly={scene !== 'growth'} />}
     <Suspense fallback={null}><AnimatedLily {...props} onParticleSource={publishLilyParticleSource} dissolveUniforms={dissolveUniforms} /></Suspense>
     <BloomGestureTarget {...props} />

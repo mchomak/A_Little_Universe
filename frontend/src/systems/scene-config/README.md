@@ -1,6 +1,6 @@
 # Scene Composer configuration
 
-`SceneComposerConfig` is an immutable schema version 4. `normalizeConfig(input)` accepts partial schema v4 and older schema v1/v2/v3 JSON; unknown keys are discarded and missing or invalid values use the v4 defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 stores total winding in radians. The store publishes font changes only after the selected local font is ready.
+`SceneComposerConfig` is an immutable schema version 8. `normalizeConfig(input)` accepts partial schema v1–v8 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 stores total winding in radians. Schema v7 adds bounded Moonlit Gallery light controls; schema v8 adds a calm, bounded cloud drift speed. The store publishes font changes only after the selected local font is ready.
 
 The public store is:
 
@@ -11,7 +11,7 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v4.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v8.
 
 Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its 0.1–20 second travel-window meaning, with the cinematic default now 2.2 seconds; `particleFadeDuration` controls individual dust fade and defaults to 1.2 seconds. `particleReturnFraction` is ignored. The light, atmosphere, typography and interaction fields are additive schema-v2 fields: missing fields in both v1 and v2 files receive current defaults.
 
@@ -60,6 +60,10 @@ An optional production override can contain only values that differ from the def
 | Preload | Glow, particle count, movement speed, collapse duration | 0–2, 40–300 integer, 0.1–4, 0–4 |
 | Preparation | Spacing, entrance duration | 0–64, 0–5 |
 | Preparation | Heading scale, line height, card opacity | 0.9–1.1, 0.9–1.5, 0.85–1 |
+| Gallery light | Moon light color/intensity; halo intensity/radius | `#C3D8F2`; 0–3; 0–2; 0–2.5 |
+| Gallery light | Scattering / godray intensity | 0–1.5; 0–0.8 |
+| Gallery light | Moon position X / Y / Z | −12–12 / 4–24 / −180–−80 world units |
+| Gallery light | Light target X / Y / Z | −40–40 / −12–14 / −180–40 world units |
 | Prologue | Font size, line height, position Y | 16–160, 0.8–2.5, 10–80 |
 | Prologue | Handwriting duration/rhythm, phrase interval, readable hold | 0.5–20, 0.1–3, 0–8, 0–30 |
 | Prologue | Particle count | 300–6000 integer; default 1800 |

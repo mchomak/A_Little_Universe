@@ -186,6 +186,54 @@ const IDENTITY_CAMERA_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.identity.cameraMoveDuration', label: 'Длительность движения камеры', unit: 'с', min: 1, max: 18, step: 0.1 },
 ]
 
+const GALLERY_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.gallery.frameIntensity', label: 'Интенсивность рамок', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.gallery.particleCount', label: 'Количество частиц', unit: 'шт.', min: 0, max: 600, step: 1 },
+  { path: 'scenes.gallery.moonBrightness', label: 'Яркость лунной сферы', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.gallery.moonSize', label: 'Размер луны', unit: '×', min: 0.4, max: 1.8, step: 0.05 },
+  { path: 'scenes.gallery.reflectionStrength', label: 'Сила отражений', unit: '×', min: 0, max: 0.6, step: 0.01 },
+  { path: 'scenes.gallery.reflectionBlur', label: 'Размытие отражений', unit: '×', min: 0.3, max: 1, step: 0.01 },
+  { path: 'scenes.gallery.threadOpacity', label: 'Прозрачность световых нитей', unit: '×', min: 0, max: 0.8, step: 0.01 },
+  { path: 'scenes.gallery.coldLightIntensity', label: 'Интенсивность холодного света', unit: '×', min: 0, max: 1.8, step: 0.05 },
+  { path: 'scenes.gallery.moonLightIntensity', label: 'Общий лунный свет', unit: '×', min: 0, max: 3, step: 0.05 },
+  { path: 'scenes.gallery.moonFillIntensity', label: 'Заполняющий лунный свет', unit: '×', min: 0, max: 1.2, step: 0.025 },
+  { path: 'scenes.gallery.moonHaloIntensity', label: 'Интенсивность ореола Луны', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.gallery.moonHaloRadius', label: 'Радиус ореола Луны', unit: '×', min: 0, max: 2.5, step: 0.05 },
+  { path: 'scenes.gallery.moonGodRaysIntensity', label: 'Интенсивность god rays', unit: '×', min: 0, max: 0.8, step: 0.01 },
+  { path: 'scenes.gallery.moonPositionX', label: 'Положение Луны X', unit: 'м', min: -12, max: 12, step: 0.1 },
+  { path: 'scenes.gallery.moonPositionY', label: 'Положение Луны Y', unit: 'м', min: 4, max: 24, step: 0.1 },
+  { path: 'scenes.gallery.moonPositionZ', label: 'Положение Луны Z', unit: 'м', min: -180, max: -80, step: 1 },
+  { path: 'scenes.gallery.moonTargetX', label: 'Цель света X', unit: 'м', min: -40, max: 40, step: 0.5 },
+  { path: 'scenes.gallery.moonTargetY', label: 'Цель света Y', unit: 'м', min: -12, max: 14, step: 0.05 },
+  { path: 'scenes.gallery.moonTargetZ', label: 'Цель света Z', unit: 'м', min: -180, max: 40, step: 1 },
+]
+
+const GALLERY_CLOUD_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
+  { name: 'Облачные массы', controls: [
+    { path: 'scenes.gallery.cloudDensity', label: 'Плотность облаков', unit: '×', min: 0, max: 1.8, step: 0.05 },
+    { path: 'scenes.gallery.cloudOpacity', label: 'Непрозрачность облаков', unit: '×', min: 0, max: 1.8, step: 0.05 },
+    { path: 'scenes.gallery.cloudScale', label: 'Размер облачных масс', unit: '×', min: 0.55, max: 2, step: 0.05 },
+    { path: 'scenes.gallery.cloudLayerCount', label: 'Количество облачных масс', unit: 'шт.', min: 0, max: 18, step: 1 },
+    { path: 'scenes.gallery.cloudForegroundAmount', label: 'Ближние облака', unit: '×', min: 0, max: 1.6, step: 0.05 },
+    { path: 'scenes.gallery.cloudBackgroundAmount', label: 'Дальние облака', unit: '×', min: 0, max: 1.6, step: 0.05 },
+    { path: 'scenes.gallery.cloudNearFloorAmount', label: 'Облака у пола', unit: '×', min: 0, max: 1.6, step: 0.05 },
+    { path: 'scenes.gallery.cloudIntensity', label: 'Контраст облачной формы', unit: '×', min: 0, max: 2, step: 0.05 },
+  ] },
+  { name: 'Дрейф и дымка', controls: [
+    { path: 'scenes.gallery.cloudDriftSpeed', label: 'Скорость дрейфа облаков', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.gallery.cloudDriftVariation', label: 'Разница дрейфа по глубине', unit: '×', min: 0, max: 1, step: 0.05 },
+    { path: 'scenes.gallery.hazeDensity', label: 'Плотность дымки', unit: '×', min: 0, max: 1.8, step: 0.05 },
+    { path: 'scenes.gallery.hazeHeight', label: 'Высота дымки', unit: 'м.', min: -3, max: 3, step: 0.1 },
+    { path: 'scenes.gallery.hazeMotionSpeed', label: 'Скорость движения дымки', unit: '×', min: 0, max: 1, step: 0.025 },
+  ] },
+  { name: 'Лунный свет и цвет', controls: [
+    { path: 'scenes.gallery.moonCloudLightIntensity', label: 'Лунный свет на облаках', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.gallery.moonScatteringIntensity', label: 'Интенсивность лунной дымки', unit: '×', min: 0, max: 1.5, step: 0.025 },
+    { path: 'scenes.gallery.cloudCoolTint', label: 'Холодный синий оттенок', unit: '×', min: 0, max: 1.5, step: 0.025 },
+    { path: 'scenes.gallery.cloudWhiteHighlight', label: 'Белые лунные акценты', unit: '×', min: 0, max: 1.5, step: 0.025 },
+  ] },
+]
+
 const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
   { name: 'Galaxy Geometry · перестройка после паузы ползунка', controls: [
     { path: 'scenes.galaxy.starCount', label: 'Количество звёзд', unit: 'шт.', min: 8000, max: 90000, step: 1000 },
@@ -326,7 +374,8 @@ function ConfigRange({ control, config, onChange, onReset }: {
 }) {
   const value = valueAtPath(config, control.path)
   const scale = control.displayScale ?? 1
-  return <RangeControl control={control} value={typeof value === 'number' ? value * scale : control.min} onChange={(next) => onChange(control.path, next / scale)} onReset={() => onReset(control.path)} changed={value !== defaultAtPath(control.path)} />
+  const displayValue = typeof value === 'number' ? Math.min(control.max, Math.max(control.min, value * scale)) : control.min
+  return <RangeControl control={control} value={displayValue} onChange={(next) => onChange(control.path, next / scale)} onReset={() => onReset(control.path)} changed={value !== defaultAtPath(control.path)} />
 }
 
 function FontControl({ path, label, value, onChange, onReset }: {
@@ -456,7 +505,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
     await commitGalaxySettings(selectGalaxyPalette(getConfig().scenes.galaxy, palette))
   }
 
-  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'galaxy') => {
+  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy') => {
     const before = getConfig()
     const result = await resetComposerScope(scope)
     if (!result.ok) {
@@ -498,7 +547,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–5. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–11. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -515,7 +564,8 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
     }
   }
 
-  const range = (control: NumericControl) => <ConfigRange key={control.path} control={control} config={config} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
+  const rangeWithMax = (control: NumericControl, max: number) => <ConfigRange key={control.path} control={max === control.max ? control : { ...control, max }} config={config} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
+  const range = (control: NumericControl) => rangeWithMax(control, control.max)
   const color = (path: ComposerFieldPath, label: string) => {
     const isGalaxyColor = path.startsWith('scenes.galaxy.')
     const galaxyColorKey = isGalaxyColor ? path.slice('scenes.galaxy.'.length) as GalaxyColorKey : undefined
@@ -535,9 +585,9 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const font = (scene: 'preparation' | 'prologue', label: string) => <FontControl path={`scenes.${scene}.fontFamily`} label={label} value={config.scenes[scene].fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
   const title = selected === 'preload' ? '00 · Загрузка' : selected === 'preparation' ? '00.1 · Подготовка' : SCENES[selected].label
   const hasSceneControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue'
-    || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'cosmos'
+    || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'gallery' || selected === 'cosmos'
   const currentScope: InspectorScope | undefined = selected === 'cosmos' ? 'galaxy'
-    : selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth' || selected === 'bloom' || selected === 'identity'
+    : selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'gallery'
       ? selected : undefined
   const currentSnapshots = currentScope ? snapshots[currentScope] : undefined
   const remember = (slot: 'A' | 'B') => {
@@ -616,15 +666,17 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
       </details>
       <section aria-labelledby="inspector-scene-title" className="inspector-scene">
         <h3 id="inspector-scene-title">{title}</h3>
-        {currentScope && <details className="inspector-compare"><summary>История и сравнение A/B</summary>
+        {currentScope && <details className="inspector-compare"><summary>{currentScope === 'gallery' ? 'История параметров' : 'История и сравнение A/B'}</summary>
           {historyButtons(currentScope)}
-          <p>Снимки временные и относятся к этой сцене. Сравнение останавливает фильм в текущем кадре.</p>
-          <div className="inspector-history"><button type="button" onClick={() => remember('A')}>Сохранить A</button><button type="button" onClick={() => remember('B')}>Сохранить B</button></div>
-          <div className="inspector-history"><button type="button" aria-pressed={currentSnapshots?.active === 'A' && !!currentSnapshots.A && matchesPatch(section(config, currentScope), currentSnapshots.A)} disabled={comparing || !currentSnapshots?.A || selected !== active || route !== 'film'} onClick={() => { void compare('A') }}>Показать A</button><button type="button" aria-pressed={currentSnapshots?.active === 'B' && !!currentSnapshots.B && matchesPatch(section(config, currentScope), currentSnapshots.B)} disabled={comparing || !currentSnapshots?.B || selected !== active || route !== 'film'} onClick={() => { void compare('B') }}>Показать B</button></div>
-          {comparing && <p role="status">Применяем снимок…</p>}
-          {route !== 'film' && <p>Сравнение недоступно: у загрузки и подготовки нет управляемого времени фильма.</p>}
-          {route === 'film' && currentSnapshots?.point && <p>Точка: {currentSnapshots.point.time.toFixed(2)} с <button type="button" onClick={() => setSnapshots(previous => ({ ...previous, [currentScope]: { ...previous[currentScope], point: undefined, active: undefined } }))}>Новая точка</button></p>}
-          {selected !== active && <p>Перейдите в эту сцену для сравнения.</p>}
+          {currentScope === 'gallery' ? <p>Сравнение недоступно для интерактивной галереи: у прогулки нет стабильной точки фильма.</p> : <>
+            <p>Снимки временные и относятся к этой сцене. Сравнение останавливает фильм в текущем кадре.</p>
+            <div className="inspector-history"><button type="button" onClick={() => remember('A')}>Сохранить A</button><button type="button" onClick={() => remember('B')}>Сохранить B</button></div>
+            <div className="inspector-history"><button type="button" aria-pressed={currentSnapshots?.active === 'A' && !!currentSnapshots.A && matchesPatch(section(config, currentScope), currentSnapshots.A)} disabled={comparing || !currentSnapshots?.A || selected !== active || route !== 'film'} onClick={() => { void compare('A') }}>Показать A</button><button type="button" aria-pressed={currentSnapshots?.active === 'B' && !!currentSnapshots.B && matchesPatch(section(config, currentScope), currentSnapshots.B)} disabled={comparing || !currentSnapshots?.B || selected !== active || route !== 'film'} onClick={() => { void compare('B') }}>Показать B</button></div>
+            {comparing && <p role="status">Применяем снимок…</p>}
+            {route !== 'film' && <p>Сравнение недоступно: у загрузки и подготовки нет управляемого времени фильма.</p>}
+            {route === 'film' && currentSnapshots?.point && <p>Точка: {currentSnapshots.point.time.toFixed(2)} с <button type="button" onClick={() => setSnapshots(previous => ({ ...previous, [currentScope]: { ...previous[currentScope], point: undefined, active: undefined } }))}>Новая точка</button></p>}
+            {selected !== active && <p>Перейдите в эту сцену для сравнения.</p>}
+          </>}
         </details>}
         {selected === 'preload' && <details open><summary>Свечение и движение</summary>{PRELOAD_CONTROLS.map(range)}</details>}
         {selected === 'preparation' && <>
@@ -668,6 +720,16 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             <p>Наклон взгляда задаётся высотой камеры, дистанцией и точкой фокуса. Параметры кадра общие с концом сцены 03, поэтому первый кадр сцены 04 остаётся непрерывным.</p>
           </details>
         </>}
+        {selected === 'gallery' && <details open><summary>Scene 05 — Лунная галерея</summary>
+          {color('scenes.gallery.moonLightColor', 'Цвет лунного света')}
+          {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.name === 'Облачные массы'}><summary>{group.name}</summary>
+            {group.controls.map(control => rangeWithMax(control,
+              control.path === 'scenes.gallery.cloudLayerCount' && (state.quality === 'low' || config.global.quality === 'low') ? 14 : control.max,
+            ))}
+            {group.name === 'Облачные массы' && <p>В сцене 24 объёмные формы; рендер ограничен 18 массами в обычном качестве и 14 в низком.</p>}
+          </details>)}
+          {GALLERY_CONTROLS.map(range)}
+        </details>}
         {selected === 'cosmos' && <>
           <details open><summary>Scene 07 — Galaxy</summary>
             {GALAXY_SELECTS.map((control) => <SelectConfigControl key={control.path} control={control} value={valueAtPath(config, control.path) as string} onChange={(path, value) => { void (path === 'scenes.galaxy.palette' ? changeGalaxyPalette(value as GalaxyPalette) : changeField(path, value)) }} onReset={(path) => { void resetField(path) }} />)}
@@ -688,7 +750,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             <button type="button" onClick={() => { void resetScope('galaxy') }}>Сбросить Galaxy</button>
           </details>
         </>}
-        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
+        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
       </section>
       <details className="inspector-section"><summary>Диагностика</summary>
         <div className="dev-actions"><button type="button" data-testid="dev-preload" onClick={onPreload}>Проверить загрузку</button><button type="button" data-testid="dev-permissions" onClick={onPermissions}>Настройки заново</button></div>

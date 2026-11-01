@@ -1,0 +1,177 @@
+{
+  "url": "http://127.0.0.1:5186/?debug",
+  "errors": [],
+  "viewport": [
+    1440,
+    900
+  ],
+  "shots": [
+    {
+      "name": "01-entry.png",
+      "phase": "explore",
+      "interaction": "walk",
+      "focus": null,
+      "progress": 0,
+      "camera": [
+        0,
+        0,
+        6.15
+      ],
+      "renderer": {
+        "camera": [
+          0,
+          0,
+          6.15
+        ],
+        "calls": 121,
+        "triangles": 36888,
+        "canvasCount": 1,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    },
+    {
+      "name": "02-forward-parallax.png",
+      "phase": "explore",
+      "interaction": "walk",
+      "focus": null,
+      "progress": 37.999645362295496,
+      "camera": [
+        0,
+        0,
+        -31.849645362295497
+      ],
+      "renderer": {
+        "camera": [
+          0,
+          0,
+          -31.849645362295497
+        ],
+        "calls": 112,
+        "triangles": 33282,
+        "canvasCount": 1,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    },
+    {
+      "name": "03-backward-parallax.png",
+      "phase": "explore",
+      "interaction": "walk",
+      "focus": null,
+      "progress": 16.00020531539829,
+      "camera": [
+        0,
+        0,
+        -9.85020531539829
+      ],
+      "renderer": {
+        "camera": [
+          0,
+          0,
+          -9.85020531539829
+        ],
+        "calls": 130,
+        "triangles": 36602,
+        "canvasCount": 1,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    },
+    {
+      "name": "04-photo-focus.png",
+      "phase": "explore",
+      "interaction": "focused",
+      "focus": 6,
+      "progress": 16.00007865312212,
+      "camera": [
+        0.8812669132505002,
+        0.12,
+        -34.93926028375605
+      ],
+      "renderer": {
+        "camera": [
+          0.8812669132505002,
+          0.12,
+          -34.93926028375605
+        ],
+        "calls": 45,
+        "triangles": 21220,
+        "canvasCount": 1,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    },
+    {
+      "name": "05-free-view.png",
+      "phase": "explore",
+      "interaction": "walk",
+      "focus": null,
+      "progress": 16.00007865312212,
+      "camera": [
+        0,
+        0,
+        -9.85007865312212
+      ],
+      "renderer": {
+        "camera": [
+          0,
+          0,
+          -9.85007865312212
+        ],
+        "calls": 130,
+        "triangles": 36602,
+        "canvasCount": 1,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    }
+  ],
+  "lowQuality": {
+    "shot": {
+      "name": "06-low-quality-1024x768.png",
+      "phase": "explore",
+      "interaction": "walk",
+      "focus": null,
+      "progress": 16.00007865312212,
+      "camera": [
+        0,
+        0,
+        -9.85007865312212
+      ],
+      "renderer": {
+        "camera": [
+          0,
+          0,
+          -9.85007865312212
+        ],
+        "calls": 124,
+        "triangles": 12724,
+        "canvasCount": 1,
+        "canvas": [
+          1024,
+          684
+        ]
+      }
+    },
+    "viewport": [
+      1024,
+      768
+    ],
+    "profile": {
+      "frames": 90,
+      "medianMs": 8.30000000000291,
+      "p95Ms": 8.5
+    }
+  }
+}

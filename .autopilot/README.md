@@ -26,8 +26,14 @@
 | 2026-10-30 | `2026-10-30-lily-film-integration` | сдан | GLB лилии в фильме, клипы роста и раскрытия, настройки длительности и проверки |
 | 2026-10-30 | `2026-10-30-scene-07-galaxy--wip` | в работе | Scene 07 — Galaxy; desktop checks passed, tablet validation pending |
 | 2026-10-30 | `2026-10-30-prologue-emissive-dissolve` | сдан | Scene 01: Great Vibes, переиспользуемый побуквенный dissolve и световые частицы; 285 тестов, lint, TypeScript и build прошли |
+| 2026-10-31 | `2026-10-31-gallery05-moonlit` | сдан | Лунная галерея сцены 05; 315 тестов, desktop Chrome и touch emulation |
+| 2026-10-31 | `2026-10-31-gallery05-cloud-atmosphere` | сдан | Процедурные world-space облака, лунная дымка и настройки Scene Composer для сцены 05; 320 тестов и браузерная проверка |
 | 2026-10-31 | `2026-10-31-scene04-vortex-refinement` | сдан | Scene 04: более плотный 12-секундный распад GLB-лилии, расширенный восходящий вихрь, центральная фаза на 50%; 316 тестов, lint, TypeScript и build прошли; iPad не проверен |
 | 2026-10-31 | `2026-10-31-scene04-portrait-particles` | сдан | Портрет Василисы собирается из части 04-го вихря по фото; 329 тестов, lint, TypeScript и build прошли; iPad/Safari не проверен |
 | 2026-11-01 | `2026-11-01-scene04-star-portrait-prototype` | сдан | DEV-страница для настройки звёздного портрета 4:3; 344 теста, lint, TypeScript и build прошли; iPad/Safari не проверен |
+| 2026-11-01 | `2026-11-01-gallery05-moonlight` | завершён | Лунное освещение сцены 05 |
+| 2026-11-01 | `2026-11-01-gallery05-cloud-prototype` | завершён | Прототип облаков сцены 05 |
+| 2026-11-01 | `2026-11-01-gallery05-cloud-atmosphere-v2` | завершён | Объёмные облака сцены 05 |
+| 2026-11-01 | `2026-11-01-gallery-cloud-controlled-pass--wip` | в работе | — |
 
 | 2026-11-01 | `2026-11-01-scene04-visible-vortex-portrait--wip` | в работе | — |

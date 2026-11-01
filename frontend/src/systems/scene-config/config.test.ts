@@ -2,6 +2,31 @@ import { expect, it, vi } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, normalizeConfig, SCENE_CONFIG_PRESETS } from './config'
 import * as configApi from './config'
 
+it('loads moonlit gallery settings from legacy schemas and preserves schema v10 data in v11', () => {
+  for (const schemaVersion of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) {
+    const imported = normalizeConfig({ schemaVersion, scenes: { gallery: { moonBrightness: 1.1, cloudLayerCount: 7 } } })
+    expect(imported.schemaVersion).toBe(11)
+    expect(imported.scenes.gallery).toMatchObject({ moonBrightness: 1.1, cloudLayerCount: 7 })
+    expect(imported.scenes.identity).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity)
+    expect(Object.isFrozen(imported.scenes.gallery)).toBe(true)
+  }
+
+  const schemaTen = normalizeConfig({ schemaVersion: 10, global: { dprMax: 1.4 }, scenes: {
+    gallery: { cloudLayerCount: 12, moonBrightness: 1.35 },
+    galaxy: { spin: 4.6, armWidth: 0.16, randomness: 0.065, coreSize: 0.24, thickness: 0.05 },
+  } })
+  expect(schemaTen.global.dprMax).toBe(1.4)
+  expect(schemaTen.scenes.gallery).toMatchObject({ cloudLayerCount: 12, moonBrightness: 1.35 })
+  expect(schemaTen.scenes.galaxy).toMatchObject({ spin: 4.6, armWidth: 0.16, randomness: 0.065, coreSize: 0.24, thickness: 0.05 })
+})
+
+it('expands only the old schema v9 cloud maximum while preserving intentional lower counts', () => {
+  expect(normalizeConfig({ schemaVersion: 9, scenes: { gallery: { cloudLayerCount: 12 } } }).scenes.gallery.cloudLayerCount).toBe(18)
+  expect(normalizeConfig({ schemaVersion: 9, scenes: { gallery: { cloudLayerCount: 7 } } }).scenes.gallery.cloudLayerCount).toBe(7)
+  expect(normalizeConfig({ schemaVersion: 9, scenes: { gallery: { cloudLayerCount: 0 } } }).scenes.gallery.cloudLayerCount).toBe(0)
+  expect(normalizeConfig({ schemaVersion: 10, scenes: { gallery: { cloudLayerCount: 12 } } }).scenes.gallery.cloudLayerCount).toBe(12)
+})
+
 it('migrates old configs to bounded scene 04 dissolve settings', () => {
   expect(normalizeConfig({ schemaVersion: 4 }).scenes.identity).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity)
   expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: { dissolveDuration: 6, particleCount: 4000, particleSize: 3, edgeWidth: 0.06 } } }).scenes.identity)
@@ -127,8 +152,8 @@ it('normalizes capture limits and repairs turn ordering without losing legacy se
   })
 })
 
-it('uses immutable schema v5 defaults and the local Great Vibes prologue face', () => {
-  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(5)
+it('uses immutable schema v11 defaults and the local Great Vibes prologue face', () => {
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(11)
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('great-vibes')
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue).toMatchObject({
     interphraseInterval: 1.35,
@@ -168,7 +193,7 @@ it('migrates schema v1 particle settings and preserves compatible fields', () =>
     prologue: { fontSize: 72, particleCount: 120, particleSpeed: 2, particleSpread: 1.2, particleDuration: 9, particleReturnFraction: 0.9 },
   } })
 
-  expect(migrated.schemaVersion).toBe(5)
+  expect(migrated.schemaVersion).toBe(11)
   expect(migrated.global.quality).toBe('low')
   expect(migrated.scenes.prologue).toMatchObject({
     fontSize: 72, particleCount: 300, windStrength: 2.3, turbulence: 0.36,
@@ -207,7 +232,7 @@ it('falls back per field, drops unknown keys, and rejects unsupported versions',
   expect(malformed.global).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.global)
   expect(malformed.scenes.prologue).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)
   expect(Object.keys(malformed)).toEqual(['schemaVersion', 'global', 'scenes', 'preset'])
-  expect(normalizeConfig({ schemaVersion: 6, scenes: { prologue: { fontSize: 72 } } })).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
+  expect(normalizeConfig({ schemaVersion: 12, scenes: { prologue: { fontSize: 72 } } })).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
 })
 
 it('accepts schema v2 inclusive bounds and defaults out-of-range or non-finite values', () => {
@@ -295,7 +320,7 @@ it('normalizes additive bloom camera and calligraphy fields while preserving old
 
 it('migrates schema v2 documents with galaxy defaults and bounds the new controls', () => {
   const migrated = normalizeConfig({ schemaVersion: 2, scenes: { growth: { seedScale: 1.2 } } })
-  expect(migrated.schemaVersion).toBe(5)
+  expect(migrated.schemaVersion).toBe(11)
   expect(migrated.scenes.galaxy).toMatchObject({ seed: 'andromeda', starCount: 32000, arms: 5, palette: 'spore', cameraEndAngle: 0.785 })
   const galaxy = normalizeConfig({ schemaVersion: 4, scenes: { galaxy: {
     starCount: 90000, arms: 8, quality: 'high', palette: 'custom', coreColor: '#A1B2C3', fogLayers: 8,
@@ -314,9 +339,9 @@ it('migrates schema v3 galaxy spin from turns to radians and converts schema v4 
     coreSize: 1.55, coreDensity: 0.4, thickness: 0.12,
   } } })
 
-  expect(legacy.schemaVersion).toBe(5)
+  expect(legacy.schemaVersion).toBe(11)
   expect(legacy.scenes.galaxy.spin).toBeCloseTo(1.2 * Math.PI * 2, 10)
-  expect(current.schemaVersion).toBe(5)
+  expect(current.schemaVersion).toBe(11)
   expect(current.scenes.galaxy).toMatchObject({
     seed: '154684308', spin: 4.6, armWidth: 0.16,
     coreSize: 1.55 / 8.2, coreDensity: 0.248, thickness: 0.12 / 8.2,
@@ -361,6 +386,19 @@ it('exposes an observable immutable store with scoped reset', async () => {
   expect(getConfig().scenes.prologue.fontSize).toBe(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontSize)
   expect(getConfig().global).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.global)
   unsubscribe()
+})
+
+it('resets identity and gallery scopes independently', async () => {
+  await configApi.resetConfig('all')
+  await configApi.updateConfig({ scenes: { identity: { portraitDuration: 10 }, gallery: { moonBrightness: 1.4 } } })
+
+  await configApi.resetConfig('gallery')
+  expect(getConfig().scenes.gallery).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery)
+  expect(getConfig().scenes.identity.portraitDuration).toBe(10)
+
+  await configApi.resetConfig('identity')
+  expect(getConfig().scenes.identity).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity)
+  expect(getConfig().scenes.gallery).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery)
 })
 
 it('applies a font change only after the requested local face is ready', async () => {

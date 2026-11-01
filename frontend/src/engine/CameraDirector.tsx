@@ -9,7 +9,7 @@ import { useSceneTimeline } from './useSceneTimeline'
 import type { CameraPose } from '../scenes/shared/galleryMotion'
 import { GALLERY, GALLERY_MEMORIES, memoryPosition } from '../scenes/gallery/content'
 import { advanceGallery, galleryMotion, gallerySnapshot } from '../scenes/gallery/controller'
-import { focusCamera } from '../scenes/gallery/camera'
+import { configureCameraFarPlane, focusCamera } from '../scenes/gallery/camera'
 import { GALLERY_ART } from '../scenes/gallery/artDirection'
 import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
@@ -109,6 +109,13 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     return timeline
   }, [bloomSettings, galaxySettings, growthSettings, identitySettings, reducedMotion, render, revision, scene])
   useSceneTimeline(build, { runtime })
+  useEffect(() => {
+    if (!(camera instanceof PerspectiveCamera)) return
+    const restoreFarPlane = configureCameraFarPlane(camera, scene)
+    if (scene !== 'gallery') return
+    invalidate()
+    return () => { restoreFarPlane(); invalidate() }
+  }, [camera, invalidate, scene])
   useEffect(() => scene === 'gallery' ? wakeOnVisible(document, invalidate) : undefined, [scene, invalidate])
 
   useFrame((_, delta) => {
