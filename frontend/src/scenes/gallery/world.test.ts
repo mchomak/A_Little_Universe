@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { GALLERY } from './content'
-import { GALLERY_WORLD, getGalleryCloudMasses, getGalleryCloudWisps, getGalleryHazeMasses, getGalleryMoonScatteringLayers } from './world'
+import { GALLERY_WORLD, getGalleryCloudDrift, getGalleryCloudMasses, getGalleryHazeMasses, getGalleryMoonScatteringLayers } from './world'
 
 describe('moonlit gallery world layout', () => {
   it('leaves the declarative moon light target attached across StrictMode effect replay', () => {
@@ -25,13 +25,13 @@ describe('moonlit gallery world layout', () => {
     expect(GALLERY_WORLD.moon.radius).toBeLessThan(2.5)
   })
 
-  it('keeps three world-space cloud banks on each side and reserves the centre for the gallery', () => {
+  it('surrounds the gallery route with world-space cloud volumes while keeping photos clear', () => {
     const clouds = getGalleryCloudMasses('standard')
     const zPositions = clouds.map(({ position }) => position[2])
     const sideClouds = clouds.filter(({ id }) => id.startsWith('side-'))
     const haze = getGalleryHazeMasses('standard')
 
-    expect(clouds).toHaveLength(6)
+    expect(clouds).toHaveLength(8)
     expect(Math.max(...zPositions) - Math.min(...zPositions)).toBeGreaterThan(70)
     expect(sideClouds).toHaveLength(6)
     expect(sideClouds.filter(({ position }) => position[0] < 0)).toHaveLength(3)
@@ -41,19 +41,22 @@ describe('moonlit gallery world layout', () => {
     expect(haze.every(({ position, radii }) => position[1] < 1 && radii[1] < 6)).toBe(true)
   })
 
-  it('places procedural cloud masses at several fixed depths outside the photo corridor', () => {
+  it('places cloud volumes beside, above, and around the moon at varied depths', () => {
     const masses = getGalleryCloudMasses('standard')
     const zPositions = masses.map(({ position }) => position[2])
     const sideMasses = masses.filter(({ id }) => id.startsWith('side-'))
-    expect(masses).toHaveLength(6)
-    expect(Math.max(...zPositions) - Math.min(...zPositions)).toBeGreaterThan(70)
+    expect(masses).toHaveLength(8)
+    expect(Math.max(...zPositions) - Math.min(...zPositions)).toBeGreaterThan(100)
     expect(new Set(zPositions).size).toBeGreaterThanOrEqual(5)
     expect(sideMasses).toHaveLength(6)
     expect(sideMasses.every(({ position, radii }) => Math.abs(position[0]) - radii[0] > 5)).toBe(true)
-    expect(masses.every(({ radii }) => radii[0] > radii[2] && radii[2] > 0)).toBe(true)
-    expect(getGalleryCloudMasses('low')).toHaveLength(4)
-    expect(getGalleryCloudMasses('low').filter(({ position }) => position[0] < 0)).toHaveLength(2)
-    expect(getGalleryCloudMasses('low').filter(({ position }) => position[0] > 0)).toHaveLength(2)
+    expect(masses.every(({ radii }) => radii.every((radius) => radius > 0))).toBe(true)
+    expect(masses.filter(({ id }) => id.startsWith('upper-'))).toHaveLength(2)
+    expect(Math.max(...masses.map(({ position }) => position[1]))).toBeGreaterThan(20)
+    expect(getGalleryCloudMasses('low')).toHaveLength(6)
+    expect(getGalleryCloudMasses('low').filter(({ id }) => id.startsWith('side-') && id.includes('west'))).toHaveLength(2)
+    expect(getGalleryCloudMasses('low').filter(({ id }) => id.startsWith('side-') && id.includes('east'))).toHaveLength(2)
+    expect(getGalleryCloudMasses('low').filter(({ id }) => id.startsWith('upper-'))).toHaveLength(2)
   })
 
   it('places sparse scattering pools along the fixed moon-to-gallery direction', () => {
@@ -77,35 +80,16 @@ describe('moonlit gallery world layout', () => {
 
   it('scales cloud and haze layers for low quality without losing either side of the corridor', () => {
     expect(getGalleryCloudMasses('low').length).toBeLessThan(getGalleryCloudMasses('standard').length)
-    expect(getGalleryCloudMasses('low').every(({ id }) => id.includes('near') || id.includes('mid'))).toBe(true)
+    expect(getGalleryCloudMasses('low').every(({ id }) => id.includes('near') || id.includes('mid') || id.startsWith('upper-'))).toBe(true)
     expect(getGalleryHazeMasses('low').length).toBeLessThan(getGalleryHazeMasses('standard').length)
   })
 
-  it('expands each selected cloud bank into three standard or two low-quality wisps', () => {
-    const banks = getGalleryCloudMasses('standard').slice(0, 3)
-    const wisps = getGalleryCloudWisps('standard', 3)
-
-    expect(wisps).toEqual(getGalleryCloudWisps('standard', 3))
-    expect([...new Set(wisps.map(({ bankId }) => bankId))]).toEqual(banks.map(({ id }) => id))
-    expect(getGalleryCloudWisps('standard').length).toBeLessThanOrEqual(27)
-    expect(getGalleryCloudWisps('standard').length).toBe(getGalleryCloudMasses('standard').length * 3)
-    for (const bank of banks) {
-      const daughters = wisps.filter(({ bankId }) => bankId === bank.id)
-      expect(daughters).toHaveLength(3)
-      expect(new Set(daughters.map(({ position }) => position.join(','))).size).toBe(daughters.length)
-      expect(daughters.every(({ opacity }) => opacity > bank.opacity * 0.5)).toBe(true)
-      const furthestLobeOffset = Math.max(...daughters.map(({ position }) => Math.hypot(
-        (position[0] - bank.position[0]) / bank.radii[0],
-        (position[1] - bank.position[1]) / bank.radii[1],
-      )))
-      expect(furthestLobeOffset).toBeGreaterThan(0.38)
-    }
-
-    const standardFirstBank = getGalleryCloudWisps('standard', 1)
-    const lowFirstBank = getGalleryCloudWisps('low', 1)
-    expect(standardFirstBank).toHaveLength(3)
-    expect(lowFirstBank).toHaveLength(2)
-    expect(lowFirstBank.every(({ bankId }) => bankId === banks[0]!.id)).toBe(true)
-    expect(getGalleryCloudWisps('low').length).toBe(getGalleryCloudMasses('low').length * 2)
+  it('drifts each volume smoothly and deterministically from scene time', () => {
+    const mass = getGalleryCloudMasses('standard')[0]!
+    expect(getGalleryCloudDrift(mass, 12)).toEqual(getGalleryCloudDrift(mass, 12))
+    expect(getGalleryCloudDrift(mass, 12)).not.toEqual(getGalleryCloudDrift(mass, 13))
+    expect(Math.hypot(...getGalleryCloudDrift(mass, 12))).toBeLessThan(2)
+    expect(getGalleryCloudDrift(mass, Number.NaN)).toEqual([0, 0, 0])
+    expect(getGalleryCloudDrift(mass, 12, 0)).toEqual([0, 0, 0])
   })
 })

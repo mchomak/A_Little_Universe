@@ -1,113 +1,56 @@
-import { Color, DoubleSide, NormalBlending, ShaderMaterial, Vector3 } from 'three'
+import { Color, FrontSide, NormalBlending, ShaderMaterial, Vector3 } from 'three'
 
-export interface GalleryAtmosphereMaterialOptions {
+export interface GalleryCloudVolumeMaterialOptions {
   kind: 'cloud' | 'haze'
+  center: readonly [number, number, number]
+  radii: readonly [number, number, number]
   seed: number
   opacity: number
   intensity: number
   moonPosition: readonly [number, number, number]
-  moonColor?: string
+  moonColor: string
   moonLightIntensity: number
-  driftSpeed?: number
+  driftSpeed: number
+  steps: number
 }
 
-const atmosphereVertexShader = `
-  uniform float uSeed;
-  uniform float uContourStrength;
-  uniform float uTime;
-  uniform float uDriftSpeed;
-  varying vec3 vCloudPosition;
-  varying vec3 vContourPosition;
-  varying vec3 vBoundaryPosition;
+const cloudVolumeVertexShader = `
   varying vec3 vWorldPosition;
-  varying vec3 vWorldNormal;
-
-  float hash31(vec3 p) {
-    return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
-  }
-
-  float noise3(vec3 p) {
-    vec3 cell = floor(p);
-    vec3 local = fract(p);
-    local = local * local * (3.0 - 2.0 * local);
-    float n000 = hash31(cell);
-    float n100 = hash31(cell + vec3(1.0, 0.0, 0.0));
-    float n010 = hash31(cell + vec3(0.0, 1.0, 0.0));
-    float n110 = hash31(cell + vec3(1.0, 1.0, 0.0));
-    float n001 = hash31(cell + vec3(0.0, 0.0, 1.0));
-    float n101 = hash31(cell + vec3(1.0, 0.0, 1.0));
-    float n011 = hash31(cell + vec3(0.0, 1.0, 1.0));
-    float n111 = hash31(cell + vec3(1.0, 1.0, 1.0));
-    float x00 = mix(n000, n100, local.x);
-    float x10 = mix(n010, n110, local.x);
-    float x01 = mix(n001, n101, local.x);
-    float x11 = mix(n011, n111, local.x);
-    return mix(mix(x00, x10, local.y), mix(x01, x11, local.y), local.z);
-  }
 
   void main() {
-    float t = uTime * uDriftSpeed;
-    vec3 animatedPosition = position + vec3(
-      sin(t * 0.07 + uSeed) * 0.018,
-      sin(t * 0.11 + uSeed * 0.31) * 0.012,
-      cos(t * 0.06 + uSeed * 0.23) * 0.02
-    );
-    float broadNoise = noise3(animatedPosition * 2.4 + vec3(uSeed));
-    float detailNoise = noise3(animatedPosition * 6.8 + vec3(uSeed * 0.37));
-    float baseDisplacement = (broadNoise - 0.5) * 0.16 + (detailNoise - 0.5) * 0.055;
-
-    // The contour field is seeded per wisp to give each volume a soft, uneven edge.
-    vec3 warp = vec3(
-      noise3(animatedPosition * 1.8 + vec3(uSeed * 0.11, uSeed * 0.07, uSeed * 0.03)),
-      noise3(animatedPosition * 1.8 + vec3(7.1, uSeed * 0.13, 2.7)),
-      noise3(animatedPosition * 1.8 + vec3(1.4, 4.8, uSeed * 0.09))
-    ) - 0.5;
-    vec3 warpedPosition = position + warp * 0.86;
-
-    float broadLobe = noise3(animatedPosition * 1.65 + vec3(uSeed * 0.031, uSeed * 0.017, uSeed * 0.023));
-    vec3 asymmetryAxis = normalize(vec3(sin(uSeed * 0.71), cos(uSeed * 0.37), sin(uSeed * 0.19 + 1.7)));
-    float oneSidedLobe = dot(position, asymmetryAxis) * 0.22;
-    float contourDisplacement = ((broadLobe - 0.5) * 0.42 + oneSidedLobe * 0.78) * uContourStrength;
-
-    float breathing = sin(t * 0.09 + uSeed * 0.17) * 0.008;
-    vec3 shadingPosition = animatedPosition * (1.0 + baseDisplacement + breathing);
-    vec3 boundaryPosition = animatedPosition * (1.0 + baseDisplacement + contourDisplacement + breathing);
-    vec4 worldPosition = modelMatrix * vec4(boundaryPosition, 1.0);
-    vCloudPosition = shadingPosition;
-    vContourPosition = warpedPosition;
-    vBoundaryPosition = boundaryPosition;
+    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
     vWorldPosition = worldPosition.xyz;
-    vWorldNormal = normalize(transpose(inverse(mat3(modelMatrix))) * normal);
     gl_Position = projectionMatrix * viewMatrix * worldPosition;
   }
 `
 
-const atmosphereFragmentShader = `
+const cloudVolumeFragmentShader = `
+  #ifndef CLOUD_STEPS
+    #define CLOUD_STEPS 8
+  #endif
+
+  uniform vec3 uCenter;
+  uniform vec3 uRadii;
   uniform vec3 uMoonPosition;
   uniform vec3 uMoonColor;
   uniform vec3 uBaseColor;
   uniform float uSeed;
   uniform float uOpacity;
   uniform float uCloudIntensity;
-  uniform float uContourStrength;
   uniform float uTime;
   uniform float uDriftSpeed;
   uniform float uMoonLightIntensity;
   uniform float uIsHaze;
-  varying vec3 vCloudPosition;
-  varying vec3 vContourPosition;
-  varying vec3 vBoundaryPosition;
   varying vec3 vWorldPosition;
-  varying vec3 vWorldNormal;
 
   float hash31(vec3 p) {
-    return fract(sin(dot(p, vec3(127.1, 311.7, 74.7)) + uSeed * 17.0) * 43758.5453);
+    return fract(sin(dot(p, vec3(127.1, 311.7, 74.7)) + uSeed * 19.19) * 43758.5453);
   }
 
   float noise3(vec3 p) {
     vec3 cell = floor(p);
-    vec3 local = fract(p);
-    local = local * local * (3.0 - 2.0 * local);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
     float n000 = hash31(cell);
     float n100 = hash31(cell + vec3(1.0, 0.0, 0.0));
     float n010 = hash31(cell + vec3(0.0, 1.0, 0.0));
@@ -116,78 +59,138 @@ const atmosphereFragmentShader = `
     float n101 = hash31(cell + vec3(1.0, 0.0, 1.0));
     float n011 = hash31(cell + vec3(0.0, 1.0, 1.0));
     float n111 = hash31(cell + vec3(1.0, 1.0, 1.0));
-    float x00 = mix(n000, n100, local.x);
-    float x10 = mix(n010, n110, local.x);
-    float x01 = mix(n001, n101, local.x);
-    float x11 = mix(n011, n111, local.x);
-    return mix(mix(x00, x10, local.y), mix(x01, x11, local.y), local.z);
+    float x00 = mix(n000, n100, f.x);
+    float x10 = mix(n010, n110, f.x);
+    float x01 = mix(n001, n101, f.x);
+    float x11 = mix(n011, n111, f.x);
+    return mix(mix(x00, x10, f.y), mix(x01, x11, f.y), f.z);
   }
 
-  float fbm(vec3 p) {
-    float broad = noise3(p * 2.4) * 0.58;
-    float detail = noise3(p * 5.1 + vec3(8.2, 3.7, 5.4)) * 0.29;
-    float fine = noise3(p * 10.8 + vec3(2.7, 9.1, 1.3)) * 0.13;
-    return broad + detail + fine;
+  float smoothMax(float a, float b, float width) {
+    float h = max(width - abs(a - b), 0.0) / width;
+    return max(a, b) + h * h * width * 0.25;
   }
 
   void main() {
-    float t = uTime * uDriftSpeed;
-    vec3 cloudDrift = vec3(t * 0.0018, sin(t * 0.08 + uSeed) * 0.014, t * 0.0011);
-    float broadDensity = fbm(vCloudPosition + cloudDrift + vec3(uSeed * 0.017));
-    float contourShape = fbm(vContourPosition + cloudDrift * 0.8 + vec3(uSeed * 0.013));
-    float contourDetail = noise3((vContourPosition + cloudDrift) * 6.0 + vec3(uSeed * 0.19));
-    float edgeOffset = ((contourShape - 0.5) * 0.26 + (contourDetail - 0.5) * 0.08) * uContourStrength;
-    float edge = 1.0 - smoothstep(0.86 + edgeOffset * 0.55, 1.16 + edgeOffset * 0.55, length(vBoundaryPosition));
-    float cloudBody = smoothstep(0.27, 0.67, broadDensity);
-    float detail = noise3(vCloudPosition * 13.0 + vec3(uSeed * 0.31));
-    float cloudDensity = edge * cloudBody * (0.66 + detail * 0.34);
+    vec3 rayDirection = normalize(vWorldPosition - cameraPosition);
+    vec3 inverseRadii = 1.0 / max(uRadii, vec3(0.001));
+    vec3 localOrigin = (cameraPosition - uCenter) * inverseRadii;
+    vec3 localDirection = rayDirection * inverseRadii;
+    float a = dot(localDirection, localDirection);
+    float b = dot(localOrigin, localDirection);
+    float c = dot(localOrigin, localOrigin) - 1.0;
+    float discriminant = b * b - a * c;
+    if (discriminant <= 0.0 || a <= 0.0) discard;
 
-    float isHaze = step(0.5, uIsHaze);
-    float hazeBody = smoothstep(0.16, 0.62, broadDensity);
-    float coverage = mix(cloudDensity, edge * hazeBody, isHaze);
+    float root = sqrt(discriminant);
+    float rayStart = max((-b - root) / a, 0.0);
+    float rayEnd = (-b + root) / a;
+    if (rayEnd <= rayStart) discard;
 
-    vec3 normal = normalize(vWorldNormal);
-    vec3 toMoon = normalize(uMoonPosition - vWorldPosition);
-    float moonFacing = max(dot(normal, toMoon), 0.0);
-    vec3 toCamera = normalize(cameraPosition - vWorldPosition);
-    float viewFacing = max(dot(normal, toCamera), 0.0);
-    float softRim = pow(1.0 - viewFacing, 1.7) * (0.24 + moonFacing * 0.76);
-    float lunarLift = clamp(moonFacing * uMoonLightIntensity * 0.38 + softRim * 0.08, 0.0, 0.82);
-    vec3 color = mix(uBaseColor, uMoonColor, lunarLift);
-    color *= (0.86 + broadDensity * 0.27) * uCloudIntensity;
+    float segmentLength = (rayEnd - rayStart) / float(CLOUD_STEPS);
+    float time = uTime * uDriftSpeed;
+    vec3 uvDrift = vec3(time * 0.003, sin(time * 0.035 + uSeed) * 0.014, -time * 0.002);
+    float transmittance = 1.0;
+    float accumulatedAlpha = 0.0;
+    vec3 accumulatedColor = vec3(0.0);
 
-    float densityScale = mix(0.74, 0.56, isHaze);
-    float alpha = clamp(uOpacity * coverage * densityScale, 0.0, 0.55);
+    for (int i = 0; i < CLOUD_STEPS; i++) {
+      float distanceAlongRay = rayStart + (float(i) + 0.5) * segmentLength;
+      vec3 sampleWorld = cameraPosition + rayDirection * distanceAlongRay;
+      vec3 localPosition = (sampleWorld - uCenter) * inverseRadii;
+      vec3 noisePosition = localPosition + uvDrift;
+      float broad = noise3(noisePosition * 2.15 + vec3(uSeed * 0.013));
+      float detail = noise3(noisePosition * 5.3 + vec3(uSeed * 0.027, 6.2, 2.4));
+
+      // A soft, noise-warped 3D boundary leaves darker gaps inside each large mass.
+      float radius = length(localPosition);
+      float edgeWarp = (broad - 0.5) * 0.75 + (detail - 0.5) * 0.42;
+      float rotation = uSeed * 0.137;
+      mat2 rotationXZ = mat2(cos(rotation), -sin(rotation), sin(rotation), cos(rotation));
+      vec2 rotatedXZ = rotationXZ * localPosition.xz;
+      vec3 shapePosition = vec3(rotatedXZ.x, localPosition.y, rotatedXZ.y);
+      shapePosition -= vec3(sin(uSeed * 0.31) * 0.07, cos(uSeed * 0.19) * 0.045, sin(uSeed * 0.11) * 0.07);
+      float lobeA = 1.0 - smoothstep(0.46 + edgeWarp * 0.2, 0.91 + edgeWarp * 0.2,
+        length((shapePosition - vec3(-0.24, 0.02, -0.08)) * vec3(1.42, 1.32, 1.2)));
+      float lobeB = 1.0 - smoothstep(0.48 + edgeWarp * 0.2, 0.9 + edgeWarp * 0.2,
+        length((shapePosition - vec3(0.23, 0.1, 0.04)) * vec3(1.48, 1.28, 1.34)));
+      float lobeC = 1.0 - smoothstep(0.42 + edgeWarp * 0.2, 0.87 + edgeWarp * 0.2,
+        length((shapePosition - vec3(-0.02, -0.19, 0.18)) * vec3(1.28, 1.48, 1.32)));
+      float cloudShape = smoothMax(smoothMax(lobeA, lobeB, 0.2), lobeC, 0.2);
+      float softBoundary = cloudShape;
+      float interior = smoothstep(0.27, 0.64, broad * 0.68 + detail * 0.32);
+      float density = softBoundary * interior * (0.74 + detail * 0.26);
+      if (uIsHaze > 0.5) {
+        softBoundary = 1.0 - smoothstep(0.65, 1.3, radius);
+        density = softBoundary * (0.25 + broad * 0.35 + detail * 0.2);
+      }
+
+      vec3 localMoonDirection = normalize((uMoonPosition - sampleWorld) * inverseRadii);
+      vec3 outward = normalize(localPosition + vec3(0.0001));
+      float moonFacing = max(dot(outward, localMoonDirection), 0.0);
+      float silverEdge = smoothstep(0.2, 0.56, softBoundary) * (1.0 - smoothstep(0.62, 0.96, softBoundary)) * moonFacing;
+      float moonNearby = 1.0 - smoothstep(18.0, 76.0, distance(sampleWorld, uMoonPosition));
+      float lightResponse = 0.024 + moonFacing * 0.13 + silverEdge * 0.21 + moonNearby * 0.075;
+      if (uIsHaze > 0.5) lightResponse = 0.018 + moonNearby * 0.12;
+      float lunarLift = clamp(lightResponse * uMoonLightIntensity * 0.86, 0.0, 0.38);
+      float innerShade = 0.68 + broad * 0.22 + (1.0 - radius) * 0.11;
+      vec3 sampleColor = mix(uBaseColor * innerShade, uMoonColor, lunarLift);
+
+      // Integrate density through the ellipsoid instead of shading its surface.
+      float opticalDepth = density * uOpacity * uCloudIntensity * segmentLength * 0.09;
+      float sampleAlpha = 1.0 - exp(-max(opticalDepth, 0.0));
+      float contribution = transmittance * sampleAlpha;
+      accumulatedColor += sampleColor * contribution;
+      accumulatedAlpha += contribution;
+      transmittance *= 1.0 - sampleAlpha;
+      if (transmittance < 0.025) break;
+    }
+
+    float entryDistance = rayStart > 0.001 ? rayStart : rayEnd;
+    float depthFade = smoothstep(1.5, 8.0, entryDistance);
+    float alpha = accumulatedAlpha * depthFade;
     if (alpha < 0.004) discard;
+    vec3 color = accumulatedColor / max(accumulatedAlpha, 0.0001);
     gl_FragColor = vec4(color, alpha);
     #include <colorspace_fragment>
   }
 `
 
-export function createGalleryAtmosphereMaterial(options: GalleryAtmosphereMaterialOptions) {
+export function createGalleryCloudVolumeMaterial(options: GalleryCloudVolumeMaterialOptions) {
+  const steps = Math.max(3, Math.min(12, Math.round(options.steps)))
   return new ShaderMaterial({
     uniforms: {
+      uCenter: { value: new Vector3(...options.center) },
+      uRadii: { value: new Vector3(...options.radii) },
       uMoonPosition: { value: new Vector3(...options.moonPosition) },
-      uMoonColor: { value: new Color(options.moonColor ?? '#adc8e9') },
-      uBaseColor: { value: new Color(options.kind === 'haze' ? '#192742' : '#101a2d') },
+      uMoonColor: { value: new Color(options.moonColor) },
+      uBaseColor: { value: new Color(options.kind === 'haze' ? '#253450' : '#1a2438') },
       uSeed: { value: options.seed },
       uTime: { value: 0 },
-      uDriftSpeed: { value: Math.max(0, Math.min(2, options.driftSpeed ?? 0.7)) },
+      uDriftSpeed: { value: Math.max(0, Math.min(2, options.driftSpeed)) },
       uOpacity: { value: Math.max(0, Math.min(1.5, options.opacity)) },
       uCloudIntensity: { value: Math.max(0, Math.min(2, options.intensity)) },
-      uContourStrength: { value: options.kind === 'cloud' ? 0.7 : 0 },
       uMoonLightIntensity: { value: Math.max(0, options.moonLightIntensity) },
       uIsHaze: { value: options.kind === 'haze' ? 1 : 0 },
     },
-    vertexShader: atmosphereVertexShader,
-    fragmentShader: atmosphereFragmentShader,
+    defines: { CLOUD_STEPS: steps },
+    vertexShader: cloudVolumeVertexShader,
+    fragmentShader: cloudVolumeFragmentShader,
     transparent: true,
     depthWrite: false,
     depthTest: true,
     blending: NormalBlending,
-    side: DoubleSide,
+    side: FrontSide,
     toneMapped: false,
   })
+}
+
+/** Mirrors the shader's near/far fade and stays visible when the camera starts inside a volume. */
+export function getGalleryVolumeDepthFade(rayStart: number, rayEnd: number): number {
+  if (!Number.isFinite(rayStart) || !Number.isFinite(rayEnd) || rayEnd <= 0) return 0
+  const distance = rayStart > 0.001 ? rayStart : rayEnd
+  const t = Math.max(0, Math.min(1, (distance - 1.5) / (8 - 1.5)))
+  return t * t * (3 - 2 * t)
 }
 
 export function setGalleryAtmosphereTime(materials: readonly ShaderMaterial[], time: number) {

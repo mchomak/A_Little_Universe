@@ -1,8 +1,8 @@
 window.STATE =
 {
-  "slug": "gallery05-cloud-prototype",
-  "dir": "2026-11-01-gallery05-cloud-prototype",
-  "title": "Объёмные облака галереи",
+  "slug": "gallery05-cloud-atmosphere-v2",
+  "dir": "2026-11-01-gallery05-cloud-atmosphere-v2",
+  "title": "Облака и лунная дымка",
   "mode": "full",
   "depth": "normal",
   "polish": null,
@@ -10,21 +10,21 @@ window.STATE =
   "briefFile": "2026-11-01-brief.md",
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
-  "startedAt": "2026-11-01T02:36:13+03:00",
-  "updatedAt": "2026-11-01T02:55:16+03:00",
-  "finishedAt": "2026-11-01T02:55:16+03:00",
+  "startedAt": "2026-11-01T03:28:33+03:00",
+  "updatedAt": "2026-11-01T04:05:31+03:00",
+  "finishedAt": "2026-11-01T04:05:31+03:00",
   "stages": [
     {
       "id": "preflight",
       "status": "done",
-      "startedAt": "2026-11-01T02:36:13+03:00",
-      "finishedAt": "2026-11-01T02:36:13+03:00"
+      "startedAt": "2026-11-01T03:28:33+03:00",
+      "finishedAt": "2026-11-01T03:28:33+03:00"
     },
     {
       "id": "manifest",
       "status": "done",
-      "startedAt": "2026-11-01T02:36:13+03:00",
-      "finishedAt": "2026-11-01T02:36:13+03:00"
+      "startedAt": "2026-11-01T03:28:33+03:00",
+      "finishedAt": "2026-11-01T03:28:33+03:00"
     },
     {
       "id": "briefing",
@@ -34,31 +34,31 @@ window.STATE =
     {
       "id": "spec",
       "status": "done",
-      "startedAt": "2026-11-01T02:36:13+03:00",
-      "finishedAt": "2026-11-01T02:36:13+03:00"
+      "startedAt": "2026-11-01T03:28:33+03:00",
+      "finishedAt": "2026-11-01T03:28:33+03:00"
     },
     {
       "id": "plan",
       "status": "skipped",
-      "note": "T0: единый прототип"
+      "note": "Единое изменение сцены"
     },
     {
       "id": "build",
       "status": "done",
-      "startedAt": "2026-11-01T02:36:13+03:00",
-      "finishedAt": "2026-11-01T02:55:16+03:00"
+      "startedAt": "2026-11-01T03:28:33+03:00",
+      "finishedAt": "2026-11-01T04:05:31+03:00"
     },
     {
       "id": "review",
       "status": "done",
-      "finishedAt": "2026-11-01T02:55:16+03:00",
-      "startedAt": "2026-11-01T02:55:16+03:00"
+      "finishedAt": "2026-11-01T04:05:31+03:00",
+      "startedAt": "2026-11-01T04:05:31+03:00"
     },
     {
       "id": "final",
       "status": "done",
-      "finishedAt": "2026-11-01T02:55:16+03:00",
-      "startedAt": "2026-11-01T02:55:16+03:00"
+      "finishedAt": "2026-11-01T04:05:31+03:00",
+      "startedAt": "2026-11-01T04:05:31+03:00"
     }
   ],
   "requirements": {
@@ -73,8 +73,8 @@ window.STATE =
   "tickets": [],
   "singlePass": {
     "status": "done",
-    "startedAt": "2026-11-01T02:36:13+03:00",
-    "finishedAt": "2026-11-01T02:55:16+03:00",
+    "startedAt": "2026-11-01T03:28:33+03:00",
+    "finishedAt": "2026-11-01T04:05:31+03:00",
     "tests": "npm run check: 328 тестов"
   },
   "tests": {
@@ -95,6 +95,6 @@ window.STATE =
   },
   "blind": {
     "status": "partial",
-    "note": "Независимое ревью кадров и кода пройдено; края сохраняют процедурный контур, iPad не проверен."
+    "note": "Ревью отметило мягкие малоструктурные формы по сравнению с референсом; физический iPad не проверен."
   }
 }

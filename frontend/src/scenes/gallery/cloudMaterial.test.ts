@@ -1,69 +1,85 @@
 import { describe, expect, it } from 'vitest'
+import { FrontSide, NormalBlending } from 'three'
 import { GALLERY_WORLD } from './world'
-import { createGalleryAtmosphereMaterial, setGalleryAtmosphereTime } from './cloudMaterial'
+import { createGalleryCloudVolumeMaterial, getGalleryVolumeDepthFade, setGalleryAtmosphereTime } from './cloudMaterial'
 
-describe('gallery atmosphere material', () => {
-  it('keeps cloud shading transparent and aims its cool response at the fixed moon', () => {
-    const material = createGalleryAtmosphereMaterial({
-      kind: 'cloud',
-      seed: 37,
-      opacity: 0.42,
-      intensity: 1.3,
-      moonPosition: GALLERY_WORLD.moon.position,
-      moonLightIntensity: 1.1,
-    })
+const cloudOptions = {
+  kind: 'cloud' as const,
+  center: [-22, 11, -25] as const,
+  radii: [12.5, 8, 17] as const,
+  seed: 13,
+  opacity: 0.42,
+  intensity: 1.3,
+  moonPosition: GALLERY_WORLD.moon.position,
+  moonColor: '#C3D8F2',
+  moonLightIntensity: 1.1,
+  driftSpeed: 0.7,
+  steps: 8,
+}
+
+describe('gallery volumetric atmosphere material', () => {
+  it('ray-marches seeded density through a world-space cloud volume', () => {
+    const material = createGalleryCloudVolumeMaterial(cloudOptions)
 
     expect(material.transparent).toBe(true)
     expect(material.depthWrite).toBe(false)
+    expect(material.depthTest).toBe(true)
+    expect(material.side).toBe(FrontSide)
+    expect(material.blending).toBe(NormalBlending)
+    expect(material.defines?.CLOUD_STEPS).toBe(8)
+    expect(material.uniforms.uCenter!.value.toArray()).toEqual([...cloudOptions.center])
+    expect(material.uniforms.uRadii!.value.toArray()).toEqual([...cloudOptions.radii])
     expect(material.uniforms.uMoonPosition!.value.toArray()).toEqual([...GALLERY_WORLD.moon.position])
     expect(material.uniforms.uMoonLightIntensity!.value).toBe(1.1)
     expect(material.uniforms.uOpacity!.value).toBe(0.42)
     expect(material.uniforms.uCloudIntensity!.value).toBe(1.3)
-    expect(material.uniforms.uDriftSpeed!.value).toBe(0.7)
-    expect(material.uniforms.uTime!.value).toBe(0)
-    expect(material.vertexShader).toContain('uTime * uDriftSpeed')
-    expect(material.fragmentShader).toContain('uTime * uDriftSpeed')
-    expect(material.uniforms.uContourStrength!.value).toBe(0.7)
+    expect(material.fragmentShader).toContain('float opticalDepth = density * uOpacity')
+    expect(material.fragmentShader).toContain('float softBoundary = cloudShape')
+    expect(material.fragmentShader).toContain('float cloudShape = smoothMax')
+    expect(material.fragmentShader).toContain('float silverEdge = smoothstep')
+    expect(material.fragmentShader).toContain('transmittance *= 1.0 - sampleAlpha')
     material.dispose()
   })
 
-  it('clamps cloud drift to a calm, finite range', () => {
-    const material = createGalleryAtmosphereMaterial({
-      kind: 'cloud', seed: 13, opacity: 0.4, intensity: 1,
-      moonPosition: GALLERY_WORLD.moon.position, moonLightIntensity: 1,
+  it('fades short ray segments but keeps haze visible when the camera begins inside it', () => {
+    const material = createGalleryCloudVolumeMaterial({ ...cloudOptions, kind: 'haze', steps: 4 })
+    expect(material.fragmentShader).toContain('rayStart > 0.001 ? rayStart : rayEnd')
+    expect(getGalleryVolumeDepthFade(0, 3)).toBeGreaterThan(0)
+    expect(getGalleryVolumeDepthFade(0, 20)).toBe(1)
+    expect(getGalleryVolumeDepthFade(4, 20)).toBeGreaterThan(0)
+    expect(getGalleryVolumeDepthFade(Number.NaN, 3)).toBe(0)
+    material.dispose()
+  })
+
+  it('bounds mobile ray-step count and animation controls', () => {
+    const material = createGalleryCloudVolumeMaterial({
+      ...cloudOptions,
+      steps: 90,
       driftSpeed: 9,
+      opacity: 8,
     })
+    expect(material.defines?.CLOUD_STEPS).toBe(12)
     expect(material.uniforms.uDriftSpeed!.value).toBe(2)
+    expect(material.uniforms.uOpacity!.value).toBe(1.5)
     material.dispose()
   })
 
-  it('updates cloud animation from the gallery clock and falls back on invalid time', () => {
-    const material = createGalleryAtmosphereMaterial({
-      kind: 'cloud', seed: 13, opacity: 0.4, intensity: 1,
-      moonPosition: GALLERY_WORLD.moon.position, moonLightIntensity: 1,
+  it('keeps the broad haze mode soft and follows the shared gallery clock', () => {
+    const material = createGalleryCloudVolumeMaterial({
+      ...cloudOptions,
+      kind: 'haze',
+      steps: 4,
+      center: [0, -1, -67],
+      radii: [38, 3.8, 17],
     })
+
+    expect(material.uniforms.uIsHaze!.value).toBe(1)
+    expect(material.uniforms.uCenter!.value.toArray()).toEqual([0, -1, -67])
+    expect(material.defines?.CLOUD_STEPS).toBe(4)
     setGalleryAtmosphereTime([material], 18.5)
     expect(material.uniforms.uTime!.value).toBe(18.5)
     setGalleryAtmosphereTime([material], Number.NaN)
     expect(material.uniforms.uTime!.value).toBe(0)
-    material.dispose()
-  })
-
-  it('keeps the haze branch distinct and exposes its cloud-light intensity', () => {
-    const material = createGalleryAtmosphereMaterial({
-      kind: 'haze',
-      seed: 41,
-      opacity: 0.31,
-      intensity: 1.4,
-      moonPosition: GALLERY_WORLD.moon.position,
-      moonLightIntensity: 0.9,
-    })
-
-    expect(material.transparent).toBe(true)
-    expect(material.uniforms.uIsHaze!.value).toBe(1)
-    expect(material.uniforms.uOpacity!.value).toBe(0.31)
-    expect(material.uniforms.uCloudIntensity!.value).toBe(1.4)
-    expect(material.uniforms.uContourStrength!.value).toBe(0)
     material.dispose()
   })
 })
