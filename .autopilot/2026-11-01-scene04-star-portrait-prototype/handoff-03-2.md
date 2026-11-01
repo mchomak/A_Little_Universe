@@ -1,0 +1,7 @@
+# HANDOFF 03-2
+
+СДЕЛАНО: Свежий isolated-context Reset кадр при 32k defaults показывает читаемый профиль, текстуру волос и поднятую руку отдельными точками; точки остаются отчётливо раздельными. Глаза/губы различимы, но тонкие. Focused tests: sampler 6/6 (5 было), lab 8/8 (8 было); production build прошёл с прежним предупреждением о чанке >500 kB.
+ФАЙЛЫ: `frontend/src/main.tsx`; `frontend/src/particle-portrait-lab/ParticlePortraitLab.tsx`; `frontend/src/particle-portrait-lab/config.ts`; `frontend/src/particle-portrait-lab/config.test.ts`; `frontend/src/particle-portrait-lab/particle-portrait-lab.css`; `frontend/src/scenes/lily/starPortraitTargets.ts`; `frontend/src/scenes/lily/starPortraitTargets.test.ts`.
+РЕШЕНИЯ: Sampler снижает, но сохраняет ненулевой midtone floor; сильнее взвешивает luminance/color gradient и texture; возвращаемый contrast усиливает размер/акцент точек через существующий shader. Defaults: 32,000 points; min/max 1.2/2.8 px; brightness 2; opacity 1; glow 1.8; detail 2; fill 1.9; contrast 1.75; photo mix .25; scale .95; X/Y 0.
+ТУПИКИ: Прежняя формула давала лишь 4× samples в textured patch при high controls; усиленная формула проходит >8× synthetic regression. PhotoColorMix=1 темнит лицо/волосы, поэтому оставлен palette-heavy .25. Тонкие детали глаз/губ остаются менее заметными, чем профиль, волосы и рука.
+ДАЛЬШЕ: Координатор принимает итоговый Reset-default кадр как шаг узнаваемости и решает, достаточно ли деликатных глаз/губ для R22.1; Scene 04 timeline и motion не менялись.
