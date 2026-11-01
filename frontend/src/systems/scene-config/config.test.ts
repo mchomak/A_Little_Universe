@@ -2,6 +2,14 @@ import { expect, it, vi } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, normalizeConfig, SCENE_CONFIG_PRESETS } from './config'
 import * as configApi from './config'
 
+it('defaults the gallery to a restrained deep blue moonlit palette', () => {
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery).toMatchObject({
+    cloudCoolTint: 1.35, cloudWhiteHighlight: 0.24,
+    coldLightIntensity: 0.58, moonLightIntensity: 1.25, moonFillIntensity: 0.22,
+    moonCloudLightIntensity: 0.72, moonScatteringIntensity: 0.62,
+  })
+})
+
 it('loads moonlit gallery settings from legacy schemas and preserves schema v10 data in v11', () => {
   for (const schemaVersion of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) {
     const imported = normalizeConfig({ schemaVersion, scenes: { gallery: { moonBrightness: 1.1, cloudLayerCount: 7 } } })
@@ -20,6 +28,15 @@ it('loads moonlit gallery settings from legacy schemas and preserves schema v10 
   expect(schemaTen.scenes.galaxy).toMatchObject({ spin: 4.6, armWidth: 0.16, randomness: 0.065, coreSize: 0.24, thickness: 0.05 })
 })
 
+it('keeps explicitly saved gallery lighting when applying new palette defaults', () => {
+  const saved = normalizeConfig({ schemaVersion: 11, scenes: { gallery: {
+    cloudCoolTint: 0.7, cloudWhiteHighlight: 0.9, moonLightIntensity: 2.2, moonFillIntensity: 0.4,
+  } } })
+  expect(saved.scenes.gallery).toMatchObject({
+    cloudCoolTint: 0.7, cloudWhiteHighlight: 0.9, moonLightIntensity: 2.2, moonFillIntensity: 0.4,
+  })
+})
+
 it('expands only the old schema v9 cloud maximum while preserving intentional lower counts', () => {
   expect(normalizeConfig({ schemaVersion: 9, scenes: { gallery: { cloudLayerCount: 12 } } }).scenes.gallery.cloudLayerCount).toBe(18)
   expect(normalizeConfig({ schemaVersion: 9, scenes: { gallery: { cloudLayerCount: 7 } } }).scenes.gallery.cloudLayerCount).toBe(7)
@@ -32,7 +49,7 @@ it('normalizes schema v6 atmosphere controls and supplies them to schema v5 docu
   expect(oldGallery.schemaVersion).toBe(11)
   expect(oldGallery.scenes.gallery).toMatchObject({
     moonBrightness: 1.1, cloudDensity: 1.4, cloudIntensity: 1, cloudScale: 1,
-    cloudLayerCount: 18, hazeHeight: 0, moonCloudLightIntensity: 1,
+    cloudLayerCount: 18, hazeHeight: 0, moonCloudLightIntensity: 0.72,
   })
 
   const currentGallery = normalizeConfig({ schemaVersion: 6, scenes: { gallery: {
@@ -46,7 +63,7 @@ it('normalizes schema v6 atmosphere controls and supplies them to schema v5 docu
     cloudIntensity: -0.1, cloudLayerCount: 10.5, hazeHeight: 3.1, moonCloudLightIntensity: Infinity,
   } } })
   expect(invalid.scenes.gallery).toMatchObject({
-    cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 18, hazeHeight: 0, moonCloudLightIntensity: 1,
+    cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 18, hazeHeight: 0, moonCloudLightIntensity: 0.72,
   })
 })
 

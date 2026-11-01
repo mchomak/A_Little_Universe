@@ -64,10 +64,10 @@ const fragmentShader = `
     float reflection = (reflectionPath * 0.62 + reflectionGlow * 0.14) * farPath * nearPath * staticBreakup
       * uReflectionStrength * uColdLightIntensity * uMoonLightIntensity * 1.2;
 
-    vec3 deepWater = vec3(0.001, 0.002, 0.005);
-    vec3 coolWater = vec3(0.004, 0.007, 0.014);
-    vec3 base = mix(deepWater, coolWater, 0.16 + textureValue * 0.54);
-    vec3 silverPath = vec3(0.58, 0.72, 0.94) * reflection;
+    vec3 deepWater = vec3(0.002, 0.006, 0.022);
+    vec3 coolWater = vec3(0.006, 0.018, 0.052);
+    vec3 base = mix(deepWater, coolWater, 0.12 + textureValue * 0.42);
+    vec3 silverPath = vec3(0.42, 0.62, 0.9) * reflection;
     vec3 color = (base + silverPath) * edgeFade;
     gl_FragColor = vec4(color, edgeFade * 0.97);
     #include <colorspace_fragment>
