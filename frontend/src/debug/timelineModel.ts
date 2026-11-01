@@ -23,12 +23,7 @@ export function timelineFrames(scene: SceneId, config: SceneComposerConfig): Tim
       { label: '02.5 Завершение роста', start: g.settle[0] },
     ]
     case 'bloom': return [{ label: '03 Ожидание / раскрытие', start: 0 }, { label: '03.6 Созерцание', start: getBloomSceneFrames(config.scenes.bloom).contemplate[0] }]
-    case 'identity': return [
-      { label: '04.1 Лилия', start: 0 }, { label: '04.2 Спираль', start: TIMING.identity.particles[0] },
-      { label: '04.3 Имя', start: TIMING.identity.name[0] }, { label: '04.4 Превращение', start: TIMING.identity.morph[0] },
-      { label: '04.5 Портрет', start: TIMING.identity.portrait[0] }, { label: '04.6 Фотография', start: TIMING.identity.photo[0] },
-      { label: '04.7 Воспоминание', start: TIMING.identity.caption[0] },
-    ]
+    case 'identity': return [{ label: '04.1 Растворение лилии', start: 0 }]
     case 'gallery': return [{ label: '05 Галерея · свободный просмотр', start: 0 }]
     case 'eye': return [{ label: '06 Голубой глаз', start: 0 }, { label: '06.5 Приближение', start: TIMING.eye.approach[0] }]
     case 'cosmos': return [

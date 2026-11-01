@@ -84,7 +84,7 @@ describe('Lily scene timing', () => {
     const config = { ...DEFAULT_SCENE_COMPOSER_CONFIG, scenes: {
       ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes,
       growth: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, formationDuration: 3.5, flowerGrowthDuration: 7 },
-      bloom: { flowerBloomDuration: 12 },
+      bloom: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom, flowerBloomDuration: 12 },
     } }
     const growth = getGrowthSceneFrames(config.scenes.growth)
     const bloom = getBloomSceneFrames(config.scenes.bloom)
@@ -102,7 +102,7 @@ describe('Lily scene timing', () => {
     const next = { ...previous, scenes: {
       ...previous.scenes,
       growth: { ...previous.scenes.growth, formationDuration: 3.5, flowerGrowthDuration: 7 },
-      bloom: { flowerBloomDuration: 12 },
+      bloom: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom, flowerBloomDuration: 12 },
     } }
 
     const elapsed = retimeSceneElapsed('growth', 6, previous, next, 'playing')

@@ -18,6 +18,7 @@ export type ComposerFieldPath =
   | `scenes.prologue.${keyof SceneComposerConfig['scenes']['prologue'] & string}`
   | `scenes.growth.${keyof SceneComposerConfig['scenes']['growth'] & string}`
   | `scenes.bloom.${keyof SceneComposerConfig['scenes']['bloom'] & string}`
+  | `scenes.identity.${keyof SceneComposerConfig['scenes']['identity'] & string}`
   | `scenes.galaxy.${keyof SceneComposerConfig['scenes']['galaxy'] & string}`
 
 export type ComposerImportResult =
@@ -55,7 +56,7 @@ export async function importComposerJson(source: string): Promise<ComposerImport
   if ('global' in root && !isRecord(root.global)) return { ok: false, reason: 'document' }
   if ('scenes' in root && !isRecord(root.scenes)) return { ok: false, reason: 'document' }
   const scenes = isRecord(root.scenes) ? root.scenes : {}
-  for (const section of ['preload', 'preparation', 'prologue', 'growth', 'bloom', 'galaxy']) {
+  for (const section of ['preload', 'preparation', 'prologue', 'growth', 'bloom', 'identity', 'galaxy']) {
     if (section in scenes && !isRecord(scenes[section])) return { ok: false, reason: 'document' }
   }
   const preparation = scenes.preparation as Record<string, unknown> | undefined

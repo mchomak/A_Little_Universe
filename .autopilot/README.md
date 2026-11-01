@@ -1,4 +1,4 @@
-﻿# Autopilot
+# Autopilot
 
 Требования и история реализации; актуальное устройство проекта — в `docs/architecture.md`.
 Сценарий и AGENTS.md сохраняются. Результаты текущего прогона фиксируются в отдельной ветке; публикация и слияние выполняются отдельно.
@@ -25,3 +25,8 @@
 | 2026-10-30 | `2026-10-30-lily-film-integration` | сдан | GLB лилии в фильме, клипы роста и раскрытия, настройки длительности и проверки |
 | 2026-10-30 | `2026-10-30-scene-07-galaxy--wip` | в работе | Scene 07 — Galaxy; desktop checks passed, tablet validation pending |
 | 2026-10-30 | `2026-10-30-prologue-emissive-dissolve` | сдан | Scene 01: Great Vibes, переиспользуемый побуквенный dissolve и световые частицы; 285 тестов, lint, TypeScript и build прошли |
+| 2026-10-31 | `2026-10-31-scene04-vortex-refinement` | сдан | Scene 04: более плотный 12-секундный распад GLB-лилии, расширенный восходящий вихрь, центральная фаза на 50%; 316 тестов, lint, TypeScript и build прошли; iPad не проверен |
+| 2026-10-31 | `2026-10-31-scene04-portrait-particles` | сдан | Портрет Василисы собирается из части 04-го вихря по фото; 329 тестов, lint, TypeScript и build прошли; iPad/Safari не проверен |
+| 2026-11-01 | `2026-11-01-scene04-star-portrait-prototype` | сдан | DEV-страница для настройки звёздного портрета 4:3; 344 теста, lint, TypeScript и build прошли; iPad/Safari не проверен |
+
+| 2026-11-01 | `2026-11-01-scene04-visible-vortex-portrait--wip` | в работе | — |

@@ -3,7 +3,7 @@ import { AdditiveBlending, BufferAttribute, BufferGeometry, DataTexture, Group, 
 import type { FilmRuntime } from '../../engine/runtime'
 import { useSceneAnimation } from './animation'
 import { TIMING } from '../../engine/filmConfig'
-import { identityVortexGLSL } from './identityVortex'
+import { identityLegacyRevealGLSL, identityVortexGLSL } from './identityVortex'
 import { nameFocus } from './identityName'
 import { portraitPresence } from './identityPortrait'
 import { restorationFrame } from './identityRestoration'
@@ -46,6 +46,7 @@ uniform float uMotion;
 varying float vSeed;
 varying float vShot;
 varying float vPortraitClear;
+${identityLegacyRevealGLSL}
 void main() {
   float r = length(gl_PointCoord - .5);
   float halo = exp(-r * 8.0) * .75 + (1.0 - smoothstep(.0, .15, r)) * .75;
@@ -56,7 +57,7 @@ void main() {
   vec3 color = mix(vec3(1.0, .42, .58), vec3(1.0, .88, .75), vSeed);
   color = mix(color, mix(vec3(.53, .58, .85), vec3(1.0, .85, .77), vSeed), vShot);
   float sparse = mix(1.0, step(.92, vSeed) * .45, uPhotoQuiet);
-  gl_FragColor = vec4(color, halo * visible * twinkle * mix(.9, .58, vShot) * (1.0 - .78 * uNameFocus) * mix(1.0, vPortraitClear, uPortraitPresence) * sparse);
+  gl_FragColor = vec4(color, halo * visible * twinkle * mix(.9, .58, vShot) * (1.0 - .78 * uNameFocus) * mix(1.0, vPortraitClear, uPortraitPresence) * sparse * identityLegacyReveal(uTime));
 }`
 const hazeVertex = `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`
 const hazeFragment = `
@@ -66,13 +67,14 @@ uniform float uNameFocus;
 uniform float uMotion;
 varying vec2 vUv;
 ${identityVortexGLSL}
+${identityLegacyRevealGLSL}
 void main() {
   vec2 p = (vUv - .5) * vec2(1.0, 1.5);
   float core = exp(-dot(p * vec2(1.7, 2.2), p * vec2(1.7, 2.2)) * 2.8);
   float nucleus = exp(-dot(p * vec2(4.0, 5.0), p * vec2(4.0, 5.0)) * 12.0) * (1.0 - smoothstep(7.0, 10.0, uTime));
   float waves = .65 + .35 * sin(p.x * 13.0 + sin(p.y * 15.0) + uTime * .08 * uMotion);
   float visible = smoothstep(.0, 3.0, uTime) * (1.0 - .72 * smoothstep(13.0, 20.0, uTime) - .28 * smoothstep(28.0, 34.0, uTime));
-  gl_FragColor = vec4(mix(vec3(.45, .12, .25), vec3(1.0, .68, .52), nucleus), (core * waves * .22 + nucleus * .9) * visible * (1.0 - identityVortexEnvelope(uTime)) * (1.0 - .7 * uNameFocus) * (1.0 - uPhotoQuiet));
+  gl_FragColor = vec4(mix(vec3(.45, .12, .25), vec3(1.0, .68, .52), nucleus), (core * waves * .22 + nucleus * .9) * visible * (1.0 - identityVortexEnvelope(uTime)) * (1.0 - .7 * uNameFocus) * (1.0 - uPhotoQuiet) * identityLegacyReveal(uTime));
 }`
 const nebulaFragment = `
 uniform float uTime;
@@ -82,6 +84,7 @@ uniform float uLayer;
 uniform sampler2D uCloudNoise;
 varying vec2 vUv;
 ${identityVortexGLSL}
+${identityLegacyRevealGLSL}
 float noise(vec2 p) {
   vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return texture2D(uCloudNoise, (i + f + .5) / 64.0).r;
@@ -99,7 +102,7 @@ void main() {
   float opacity = filaments * veil * lane * .21;
   color = mix(color, vec3(1.0, .76, .62), nucleus);
   opacity += nucleus * .56 * smoothstep(4.6, 6.7, uTime);
-  gl_FragColor = vec4(color, opacity * identityVortexEnvelope(uTime) * (1.0 - .7 * uNameFocus));
+  gl_FragColor = vec4(color, opacity * identityVortexEnvelope(uTime) * (1.0 - .7 * uNameFocus) * identityLegacyReveal(uTime));
 }`
 const petalVertex = `
 attribute float aSeed;
@@ -127,6 +130,7 @@ const petalFragment = `
 uniform float uTime;
 uniform float uNameFocus;
 varying float vSeed;
+${identityLegacyRevealGLSL}
 void main() {
   vec2 p = gl_PointCoord - .5;
   float angle = vSeed * 6.283;
@@ -135,7 +139,7 @@ void main() {
   float shape = (1.0 - smoothstep(.26, .48, d));
   float halo = exp(-d * 7.0) * .5;
   float visible = smoothstep(2.0, 4.0, uTime) * (1.0 - smoothstep(8.0, 12.0, uTime));
-  gl_FragColor = vec4(1.0, .66 + .18 * vSeed, .78, (shape * .55 + halo) * visible * (1.0 - .8 * uNameFocus));
+  gl_FragColor = vec4(1.0, .66 + .18 * vSeed, .78, (shape * .55 + halo) * visible * (1.0 - .8 * uNameFocus) * identityLegacyReveal(uTime));
 }`
 function random(index: number) { const x = Math.sin(index * 127.1 + 91.7) * 43758.5453; return x - Math.floor(x) }
 

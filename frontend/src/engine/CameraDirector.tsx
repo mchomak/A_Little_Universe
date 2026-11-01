@@ -14,8 +14,10 @@ import { GALLERY_ART } from '../scenes/gallery/artDirection'
 import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
 import { getGrowthCameraPose } from '../scenes/growth/seedProcedure'
+import { getBloomCameraMoveDuration, getBloomCloseupPose } from './bloomCamera'
 import { galaxyCameraPose, interpolateCameraPose } from '../scenes/galaxy/camera'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
+import { getIdentityCameraMoveTarget } from './identityCamera'
 
 /** Camera settings belong here, never inside an artistic scene module. */
 export function CameraDirector({ state, dispatch, runtime, reducedMotion }: SceneProps) {
@@ -25,6 +27,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const growthSettings = config.scenes.growth
   const bloomSettings = config.scenes.bloom
+  const identitySettings = config.scenes.identity
   const galaxySettings = config.scenes.galaxy
   const pose = useRef<CameraPose>({ x: 0, y: 0, z: 5.6, tx: 0, ty: 0, tz: 0 })
   const galleryRevision = useRef<number | null>(null)
@@ -47,7 +50,8 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const p = pose.current
     const front = { x: 0, y: 0, z: 5.6, tx: 0, ty: 0, tz: 0 }
     const flowerSide = getGrowthCameraPose(getGrowthSceneFrames(growthSettings).duration, reducedMotion, growthSettings)
-    const flowerTop = { x: 1.7, y: 4.5, z: 4, tx: 0, ty: 0.2, tz: 0 }
+    const bloomFrames = getBloomSceneFrames(bloomSettings)
+    const flowerCloseup = getBloomCloseupPose(bloomSettings)
     const timeline = gsap.timeline({ onUpdate: render })
     if (scene === 'gallery') {
       if (galleryRevision.current !== revision) {
@@ -62,7 +66,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const galaxyPose = (distance: number, angle: number) => galaxyCameraPose(
       distance, angle, galaxySettings.cameraFocusX, galaxySettings.cameraFocusY,
     )
-    const initial = scene === 'bloom' ? flowerSide : scene === 'identity' ? flowerTop
+    const initial = scene === 'bloom' ? flowerSide : scene === 'identity' ? flowerCloseup
       : scene === 'eye' ? { ...front, z: 4.8 }
       : scene === 'cosmos' ? galaxyPose(galaxySettings.cameraStartDistance, galaxySettings.cameraStartAngle)
         : scene === 'greeting' || scene === 'ending' ? galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle) : front
@@ -83,9 +87,16 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       return timeline.to(cursor, { time: duration, duration, ease: 'none' })
     }
     if (reducedMotion) return timeline
-    if (scene === 'bloom') timeline.to(p, { ...flowerTop, duration: getBloomSceneFrames(bloomSettings).opening[1], ease: 'sine.inOut' })
-    if (scene === 'identity') timeline.to(p, { ...front, duration: TIMING.identity.particles[1], ease: 'sine.inOut' })
-      .to(p, { ...firstMemoryCamera(34), duration: 3, ease: (t: number) => t * t * (3 - 2 * t) }, 31)
+    if (scene === 'bloom') timeline.to(p, {
+      ...flowerCloseup,
+      duration: getBloomCameraMoveDuration(bloomSettings, bloomFrames.opening),
+      ease: 'sine.inOut',
+    })
+    if (scene === 'identity') timeline.to(p, {
+      ...getIdentityCameraMoveTarget(flowerCloseup, identitySettings),
+      duration: identitySettings.cameraMoveDuration,
+      ease: 'sine.inOut',
+    })
     if (scene === 'eye') timeline.to(p, { z: 0.85, duration: TIMING.camera.eye, ease: 'power2.inOut' }, TIMING.eye.approach[0])
     if (scene === 'cosmos') {
       const finish = galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
@@ -96,7 +107,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       if (slowdown > 0) timeline.to(p, { ...finish, duration: slowdown, ease: 'sine.out' })
     }
     return timeline
-  }, [bloomSettings, galaxySettings, growthSettings, reducedMotion, render, revision, scene])
+  }, [bloomSettings, galaxySettings, growthSettings, identitySettings, reducedMotion, render, revision, scene])
   useSceneTimeline(build, { runtime })
   useEffect(() => scene === 'gallery' ? wakeOnVisible(document, invalidate) : undefined, [scene, invalidate])
 

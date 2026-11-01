@@ -4,13 +4,11 @@ import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, Color
 import type { SceneProps } from '../engine/sceneTypes'
 import { TIMING } from '../engine/filmConfig'
 import { fade, ramp, smooth, useSceneAnimation } from './shared/animation'
-import { Lily } from './shared/Primitives'
-import { poseLily } from './shared/lilyPose'
 import { identityFrame } from './shared/identityFrame'
 import { identityNameGLSL } from './shared/identityName'
 import { identityMorphGLSL, portraitCell, portraitFragment, portraitSample, portraitVertex } from './shared/identityMorph'
 import { mockLilyParticles, type LilyParticleSource } from './shared/identityParticles'
-import { createVortexAttributes, identityVortexGLSL } from './shared/identityVortex'
+import { createVortexAttributes, identityLegacyRevealGLSL, identityVortexGLSL } from './shared/identityVortex'
 import { IdentityTrails } from './shared/IdentityTrails'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
 import { IdentityAtmosphere } from './shared/IdentityAtmosphere'
@@ -107,6 +105,7 @@ void main() {
 }`
 const fragment = `
 uniform float uTime;
+uniform float uParticleReveal;
 uniform float uPortraitPresence;
 uniform sampler2D uGlyphs;
 varying float vSeed;
@@ -119,13 +118,15 @@ varying float vGlyphBlend;
 varying float vMorphLight;
 varying vec2 vPhotoUv;
 ${restorationGLSL}
+${identityLegacyRevealGLSL}
 void main() {
   float r = length(gl_PointCoord - vec2(0.5));
   float glow = exp(-r * 7.0) + (1.0 - smoothstep(0.0, 0.19, r)) * 0.8;
   float glyph = texture2D(uGlyphs, vec2((vGlyph + gl_PointCoord.x) / 16.0, 1.0 - gl_PointCoord.y)).a;
   float glyphBlend = vGlyphBlend;
-  float opacity = (1.0 - smoothstep(23.0, 28.0, uTime)) * (1.0 - uPortraitPresence);
+  float opacity = uParticleReveal * (1.0 - smoothstep(23.0, 28.0, uTime)) * (1.0 - uPortraitPresence);
   if (uTime > 23.0 && uTime < 28.0) opacity = 1.0 - photographicRecovery(vec2(vPhotoUv.x, 1.0 - vPhotoUv.y), uTime);
+  opacity *= identityLegacyReveal(uTime);
   vec3 color = mix(vec3(1.0, 0.66, 0.75), vec3(1.0, 0.94, 0.89), vSeed);
   float accent = step(.978, vSeed);
   vec2 uv = gl_PointCoord - .5;
@@ -255,7 +256,7 @@ function orbitGeometry() {
 }
 
 export function IdentityScene({ state, runtime, reducedMotion, particleSource = mockLilyParticles }: SceneProps & { particleSource?: LilyParticleSource }) {
-  const lily = useRef<Group>(null), photo = useRef<Group>(null), frame = useRef<Group>(null), ascii = useRef<Group>(null), orbitGroup = useRef<Group>(null), memory = useRef<Group>(null)
+  const photo = useRef<Group>(null), frame = useRef<Group>(null), ascii = useRef<Group>(null), orbitGroup = useRef<Group>(null), memory = useRef<Group>(null)
   const texture = useLoader(TextureLoader, photoUrl)
   const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height))
   const dpr = useThree((s) => s.viewport.dpr)
@@ -285,7 +286,7 @@ export function IdentityScene({ state, runtime, reducedMotion, particleSource = 
   const geometry = useMemo(() => particleGeometry(state.quality === 'low' ? 7000 : 16000, particleSource, texture.image as HTMLImageElement), [state.quality, particleSource, texture])
   const orbits = useMemo(() => orbitGeometry(), [])
   const orbitArrays = useMemo(() => Array.from({ length: 5 }, (_, i) => (orbits.getAttribute('position').array as Float32Array).slice(i * 480, (i + 1) * 480)), [orbits])
-  const material = useMemo(() => new ShaderMaterial({ vertexShader: vertex, fragmentShader: fragment, transparent: true, depthWrite: false, blending: AdditiveBlending, uniforms: { uTime: { value: 0 }, uRestoration: { value: recoveryMap }, uPortraitPresence: { value: 0 }, uMotion: { value: reducedMotion ? 0 : 1 }, uNameScale: { value: 1 }, uNamePixelScale: { value: 1 }, uVortexScale: { value: 1 }, uGlyphs: { value: glyphAtlas } } }), [reducedMotion, glyphAtlas, recoveryMap])
+  const material = useMemo(() => new ShaderMaterial({ vertexShader: vertex, fragmentShader: fragment, transparent: true, depthWrite: false, blending: AdditiveBlending, uniforms: { uTime: { value: 0 }, uParticleReveal: { value: 0 }, uRestoration: { value: recoveryMap }, uPortraitPresence: { value: 0 }, uMotion: { value: reducedMotion ? 0 : 1 }, uNameScale: { value: 1 }, uNamePixelScale: { value: 1 }, uVortexScale: { value: 1 }, uGlyphs: { value: glyphAtlas } } }), [reducedMotion, glyphAtlas, recoveryMap])
   const materialRef = useRef<ShaderMaterial>(null)
   useEffect(() => () => geometry.dispose(), [geometry])
   useEffect(() => () => orbits.dispose(), [orbits])
@@ -300,9 +301,9 @@ export function IdentityScene({ state, runtime, reducedMotion, particleSource = 
     const frameValues = identityFrame(time)
     const portrait = portraitPresence(time)
     const recovery = restorationFrame(time)
-    poseLily(lily.current, 1, 1); fade(lily.current, frameValues.lily)
     if (materialRef.current) {
       materialRef.current.uniforms.uTime!.value = time
+      materialRef.current.uniforms.uParticleReveal!.value = frameValues.particleReveal
       materialRef.current.uniforms.uPortraitPresence!.value = portrait
       materialRef.current.uniforms.uNameScale!.value = nameScale
       materialRef.current.uniforms.uNamePixelScale!.value = namePixelScale
@@ -351,10 +352,9 @@ export function IdentityScene({ state, runtime, reducedMotion, particleSource = 
     <IdentityAtmosphere runtime={runtime} low={state.quality === 'low'} reducedMotion={reducedMotion} />
     <FirstMemorySpace runtime={runtime} low={state.quality === 'low'} reducedMotion={reducedMotion} />
     <IdentityPortrait photo={texture} glyphs={glyphAtlas} runtime={runtime} low={state.quality === 'low'} reducedMotion={reducedMotion} />
-    <Lily groupRef={lily} />
     <points geometry={geometry} frustumCulled={false}><primitive object={material} ref={materialRef} attach="material" /></points>
     <IdentityTrails geometry={geometry} runtime={runtime} low={state.quality === 'low'} reducedMotion={reducedMotion} scale={vortexScale} />
-    <group ref={orbitGroup}>{Array.from({ length: 5 }, (_, i) => <line key={i}><bufferGeometry attach="geometry"><bufferAttribute attach="attributes-position" args={[orbitArrays[i]!, 3]} /></bufferGeometry><lineBasicMaterial color={new Color('#dca8bd')} transparent opacity={0.24} depthWrite={false} /></line>)}</group>
+    <group ref={orbitGroup} visible={false}>{Array.from({ length: 5 }, (_, i) => <line key={i}><bufferGeometry attach="geometry"><bufferAttribute attach="attributes-position" args={[orbitArrays[i]!, 3]} /></bufferGeometry><lineBasicMaterial color={new Color('#dca8bd')} transparent opacity={0.24} depthWrite={false} /></line>)}</group>
     <group ref={memory} position={[0, .08, 0]}>
       <group ref={ascii} position={[0, 0, .01]}><mesh><planeGeometry args={[2.15, 2.15]} /><primitive ref={asciiMaterialRef} object={asciiMaterial} attach="material" /></mesh></group>
       <group><FirstMemoryCard photoRef={photo} frameRef={frame} photoMaterial={restoredPhoto} rimMaterial={restoredRim} /></group>

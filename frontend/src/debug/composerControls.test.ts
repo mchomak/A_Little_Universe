@@ -112,6 +112,29 @@ describe('Scene Composer controls', () => {
     expect(getConfig().scenes.prologue.fontSize).toBe(48)
   })
 
+  it('updates every portrait capture setting through the shared Composer field API', async () => {
+    const values: [
+      `scenes.identity.${'portraitStartProgress' | 'portraitFraction' | 'portraitMinTurns' | 'portraitMaxTurns' | 'portraitSteering' | 'portraitBraking' | 'portraitSettledBrightness' | 'vortexSpeedMultiplier'}`,
+      number,
+    ][] = [
+      ['scenes.identity.portraitStartProgress', 0.45],
+      ['scenes.identity.portraitFraction', 0],
+      ['scenes.identity.portraitMinTurns', 0.5],
+      ['scenes.identity.portraitMaxTurns', 3],
+      ['scenes.identity.portraitSteering', 1.5],
+      ['scenes.identity.portraitBraking', 2],
+      ['scenes.identity.portraitSettledBrightness', 1.3],
+      ['scenes.identity.vortexSpeedMultiplier', 0.8],
+    ]
+
+    for (const [path, value] of values) await setComposerField(path, value)
+
+    expect(getConfig().scenes.identity).toMatchObject({
+      portraitStartProgress: 0.45, portraitFraction: 0, portraitMinTurns: 0.5, portraitMaxTurns: 3,
+      portraitSteering: 1.5, portraitBraking: 2, portraitSettledBrightness: 1.3, vortexSpeedMultiplier: 0.8,
+    })
+  })
+
   it('updates and resets the new ash motion settings through Composer controls', async () => {
     await setComposerField('scenes.prologue.windStrength', 2.1)
     await setComposerField('scenes.prologue.fractureWidth', 0.12)

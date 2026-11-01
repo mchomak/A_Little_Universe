@@ -8,6 +8,6 @@ describe('film implementation status', () => {
 
   it('identifies the lily reveal and only lists scenes that remain placeholders', () => {
     expect(getImplementationStatus('bloom')).toBe('Сцена 03 · раскрытие лилии')
-    expect(getImplementationStatus('identity')).toBe('Сцены 06–09 · placeholders')
+    expect(getImplementationStatus('identity')).toBe('Сцена 04 · растворение лилии')
   })
 })

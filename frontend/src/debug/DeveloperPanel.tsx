@@ -132,6 +132,58 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
 
 const BLOOM_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.bloom.flowerBloomDuration', label: 'Длительность раскрытия Bloom', unit: 'с', min: 6, max: 24, step: 0.25 },
+  { path: 'scenes.bloom.cameraFinalDistance', label: 'Финальная дистанция камеры', unit: '', min: 1.5, max: 5, step: 0.05 },
+  { path: 'scenes.bloom.cameraFinalHeight', label: 'Высота камеры', unit: '', min: 0.5, max: 4, step: 0.05 },
+  { path: 'scenes.bloom.cameraTargetX', label: 'Цель камеры · X', unit: '', min: -1, max: 1, step: 0.02 },
+  { path: 'scenes.bloom.cameraTargetY', label: 'Цель камеры · Y', unit: '', min: -0.5, max: 3, step: 0.02 },
+  { path: 'scenes.bloom.cameraApproachDuration', label: 'Длительность приближения камеры', unit: 'с', min: 1, max: 22, step: 0.1 },
+  { path: 'scenes.bloom.cameraBloomSync', label: 'Раскрытие к финалу приближения', unit: '%', min: 50, max: 85, step: 1, displayScale: 100 },
+  { path: 'scenes.bloom.textPositionX', label: 'Положение текста · X', unit: '%', min: 5, max: 48, step: 1, displayScale: 100 },
+  { path: 'scenes.bloom.textPositionY', label: 'Положение текста · Y', unit: '%', min: 10, max: 90, step: 1, displayScale: 100 },
+  { path: 'scenes.bloom.textSize', label: 'Размер текста', unit: 'px', min: 26, max: 100, step: 1 },
+  { path: 'scenes.bloom.textWritingDuration', label: 'Длительность письма', unit: 'с', min: 1, max: 12, step: 0.1 },
+  { path: 'scenes.bloom.textParticleCount', label: 'Частицы растворения текста', unit: 'шт.', min: 300, max: 6000, step: 100 },
+]
+
+const DISSOLVE_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.identity.dissolveDuration', label: 'Длительность растворения', unit: 'с', min: 2, max: 18, step: 0.1 },
+  { path: 'scenes.identity.particleCount', label: 'Плотность частиц', unit: 'шт.', min: 1000, max: 100000, step: 1000 },
+  { path: 'scenes.identity.particleSize', label: 'Размер частиц', unit: 'px', min: 0.5, max: 6, step: 0.1 },
+  { path: 'scenes.identity.particleBrightness', label: 'Яркость частиц', unit: '×', min: 0.25, max: 2, step: 0.05 },
+  { path: 'scenes.identity.edgeWidth', label: 'Ширина светящейся границы', unit: '', min: 0.005, max: 0.1, step: 0.005 },
+  { path: 'scenes.identity.vortexRadius', label: 'Радиус вихря', unit: '× радиуса цветка', min: 0.5, max: 3, step: 0.05 },
+  { path: 'scenes.identity.vortexExpansion', label: 'Расширение вверх', unit: '× / м', min: 0, max: 1.5, step: 0.05 },
+  { path: 'scenes.identity.swirlSpeed', label: 'Начальная скорость вращения', unit: 'рад/с', min: 0, max: 8, step: 0.05 },
+  { path: 'scenes.identity.swirlAcceleration', label: 'Ускорение вращения', unit: 'рад/с²', min: 0, max: 3, step: 0.01 },
+  { path: 'scenes.identity.centerDissolveAt', label: 'Распад центра при растворении лепестков', unit: '%', min: 10, max: 90, step: 1, displayScale: 100 },
+]
+
+const PORTRAIT_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.identity.portraitStartProgress', label: 'Начало захвата портрета', unit: '%', min: 0, max: 100, step: 1, displayScale: 100 },
+  { path: 'scenes.identity.portraitDuration', label: 'Длительность сборки', unit: 'с', min: 2, max: 16, step: 0.1 },
+  { path: 'scenes.identity.portraitFraction', label: 'Доля частиц вихря для портрета', unit: '%', min: 0, max: 45, step: 1, displayScale: 100 },
+  { path: 'scenes.identity.portraitMinTurns', label: 'Минимум витков до фиксации', unit: 'витка', min: 0, max: 4, step: 0.1 },
+  { path: 'scenes.identity.portraitMaxTurns', label: 'Максимум витков до фиксации', unit: 'витка', min: 0, max: 4, step: 0.1 },
+  { path: 'scenes.identity.portraitSteering', label: 'Сила отклонения к портрету', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.identity.portraitBraking', label: 'Торможение при фиксации', unit: '×', min: 0.25, max: 2, step: 0.05 },
+  { path: 'scenes.identity.portraitSettledBrightness', label: 'Яркость закреплённой частицы', unit: '×', min: 1, max: 2, step: 0.05 },
+  { path: 'scenes.identity.vortexSpeedMultiplier', label: 'Скорость вихря', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.identity.portraitDetail', label: 'Детализация портрета', unit: '×', min: 0.5, max: 2, step: 0.05 },
+  { path: 'scenes.identity.portraitBrightness', label: 'Яркость портрета', unit: '×', min: 1.1, max: 2, step: 0.05 },
+  { path: 'scenes.identity.portraitSize', label: 'Размер точек портрета', unit: '×', min: 0.6, max: 1.8, step: 0.05 },
+  { path: 'scenes.identity.portraitScale', label: 'Масштаб портрета', unit: '×', min: 0.55, max: 1.25, step: 0.05 },
+  { path: 'scenes.identity.portraitOffsetX', label: 'Положение портрета · X', unit: '× свободного поля', min: -1, max: 1, step: 0.05 },
+  { path: 'scenes.identity.portraitOffsetY', label: 'Положение портрета · Y', unit: '× свободного поля', min: -1, max: 1, step: 0.05 },
+]
+
+const IDENTITY_CAMERA_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.bloom.cameraFinalHeight', label: 'Высота камеры / наклон взгляда', unit: '', min: 0.5, max: 4, step: 0.05 },
+  { path: 'scenes.bloom.cameraFinalDistance', label: 'Дистанция камеры', unit: '', min: 1.5, max: 5, step: 0.05 },
+  { path: 'scenes.bloom.cameraTargetX', label: 'Точка фокуса · X', unit: '', min: -1, max: 1, step: 0.02 },
+  { path: 'scenes.bloom.cameraTargetY', label: 'Точка фокуса · высота', unit: '', min: -0.5, max: 3, step: 0.02 },
+  { path: 'scenes.identity.cameraPullback', label: 'Отъезд назад', unit: '', min: 0, max: 5, step: 0.05 },
+  { path: 'scenes.identity.cameraRise', label: 'Подъём камеры', unit: '', min: 0, max: 3, step: 0.05 },
+  { path: 'scenes.identity.cameraMoveDuration', label: 'Длительность движения камеры', unit: 'с', min: 1, max: 18, step: 0.1 },
 ]
 
 const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
@@ -404,7 +456,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
     await commitGalaxySettings(selectGalaxyPalette(getConfig().scenes.galaxy, palette))
   }
 
-  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'galaxy') => {
+  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'galaxy') => {
     const before = getConfig()
     const result = await resetComposerScope(scope)
     if (!result.ok) {
@@ -483,9 +535,9 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const font = (scene: 'preparation' | 'prologue', label: string) => <FontControl path={`scenes.${scene}.fontFamily`} label={label} value={config.scenes[scene].fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
   const title = selected === 'preload' ? '00 · Загрузка' : selected === 'preparation' ? '00.1 · Подготовка' : SCENES[selected].label
   const hasSceneControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue'
-    || selected === 'growth' || selected === 'bloom' || selected === 'cosmos'
+    || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'cosmos'
   const currentScope: InspectorScope | undefined = selected === 'cosmos' ? 'galaxy'
-    : selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth' || selected === 'bloom'
+    : selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth' || selected === 'bloom' || selected === 'identity'
       ? selected : undefined
   const currentSnapshots = currentScope ? snapshots[currentScope] : undefined
   const remember = (slot: 'A' | 'B') => {
@@ -603,7 +655,19 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             {color('scenes.growth.lavenderColor', 'Лавандовый')}
           </details>
         </>}
-        {selected === 'bloom' && <details open><summary>Анимация раскрытия</summary>{BLOOM_CONTROLS.map(range)}<p>IdleClosed ожидает касания; Bloom начинается только после него.</p></details>}
+        {selected === 'bloom' && <details open><summary>Анимация раскрытия</summary>
+          <details open><summary>Камера · CameraDirector</summary>{BLOOM_CONTROLS.slice(0, 7).map(range)}</details>
+          <details open><summary>Текст ожидания</summary>{BLOOM_CONTROLS.slice(7).map(range)}{color('scenes.bloom.textColor', 'Цвет текста')}</details>
+          <p>IdleClosed ждёт завершения письма и жеста. Камера доезжает до крупного плана на заданной доле раскрытия.</p>
+        </details>}
+        {selected === 'identity' && <>
+          <details open><summary>Растворение лилии и вихрь</summary>{DISSOLVE_CONTROLS.map(range)}</details>
+          <details open><summary>Сборка портрета из частиц</summary>{PORTRAIT_CONTROLS.map(range)}</details>
+          <details open><summary>Камера · кадр и отъезд</summary>
+            {IDENTITY_CAMERA_CONTROLS.map(range)}
+            <p>Наклон взгляда задаётся высотой камеры, дистанцией и точкой фокуса. Параметры кадра общие с концом сцены 03, поэтому первый кадр сцены 04 остаётся непрерывным.</p>
+          </details>
+        </>}
         {selected === 'cosmos' && <>
           <details open><summary>Scene 07 — Galaxy</summary>
             {GALAXY_SELECTS.map((control) => <SelectConfigControl key={control.path} control={control} value={valueAtPath(config, control.path) as string} onChange={(path, value) => { void (path === 'scenes.galaxy.palette' ? changeGalaxyPalette(value as GalaxyPalette) : changeField(path, value)) }} onReset={(path) => { void resetField(path) }} />)}
@@ -624,7 +688,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             <button type="button" onClick={() => { void resetScope('galaxy') }}>Сбросить Galaxy</button>
           </details>
         </>}
-        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
+        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
       </section>
       <details className="inspector-section"><summary>Диагностика</summary>
         <div className="dev-actions"><button type="button" data-testid="dev-preload" onClick={onPreload}>Проверить загрузку</button><button type="button" data-testid="dev-permissions" onClick={onPermissions}>Настройки заново</button></div>

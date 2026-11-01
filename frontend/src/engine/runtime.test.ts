@@ -3,6 +3,41 @@ import { expect, it, vi } from 'vitest'
 import { filmReducer, initialFilmState, type FilmAction } from './film'
 import { createFilmClock, createFilmRuntime } from './runtime'
 
+it('holds the scene clock while its pending resources load and respects user pause on release', () => {
+  const runtime = createFilmRuntime()
+  const state = { ...initialFilmState, scene: 'identity' as const, mode: 'playing' as const, revision: 7 }
+  const clock = createFilmClock({ state, runtime, dispatch: () => {} })
+  clock.timeline.time(0.5)
+  const release = runtime.hold()
+  const releaseOther = runtime.hold()
+  expect(clock.timeline.paused()).toBe(true)
+  releaseOther()
+  expect(clock.timeline.paused()).toBe(true)
+  clock.sync({ ...state, paused: true })
+  release()
+  release()
+  expect(clock.timeline.paused()).toBe(true)
+  clock.sync(state)
+  expect(clock.timeline.paused()).toBe(false)
+  expect(runtime.time).toBeCloseTo(0.5)
+  clock.dispose()
+})
+
+it('releases an old loading hold after switching scenes without reviving the old clock', () => {
+  const runtime = createFilmRuntime()
+  const state = { ...initialFilmState, scene: 'identity' as const, mode: 'playing' as const, revision: 7 }
+  const previous = createFilmClock({ state, runtime, dispatch: () => {} })
+  const release = runtime.hold()
+  previous.dispose()
+  const next = createFilmClock({ state: { ...state, scene: 'eye', revision: 8 }, runtime, dispatch: () => {} })
+  expect(next.timeline.paused()).toBe(true)
+  release()
+  expect(next.timeline.paused()).toBe(false)
+  next.timeline.time(1)
+  expect(runtime.time).toBeCloseTo(1)
+  next.dispose()
+})
+
 it('keeps canonical waiting time at eighteen while one controlled presentation clock continues', () => {
   const runtime = createFilmRuntime()
   const actions: FilmAction[] = []

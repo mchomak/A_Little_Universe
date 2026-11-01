@@ -2,6 +2,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExterna
 import { useThree } from '@react-three/fiber'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, GLSL3, Group, MeshBasicMaterial, RawShaderMaterial, Sphere, Vector2, Vector3, type Mesh, type ShaderMaterial, type SpotLight } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
+import { getIdentityEnvironmentOpacity } from '../engine/sceneContinuity'
 import { useSceneAnimation } from './shared/animation'
 import { getGrowthFrames, getGrowthViewportHeight, getSeedParticleCount, getSeedPose, sampleSeedParticleSeeds, SEED_ROOT, type GrowthSettings } from './growth/seedProcedure'
 import { coreFragment, groundFragment, haloFragment, moonFragment, particleFragment, particleVertex, seedFragment, surfaceVertex } from './growth/seedShaders'
@@ -128,7 +129,7 @@ function SeedParticles({ mode, count, materialRef, fallRange }: {
 }
 
 /** Scene 02. The unchanged world root is also the future flower-model anchor. */
-export function GrowthScene({ state, runtime, reducedMotion }: SceneProps) {
+export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = false }: SceneProps & { environmentOnly?: boolean }) {
   const height = useThree(({ size }) => getGrowthViewportHeight(size.width, size.height))
   const dpr = useThree(({ viewport }) => viewport.dpr)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
@@ -163,86 +164,96 @@ export function GrowthScene({ state, runtime, reducedMotion }: SceneProps) {
   const low = state.quality === 'low'
   const particleCount = getSeedParticleCount(state.quality, growthSettings.particleQuality)
   const fallRange = useMemo(() => getGrowthFrames(growthSettings).fall, [growthSettings])
+  const identityScene = state.scene === 'identity'
 
   const draw = useCallback((time: number) => {
-    const pose = getSeedPose(time, height, reducedMotion, growthSettings)
-    matterSyncRef.current?.(time, growthSettings)
-    for (const [material, opacity] of [[orbit.current, 0.95], [trail.current, pose.trailOpacity], [sparks.current, pose.sparkOpacity]] as const) {
-      if (material) {
-        material.uniforms.time!.value = time
-        material.uniforms.opacity!.value = opacity
-        material.uniforms.height!.value = height
-        material.uniforms.reduced!.value = +reducedMotion
-        material.uniforms.dpr!.value = dpr
-        ;(material.uniforms.fallRange!.value as Vector2).set(...fallRange)
+    const frames = getGrowthFrames(growthSettings)
+    const poseTime = environmentOnly ? frames.duration : time
+    const pose = getSeedPose(poseTime, height, reducedMotion, growthSettings)
+    const environmentOpacity = identityScene ? getIdentityEnvironmentOpacity(time, config.scenes.identity.dissolveDuration) : 1
+    if (!environmentOnly) {
+      matterSyncRef.current?.(time, growthSettings)
+      for (const [material, opacity] of [[orbit.current, 0.95], [trail.current, pose.trailOpacity], [sparks.current, pose.sparkOpacity]] as const) {
+        if (material) {
+          material.uniforms.time!.value = time
+          material.uniforms.opacity!.value = opacity
+          material.uniforms.height!.value = height
+          material.uniforms.reduced!.value = +reducedMotion
+          material.uniforms.dpr!.value = dpr
+          ;(material.uniforms.fallRange!.value as Vector2).set(...fallRange)
+        }
       }
+      if (seed.current) {
+        seed.current.position.set(0, pose.seedY + pose.seedSize * 0.84 * pose.fall, 0)
+        seed.current.scale.setScalar(pose.seedSize)
+        seed.current.rotation.set(0, reducedMotion ? 0 : time * 0.24, reducedMotion ? 0 : Math.sin(time * 1.8) * 0.035 * (1 - pose.fall))
+        seed.current.visible = pose.seedOpacity > 0
+      }
+      if (shell.current) {
+        const shellReveal = pose.formation * (0.26 + 0.74 * pose.formation)
+        shell.current.uniforms.opacity!.value = shellReveal * pose.seedOpacity * 0.82
+        shell.current.uniforms.time!.value = time
+      }
+      if (core.current) {
+        core.current.uniforms.opacity!.value = pose.lightTransfer * pose.seedOpacity
+        core.current.uniforms.time!.value = time
+        core.current.uniforms.intensity!.value = growthSettings.coreGlow
+      }
+      if (halo.current) halo.current.uniforms.opacity!.value = pose.lightTransfer * pose.seedOpacity * (0.28 + pose.formation * 0.38)
     }
-    if (seed.current) {
-      seed.current.position.set(0, pose.seedY + pose.seedSize * 0.84 * pose.fall, 0)
-      seed.current.scale.setScalar(pose.seedSize)
-      seed.current.rotation.set(0, reducedMotion ? 0 : time * 0.24, reducedMotion ? 0 : Math.sin(time * 1.8) * 0.035 * (1 - pose.fall))
-      seed.current.visible = pose.seedOpacity > 0
-    }
-    if (shell.current) {
-      const shellReveal = pose.formation * (0.26 + 0.74 * pose.formation)
-      shell.current.uniforms.opacity!.value = shellReveal * pose.seedOpacity * 0.82
-      shell.current.uniforms.time!.value = time
-    }
-    if (core.current) {
-      core.current.uniforms.opacity!.value = pose.lightTransfer * pose.seedOpacity
-      core.current.uniforms.time!.value = time
-      core.current.uniforms.intensity!.value = growthSettings.coreGlow
-    }
-    if (halo.current) halo.current.uniforms.opacity!.value = pose.lightTransfer * pose.seedOpacity * (0.28 + pose.formation * 0.38)
     if (ground.current) {
-      ground.current.uniforms.opacity!.value = pose.ringOpacity
+      ground.current.uniforms.opacity!.value = pose.ringOpacity * environmentOpacity
       ground.current.uniforms.impact!.value = pose.impact
       ground.current.uniforms.moonlight!.value = pose.moonlight
     }
-    if (moonBeam.current) moonBeam.current.uniforms.opacity!.value = pose.moonlight
+    if (moonBeam.current) moonBeam.current.uniforms.opacity!.value = pose.moonlight * environmentOpacity
     if (mound.current) {
       mound.current.visible = pose.mound > 0
       mound.current.scale.set(0.09, Math.max(0.0001, pose.mound * 0.045), 0.09)
     }
-    if (moundMaterial.current) moundMaterial.current.opacity = pose.mound * 0.16
-    if (moon.current) { moon.current.intensity = pose.moonlight * 4; if (target.current) moon.current.target = target.current }
-  }, [height, dpr, reducedMotion, growthSettings, fallRange])
+    if (moundMaterial.current) moundMaterial.current.opacity = pose.mound * 0.16 * environmentOpacity
+    if (moon.current) { moon.current.intensity = pose.moonlight * 4 * environmentOpacity; if (target.current) moon.current.target = target.current }
+  }, [height, dpr, reducedMotion, growthSettings, fallRange, environmentOnly, identityScene, config.scenes.identity.dissolveDuration])
 
   useSceneAnimation(runtime, getGrowthFrames(growthSettings).duration, draw)
   return <group position={SEED_ROOT}>
-    {gpuStatus !== 'ready' && <SeedParticles mode={0} count={low ? 28 : 76} materialRef={orbit} fallRange={fallRange} />}
-    {!reducedMotion && <>
-      <SeedParticles mode={1} count={low ? 12 : 30} materialRef={trail} fallRange={fallRange} />
-      <SeedParticles mode={2} count={low ? 38 : 110} materialRef={sparks} fallRange={fallRange} />
-    </>}
-    <group ref={seed}>
-      <SeedMatter count={particleCount} settings={growthSettings} runtime={runtime} simulationRef={simulationRef} syncRef={matterSyncRef} onStatus={setMatterStatus} gpuReady={gpuStatus === 'ready'} />
-      <mesh>
-        <latheGeometry args={[profile, low ? 32 : 64]} />
-        <shaderMaterial ref={shell} vertexShader={surfaceVertex} fragmentShader={seedFragment} uniforms={shellUniforms} transparent depthWrite={false} side={DoubleSide} toneMapped={false} />
+    {!environmentOnly && <group key="growth-seed">
+      {gpuStatus !== 'ready' && <SeedParticles mode={0} count={low ? 28 : 76} materialRef={orbit} fallRange={fallRange} />}
+      {!reducedMotion && <>
+        <SeedParticles mode={1} count={low ? 12 : 30} materialRef={trail} fallRange={fallRange} />
+        <SeedParticles mode={2} count={low ? 38 : 110} materialRef={sparks} fallRange={fallRange} />
+      </>}
+      <group ref={seed}>
+        <SeedMatter count={particleCount} settings={growthSettings} runtime={runtime} simulationRef={simulationRef} syncRef={matterSyncRef} onStatus={setMatterStatus} gpuReady={gpuStatus === 'ready'} />
+        <mesh>
+          <latheGeometry args={[profile, low ? 32 : 64]} />
+          <shaderMaterial ref={shell} vertexShader={surfaceVertex} fragmentShader={seedFragment} uniforms={shellUniforms} transparent depthWrite={false} side={DoubleSide} toneMapped={false} />
+        </mesh>
+        <mesh scale={[0.62, 1.6, 1]} position={[0, -0.05, 0.02]}>
+          <planeGeometry />
+          <shaderMaterial ref={core} vertexShader={surfaceVertex} fragmentShader={coreFragment} uniforms={coreUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+        </mesh>
+        <mesh scale={[1.5, 2.35, 1]}>
+          <planeGeometry />
+          <shaderMaterial ref={halo} vertexShader={surfaceVertex} fragmentShader={haloFragment} uniforms={haloUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+        </mesh>
+      </group>
+    </group>}
+    <group key="growth-environment">
+      <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[3.4, 3.4]} />
+        <shaderMaterial ref={ground} vertexShader={surfaceVertex} fragmentShader={groundFragment} uniforms={groundUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} side={DoubleSide} />
       </mesh>
-      <mesh scale={[0.62, 1.6, 1]} position={[0, -0.05, 0.02]}>
-        <planeGeometry />
-        <shaderMaterial ref={core} vertexShader={surfaceVertex} fragmentShader={coreFragment} uniforms={coreUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+      <mesh ref={mound} position={[0, 0, 0]} scale={[0.115, 0.0001, 0.115]}>
+        <sphereGeometry args={[1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshBasicMaterial ref={moundMaterial} color="#EBC68F" transparent opacity={0} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
       </mesh>
-      <mesh scale={[1.5, 2.35, 1]}>
-        <planeGeometry />
-        <shaderMaterial ref={halo} vertexShader={surfaceVertex} fragmentShader={haloFragment} uniforms={haloUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
+      <group ref={target} />
+      <spotLight ref={moon} position={[-0.65, 5.5, 1.0]} color="#BDCEFF" intensity={0} angle={0.24} penumbra={1} decay={0} />
+      <mesh position={[-0.15, 2.6, -0.35]} rotation={[0, 0, -0.06]}>
+        <planeGeometry args={[3.4, 5.7]} />
+        <shaderMaterial ref={moonBeam} vertexShader={surfaceVertex} fragmentShader={moonFragment} uniforms={moonUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
       </mesh>
     </group>
-    <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[3.4, 3.4]} />
-      <shaderMaterial ref={ground} vertexShader={surfaceVertex} fragmentShader={groundFragment} uniforms={groundUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} side={DoubleSide} />
-    </mesh>
-    <mesh ref={mound} position={[0, 0, 0]} scale={[0.115, 0.0001, 0.115]}>
-      <sphereGeometry args={[1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
-      <meshBasicMaterial ref={moundMaterial} color="#EBC68F" transparent opacity={0} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
-    </mesh>
-    <group ref={target} />
-    <spotLight ref={moon} position={[-0.65, 5.5, 1.0]} color="#BDCEFF" intensity={0} angle={0.24} penumbra={1} decay={0} />
-    <mesh position={[-0.15, 2.6, -0.35]} rotation={[0, 0, -0.06]}>
-      <planeGeometry args={[3.4, 5.7]} />
-      <shaderMaterial ref={moonBeam} vertexShader={surfaceVertex} fragmentShader={moonFragment} uniforms={moonUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
-    </mesh>
   </group>
 }

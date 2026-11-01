@@ -5,7 +5,7 @@ export type QualityProfile = 'standard' | 'low'
 export type ScenePresetId = 'moonlit-letter' | 'stardust' | 'vasilisa-cinematic'
 export type GalaxyPalette = 'vasilisa' | 'spore' | 'ember' | 'emerald' | 'ice' | 'rose' | 'custom'
 export type SeedQuality = 'low' | 'standard' | 'high'
-export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'galaxy' | 'preset'
+export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'galaxy' | 'preset'
 
 type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T[Key]> : T[Key] }
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
@@ -87,7 +87,52 @@ export interface SceneComposerConfig {
       seedScale: number
       flowerGrowthDuration: number
     }>
-    bloom: Readonly<{ flowerBloomDuration: number }>
+    bloom: Readonly<{
+      flowerBloomDuration: number
+      cameraApproachDuration: number
+      cameraBloomSync: number
+      cameraFinalDistance: number
+      cameraFinalHeight: number
+      cameraTargetX: number
+      cameraTargetY: number
+      textPositionX: number
+      textPositionY: number
+      textSize: number
+      textColor: string
+      textWritingDuration: number
+      textParticleCount: number
+    }>
+    identity: Readonly<{
+      dissolveDuration: number
+      particleCount: number
+      particleSize: number
+      edgeWidth: number
+      particleBrightness: number
+      vortexRadius: number
+      vortexExpansion: number
+      swirlSpeed: number
+      swirlAcceleration: number
+      centerDissolveAt: number
+      cameraPullback: number
+      cameraRise: number
+      cameraMoveDuration: number
+      portraitStart: number
+      portraitDuration: number
+      portraitStartProgress: number
+      portraitFraction: number
+      portraitMinTurns: number
+      portraitMaxTurns: number
+      portraitSteering: number
+      portraitBraking: number
+      portraitSettledBrightness: number
+      vortexSpeedMultiplier: number
+      portraitDetail: number
+      portraitBrightness: number
+      portraitSize: number
+      portraitScale: number
+      portraitOffsetX: number
+      portraitOffsetY: number
+    }>
     galaxy: Readonly<{
       quality: SeedQuality
       seed: string
@@ -190,7 +235,22 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       freeParticleFraction: 0.08, pearlColor: '#FFF4E8', roseColor: '#F4CCDA',
       lavenderColor: '#D7CCF1', coreGlow: 0.55, seedScale: 1, flowerGrowthDuration: 9,
     },
-    bloom: { flowerBloomDuration: 16 },
+    bloom: {
+      flowerBloomDuration: 16, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,
+      cameraFinalDistance: 2.3, cameraFinalHeight: 2.55, cameraTargetX: 0.27, cameraTargetY: 1.25,
+      textPositionX: 0.1, textPositionY: 0.52, textSize: 36, textColor: '#C7AD77',
+      textWritingDuration: 4.2, textParticleCount: 1800,
+    },
+    identity: {
+      dissolveDuration: 12, particleCount: 80000, particleSize: 2.3, edgeWidth: 0.035,
+      particleBrightness: 1.25, vortexRadius: 0.8, vortexExpansion: 0.45,
+      swirlSpeed: 1, swirlAcceleration: 0.1, centerDissolveAt: 0.5,
+      cameraPullback: 1.8, cameraRise: 0.65, cameraMoveDuration: 12,
+      portraitStart: 12, portraitDuration: 8.5, portraitStartProgress: 0.3, portraitFraction: 0.4,
+      portraitMinTurns: 0, portraitMaxTurns: 2, portraitSteering: 1, portraitBraking: 1,
+      portraitSettledBrightness: 1.15, vortexSpeedMultiplier: 0.9, portraitDetail: 1.5,
+      portraitBrightness: 1.8, portraitSize: 1.8, portraitScale: 1.05, portraitOffsetX: 0, portraitOffsetY: 0,
+    },
     galaxy: {
       quality: 'standard', seed: 'andromeda', starCount: 32000, arms: 5, radius: 8.2,
       spin: 4.6, armWidth: 0.16, randomness: 0.065, randomnessPower: 3.6, coreSize: 0.24, coreDensity: 0.2,
@@ -256,6 +316,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const preparationInput = asRecord(scenesInput?.preparation)
   const prologueInput = asRecord(scenesInput?.prologue)
   const growthInput = asRecord(scenesInput?.growth)
+  const identityInput = asRecord(scenesInput?.identity)
   const galaxyInput = asRecord(scenesInput?.galaxy)
   const galaxySettingsInput = migrateGalaxySettings(galaxyInput, inputVersion)
   const legacyParticleSpeed = numberValue(prologueInput?.particleSpeed, 1, 0.1, 10)
@@ -358,8 +419,54 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
     },
     bloom: {
       flowerBloomDuration: numberValue(asRecord(scenesInput?.bloom)?.flowerBloomDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.flowerBloomDuration, 6, 24),
+      cameraApproachDuration: numberValue(asRecord(scenesInput?.bloom)?.cameraApproachDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraApproachDuration, 1, 22),
+      cameraBloomSync: numberValue(asRecord(scenesInput?.bloom)?.cameraBloomSync, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraBloomSync, 0.5, 0.85),
+      cameraFinalDistance: numberValue(asRecord(scenesInput?.bloom)?.cameraFinalDistance, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraFinalDistance, 1.5, 5),
+      cameraFinalHeight: numberValue(asRecord(scenesInput?.bloom)?.cameraFinalHeight, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraFinalHeight, 0.5, 4),
+      cameraTargetX: numberValue(asRecord(scenesInput?.bloom)?.cameraTargetX, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraTargetX, -1, 1),
+      cameraTargetY: numberValue(asRecord(scenesInput?.bloom)?.cameraTargetY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraTargetY, -0.5, 3),
+      textPositionX: numberValue(asRecord(scenesInput?.bloom)?.textPositionX, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textPositionX, 0.05, 0.48),
+      textPositionY: numberValue(asRecord(scenesInput?.bloom)?.textPositionY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textPositionY, 0.1, 0.9),
+      textSize: numberValue(asRecord(scenesInput?.bloom)?.textSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textSize, 26, 100),
+      textColor: colorValue(asRecord(scenesInput?.bloom)?.textColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textColor),
+      textWritingDuration: numberValue(asRecord(scenesInput?.bloom)?.textWritingDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textWritingDuration, 1, 12),
+      textParticleCount: numberValue(asRecord(scenesInput?.bloom)?.textParticleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textParticleCount, 300, 6000, true),
+    },
+    identity: {
+      dissolveDuration: numberValue(identityInput?.dissolveDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.dissolveDuration, 2, 18),
+      particleCount: numberValue(identityInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleCount, 1000, 100000, true),
+      particleSize: numberValue(identityInput?.particleSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleSize, 0.5, 6),
+      edgeWidth: numberValue(identityInput?.edgeWidth, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.edgeWidth, 0.005, 0.1),
+      particleBrightness: numberValue(identityInput?.particleBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleBrightness, 0.25, 2),
+      vortexRadius: numberValue(identityInput?.vortexRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.vortexRadius, 0.5, 3),
+      vortexExpansion: numberValue(identityInput?.vortexExpansion, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.vortexExpansion, 0, 1.5),
+      swirlSpeed: numberValue(identityInput?.swirlSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.swirlSpeed, 0, 8),
+      swirlAcceleration: numberValue(identityInput?.swirlAcceleration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.swirlAcceleration, 0, 3),
+      centerDissolveAt: numberValue(identityInput?.centerDissolveAt, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.centerDissolveAt, 0.1, 0.9),
+      cameraPullback: numberValue(identityInput?.cameraPullback, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.cameraPullback, 0, 5),
+      cameraRise: numberValue(identityInput?.cameraRise, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.cameraRise, 0, 3),
+      cameraMoveDuration: numberValue(identityInput?.cameraMoveDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.cameraMoveDuration, 1, 18),
+      portraitStart: numberValue(identityInput?.portraitStart, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitStart, 0, 30),
+      portraitDuration: numberValue(identityInput?.portraitDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitDuration, 2, 16),
+      portraitStartProgress: numberValue(identityInput?.portraitStartProgress, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitStartProgress, 0, 1),
+      portraitFraction: numberValue(identityInput?.portraitFraction, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitFraction, 0, 0.45),
+      portraitMinTurns: numberValue(identityInput?.portraitMinTurns, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitMinTurns, 0, 4),
+      portraitMaxTurns: numberValue(identityInput?.portraitMaxTurns, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitMaxTurns, 0, 4),
+      portraitSteering: numberValue(identityInput?.portraitSteering, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitSteering, 0, 2),
+      portraitBraking: numberValue(identityInput?.portraitBraking, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitBraking, 0.25, 2),
+      portraitSettledBrightness: numberValue(identityInput?.portraitSettledBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitSettledBrightness, 1, 2),
+      vortexSpeedMultiplier: numberValue(identityInput?.vortexSpeedMultiplier, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.vortexSpeedMultiplier, 0, 2),
+      portraitDetail: numberValue(identityInput?.portraitDetail, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitDetail, 0.5, 2),
+      portraitBrightness: numberValue(identityInput?.portraitBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitBrightness, 1.1, 2),
+      portraitSize: numberValue(identityInput?.portraitSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitSize, 0.6, 1.8),
+      portraitScale: numberValue(identityInput?.portraitScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitScale, 0.55, 1.25),
+      portraitOffsetX: numberValue(identityInput?.portraitOffsetX, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitOffsetX, -1, 1),
+      portraitOffsetY: numberValue(identityInput?.portraitOffsetY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitOffsetY, -1, 1),
     },
     galaxy: normalizeGalaxy(galaxySettingsInput),
+  }
+  if (scenes.identity.portraitMinTurns > scenes.identity.portraitMaxTurns) {
+    scenes.identity.portraitMaxTurns = scenes.identity.portraitMinTurns
   }
   if (scenes.prologue.particleSizeMin > scenes.prologue.particleSizeMax) {
     scenes.prologue.particleSizeMax = scenes.prologue.particleSizeMin

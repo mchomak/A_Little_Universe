@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 import { getGrowthSceneFrames, retimeSceneElapsed } from '../../engine/filmConfig'
-import { getBloomClipTime, getGrowthClipTime, getIdleClosedClipTime, getLoopingClipTime, getMappedClipTime } from './animationTiming'
+import { getBloomCameraApproachDuration, getBloomClipTime, getGrowthClipTime, getIdleClosedClipTime, getLoopingClipTime, getMappedClipTime, getSyncedBloomClipTime } from './animationTiming'
 
 describe('Lily clip timing', () => {
   it('maps the full GLB clip into its configured scene interval without cutting the endpoint', () => {
@@ -46,5 +46,25 @@ describe('Lily clip timing', () => {
     expect(getBloomClipTime(0, [0, 16], 16, true)).toBe(16)
     expect(getIdleClosedClipTime(5, 8, true)).toBe(0)
     expect(getIdleClosedClipTime(5, 8, false)).toBe(5)
+  })
+
+  it('synchronizes the close-up with a configurable fraction of the bloom clip', () => {
+    const opening: readonly [number, number] = [0, 16]
+    const approach = getBloomCameraApproachDuration(10.7, opening)
+
+    expect(approach).toBe(10.7)
+    expect(getSyncedBloomClipTime(0, opening, 16, false, approach, 0.67)).toBe(0)
+    expect(getSyncedBloomClipTime(approach, opening, 16, false, approach, 0.67)).toBeCloseTo(10.72, 5)
+    expect(getSyncedBloomClipTime(16, opening, 16, false, approach, 0.67)).toBe(16)
+    expect(getSyncedBloomClipTime(20.9, opening, 16, false, approach, 0.67)).toBe(16)
+    expect(getSyncedBloomClipTime(approach / 2, opening, 16, false, approach, 0.67))
+      .toBeLessThan(getSyncedBloomClipTime(approach, opening, 16, false, approach, 0.67))
+  })
+
+  it('keeps camera completion inside short or edited bloom openings', () => {
+    expect(getBloomCameraApproachDuration(10.7, [0, 6])).toBeCloseTo(5.7)
+    expect(getSyncedBloomClipTime(5.7, [0, 6], 16, false, 10.7, 0.67)).toBeCloseTo(10.72, 5)
+    expect(getSyncedBloomClipTime(6, [0, 6], 16, false, 10.7, 0.67)).toBe(16)
+    expect(getSyncedBloomClipTime(2, [0, 16], 16, true, 10.7, 0.67)).toBe(16)
   })
 })
