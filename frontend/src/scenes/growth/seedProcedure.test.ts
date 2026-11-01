@@ -80,9 +80,8 @@ describe('scene 02 seed procedure', () => {
     expect(Math.abs(before.y - after.y)).toBeLessThan(0.01)
   })
 
-  it('shows rings before landing, bursts briefly, leaves a mound and delays moonlight by half a second', () => {
+  it('keeps the seed landing, short spark burst, mound and delayed moonlight timing', () => {
     const impact = TIMING.growth.fall[1]
-    expect(getSeedPose(impact - 0.2, 3.82, false).ringOpacity).toBeGreaterThan(0)
     expect(getSeedPose(impact - 0.01, 3.82, false).mound).toBe(0)
     expect(getSeedPose(impact - 0.01, 3.82, false).seedOpacity).toBeGreaterThan(0.9)
     expect(getSeedPose(impact + 0.2, 3.82, false).seedOpacity).toBe(0)

@@ -51,7 +51,6 @@ export interface SeedPose {
   growthTime: number
   seedSize: number
   seedOpacity: number
-  ringOpacity: number
   sparkOpacity: number
   mound: number
   moonlight: number
@@ -98,7 +97,6 @@ export function getSeedPose(time: number, viewportHeight: number, reducedMotion:
     anchor: SEED_ROOT,
     seedSize: Math.max(0.001, viewportHeight * (0.004 + 0.061 * forming) * settings.seedScale),
     seedOpacity: 1 - progress(time, [landing[0], landing[0] + 0.12]),
-    ringOpacity: progress(time, [0.5, 1.8]) * (0.36 + 0.24 * progress(time, fall)),
     sparkOpacity: reducedMotion || time < landing[0] ? 0 : 1 - progress(time, [landing[0] + 0.08, landing[0] + 0.85]),
     mound: progress(time, [landing[0], landing[0] + 0.28]),
     moonlight: progress(time, moonlight),

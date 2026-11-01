@@ -54,30 +54,6 @@ export const coreFragment = `
     gl_FragColor = vec4(color, (heart * 0.55 + hot * 0.12) * opacity * intensity * breathe);
   }
 `
-export const groundFragment = `
-  uniform float opacity;
-  uniform float impact;
-  uniform float moonlight;
-  varying vec2 vUv;
-  float ring(float r, float target, float width) {
-    return exp(-pow((r - target) / max(width, fwidth(r) * 0.85), 2.0));
-  }
-  void main() {
-    vec2 p = vUv - 0.5;
-    float r = length(p);
-    float angle = atan(p.y, p.x);
-    float drift = sin(angle * 3.0 + 0.4) * 0.0015;
-    float lines = ring(r, 0.14, 0.0012) + ring(r + drift, 0.205, 0.0014)
-      + ring(r, 0.26, 0.0011) + ring(r - drift, 0.27, 0.0006) * 0.35;
-    float glow = ring(r, 0.14, 0.009) + ring(r, 0.205, 0.009) + ring(r, 0.26, 0.011);
-    float irregular = 0.72 + 0.28 * sin(angle * 4.0 + r * 90.0);
-    float flash = ring(r, 0.035 + impact * 0.35, 0.008) * sin(impact * 3.14159);
-    float pool = exp(-r * r * 35.0);
-    vec3 color = mix(vec3(1.0, 0.64, 0.27), vec3(0.7, 0.78, 1.0), pool * moonlight * 0.18);
-    float alpha = (lines * irregular * 0.65 + glow * 0.08 + flash * 0.4) * opacity + pool * moonlight * 0.025;
-    gl_FragColor = vec4(color, alpha);
-  }
-`
 export const moonFragment = `
   uniform float opacity;
   varying vec2 vUv;

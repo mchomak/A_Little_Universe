@@ -124,6 +124,11 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.growth.coreGlow', label: 'Свечение ядра', unit: '×', min: 0, max: 1.5, step: 0.05 },
     { path: 'scenes.growth.seedScale', label: 'Масштаб семечка', unit: '×', min: 0.65, max: 1.4, step: 0.05 },
   ] },
+  { name: 'Парящий остров', controls: [
+    { path: 'scenes.growth.islandRadius', label: 'Радиус острова', unit: '', min: 0.55, max: 1.05, step: 0.01 },
+    { path: 'scenes.growth.grassDensity', label: 'Плотность травы', unit: 'шт.', min: 80, max: 720, step: 40 },
+    { path: 'scenes.growth.windSpeed', label: 'Скорость ветра', unit: '×', min: 0, max: 2.5, step: 0.05 },
+  ] },
   { name: 'Анимация лилии', controls: [
     { path: 'scenes.growth.flowerGrowthDuration', label: 'Длительность Growth', unit: 'с', min: 4, max: 14, step: 0.25 },
     { path: 'scenes.bloom.flowerBloomDuration', label: 'Длительность Bloom', unit: 'с', min: 6, max: 24, step: 0.25 },
@@ -547,7 +552,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–11. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–12. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])

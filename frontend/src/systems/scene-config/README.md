@@ -1,6 +1,6 @@
 # Scene Composer configuration
 
-`SceneComposerConfig` is an immutable schema version 11. `normalizeConfig(input)` accepts partial schema v1–v11 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the current gallery and identity controls. The store publishes font changes only after the selected local font is ready.
+`SceneComposerConfig` is an immutable schema version 12. `normalizeConfig(input)` accepts partial schema v1–v12 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the current gallery and identity controls. Schema v12 adds bounded size, grass-density, and wind-speed controls for Scene 02's floating island. The store publishes font changes only after the selected local font is ready.
 
 The public store is:
 
@@ -11,7 +11,7 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v11.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v12.
 
 Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its 0.1–20 second travel-window meaning, with the cinematic default now 2.2 seconds; `particleFadeDuration` controls individual dust fade and defaults to 1.2 seconds. `particleReturnFraction` is ignored. The light, atmosphere, typography and interaction fields are additive schema-v2 fields: missing fields in both v1 and v2 files receive current defaults.
 
@@ -19,7 +19,7 @@ An optional production override can contain only values that differ from the def
 
 ```json
 {
-  "schemaVersion": 11,
+  "schemaVersion": 12,
   "global": { "quality": "low" },
   "scenes": {
     "preparation": {
@@ -81,6 +81,7 @@ An optional production override can contain only values that differ from the def
 | Dissolve | Particle size min / max; particle glow | 0.25–2.5 / 0.5–4 CSS px (0.6 / 1.8), min ≤ max; 0–2 (0.95) |
 | Interaction | Touch intensity / duration | 0–1.5 (0.55) / 0.7–1 s (0.85) |
 | Interaction | Wave strength / radius | 0–0.5 (0.14) / 30–120 CSS px (70) |
+| Scene 02 island | Radius / grass blades / wind speed | 0.55–1.05 (0.82) / 80–720 integer (360) / 0–2.5 (0.8) |
 | Galaxy Geometry | Star count, arms, radius, spin | 8000–90000 integer (32000), 2–8 integer (5), 4–14 (8.2), 0.2–18 (4.6 radians) |
 | Galaxy Geometry | Seed | String, 1–64 characters (default `andromeda`) |
 | Galaxy Geometry | Arm width / randomness / randomness power | 0–0.5 (0.16) / 0–0.3 (0.065) / 0.1–8 (3.6) |

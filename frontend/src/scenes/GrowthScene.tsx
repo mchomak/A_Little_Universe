@@ -5,10 +5,11 @@ import type { SceneProps } from '../engine/sceneTypes'
 import { getIdentityEnvironmentOpacity } from '../engine/sceneContinuity'
 import { useSceneAnimation } from './shared/animation'
 import { getGrowthFrames, getGrowthViewportHeight, getSeedParticleCount, getSeedPose, sampleSeedParticleSeeds, SEED_ROOT, type GrowthSettings } from './growth/seedProcedure'
-import { coreFragment, groundFragment, haloFragment, moonFragment, particleFragment, particleVertex, seedFragment, surfaceVertex } from './growth/seedShaders'
+import { coreFragment, haloFragment, moonFragment, particleFragment, particleVertex, seedFragment, surfaceVertex } from './growth/seedShaders'
 import { createSeedParticleReferences } from './growth/seedTargets'
 import { RecStudioParticleSimulation } from './growth/recstudioSimulation'
 import { seedPointsFragmentShader, seedPointsVertexShader } from './growth/recstudioParticleShaders'
+import { FloatingIsland } from './growth/FloatingIsland'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import type { FilmRuntime } from '../engine/runtime'
 
@@ -141,11 +142,11 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
   const mound = useRef<Mesh>(null)
   const moundMaterial = useRef<MeshBasicMaterial>(null)
   const moon = useRef<SpotLight>(null)
+  const islandOpacity = useRef(1)
   const target = useRef<Group>(null)
   const orbit = useRef<ShaderMaterial>(null)
   const trail = useRef<ShaderMaterial>(null)
   const sparks = useRef<ShaderMaterial>(null)
-  const ground = useRef<ShaderMaterial>(null)
   const moonBeam = useRef<ShaderMaterial>(null)
   const simulationRef = useRef<RecStudioParticleSimulation | null>(null)
   const matterSyncRef = useRef<((time: number, settings: GrowthSettings) => void) | null>(null)
@@ -155,7 +156,6 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
   const shellUniforms = useMemo(() => ({ opacity: { value: 0 }, time: { value: 0 } }), [])
   const haloUniforms = useMemo(() => ({ opacity: { value: 0 } }), [])
   const coreUniforms = useMemo(() => ({ opacity: { value: 0 }, time: { value: 0 }, intensity: { value: 1 } }), [])
-  const groundUniforms = useMemo(() => ({ opacity: { value: 0 }, impact: { value: 0 }, moonlight: { value: 0 } }), [])
   const moonUniforms = useMemo(() => ({ opacity: { value: 0 } }), [])
   const profile = useMemo(() => Array.from({ length: 49 }, (_, i) => {
     const v = i / 48
@@ -171,6 +171,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
     const poseTime = environmentOnly ? frames.duration : time
     const pose = getSeedPose(poseTime, height, reducedMotion, growthSettings)
     const environmentOpacity = identityScene ? getIdentityEnvironmentOpacity(time, config.scenes.identity.dissolveDuration) : 1
+    islandOpacity.current = environmentOpacity
     if (!environmentOnly) {
       matterSyncRef.current?.(time, growthSettings)
       for (const [material, opacity] of [[orbit.current, 0.95], [trail.current, pose.trailOpacity], [sparks.current, pose.sparkOpacity]] as const) {
@@ -200,11 +201,6 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
         core.current.uniforms.intensity!.value = growthSettings.coreGlow
       }
       if (halo.current) halo.current.uniforms.opacity!.value = pose.lightTransfer * pose.seedOpacity * (0.28 + pose.formation * 0.38)
-    }
-    if (ground.current) {
-      ground.current.uniforms.opacity!.value = pose.ringOpacity * environmentOpacity
-      ground.current.uniforms.impact!.value = pose.impact
-      ground.current.uniforms.moonlight!.value = pose.moonlight
     }
     if (moonBeam.current) moonBeam.current.uniforms.opacity!.value = pose.moonlight * environmentOpacity
     if (mound.current) {
@@ -240,10 +236,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
       </group>
     </group>}
     <group key="growth-environment">
-      <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[3.4, 3.4]} />
-        <shaderMaterial ref={ground} vertexShader={surfaceVertex} fragmentShader={groundFragment} uniforms={groundUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} side={DoubleSide} />
-      </mesh>
+      <FloatingIsland runtime={runtime} radius={growthSettings.islandRadius} grassDensity={growthSettings.grassDensity} windSpeed={growthSettings.windSpeed} reducedMotion={reducedMotion} opacity={islandOpacity} />
       <mesh ref={mound} position={[0, 0, 0]} scale={[0.115, 0.0001, 0.115]}>
         <sphereGeometry args={[1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshBasicMaterial ref={moundMaterial} color="#EBC68F" transparent opacity={0} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
