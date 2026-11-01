@@ -3,7 +3,7 @@ import { expect, it } from 'vitest'
 import { getBloomCloseupPose } from '../../engine/bloomCamera'
 import { getIdentityCameraMoveTarget } from '../../engine/identityCamera'
 import { createLilyGeometryParticleSource } from './particleSource'
-import { createLilyDissolveUniforms, createLilyParticleGeometry, createLilyParticleMaterial, getLilyParticleOrbitRadius, getLilyParticleVerticalRise, glslFloat, LILY_FIELD, LILY_PARTICLE_FADE_START_SECONDS, LILY_PARTICLE_MAX_POINT_SIZE, LILY_PARTICLE_MAX_SIZE_ACCENT, LILY_PARTICLE_TAIL_SECONDS, LILY_PORTRAIT_MIN_FEATURE_ACCENT, LILY_PORTRAIT_MIN_TONE_CONTRAST, LILY_VORTEX_RADIUS_CAP_OFFSET, patchLilyMaterial, updateLilyDissolve, updateLilyParticleSettings, updateLilyPortraitSettings } from './dissolve'
+import { createLilyDissolveUniforms, createLilyParticleGeometry, createLilyParticleMaterial, getLilyParticleOrbitRadius, getLilyParticleVerticalRise, glslFloat, LILY_FIELD, LILY_PARTICLE_FADE_START_SECONDS, LILY_PARTICLE_MAX_POINT_SIZE, LILY_PARTICLE_MAX_SIZE_ACCENT, LILY_PARTICLE_TAIL_SECONDS, LILY_PORTRAIT_MIN_FEATURE_ACCENT, LILY_PORTRAIT_MIN_TONE_CONTRAST, LILY_VORTEX_RADIUS_CAP_OFFSET, patchLilyMaterial, updateLilyDissolve, updateLilyParticleSettings, updateLilyPortraitAppearance, updateLilyPortraitSettings } from './dissolve'
 import type { LilySurfaceSource } from './particleSource'
 import { createPortraitCameraBasis } from './portraitTargets'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
@@ -81,10 +81,12 @@ it('uses the same field for surface and particles and supports deterministic bac
   expect(material.vertexShader).toContain('uLilySwirlSpeed * mix(0.95, 1.05, seed)')
   expect(material.vertexShader).toContain('float depthWobble = 1.0 + 0.025 * sin')
   expect(material.vertexShader).toContain('float sizeAccent = mix(0.82, 1.08, pow(aSeed, 8.0))')
-  expect(material.vertexShader).toContain('1.0, 6.0)')
+  expect(material.vertexShader).toContain('float pointMinSize = mix(1.0, uLilyPortraitPointMinSize, portraitMix)')
+  expect(material.vertexShader).toContain('float pointMaxSize = mix(6.0, uLilyPortraitPointMaxSize, portraitMix)')
+  expect(material.vertexShader).toContain('gl_PointSize = clamp(pointSize, pointMinSize, pointMaxSize)')
   expect(material.vertexShader).toContain('age / 10.5')
   expect(material.fragmentShader).toContain('mix(0.52, 1.5, pow(vSeed, 8.0))')
-  expect(material.fragmentShader).toContain('gl_FragColor = vec4(color, min(0.9, glow * 0.58))')
+  expect(material.fragmentShader).toContain('gl_FragColor = vec4(color, min(0.9, glow * 0.58) * opacity)')
   expect(material.fragmentShader).not.toContain('color * min(1.7, uLilyParticleBrightness')
   expect(LILY_PARTICLE_FADE_START_SECONDS).toBe(7)
   expect(LILY_PARTICLE_TAIL_SECONDS).toBe(10.5)
@@ -99,11 +101,56 @@ it('uses the same field for surface and particles and supports deterministic bac
   material.dispose()
 })
 
+it('keeps shared portrait appearance neutral by default and clamps optional appearance controls', () => {
+  const uniforms = createLilyDissolveUniforms()
+  const material = createLilyParticleMaterial(uniforms)
+
+  expect(uniforms.uLilyPortraitPhotoColorMix.value).toBe(0)
+  expect(uniforms.uLilyPortraitOpacity.value).toBe(1)
+  expect(uniforms.uLilyPortraitGlow.value).toBe(1)
+  expect(uniforms.uLilyPortraitPointMinSize.value).toBe(1)
+  expect(uniforms.uLilyPortraitPointMaxSize.value).toBe(6)
+  expect(material.vertexShader).toContain('attribute vec3 aPortraitSourceColor')
+  expect(material.fragmentShader).toContain('uLilyPortraitPhotoColorMix')
+  expect(material.fragmentShader).toContain('uLilyPortraitOpacity')
+  expect(material.fragmentShader).toContain('uLilyPortraitGlow')
+  expect(material.fragmentShader).toContain('clamp(uLilyPortraitPhotoColorMix, 0.0, 1.0) * vPortraitMix')
+  expect(material.fragmentShader).toContain('mix(1.0, uLilyPortraitGlow, vPortraitMix)')
+  expect(material.fragmentShader).toContain('float opacity = mix(1.0, uLilyPortraitOpacity, vPortraitMix)')
+
+  const source: LilySurfaceSource = {
+    center: [0, 0, 0], radius: 1, minY: -1, maxY: 1,
+    sample: () => [0, 0, 0],
+    sampleSurface: () => ({ position: [0, 0, 0], part: 0 }),
+  }
+  const geometry = createLilyParticleGeometry(source, 2)
+  expect(Array.from(geometry.getAttribute('aPortraitSourceColor').array)).toEqual([1, 1, 1, 1, 1, 1])
+
+  updateLilyPortraitAppearance(uniforms, {
+    photoColorMix: 0.65, opacity: 0.75, glow: 1.5, minSize: 0.8, maxSize: 2.2,
+  })
+  expect(uniforms.uLilyPortraitPhotoColorMix.value).toBe(0.65)
+  expect(uniforms.uLilyPortraitOpacity.value).toBe(0.75)
+  expect(uniforms.uLilyPortraitGlow.value).toBe(1.5)
+  expect(uniforms.uLilyPortraitPointMinSize.value).toBe(0.8)
+  expect(uniforms.uLilyPortraitPointMaxSize.value).toBe(2.2)
+
+  updateLilyPortraitAppearance(uniforms, {
+    photoColorMix: -1, opacity: 3, glow: Number.NaN, minSize: 2, maxSize: 0.2,
+  })
+  expect(uniforms.uLilyPortraitPhotoColorMix.value).toBe(0)
+  expect(uniforms.uLilyPortraitOpacity.value).toBe(1)
+  expect(uniforms.uLilyPortraitGlow.value).toBe(1)
+  expect(uniforms.uLilyPortraitPointMinSize.value).toBeLessThanOrEqual(uniforms.uLilyPortraitPointMaxSize.value)
+  geometry.dispose()
+  material.dispose()
+})
+
 it('keeps dark photo-derived portrait details visible within bounded emission', () => {
   const material = createLilyParticleMaterial(createLilyDissolveUniforms())
 
   expect(material.fragmentShader).toContain('float toneContrast = mix(0.95, 1.15, smoothstep(0.16, 0.82, vPortraitTone))')
-  expect(material.fragmentShader).toContain('gl_FragColor = vec4(color, min(0.9, glow * 0.58))')
+  expect(material.fragmentShader).toContain('gl_FragColor = vec4(color, min(0.9, glow * 0.58) * opacity)')
   material.dispose()
 })
 

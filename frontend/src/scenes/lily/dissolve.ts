@@ -67,6 +67,8 @@ export interface LilyDissolveUniforms {
   uLilySwirlAcceleration: { value: number }; uLilyCenterDissolveAt: { value: number }
   uLilySceneTime: { value: number }; uLilyPortraitStart: { value: number }; uLilyPortraitDuration: { value: number }
   uLilyPortraitBrightness: { value: number }; uLilyPortraitSize: { value: number }
+  uLilyPortraitPhotoColorMix: { value: number }; uLilyPortraitOpacity: { value: number }
+  uLilyPortraitGlow: { value: number }; uLilyPortraitPointMinSize: { value: number }; uLilyPortraitPointMaxSize: { value: number }
 }
 
 export interface LilyParticleSettings {
@@ -90,6 +92,14 @@ export interface LilyPortraitGeometryOptions {
   settings: LilyParticleSettings
 }
 
+export interface LilyPortraitAppearanceSettings {
+  photoColorMix: number
+  opacity: number
+  glow: number
+  minSize: number
+  maxSize: number
+}
+
 export function createLilyDissolveUniforms(): LilyDissolveUniforms {
   return { uLilyActive: { value: 0 }, uLilyProgress: { value: 0 }, uLilyEdge: { value: 0.035 },
     uLilyDuration: { value: 12 }, uLilyCenter: { value: new Vector3() }, uLilyRadius: { value: 1 },
@@ -98,7 +108,9 @@ export function createLilyDissolveUniforms(): LilyDissolveUniforms {
     uLilyVortexExpansion: { value: 0.45 }, uLilySwirlSpeed: { value: 1 },
     uLilySwirlAcceleration: { value: 0.1 }, uLilyCenterDissolveAt: { value: 0.5 },
     uLilySceneTime: { value: 0 }, uLilyPortraitStart: { value: 12 }, uLilyPortraitDuration: { value: 8.5 },
-    uLilyPortraitBrightness: { value: 1.8 }, uLilyPortraitSize: { value: 1.8 } }
+    uLilyPortraitBrightness: { value: 1.8 }, uLilyPortraitSize: { value: 1.8 },
+    uLilyPortraitPhotoColorMix: { value: 0 }, uLilyPortraitOpacity: { value: 1 },
+    uLilyPortraitGlow: { value: 1 }, uLilyPortraitPointMinSize: { value: 1 }, uLilyPortraitPointMaxSize: { value: LILY_PARTICLE_MAX_POINT_SIZE } }
 }
 
 export function setLilySurfaceBounds(uniforms: LilyDissolveUniforms, surface: LilySurfaceSource) {
@@ -118,6 +130,18 @@ export function updateLilyDissolve(uniforms: LilyDissolveUniforms, active: boole
 export function updateLilyParticleSize(uniforms: LilyDissolveUniforms, size: number, dpr: number) {
   uniforms.uLilySize.value = size
   uniforms.uLilyDpr.value = dpr
+}
+
+/** Applies DEV portrait styling while keeping existing Scene 04 defaults unchanged. */
+export function updateLilyPortraitAppearance(uniforms: LilyDissolveUniforms, settings: LilyPortraitAppearanceSettings) {
+  uniforms.uLilyPortraitPhotoColorMix.value = clampFinite(settings.photoColorMix, 0, 1, 0)
+  uniforms.uLilyPortraitOpacity.value = clampFinite(settings.opacity, 0.2, 1, 1)
+  uniforms.uLilyPortraitGlow.value = clampFinite(settings.glow, 0, 2, 1)
+
+  const maxSize = clampFinite(settings.maxSize, 0.8, 3, 1.55)
+  const minSize = Math.min(clampFinite(settings.minSize, 0.4, 1.6, 0.65), maxSize)
+  uniforms.uLilyPortraitPointMinSize.value = minSize
+  uniforms.uLilyPortraitPointMaxSize.value = maxSize
 }
 
 export function updateLilyParticleSettings(uniforms: LilyDissolveUniforms, settings: LilyParticleSettings) {
@@ -165,6 +189,8 @@ export function patchLilyMaterial(material: Material, part: number, uniforms: Li
 export function createLilyParticleGeometry(source: LilySurfaceSource, count: number, portrait?: LilyPortraitGeometryOptions) {
   const positions = new Float32Array(count * 3), parts = new Float32Array(count), seeds = new Float32Array(count)
   const portraitTargets = new Float32Array(count * 4), portraitMotion = new Float32Array(count * 4)
+  const portraitSourceColors = new Float32Array(count * 3)
+  portraitSourceColors.fill(1)
   for (let i = 0; i < count; i++) {
     const sample = source.sampleSurface(i, count)
     positions.set(sample.position, i * 3); parts[i] = sample.part
@@ -204,6 +230,7 @@ export function createLilyParticleGeometry(source: LilySurfaceSource, count: num
   geometry.setAttribute('aSeed', new BufferAttribute(seeds, 1))
   geometry.setAttribute('aPortraitTarget', new BufferAttribute(portraitTargets, 4))
   geometry.setAttribute('aPortraitMotion', new BufferAttribute(portraitMotion, 4))
+  geometry.setAttribute('aPortraitSourceColor', new BufferAttribute(portraitSourceColors, 3))
   return geometry
 }
 
@@ -250,8 +277,10 @@ export function createLilyParticleMaterial(uniforms: LilyDissolveUniforms) {
       uniform float uLilySwirlSpeed; uniform float uLilySwirlAcceleration;
       uniform float uLilySceneTime; uniform float uLilyPortraitStart; uniform float uLilyPortraitDuration;
       uniform float uLilyPortraitBrightness; uniform float uLilyPortraitSize;
-      attribute float aPart; attribute float aSeed; attribute vec4 aPortraitTarget; attribute vec4 aPortraitMotion;
+      uniform float uLilyPortraitPointMinSize; uniform float uLilyPortraitPointMaxSize;
+      attribute float aPart; attribute float aSeed; attribute vec4 aPortraitTarget; attribute vec4 aPortraitMotion; attribute vec3 aPortraitSourceColor;
       varying float vAlpha; varying float vSeed; varying float vPart; varying float vPortraitMix; varying float vPortraitTone; varying float vPortraitContrast;
+      varying vec3 vPortraitSourceColor;
       vec3 lilyVortexPosition(vec3 origin, float part, float seed, float age) {
         // Positive XZ angular travel is clockwise from above in Three.js world
         // coordinates (+X right, +Z down-screen).
@@ -321,23 +350,28 @@ export function createLilyParticleMaterial(uniforms: LilyDissolveUniforms) {
         }
         vAlpha = mix(baseAlpha, portraitReveal, portraitMix);
         vPortraitMix = portraitMix;
-        vSeed = aSeed; vPart = aPart;
+        vSeed = aSeed; vPart = aPart; vPortraitSourceColor = aPortraitSourceColor;
         vec4 view = viewMatrix * vec4(p, 1.0);
         gl_Position = projectionMatrix * view;
         float sizeAccent = mix(0.82, ${LILY_PARTICLE_MAX_SIZE_ACCENT}, pow(aSeed, 8.0));
         float featureSize = mix(0.92, 1.7, smoothstep(0.1, 0.48, vPortraitContrast));
         float portraitSize = mix(1.0, uLilyPortraitSize * featureSize, portraitMix);
-        gl_PointSize = clamp(uLilySize * sizeAccent * portraitSize * uLilyDpr * (1.0 - 0.5 * clamp(age / ${glslFloat(LILY_PARTICLE_TAIL_SECONDS)}, 0.0, 1.0)) * 4.0 / max(0.5, -view.z), 1.0, ${glslFloat(LILY_PARTICLE_MAX_POINT_SIZE)});
+        float pointSize = uLilySize * sizeAccent * portraitSize * uLilyDpr * (1.0 - 0.5 * clamp(age / ${glslFloat(LILY_PARTICLE_TAIL_SECONDS)}, 0.0, 1.0)) * 4.0 / max(0.5, -view.z);
+        float pointMinSize = mix(1.0, uLilyPortraitPointMinSize, portraitMix);
+        float pointMaxSize = mix(${glslFloat(LILY_PARTICLE_MAX_POINT_SIZE)}, uLilyPortraitPointMaxSize, portraitMix);
+        gl_PointSize = clamp(pointSize, pointMinSize, pointMaxSize);
       }`,
     fragmentShader: /* glsl */ `
       uniform vec3 uPearl; uniform vec3 uPink; uniform vec3 uGold; uniform float uLilyParticleBrightness; uniform float uLilyPortraitBrightness;
+      uniform float uLilyPortraitPhotoColorMix; uniform float uLilyPortraitOpacity; uniform float uLilyPortraitGlow;
       varying float vAlpha; varying float vSeed; varying float vPart; varying float vPortraitMix; varying float vPortraitTone; varying float vPortraitContrast;
+      varying vec3 vPortraitSourceColor;
       void main() {
         float r = length(gl_PointCoord - 0.5) * 2.0;
         float softCore = 1.0 - smoothstep(0.1, 0.95, r);
         float portraitCore = 1.0 - smoothstep(0.1, 0.72, r);
         float core = mix(softCore, portraitCore, vPortraitMix);
-        float halo = exp(-r * r * 4.8) * 0.18;
+        float halo = exp(-r * r * 4.8) * 0.18 * mix(1.0, uLilyPortraitGlow, vPortraitMix);
         float haloScale = mix(1.0, 0.55, vPortraitMix);
         float brightnessAccent = mix(0.52, 1.5, pow(vSeed, 8.0));
         float featureAccent = mix(${glslFloat(LILY_PORTRAIT_MIN_FEATURE_ACCENT)}, ${glslFloat(LILY_PORTRAIT_MAX_FEATURE_ACCENT)}, smoothstep(0.1, 0.48, vPortraitContrast));
@@ -349,7 +383,9 @@ export function createLilyParticleMaterial(uniforms: LilyDissolveUniforms) {
         vec3 vortexColor = vPart > 0.5 && vPart < 1.5 ? mix(uPearl, uGold, 0.55) : mix(uPearl, uPink, vSeed * 0.55);
         vec3 sourceTone = mix(mix(uGold, uPink, 0.58), uPearl, smoothstep(0.16, 0.9, vPortraitTone));
         vec3 color = mix(vortexColor, sourceTone, vPortraitMix);
-        gl_FragColor = vec4(color, min(0.9, glow * 0.58));
+        color = mix(color, vPortraitSourceColor, clamp(uLilyPortraitPhotoColorMix, 0.0, 1.0) * vPortraitMix);
+        float opacity = mix(1.0, uLilyPortraitOpacity, vPortraitMix);
+        gl_FragColor = vec4(color, min(0.9, glow * 0.58) * opacity);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`,
@@ -357,6 +393,9 @@ export function createLilyParticleMaterial(uniforms: LilyDissolveUniforms) {
 }
 
 function clamp(value: number, min: number, max: number) { return Math.max(min, Math.min(max, value)) }
+function clampFinite(value: number, min: number, max: number, fallback: number) {
+  return clamp(Number.isFinite(value) ? value : fallback, min, max)
+}
 function smoothstep(edge0: number, edge1: number, value: number) {
   const t = clamp((value - edge0) / Math.max(0.000001, edge1 - edge0), 0, 1)
   return t * t * (3 - 2 * t)
