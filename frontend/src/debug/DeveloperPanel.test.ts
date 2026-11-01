@@ -2,6 +2,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import { initialFilmState } from '../engine/film'
+import { resetLilyMaterialExperiment } from '../scenes/lily/materialPolish'
 import DeveloperPanel from './DeveloperPanel'
 
 it('shows bounded ash-motion controls and does not expose the removed return setting', () => {
@@ -63,6 +64,41 @@ it('shows only the active scene controls and keeps playback in the timeline', ()
   expect(markup).not.toContain('composer-scenes-preparation-typeScale')
   expect(markup).not.toContain('dev-seek')
   expect(markup).toContain('Auto')
+})
+
+it('exposes the Original/Enhanced A/B switch only while DEV scene 03 is active', () => {
+  resetLilyMaterialExperiment()
+  const bloomMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'bloom' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    onPermissions: () => undefined,
+    route: 'film',
+  }))
+  expect(bloomMarkup).toContain('Материалы лилии · A/B')
+  expect(bloomMarkup).toMatch(/aria-pressed="true">Original<\/button>/)
+  expect(bloomMarkup).toMatch(/aria-pressed="false">Enhanced<\/button>/)
+
+  const growthMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'growth' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    onPermissions: () => undefined,
+    route: 'film',
+  }))
+  expect(growthMarkup).not.toContain('Материалы лилии · A/B')
+
+  const settingsMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'bloom' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    onPermissions: () => undefined,
+    route: 'settings',
+  }))
+  expect(settingsMarkup).not.toContain('Материалы лилии · A/B')
 })
 
 it('exposes bounded portrait assembly controls in the Scene 04 Inspector', () => {

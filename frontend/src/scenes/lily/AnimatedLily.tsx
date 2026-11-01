@@ -1,6 +1,6 @@
 import { useGLTF } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
-import { useCallback, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { LoopOnce, LoopRepeat, Material, Mesh, type Group } from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import type { SceneProps } from '../../engine/sceneTypes'
@@ -12,6 +12,18 @@ import { attachLilyAnimationPlayer, LilyAnimationPlayer } from './animationPlaye
 import { subscribeLilyAnimationClock } from './animationClock'
 import { createLilyGeometryParticleSource, lilyDissolvePart, type LilySurfaceSource } from './particleSource'
 import { patchLilyMaterial, setLilySurfaceBounds, updateLilyDissolve, updateLilyParticleSettings, type LilyDissolveUniforms } from './dissolve'
+import {
+  applyLilyMaterialVariants,
+  cloneEnhancedLilyMaterials,
+  disposeLilyEnhancedTextures,
+  getLilyMaterialSnapshot,
+  loadLilyEnhancedTextures,
+  resetLilyMaterialModeOutsideBloom,
+  setLilyMaterialStatus,
+  shouldUseEnhancedLilyMaterials,
+  subscribeLilyMaterialExperiment,
+  type LilyMaterialStateSnapshot,
+} from './materialPolish'
 
 const MODEL_POSITION: [number, number, number] = [0, -1.45, 0]
 const MODEL_SCALE = 3
@@ -65,12 +77,16 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
   const gltf = useGLTF(LILY_MODEL_URL)
   const invalidate = useThree(({ invalidate }) => invalidate)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
+  const materialExperiment = useSyncExternalStore<LilyMaterialStateSnapshot>(subscribeLilyMaterialExperiment, getLilyMaterialSnapshot, getLilyMaterialSnapshot)
   const model = useMemo(() => clone(gltf.scene) as Group, [gltf.scene])
   const stateRef = useRef(state)
   const playerRef = useRef<LilyAnimationPlayer | null>(null)
   const modelRef = useRef<Group | null>(null)
   const materialsRef = useRef<LilyMaterialState[]>([])
+  const enhancedMaterialsRef = useRef(new Map<Material, Material>())
   const particleSourceRef = useRef<LilySurfaceSource | null>(null)
+  const [textureRevision, setTextureRevision] = useState(0)
+  const useEnhancedMaterials = shouldUseEnhancedLilyMaterials(import.meta.env.DEV, state.scene, materialExperiment.mode)
   const waitingForTouch = state.scene === 'bloom' && state.mode === 'waiting'
   useLayoutEffect(() => { stateRef.current = state }, [state])
   useLayoutEffect(() => {
@@ -82,6 +98,40 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
     }
   }, [model, dissolveUniforms])
   useLayoutEffect(() => attachLilyAnimationPlayer(playerRef, model, gltf.animations), [gltf.animations, model])
+  useLayoutEffect(() => {
+    applyLilyMaterialVariants(model, enhancedMaterialsRef.current, useEnhancedMaterials)
+    invalidate()
+  }, [invalidate, model, textureRevision, useEnhancedMaterials])
+  useEffect(() => {
+    if (!useEnhancedMaterials) return
+    let cancelled = false
+    let textures: Awaited<ReturnType<typeof loadLilyEnhancedTextures>> | undefined
+    let variants = new Map<Material, Material>()
+    setLilyMaterialStatus('loading')
+    void loadLilyEnhancedTextures().then((loaded) => {
+      if (cancelled) {
+        disposeLilyEnhancedTextures(loaded)
+        return
+      }
+      textures = loaded
+      variants = cloneEnhancedLilyMaterials(materialsRef.current, loaded)
+      enhancedMaterialsRef.current = variants
+      setLilyMaterialStatus('ready')
+      setTextureRevision((revision) => revision + 1)
+    }).catch(() => {
+      if (!cancelled) setLilyMaterialStatus('error')
+    })
+    return () => {
+      cancelled = true
+      for (const material of variants.values()) material.dispose()
+      if (enhancedMaterialsRef.current === variants) enhancedMaterialsRef.current = new Map()
+      if (textures) disposeLilyEnhancedTextures(textures)
+      setLilyMaterialStatus('idle')
+    }
+  }, [model, useEnhancedMaterials])
+  useEffect(() => {
+    resetLilyMaterialModeOutsideBloom(state.scene)
+  }, [state.scene])
   useLayoutEffect(() => {
     if (state.scene !== 'identity' || particleSourceRef.current || !onParticleSource) return
     const clip = gltf.animations.find((animation) => animation.name === 'Bloom')

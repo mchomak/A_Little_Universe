@@ -27,6 +27,12 @@ import {
 import { createInspectorHistory, type InspectorScope } from './inspectorHistory'
 import { comparisonPointValid, type ComparisonPoint } from './inspectorCompare'
 import { editGalaxyColor, getGalaxyColors, selectGalaxyPalette, type GalaxyColorKey } from '../scenes/galaxy/palette'
+import {
+  getLilyMaterialSnapshot,
+  setLilyMaterialMode,
+  subscribeLilyMaterialExperiment,
+  type LilyMaterialStateSnapshot,
+} from '../scenes/lily/materialPolish'
 
 type NumericControl = {
   path: ComposerFieldPath
@@ -426,6 +432,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const [fontLoading, setFontLoading] = useState(false)
   const fontRequest = useRef(0)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
+  const lilyMaterialExperiment = useSyncExternalStore<LilyMaterialStateSnapshot>(subscribeLilyMaterialExperiment, getLilyMaterialSnapshot, getLilyMaterialSnapshot)
   const fps = useApproximateRafFps()
   const [history] = useState(createInspectorHistory)
   const [historyRevision, setHistoryRevision] = useState(0)
@@ -711,6 +718,16 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           <details open><summary>Камера · CameraDirector</summary>{BLOOM_CONTROLS.slice(0, 7).map(range)}</details>
           <details open><summary>Текст ожидания</summary>{BLOOM_CONTROLS.slice(7).map(range)}{color('scenes.bloom.textColor', 'Цвет текста')}</details>
           <p>IdleClosed ждёт завершения письма и жеста. Камера доезжает до крупного плана на заданной доле раскрытия.</p>
+        </details>}
+        {import.meta.env.DEV && route === 'film' && active === 'bloom' && selected === 'bloom' && <details open>
+          <summary>Материалы лилии · A/B</summary>
+          <div role="group" aria-label="Сравнение материалов лилии" className="inspector-history">
+            <button type="button" aria-pressed={lilyMaterialExperiment.mode === 'original'} onClick={() => setLilyMaterialMode('original')}>Original</button>
+            <button type="button" aria-pressed={lilyMaterialExperiment.mode === 'enhanced'} onClick={() => setLilyMaterialMode('enhanced')}>Enhanced</button>
+          </div>
+          <p>Сравнивайте в том же кадре и при том же освещении; переключение не перезапускает анимацию.</p>
+          {lilyMaterialExperiment.mode === 'enhanced' && lilyMaterialExperiment.status === 'loading' && <p role="status">Загружаются текстуры…</p>}
+          {lilyMaterialExperiment.mode === 'enhanced' && lilyMaterialExperiment.status === 'error' && <p role="status">Не удалось загрузить текстуры; продолжает отображаться исходный материал.</p>}
         </details>}
         {selected === 'identity' && <>
           <details open><summary>Растворение лилии и вихрь</summary>{DISSOLVE_CONTROLS.map(range)}</details>
