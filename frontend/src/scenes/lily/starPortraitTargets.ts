@@ -101,7 +101,9 @@ export function sampleStarPortraitTargets(source: StarPortraitSource, settings: 
   const detailGain = clampFinite(settings.detailBoost, 0, 3, 1)
   const fillGain = clampFinite(settings.fillDensity, 0, 3, 1)
   const irregularity = clampFinite(settings.irregularity, 0, 1, 0.55)
-  const featureFloor = 0.22 + fillGain * 0.62
+  // Keep a nonzero midtone floor, while giving local features enough weight to
+  // stand out from broad, smooth regions in a static portrait.
+  const featureFloor = 0.12 + fillGain * 0.24
   const candidates: Candidate[] = []
   const cumulativeWeights = new Float64Array(gridLength)
   let totalWeight = 0
@@ -126,9 +128,9 @@ export function sampleStarPortraitTargets(source: StarPortraitSource, settings: 
       const gradient = Math.min(1, Math.hypot(rightLuma - leftLuma, downLuma - upLuma) * 0.9)
       const colorGradient = localColorGradient(photoColorLinear, gridWidth, gridHeight, x, y)
       const texture = localTexture(photoLuma, gridWidth, gridHeight, x, y, luma)
-      const featureWeight = Math.min(1, Math.max(0, (gradient * 1.15 + colorGradient + texture * 1.7 + matteEdge * 1.25) * contrastGain))
+      const featureWeight = Math.min(1, Math.max(0, (gradient * 1.55 + colorGradient * 1.2 + texture * 2.25 + matteEdge * 0.9) * contrastGain))
       const visibleCoverage = (rawCoverage - threshold) / Math.max(0.05, 1 - threshold)
-      const weight = Math.max(0.0001, visibleCoverage) * (featureFloor + detailGain * featureWeight * 2.8)
+      const weight = Math.max(0.0001, visibleCoverage) * (featureFloor + detailGain * featureWeight * 6)
 
       totalWeight += weight
       cumulativeWeights[candidates.length] = totalWeight
@@ -192,7 +194,7 @@ export function sampleStarPortraitTargets(source: StarPortraitSource, settings: 
       u: Math.min(1, Math.max(0, (x + 0.5) / gridWidth)),
       v: Math.min(1, Math.max(0, (y + 0.5) / gridHeight)),
       tone: candidate.tone,
-      contrast: Math.min(1, Math.max(0, candidate.gradient * contrastGain + candidate.texture * 1.2)),
+      contrast: Math.min(1, Math.max(0, (candidate.gradient * 1.55 + candidate.colorGradient * 1.2 + candidate.texture * 2.25) * contrastGain)),
       featureWeight,
       seed: random(),
       photoColorLinear: [colorRed, colorGreen, colorBlue],

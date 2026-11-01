@@ -68,12 +68,13 @@ describe('sampleStarPortraitTargets', () => {
       return [128, 128, 128, 255]
     })
 
-    const points = sampleStarPortraitTargets(source, { ...settings, count: 2200, seed: 12 })
+    const points = sampleStarPortraitTargets(source, { ...settings, count: 2200, detailBoost: 2, fillDensity: 1.7, contrast: 1.6, seed: 12 })
     const inRect = (u: number, v: number, left: number, right: number) => u >= left / 96 && u < right / 96 && v >= 24 / 80 && v < 64 / 80
     const detailed = points.filter(({ u, v }) => inRect(u, v, 12, 32)).length
     const flat = points.filter(({ u, v }) => inRect(u, v, 56, 76)).length
 
-    expect(detailed).toBeGreaterThan(flat)
+    expect(flat).toBeGreaterThan(0)
+    expect(detailed).toBeGreaterThan(flat * 8)
     expect(points.some((point) => point.featureWeight > 0.4)).toBe(true)
   })
 
@@ -93,10 +94,25 @@ describe('sampleStarPortraitTargets', () => {
     const chromatic = points.filter(({ u, v }) => inRect(u, v, 12, 32))
     const flat = points.filter(({ u, v }) => inRect(u, v, 56, 76))
     const meanFeatureWeight = (region: typeof points) => region.reduce((sum, point) => sum + point.featureWeight, 0) / region.length
+    const meanContrast = (region: typeof points) => region.reduce((sum, point) => sum + point.contrast, 0) / region.length
 
     expect(points).toEqual(repeatedPoints)
     expect(chromatic.length).toBeGreaterThan(flat.length)
-    expect(meanFeatureWeight(chromatic)).toBeGreaterThan(meanFeatureWeight(flat))
+    expect(meanFeatureWeight(chromatic)).toBeGreaterThan(0.45)
+    expect(meanFeatureWeight(chromatic)).toBeGreaterThan(meanFeatureWeight(flat) + 0.4)
+    expect(meanContrast(chromatic)).toBeGreaterThan(0.6)
+  })
+
+  it('amplifies subtle interior luminance edges in the returned particle contrast', () => {
+    const source = makeSource(64, 48, (x) => {
+      const value = x < 32 ? 112 : 150
+      return [value, value, value, 255]
+    })
+    const points = sampleStarPortraitTargets(source, { ...settings, count: 1200, detailBoost: 2, fillDensity: 1.7, contrast: 1.6, seed: 27 })
+    const edgePoints = points.filter(({ u }) => u * 64 >= 30.5 && u * 64 < 33.5)
+
+    expect(edgePoints.length).toBeGreaterThan(0)
+    expect(Math.max(...edgePoints.map((point) => point.contrast))).toBeGreaterThan(0.35)
   })
 
   it('bounds output count and rejects malformed source buffers', () => {
