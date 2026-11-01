@@ -1,15 +1,16 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { useThree } from '@react-three/fiber'
-import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, GLSL3, Group, MeshBasicMaterial, RawShaderMaterial, Sphere, Vector2, Vector3, type Mesh, type ShaderMaterial, type SpotLight } from 'three'
+import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, GLSL3, Group, MeshBasicMaterial, RawShaderMaterial, Sphere, Vector2, Vector3, type Mesh, type ShaderMaterial } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
 import { getIdentityEnvironmentOpacity } from '../engine/sceneContinuity'
 import { useSceneAnimation } from './shared/animation'
 import { getGrowthFrames, getGrowthViewportHeight, getSeedParticleCount, getSeedPose, sampleSeedParticleSeeds, SEED_ROOT, type GrowthSettings } from './growth/seedProcedure'
-import { coreFragment, haloFragment, moonFragment, particleFragment, particleVertex, seedFragment, surfaceVertex } from './growth/seedShaders'
+import { coreFragment, haloFragment, particleFragment, particleVertex, seedFragment, surfaceVertex } from './growth/seedShaders'
 import { createSeedParticleReferences } from './growth/seedTargets'
 import { RecStudioParticleSimulation } from './growth/recstudioSimulation'
 import { seedPointsFragmentShader, seedPointsVertexShader } from './growth/recstudioParticleShaders'
 import { FloatingIsland } from './growth/FloatingIsland'
+import { GrowthMoonlight } from './growth/GrowthMoonlight'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import type { FilmRuntime } from '../engine/runtime'
 
@@ -141,13 +142,11 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
   const halo = useRef<ShaderMaterial>(null)
   const mound = useRef<Mesh>(null)
   const moundMaterial = useRef<MeshBasicMaterial>(null)
-  const moon = useRef<SpotLight>(null)
   const islandOpacity = useRef(1)
-  const target = useRef<Group>(null)
+  const moonlightProgress = useRef(0)
   const orbit = useRef<ShaderMaterial>(null)
   const trail = useRef<ShaderMaterial>(null)
   const sparks = useRef<ShaderMaterial>(null)
-  const moonBeam = useRef<ShaderMaterial>(null)
   const simulationRef = useRef<RecStudioParticleSimulation | null>(null)
   const matterSyncRef = useRef<((time: number, settings: GrowthSettings) => void) | null>(null)
   const [gpuStatus, setGpuStatus] = useState<'pending' | 'ready' | 'fallback'>('pending')
@@ -156,7 +155,6 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
   const shellUniforms = useMemo(() => ({ opacity: { value: 0 }, time: { value: 0 } }), [])
   const haloUniforms = useMemo(() => ({ opacity: { value: 0 } }), [])
   const coreUniforms = useMemo(() => ({ opacity: { value: 0 }, time: { value: 0 }, intensity: { value: 1 } }), [])
-  const moonUniforms = useMemo(() => ({ opacity: { value: 0 } }), [])
   const profile = useMemo(() => Array.from({ length: 49 }, (_, i) => {
     const v = i / 48
     return new Vector2(0.36 * Math.sin(v * Math.PI) ** 0.85 * (1 + 0.12 * Math.cos(v * Math.PI)), (v * 2 - 1) * 0.84)
@@ -172,6 +170,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
     const pose = getSeedPose(poseTime, height, reducedMotion, growthSettings)
     const environmentOpacity = identityScene ? getIdentityEnvironmentOpacity(time, config.scenes.identity.dissolveDuration) : 1
     islandOpacity.current = environmentOpacity
+    moonlightProgress.current = pose.moonlight
     if (!environmentOnly) {
       matterSyncRef.current?.(time, growthSettings)
       for (const [material, opacity] of [[orbit.current, 0.95], [trail.current, pose.trailOpacity], [sparks.current, pose.sparkOpacity]] as const) {
@@ -202,13 +201,11 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
       }
       if (halo.current) halo.current.uniforms.opacity!.value = pose.lightTransfer * pose.seedOpacity * (0.28 + pose.formation * 0.38)
     }
-    if (moonBeam.current) moonBeam.current.uniforms.opacity!.value = pose.moonlight * environmentOpacity
     if (mound.current) {
       mound.current.visible = pose.mound > 0
       mound.current.scale.set(0.09, Math.max(0.0001, pose.mound * 0.045), 0.09)
     }
     if (moundMaterial.current) moundMaterial.current.opacity = pose.mound * 0.16 * environmentOpacity
-    if (moon.current) { moon.current.intensity = pose.moonlight * 4 * environmentOpacity; if (target.current) moon.current.target = target.current }
   }, [height, dpr, reducedMotion, growthSettings, fallRange, environmentOnly, identityScene, config.scenes.identity.dissolveDuration])
 
   useSceneAnimation(runtime, getGrowthFrames(growthSettings).duration, draw)
@@ -253,12 +250,12 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
         <sphereGeometry args={[1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshBasicMaterial ref={moundMaterial} color="#EBC68F" transparent opacity={0} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
       </mesh>
-      <group ref={target} />
-      <spotLight ref={moon} position={[-0.65, 5.5, 1.0]} color="#BDCEFF" intensity={0} angle={0.24} penumbra={1} decay={0} />
-      <mesh position={[-0.15, 2.6, -0.35]} rotation={[0, 0, -0.06]}>
-        <planeGeometry args={[3.4, 5.7]} />
-        <shaderMaterial ref={moonBeam} vertexShader={surfaceVertex} fragmentShader={moonFragment} uniforms={moonUniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
-      </mesh>
+      <GrowthMoonlight
+        settings={growthSettings}
+        runtime={runtime}
+        growthProgress={moonlightProgress}
+        environmentOpacity={islandOpacity}
+      />
     </group>
   </group>
 }

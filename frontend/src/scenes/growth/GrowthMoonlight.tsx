@@ -1,0 +1,110 @@
+import { useLayoutEffect, useMemo, useRef } from 'react'
+import { useThree } from '@react-three/fiber'
+import { AdditiveBlending, Color, NormalBlending, Object3D, type DirectionalLight, type HemisphereLight, type ShaderMaterial } from 'three'
+import type { FilmRuntime } from '../../engine/runtime'
+import {
+  getGrowthMoonlightBeamLayout, getGrowthMoonlightLevels, growthContactShadowFragmentShader,
+  growthContactShadowVertexShader, growthMoonBeamFragmentShader, type GrowthMoonlightSettings,
+} from './moonlight'
+
+const noRaycast = () => undefined
+
+/** Scene-local lunar fill, directional key and soft analytic scatter shaft. */
+export function GrowthMoonlight({
+  settings,
+  runtime,
+  growthProgress,
+  environmentOpacity,
+}: {
+  settings: GrowthMoonlightSettings
+  runtime: FilmRuntime
+  growthProgress: { current: number }
+  environmentOpacity: { current: number }
+}) {
+  const invalidate = useThree(({ invalidate }) => invalidate)
+  const key = useRef<DirectionalLight>(null)
+  const fill = useRef<HemisphereLight>(null)
+  const beam = useRef<ShaderMaterial>(null)
+  const contactShadow = useRef<ShaderMaterial>(null)
+  const lightTarget = useMemo(() => new Object3D(), [])
+  const lightColor = useMemo(() => new Color(settings.moonLightColor), [settings.moonLightColor])
+  const layout = useMemo(() => getGrowthMoonlightBeamLayout(settings), [settings])
+  const uniforms = useMemo(() => ({
+    uMoonColor: { value: new Color() },
+    uOpacity: { value: 0 },
+    uBeamRadius: { value: 0 },
+    uSoftness: { value: 0 },
+  }), [])
+  const contactShadowUniforms = useMemo(() => ({ uOpacity: { value: 0 } }), [])
+
+  useLayoutEffect(() => {
+    lightTarget.position.set(0, 0, 0)
+    const update = () => {
+      const levels = getGrowthMoonlightLevels(
+        settings.moonLightIntensity,
+        settings.moonBeamIntensity,
+        growthProgress.current,
+        environmentOpacity.current,
+      )
+      if (key.current) key.current.intensity = levels.key
+      if (fill.current) fill.current.intensity = levels.fill
+      if (beam.current) {
+        beam.current.uniforms.uOpacity!.value = levels.beam
+        ;(beam.current.uniforms.uMoonColor!.value as Color).copy(lightColor)
+        beam.current.uniforms.uBeamRadius!.value = settings.moonBeamRadius
+        beam.current.uniforms.uSoftness!.value = settings.moonBeamSoftness
+      }
+      if (contactShadow.current) contactShadow.current.uniforms.uOpacity!.value = levels.shadow
+      invalidate()
+    }
+    update()
+    return runtime.subscribePresentation(update)
+  }, [
+    environmentOpacity, growthProgress, invalidate, lightColor, lightTarget, runtime,
+    settings.moonBeamIntensity, settings.moonBeamRadius, settings.moonBeamSoftness, settings.moonLightIntensity,
+  ])
+
+  return <group>
+    <primitive object={lightTarget} />
+    <hemisphereLight ref={fill} color={settings.moonLightColor} groundColor="#101724" intensity={0} />
+    <directionalLight
+      ref={key}
+      position={layout.source}
+      color={settings.moonLightColor}
+      intensity={0}
+      target={lightTarget}
+      castShadow={false}
+    />
+    <mesh
+      position={layout.position}
+      quaternion={layout.quaternion}
+      raycast={noRaycast}
+      frustumCulled={false}
+    >
+      <planeGeometry args={[layout.width, layout.height]} />
+      <shaderMaterial
+        ref={beam}
+        vertexShader={`varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`}
+        fragmentShader={growthMoonBeamFragmentShader}
+        uniforms={uniforms}
+        transparent
+        blending={AdditiveBlending}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+    <mesh position={[0, 0.008, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={noRaycast} frustumCulled={false}>
+      <planeGeometry args={[1.1, 0.82]} />
+      <shaderMaterial
+        ref={contactShadow}
+        vertexShader={growthContactShadowVertexShader}
+        fragmentShader={growthContactShadowFragmentShader}
+        uniforms={contactShadowUniforms}
+        transparent
+        blending={NormalBlending}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  </group>
+}

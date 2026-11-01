@@ -106,7 +106,7 @@ const PROLOGUE_GROUPS: readonly { name: string; controls: readonly NumericContro
   ] },
 ]
 
-const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
+const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[]; color?: { path: ComposerFieldPath; label: string } }[] = [
   { name: 'Частицы и формирование', controls: [
     { path: 'scenes.growth.particleSize', label: 'Размер точки', unit: 'px', min: 0.5, max: 3, step: 0.1 },
     { path: 'scenes.growth.particleOpacity', label: 'Непрозрачность', unit: '×', min: 0, max: 1.5, step: 0.05 },
@@ -133,6 +133,15 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.growth.grassHeight', label: 'Высота травы', unit: 'м', min: 0.06, max: 0.28, step: 0.01 },
     { path: 'scenes.growth.windStrength', label: 'Сила ветра', unit: '×', min: 0, max: 2.5, step: 0.05 },
     { path: 'scenes.growth.windSpeed', label: 'Скорость ветра', unit: '×', min: 0, max: 2.5, step: 0.05 },
+  ] },
+  { name: 'Лунное освещение', color: { path: 'scenes.growth.moonLightColor', label: 'Цвет лунного света' }, controls: [
+    { path: 'scenes.growth.moonLightIntensity', label: 'Интенсивность лунного света', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.moonBeamRadius', label: 'Радиус лунного луча', unit: 'м', min: 0.4, max: 4, step: 0.05 },
+    { path: 'scenes.growth.moonBeamSoftness', label: 'Мягкость краёв луча', unit: '×', min: 0.05, max: 1, step: 0.01 },
+    { path: 'scenes.growth.moonBeamIntensity', label: 'Интенсивность объёмного луча', unit: '×', min: 0, max: 1.5, step: 0.025 },
+    { path: 'scenes.growth.moonPositionX', label: 'Положение источника · X', unit: 'м', min: -4, max: 4, step: 0.05 },
+    { path: 'scenes.growth.moonPositionY', label: 'Положение источника · Y', unit: 'м', min: 1, max: 10, step: 0.05 },
+    { path: 'scenes.growth.moonPositionZ', label: 'Положение источника · Z', unit: 'м', min: -4, max: 4, step: 0.05 },
   ] },
   { name: 'Анимация лилии', controls: [
     { path: 'scenes.growth.flowerGrowthDuration', label: 'Длительность Growth', unit: 'с', min: 4, max: 14, step: 0.25 },
@@ -557,7 +566,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–13. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–14. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -708,7 +717,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-growth-particleQuality">Качество семечка</label>{config.scenes.growth.particleQuality !== defaultAtPath('scenes.growth.particleQuality') && <button type="button" className="inspector-reset" aria-label="Сбросить качество семечка" onClick={() => { void resetField('scenes.growth.particleQuality') }}>↺</button>}</div>
               <select id="composer-scenes-growth-particleQuality" value={config.scenes.growth.particleQuality} onChange={(event) => { void changeField('scenes.growth.particleQuality', event.target.value) }}><option value="low">Низкое · 2304</option><option value="standard">Обычное · 4096</option><option value="high">Высокое · 9216</option></select>
             </div>
-            {GROWTH_GROUPS.map(group => <details key={group.name} open={group.name === 'Частицы и формирование'}><summary>{group.name}</summary>{group.controls.map(range)}</details>)}
+            {GROWTH_GROUPS.map(group => <details key={group.name} open={group.name === 'Частицы и формирование'}><summary>{group.name}</summary>{group.controls.map(range)}{group.color && color(group.color.path, group.color.label)}</details>)}
           </details>
           <p>Обе длительности анимации цветка настраиваются здесь и в сцене раскрытия.</p>
           <details><summary>Палитра частиц</summary>

@@ -6,6 +6,7 @@ import {
 } from 'three'
 import type { FilmRuntime } from '../../engine/runtime'
 import { createGrassBladeData, createIslandSideGeometryData, createIslandTopGeometryData, type IslandGeometryData } from './floatingIslandGeometry'
+import { createSoilTextureData } from './soilTextureData'
 
 function makeGeometry(data: IslandGeometryData) {
   const geometry = new BufferGeometry()
@@ -107,43 +108,8 @@ const grassTransformPatch = `
 `
 
 function makeSoilTextures() {
-  const size = 192
-  const colorData = new Uint8Array(size * size * 4)
-  const heightData = new Uint8Array(size * size * 4)
-  const roughnessData = new Uint8Array(size * size * 4)
-  let seed = 31991
-  const random = () => {
-    seed ^= seed << 13
-    seed ^= seed >>> 17
-    seed ^= seed << 5
-    return (seed >>> 0) / 0x100000000
-  }
-  for (let y = 0; y < size; y += 1) {
-    const v = y / size
-    for (let x = 0; x < size; x += 1) {
-      const u = x / size
-      const broad = Math.sin(u * Math.PI * 10 + Math.sin(v * Math.PI * 6) * 0.8) * Math.cos(v * Math.PI * 12) * 0.45
-      const sediment = Math.sin((u * 4 + Math.sin(v * Math.PI * 3) * 0.14) * Math.PI * 2) * 0.18
-      const grain = (random() - 0.5) * 0.36 + (random() - 0.5) * 0.18
-      const noise = broad + sediment + grain
-      const pixel = (y * size + x) * 4
-      // A pale, nearly neutral detail mask modulates the earthy vertex palette without crushing it toward black.
-      colorData[pixel] = Math.min(255, Math.max(0, 232 + noise * 17))
-      colorData[pixel + 1] = Math.min(255, Math.max(0, 220 + noise * 18))
-      colorData[pixel + 2] = Math.min(255, Math.max(0, 204 + noise * 19))
-      colorData[pixel + 3] = 255
-      const height = Math.min(255, Math.max(0, 128 + noise * 86))
-      heightData[pixel] = height
-      heightData[pixel + 1] = height
-      heightData[pixel + 2] = height
-      heightData[pixel + 3] = 255
-      const roughness = Math.min(255, Math.max(0, 222 + random() * 33))
-      roughnessData[pixel] = roughness
-      roughnessData[pixel + 1] = roughness
-      roughnessData[pixel + 2] = roughness
-      roughnessData[pixel + 3] = 255
-    }
-  }
+  const size = 256
+  const { color, height, roughness } = createSoilTextureData(size)
   const texture = (data: Uint8Array, colorSpace = '') => {
     const value = new DataTexture(data, size, size, RGBAFormat, UnsignedByteType)
     value.wrapS = RepeatWrapping
@@ -155,7 +121,7 @@ function makeSoilTextures() {
     value.needsUpdate = true
     return value
   }
-  return { color: texture(colorData, 'srgb'), height: texture(heightData), roughness: texture(roughnessData) }
+  return { color: texture(color, 'srgb'), height: texture(height), roughness: texture(roughness) }
 }
 
 /** Procedural island attached to the shared Scene 02 canvas and presentation clock. */
@@ -210,7 +176,7 @@ export function FloatingIsland({ runtime, radius, thickness = 0.24, depth = 0.58
         }
         material.depthWrite = !transparent && material !== shader
       }
-      if (localLight.current) localLight.current.intensity = 1.18 * alpha
+      if (localLight.current) localLight.current.intensity = 0.62 * alpha
       if (!reducedMotion || alpha < 0.999) invalidate()
     }
     update(runtime.presentationTime)
@@ -238,6 +204,6 @@ export function FloatingIsland({ runtime, radius, thickness = 0.24, depth = 0.58
     {grassDensity > 0 && <mesh geometry={grass} frustumCulled={false}>
       <meshStandardMaterial ref={grassMaterial} vertexColors side={DoubleSide} roughness={0.78} metalness={0} transparent depthWrite={false} onBeforeCompile={onGrassCompile} customProgramCacheKey={() => 'floating-island-grass-v3'} />
     </mesh>}
-    <pointLight ref={localLight} position={[0.15, 0.58, 1.2]} color="#B8D0A3" intensity={1.18} distance={3.8} decay={1.6} />
+    <pointLight ref={localLight} position={[0.15, 0.58, 1.2]} color="#AABDAA" intensity={0.62} distance={3.8} decay={1.6} />
   </group>
 }

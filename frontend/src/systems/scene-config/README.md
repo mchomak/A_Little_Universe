@@ -1,6 +1,6 @@
 # Scene Composer configuration
 
-`SceneComposerConfig` is an immutable schema version 13. `normalizeConfig(input)` accepts partial schema v1–v13 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the current gallery and identity controls. Schema v12 adds the first bounded island controls, while schema v13 adds thickness, lower depth, edge roughness, grass height, and wind strength for Scene 02's floating island. Older configurations retain their values and receive defaults for new island controls. The store publishes font changes only after the selected local font is ready.
+`SceneComposerConfig` is an immutable schema version 14. `normalizeConfig(input)` accepts partial schema v1–v14 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the current gallery and identity controls. Schema v12 adds the first bounded island controls, while schema v13 adds island thickness, lower depth, edge roughness, grass height, and wind strength. Schema v14 adds independently configurable moon light, beam, color, and source position for Scene 02; older configs receive defaults. The store publishes font changes only after the selected local font is ready.
 
 The public store is:
 
@@ -11,7 +11,7 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v13.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v14.
 
 Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its 0.1–20 second travel-window meaning, with the cinematic default now 2.2 seconds; `particleFadeDuration` controls individual dust fade and defaults to 1.2 seconds. `particleReturnFraction` is ignored. The light, atmosphere, typography and interaction fields are additive schema-v2 fields: missing fields in both v1 and v2 files receive current defaults.
 
@@ -19,7 +19,7 @@ An optional production override can contain only values that differ from the def
 
 ```json
 {
-  "schemaVersion": 13,
+  "schemaVersion": 14,
   "global": { "quality": "low" },
   "scenes": {
     "preparation": {
@@ -82,6 +82,9 @@ An optional production override can contain only values that differ from the def
 | Interaction | Touch intensity / duration | 0–1.5 (0.55) / 0.7–1 s (0.85) |
 | Interaction | Wave strength / radius | 0–0.5 (0.14) / 30–120 CSS px (70) |
 | Scene 02 island | Radius / grass blades / wind speed | 0.55–1.05 (0.82) / 80–720 integer (360) / 0–2.5 (0.8) |
+| Scene 02 moonlight | Direct light intensity / color | 0–2 (1.2) / `#AFC9F5` |
+| Scene 02 moon beam | Radius / softness / volumetric intensity | 0.4–4 (2) / 0.05–1 (0.6) / 0–1.5 (0.55) |
+| Scene 02 moon source | X / Y / Z position in world units | −4–4 (−0.65) / 1–10 (5.5) / −4–4 (1) |
 | Galaxy Geometry | Star count, arms, radius, spin | 8000–90000 integer (32000), 2–8 integer (5), 4–14 (8.2), 0.2–18 (4.6 radians) |
 | Galaxy Geometry | Seed | String, 1–64 characters (default `andromeda`) |
 | Galaxy Geometry | Arm width / randomness / randomness power | 0–0.5 (0.16) / 0–0.3 (0.065) / 0.1–8 (3.6) |
