@@ -28,3 +28,5 @@
 | 2026-10-31 | `2026-10-31-scene04-vortex-refinement` | сдан | Scene 04: более плотный 12-секундный распад GLB-лилии, расширенный восходящий вихрь, центральная фаза на 50%; 316 тестов, lint, TypeScript и build прошли; iPad не проверен |
 | 2026-10-31 | `2026-10-31-scene04-portrait-particles` | сдан | Портрет Василисы собирается из части 04-го вихря по фото; 329 тестов, lint, TypeScript и build прошли; iPad/Safari не проверен |
 | 2026-11-01 | `2026-11-01-scene04-star-portrait-prototype` | сдан | DEV-страница для настройки звёздного портрета 4:3; 344 теста, lint, TypeScript и build прошли; iPad/Safari не проверен |
+
+| 2026-11-01 | `2026-11-01-scene04-visible-vortex-portrait--wip` | в работе | — |
