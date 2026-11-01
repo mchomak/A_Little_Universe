@@ -3,7 +3,7 @@ import { filmDuration, filmReducer, initialFilmState, type FilmAction, type Film
 import { MEMORIES } from './filmConfig'
 import { resetConfig, updateConfig } from '../systems/scene-config/config'
 
-const duration = { prologue: 18, growth: 16, bloom: 22, identity: 34, gallery: 0, eye: 18, cosmos: 26, greeting: 50, ending: 0 }
+const duration = { prologue: 18, growth: 16, bloom: 22, identity: 34, gallery: 0, eye: 18, cosmos: 26, greeting: 300, ending: 0 }
 const complete = (state: FilmState) => filmReducer(
   filmReducer(state, { type: 'timeline-update', time: duration[state.scene], revision: state.revision }),
   { type: 'timeline-complete', revision: state.revision },
@@ -189,10 +189,28 @@ describe('film navigation', () => {
     expect(state.scene).toBe('greeting')
     expect(filmReducer(state, { type: 'finish' })).toBe(state)
     state = complete(state)
-    expect([state.scene, state.mode, state.elapsed]).toEqual(['greeting', 'waiting', 50])
+    expect([state.scene, state.mode, state.elapsed]).toEqual(['greeting', 'waiting', 300])
     expect(complete(state)).toBe(state)
     state = filmReducer(state, { type: 'finish' })
     expect([state.scene, state.mode]).toEqual(['ending', 'ended'])
+  })
+
+  it('replays only the letter from the ending and returns to the same ending after the crawl', () => {
+    const ending: FilmState = { ...initialFilmState, scene: 'ending', mode: 'ended', elapsed: 0 }
+    const replay = filmReducer(ending, { type: 'replay-letter' })
+    expect([replay.scene, replay.mode, replay.elapsed, replay.returnToEnding]).toEqual(['greeting', 'playing', 0, true])
+    const replaySeek = filmReducer(replay, { type: 'dev-seek', time: 12 }, true)
+    expect([replaySeek.scene, replaySeek.mode, replaySeek.elapsed, replaySeek.returnToEnding]).toEqual(['greeting', 'playing', 12, true])
+    const finished = filmReducer(replay, { type: 'greeting-complete' })
+    expect([finished.scene, finished.mode, finished.returnToEnding]).toEqual(['ending', 'ended', false])
+  })
+
+  it('keeps greeting waiting for the independently controlled letter crawl', () => {
+    const greeting: FilmState = { ...initialFilmState, scene: 'greeting', mode: 'playing', elapsed: 0 }
+    const waiting = complete(greeting)
+    expect([waiting.scene, waiting.mode]).toEqual(['greeting', 'waiting'])
+    expect(filmReducer(waiting, { type: 'timeline-update', time: 40, revision: waiting.revision })).toBe(waiting)
+    expect(filmReducer(waiting, { type: 'greeting-complete' }).scene).toBe('ending')
   })
 })
 

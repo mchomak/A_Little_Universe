@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type Dispatch } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type Dispatch } from 'react'
 import type { FilmAction, FilmState } from '../engine/film'
 import type { FilmRuntime } from '../engine/runtime'
 import { useReviewNotes } from './useReviewNotes'
-import { getSceneDuration, SCENES, SCENE_ORDER } from '../engine/filmConfig'
+import { getCreditsScrollDuration, getSceneDuration, SCENES, SCENE_ORDER } from '../engine/filmConfig'
 import { getConfig, subscribeConfig, updateConfig } from '../systems/scene-config/config'
 import { activeFrameIndex, canSeekTimeline, timelineFrames } from './timelineModel'
 import { createLoopListener, validLoop } from './timelinePlayback'
@@ -21,11 +21,28 @@ export default function SceneTimeline({ state, dispatch, runtime, route, onPrelo
   const [previewFrame, setPreviewFrame] = useState<number | null>(null)
   const [previewFailed, setPreviewFailed] = useState(false)
   const [previousSpeed, setPreviousSpeed] = useState<number | null>(null)
+  const [creditsScrollDuration, setCreditsScrollDuration] = useState<number | null>(null)
   const previousRevision = useRef(state.revision)
   const loopSeek = useRef(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
-  const frames = timelineFrames(state.scene, config)
+  useLayoutEffect(() => {
+    if (state.scene !== 'greeting') return
+    const measure = () => {
+      const crawl = document.querySelector<HTMLElement>('.greeting-overlay .credits-crawl')
+      const viewport = document.querySelector<HTMLElement>('.greeting-overlay')
+      if (crawl && viewport) setCreditsScrollDuration(getCreditsScrollDuration(crawl.scrollHeight, viewport.clientHeight))
+    }
+    measure()
+    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure)
+    const crawl = document.querySelector<HTMLElement>('.greeting-overlay .credits-crawl')
+    const viewport = document.querySelector<HTMLElement>('.greeting-overlay')
+    if (crawl) observer?.observe(crawl)
+    if (viewport) observer?.observe(viewport)
+    window.addEventListener('resize', measure)
+    return () => { observer?.disconnect(); window.removeEventListener('resize', measure) }
+  }, [state.scene])
+  const frames = timelineFrames(state.scene, config, creditsScrollDuration, state.returnToEnding)
   const index = activeFrameIndex(frames, state.elapsed)
   const nextFrame = frames[index + 1]
   const duration = getSceneDuration(state.scene, config)

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useThree } from '@react-three/fiber'
+import { gsap } from 'gsap'
 import { BackSide, CircleGeometry, Color, Group, Mesh, MeshBasicMaterial, PlaneGeometry, Points, PointsMaterial } from 'three'
 import type { SceneProps } from '../../engine/sceneTypes'
 import { TIMING } from '../../engine/filmConfig'
@@ -7,7 +8,7 @@ import { getConfig, subscribeConfig, type SceneComposerConfig } from '../../syst
 import { useSceneAnimation } from '../shared/animation'
 import { createGalaxyGeometry, updateGalaxyColors, type GalaxyGeometrySettings } from './generateGalaxy'
 import { applyGalaxyFrameMaterials, createCoreMaterial, createFogMaterial, createGasMaterial, createStarMaterial, createSunMaterial, type GalaxyUniforms } from './shaders'
-import { getGalaxyFogOpacity, getGalaxyLight, getGalaxyMotionPhase, getGalaxyRevealState } from './animation'
+import { advanceGalaxyAmbientPhase, getGalaxyFogOpacity, getGalaxyLight, getGalaxyMotionPhase, getGalaxyRevealState } from './animation'
 import { getGalaxyRenderPalette } from './palette'
 import { createNebulaClouds } from './nebulaClouds'
 import { deferGalaxyCloudDisposal } from './resourceLifecycle'
@@ -107,6 +108,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
   const brightPoints = useRef<Points>(null)
   const backgroundPoints = useRef<Points>(null)
   const blackCenter = useRef<Mesh>(null)
+  const ambientPhase = useRef({ active: false, initialized: false, motionTime: 0, phaseTime: 0 })
   const camera = useThree((three) => three.camera)
   const invalidate = useThree((three) => three.invalidate)
   const dpr = useThree((three) => three.viewport.dpr)
@@ -157,10 +159,12 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
     const revealState = getGalaxyRevealState(localTime, current)
     const reveal = scene === 'cosmos' ? revealState.galaxy : 1
     const initialStars = scene === 'cosmos' ? revealState.stars : 1
-    const phaseTime = scene === 'cosmos' ? localTime
+    const calculatedPhaseTime = scene === 'cosmos' ? localTime
       : scene === 'greeting' ? TIMING.cosmos.duration + localTime
         : TIMING.cosmos.duration + TIMING.greeting.duration + localTime
-    const motionTime = getGalaxyMotionPhase(scene, localTime, current, TIMING.cosmos.duration, TIMING.greeting.duration, reducedMotion)
+    const phaseTime = ambientPhase.current.active ? ambientPhase.current.phaseTime : calculatedPhaseTime
+    const motionTime = ambientPhase.current.active ? ambientPhase.current.motionTime
+      : getGalaxyMotionPhase(scene, localTime, current, TIMING.cosmos.duration, TIMING.greeting.duration, reducedMotion)
     const light = getGalaxyLight(scene, localTime, current, TIMING.cosmos.duration)
     const fogOpacity = getGalaxyFogOpacity(scene, localTime, current, TIMING.cosmos.duration)
 
@@ -215,10 +219,34 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
   const duration = scene === 'cosmos' ? TIMING.cosmos.duration : TIMING.greeting.duration
   useSceneAnimation(runtime, duration, draw)
   useEffect(() => {
-    if (scene !== 'ending') return
-    draw(runtime.presentationTime)
-    return runtime.subscribePresentation(draw)
-  }, [draw, runtime, scene])
+    const ambient = ambientPhase.current
+    if (state.scene === 'prologue' || state.scene === 'cosmos') {
+      ambient.active = false
+      ambient.initialized = false
+      return
+    }
+    if (state.scene !== 'greeting' && state.scene !== 'ending') { ambient.active = false; return }
+    if (!ambient.initialized) {
+      const time = state.scene === 'ending' ? runtime.presentationTime : runtime.time
+      ambient.motionTime = getGalaxyMotionPhase(state.scene, time, getConfig().scenes.galaxy, TIMING.cosmos.duration, TIMING.greeting.duration, reducedMotion)
+      ambient.phaseTime = state.scene === 'ending' ? TIMING.cosmos.duration + TIMING.greeting.duration + time : TIMING.cosmos.duration + time
+      ambient.initialized = true
+    }
+    ambient.active = true
+    let previous = performance.now()
+    const tick = () => {
+      const now = performance.now()
+      const delta = document.hidden ? 0 : Math.min(0.05, Math.max(0, (now - previous) / 1000))
+      previous = now
+      const next = advanceGalaxyAmbientPhase(ambient.motionTime, ambient.phaseTime, delta, getConfig().scenes.galaxy, reducedMotion)
+      ambient.motionTime = next.motionTime
+      ambient.phaseTime = next.phaseTime
+      draw(runtime.time)
+    }
+    gsap.ticker.add(tick)
+    tick()
+    return () => { gsap.ticker.remove(tick); ambient.active = false }
+  }, [draw, reducedMotion, runtime, state.scene])
 
   return <>
     <group ref={galaxy} visible={false}>

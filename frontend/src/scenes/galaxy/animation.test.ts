@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
-import { getGalaxyFogOpacity, getGalaxyLight, getGalaxyMotionPhase, getGalaxyRevealState } from './animation'
+import { advanceGalaxyAmbientPhase, getGalaxyFogOpacity, getGalaxyLight, getGalaxyMotionPhase, getGalaxyRevealState } from './animation'
 
 const settings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.galaxy
 
@@ -20,6 +20,15 @@ it('keeps the galaxy motion phase continuous between scenes 07, 08 and 09', () =
   expect(greetingStart).toBeCloseTo(cosmosEnd, 10)
   expect(endingStart).toBeCloseTo(greetingEnd, 10)
   expect(getGalaxyMotionPhase('cosmos', 9, settings, 26, 50, true)).toBe(0)
+})
+
+it('keeps shader time and calm rotation moving after the finite scene clock ends', () => {
+  const phase = getGalaxyMotionPhase('greeting', 22, settings, 26, 95)
+  const next = advanceGalaxyAmbientPhase(phase, 48, 0.05, settings)
+  expect(next.motionTime).toBeCloseTo(phase + 0.05 * settings.idleMotion * settings.motionSpeed)
+  expect(next.phaseTime).toBeCloseTo(48.05)
+  expect(advanceGalaxyAmbientPhase(next.motionTime, next.phaseTime, 0.05, settings).motionTime).toBeGreaterThan(next.motionTime)
+  expect(advanceGalaxyAmbientPhase(next.motionTime, next.phaseTime, 0.05, settings, true).motionTime).toBe(next.motionTime)
 })
 
 it('starts the light fade before the Scene 07 handoff and preserves both scene boundaries', () => {

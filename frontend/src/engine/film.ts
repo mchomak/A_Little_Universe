@@ -18,7 +18,7 @@ export interface FilmState {
   prologueTouchDuration?: number
 }
 export type FilmAction =
-  | { type: 'start' | 'toggle-pause' | 'replay' | 'interact' | 'gallery-exit' | 'open-gallery' | 'open-reading' | 'close-reading' | 'finish' | 'dev-restart' | 'dev-skip' }
+  | { type: 'start' | 'toggle-pause' | 'replay' | 'replay-letter' | 'greeting-complete' | 'interact' | 'gallery-exit' | 'open-gallery' | 'open-reading' | 'close-reading' | 'finish' | 'dev-restart' | 'dev-skip' }
   | { type: 'gallery-finish' }
   | { type: 'gallery-step'; direction: -1 | 1 }
   | { type: 'gallery-focus'; index: number }
@@ -70,6 +70,11 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
       return { ...state, paused: !state.paused }
     case 'replay':
       return { ...initialFilmState, mode: 'playing', speed: state.speed, quality: state.quality, revision: state.revision + 1 }
+    case 'replay-letter':
+      if (state.scene !== 'ending') return state
+      return { ...enter(state, 'greeting'), mode: 'playing', elapsed: 0, returnToEnding: true }
+    case 'greeting-complete':
+      return state.scene === 'greeting' ? { ...enter(state, 'ending'), returnToEnding: false } : state
     case 'open-reading':
       if (state.scene === 'ending') return { ...enter(state, 'greeting'), reading: true, returnToEnding: true }
       return state.scene === 'greeting' ? { ...state, reading: true } : state
@@ -110,7 +115,7 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
       if (state.scene === 'gallery' && state.returnToEnding) return { ...enter(state, 'ending'), returnToEnding: false }
       return state.scene === 'gallery' && state.galleryIndex === MEMORIES.length - 1 ? enter(state, 'eye') : state
     case 'finish':
-      return state.scene === 'greeting' && state.mode === 'waiting' ? enter(state, 'ending') : state
+      return state.scene === 'greeting' && state.mode === 'waiting' ? { ...enter(state, 'ending'), returnToEnding: false } : state
   }
   return state
 }
