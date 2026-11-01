@@ -88,14 +88,19 @@ it('normalizes capture limits and repairs turn ordering without losing legacy se
 
   const valid = normalizeConfig({ schemaVersion: 5, scenes: { identity: {
     particleCount: 100000, portraitStartProgress: 0, portraitFraction: 0,
-    portraitMinTurns: 3.5, portraitMaxTurns: 1.5, portraitSteering: 2.2,
-    portraitBraking: 3.4, portraitSettledBrightness: 1.4, vortexSpeedMultiplier: 0.75,
+    portraitMinTurns: 3.5, portraitMaxTurns: 1.5, portraitSteering: 1.8,
+    portraitBraking: 1.8, portraitSettledBrightness: 1.4, vortexSpeedMultiplier: 0.75,
   } } }).scenes.identity
   expect(valid).toMatchObject({
     particleCount: 100000, portraitStartProgress: 0, portraitFraction: 0,
-    portraitMinTurns: 3.5, portraitMaxTurns: 3.5, portraitSteering: 2.2,
-    portraitBraking: 3.4, portraitSettledBrightness: 1.4, vortexSpeedMultiplier: 0.75,
+    portraitMinTurns: 3.5, portraitMaxTurns: 3.5, portraitSteering: 1.8,
+    portraitBraking: 1.8, portraitSettledBrightness: 1.4, vortexSpeedMultiplier: 0.75,
   })
+
+  const supportedLimits = normalizeConfig({ schemaVersion: 5, scenes: { identity: {
+    portraitMinTurns: 4, portraitMaxTurns: 4, portraitSteering: 2, portraitBraking: 0.25,
+  } } }).scenes.identity
+  expect(supportedLimits).toMatchObject({ portraitMinTurns: 4, portraitMaxTurns: 4, portraitSteering: 2, portraitBraking: 0.25 })
 
   const upperBounds = normalizeConfig({ schemaVersion: 5, scenes: { identity: {
     portraitStartProgress: 1, portraitFraction: 0.45,
