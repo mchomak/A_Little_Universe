@@ -1,0 +1,27 @@
+{
+  "viewport": [
+    1440,
+    900
+  ],
+  "errors": [],
+  "shots": [
+    {
+      "name": "01-entry.png",
+      "progress": 0,
+      "phase": "explore",
+      "focus": null
+    },
+    {
+      "name": "02-forward-parallax.png",
+      "progress": 37.9999709186604,
+      "phase": "explore",
+      "focus": null
+    },
+    {
+      "name": "03-backward-parallax.png",
+      "progress": 16.000017567534428,
+      "phase": "explore",
+      "focus": null
+    }
+  ]
+}

@@ -2,8 +2,9 @@ import { expect, it, vi } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, normalizeConfig, SCENE_CONFIG_PRESETS } from './config'
 import * as configApi from './config'
 
-it('uses immutable schema v9 defaults and the local Great Vibes prologue face', () => {
-  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(9)
+it('uses immutable schema v10 defaults and the local Great Vibes prologue face', () => {
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(10)
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.global).toMatchObject({ quality: 'standard', dprMin: 1, dprMax: 2 })
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('great-vibes')
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue).toMatchObject({
     interphraseInterval: 1.35,
@@ -24,18 +25,20 @@ it('uses immutable schema v9 defaults and the local Great Vibes prologue face', 
   expect(Object.isFrozen(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)).toBe(true)
 })
 
-it('adds bounded moonlit gallery settings to schema v1-v5 imports', () => {
+it('adds bounded moonlit gallery settings to schema v1-v10 imports', () => {
   const defaults = {
     frameIntensity: 1, particleCount: 220, moonBrightness: 0.8, moonSize: 1,
-    cloudDensity: 0.85, cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 8, cloudDriftSpeed: 0.7,
-    hazeDensity: 0.7, hazeHeight: 0, reflectionStrength: 0.24,
+    cloudDensity: 1.12, cloudOpacity: 0.88, cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 18, cloudDriftSpeed: 0.82,
+    cloudDriftVariation: 0.65, cloudForegroundAmount: 1, cloudBackgroundAmount: 0.78, cloudNearFloorAmount: 1,
+    cloudCoolTint: 1, cloudWhiteHighlight: 0.48,
+    hazeDensity: 0.22, hazeHeight: 0, hazeMotionSpeed: 0.2, reflectionStrength: 0.24,
     reflectionBlur: 0.8, threadOpacity: 0.38, coldLightIntensity: 0.8,
     moonLightIntensity: 1.8, moonFillIntensity: 0.45, moonHaloIntensity: 1.2,
     moonCloudLightIntensity: 1, moonScatteringIntensity: 0.85,
     moonLightColor: '#C3D8F2', moonPositionX: 0.2, moonPositionY: 16, moonPositionZ: -126,
     moonTargetX: 0, moonTargetY: -2.35, moonTargetZ: -34, moonHaloRadius: 1, moonGodRaysIntensity: 0.12,
   }
-  for (const schemaVersion of [1, 2, 3, 4, 5]) {
+  for (const schemaVersion of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
     const imported = normalizeConfig({ schemaVersion, scenes: { gallery: { moonBrightness: 1.1 } } })
     expect(imported.scenes.gallery).toEqual({ ...defaults, moonBrightness: 1.1 })
     expect(Object.isFrozen(imported.scenes.gallery)).toBe(true)
@@ -43,8 +46,10 @@ it('adds bounded moonlit gallery settings to schema v1-v5 imports', () => {
 
   const bounds = normalizeConfig({ schemaVersion: 5, scenes: { gallery: {
     frameIntensity: 0, particleCount: 600, moonBrightness: 2, moonSize: 0.4,
-    cloudDensity: 1.8, cloudIntensity: 2, cloudScale: 1, cloudLayerCount: 0, cloudDriftSpeed: 0.7,
-    hazeDensity: 0, hazeHeight: -3, reflectionStrength: 0,
+    cloudDensity: 1.8, cloudOpacity: 0, cloudIntensity: 2, cloudScale: 1, cloudLayerCount: 0, cloudDriftSpeed: 0.7,
+    cloudDriftVariation: 0, cloudForegroundAmount: 0, cloudBackgroundAmount: 0, cloudNearFloorAmount: 0,
+    cloudCoolTint: 0, cloudWhiteHighlight: 0,
+    hazeDensity: 0, hazeHeight: -3, hazeMotionSpeed: 0, reflectionStrength: 0,
     reflectionBlur: 1, threadOpacity: 0, coldLightIntensity: 0,
     moonLightIntensity: 0, moonFillIntensity: 0, moonHaloIntensity: 0,
     moonCloudLightIntensity: 0, moonScatteringIntensity: 0,
@@ -53,8 +58,10 @@ it('adds bounded moonlit gallery settings to schema v1-v5 imports', () => {
   } } })
   expect(bounds.scenes.gallery).toEqual({
     frameIntensity: 0, particleCount: 600, moonBrightness: 2, moonSize: 0.4,
-    cloudDensity: 1.8, cloudIntensity: 2, cloudScale: 1, cloudLayerCount: 0, cloudDriftSpeed: 0.7,
-    hazeDensity: 0, hazeHeight: -3, reflectionStrength: 0,
+    cloudDensity: 1.8, cloudOpacity: 0, cloudIntensity: 2, cloudScale: 1, cloudLayerCount: 0, cloudDriftSpeed: 0.7,
+    cloudDriftVariation: 0, cloudForegroundAmount: 0, cloudBackgroundAmount: 0, cloudNearFloorAmount: 0,
+    cloudCoolTint: 0, cloudWhiteHighlight: 0,
+    hazeDensity: 0, hazeHeight: -3, hazeMotionSpeed: 0, reflectionStrength: 0,
     reflectionBlur: 1, threadOpacity: 0, coldLightIntensity: 0,
     moonLightIntensity: 0, moonFillIntensity: 0, moonHaloIntensity: 0,
     moonCloudLightIntensity: 0, moonScatteringIntensity: 0,
@@ -62,9 +69,11 @@ it('adds bounded moonlit gallery settings to schema v1-v5 imports', () => {
     moonTargetX: 0, moonTargetY: -2.35, moonTargetZ: -34, moonHaloRadius: 1, moonGodRaysIntensity: 0.12,
   })
 
-  const invalid = normalizeConfig({ schemaVersion: 5, scenes: { gallery: {
+  const invalid = normalizeConfig({ schemaVersion: 9, scenes: { gallery: {
     frameIntensity: 2.01, particleCount: 600.5, moonBrightness: -0.01, moonSize: 1.81,
-    cloudDensity: -0.01, cloudIntensity: -0.01, cloudScale: 9, cloudLayerCount: 9.5, hazeDensity: 1.81, hazeHeight: 3.1, reflectionStrength: 0.61,
+    cloudDensity: -0.01, cloudOpacity: -1, cloudIntensity: -0.01, cloudScale: 9, cloudLayerCount: 99, cloudDriftVariation: 9,
+    cloudForegroundAmount: -1, cloudBackgroundAmount: 9, cloudNearFloorAmount: 9, cloudCoolTint: -1, cloudWhiteHighlight: 9,
+    hazeDensity: 1.81, hazeHeight: 3.1, hazeMotionSpeed: 5, reflectionStrength: 0.61,
     reflectionBlur: 0.29, threadOpacity: 0.81, coldLightIntensity: Infinity,
     moonLightIntensity: 3.01, moonFillIntensity: -0.01, moonHaloIntensity: Infinity, moonCloudLightIntensity: Infinity, moonScatteringIntensity: 1.51,
   } } })
@@ -73,13 +82,13 @@ it('adds bounded moonlit gallery settings to schema v1-v5 imports', () => {
 
 it('normalizes schema v6 atmosphere controls and supplies them to schema v5 documents', () => {
   const oldGallery = normalizeConfig({ schemaVersion: 5, scenes: { gallery: { moonBrightness: 1.1, cloudDensity: 1.4 } } })
-  expect(oldGallery.schemaVersion).toBe(9)
+  expect(oldGallery.schemaVersion).toBe(10)
   expect(oldGallery.scenes.gallery).toMatchObject({
     moonBrightness: 1.1,
     cloudDensity: 1.4,
     cloudIntensity: 1,
     cloudScale: 1,
-    cloudLayerCount: 8,
+    cloudLayerCount: 18,
     hazeHeight: 0,
     moonCloudLightIntensity: 1,
   })
@@ -95,13 +104,13 @@ it('normalizes schema v6 atmosphere controls and supplies them to schema v5 docu
     cloudIntensity: -0.1, cloudLayerCount: 10.5, hazeHeight: 3.1, moonCloudLightIntensity: Infinity,
   } } })
   expect(invalid.scenes.gallery).toMatchObject({
-    cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 8, hazeHeight: 0, moonCloudLightIntensity: 1,
+    cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 18, hazeHeight: 0, moonCloudLightIntensity: 1,
   })
 })
 
-it('migrates bounded moon source, color, halo radius, and godray controls into schema v9', () => {
+it('migrates bounded moon source, color, halo radius, and godray controls into schema v10', () => {
   const migrated = normalizeConfig({ schemaVersion: 6, scenes: { gallery: { moonPositionX: 2.4, moonLightColor: '#abcde0' } } })
-  expect(migrated.schemaVersion).toBe(9)
+  expect(migrated.schemaVersion).toBe(10)
   expect(migrated.scenes.gallery).toMatchObject({
     moonLightColor: '#ABCDE0', moonPositionX: 2.4, moonPositionY: 16, moonPositionZ: -126,
     moonTargetX: 0, moonTargetY: -2.35, moonTargetZ: -34, moonHaloRadius: 1,
@@ -120,10 +129,17 @@ it('migrates bounded moon source, color, halo radius, and godray controls into s
 
 it('persists bounded cloud volume settings while keeping old settings compatible', () => {
   const migrated = normalizeConfig({ schemaVersion: 7, scenes: { gallery: { cloudLayerCount: 6 } } })
-  expect(migrated.schemaVersion).toBe(9)
-  expect(migrated.scenes.gallery).toMatchObject({ cloudScale: 1, cloudLayerCount: 6, cloudDriftSpeed: 0.7 })
+  expect(migrated.schemaVersion).toBe(10)
+  expect(migrated.scenes.gallery).toMatchObject({ cloudScale: 1, cloudLayerCount: 6, cloudDriftSpeed: 0.82 })
   const bounded = normalizeConfig({ schemaVersion: 9, scenes: { gallery: { cloudScale: 99, cloudLayerCount: 99, cloudDriftSpeed: 99 } } })
-  expect(bounded.scenes.gallery).toMatchObject({ cloudScale: 1, cloudLayerCount: 8, cloudDriftSpeed: 0.7 })
+  expect(bounded.scenes.gallery).toMatchObject({ cloudScale: 1, cloudLayerCount: 18, cloudDriftSpeed: 0.82 })
+})
+
+it('expands the schema v9 cloud maximum while preserving intentional lower counts', () => {
+  expect(normalizeConfig({ schemaVersion: 9, scenes: { gallery: { cloudLayerCount: 12 } } }).scenes.gallery.cloudLayerCount).toBe(18)
+  expect(normalizeConfig({ schemaVersion: 9, scenes: { gallery: { cloudLayerCount: 7 } } }).scenes.gallery.cloudLayerCount).toBe(7)
+  expect(normalizeConfig({ schemaVersion: 9, scenes: { gallery: { cloudLayerCount: 0 } } }).scenes.gallery.cloudLayerCount).toBe(0)
+  expect(normalizeConfig({ schemaVersion: 10, scenes: { gallery: { cloudLayerCount: 12 } } }).scenes.gallery.cloudLayerCount).toBe(12)
 })
 
 it('merges a known partial override into defaults field by field', () => {
@@ -140,7 +156,7 @@ it('migrates schema v1 particle settings and preserves compatible fields', () =>
     prologue: { fontSize: 72, particleCount: 120, particleSpeed: 2, particleSpread: 1.2, particleDuration: 9, particleReturnFraction: 0.9 },
   } })
 
-  expect(migrated.schemaVersion).toBe(9)
+  expect(migrated.schemaVersion).toBe(10)
   expect(migrated.global.quality).toBe('low')
   expect(migrated.scenes.prologue).toMatchObject({
     fontSize: 72, particleCount: 300, windStrength: 2.3, turbulence: 0.36,
@@ -179,7 +195,7 @@ it('falls back per field, drops unknown keys, and rejects unsupported versions',
   expect(malformed.global).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.global)
   expect(malformed.scenes.prologue).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)
   expect(Object.keys(malformed)).toEqual(['schemaVersion', 'global', 'scenes', 'preset'])
-  expect(normalizeConfig({ schemaVersion: 10, scenes: { prologue: { fontSize: 72 } } })).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
+  expect(normalizeConfig({ schemaVersion: 11, scenes: { prologue: { fontSize: 72 } } })).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
 })
 
 it('accepts schema v2 inclusive bounds and defaults out-of-range or non-finite values', () => {
@@ -248,7 +264,7 @@ it('normalizes animation durations with backward-compatible defaults and bounds'
 
 it('migrates schema v2 documents with galaxy defaults and bounds the new controls', () => {
   const migrated = normalizeConfig({ schemaVersion: 2, scenes: { growth: { seedScale: 1.2 } } })
-  expect(migrated.schemaVersion).toBe(9)
+  expect(migrated.schemaVersion).toBe(10)
   expect(migrated.scenes.galaxy).toMatchObject({ seed: 'andromeda', starCount: 32000, arms: 5, palette: 'spore', cameraEndAngle: 0.785 })
   const galaxy = normalizeConfig({ schemaVersion: 4, scenes: { galaxy: {
     starCount: 90000, arms: 8, quality: 'high', palette: 'custom', coreColor: '#A1B2C3', fogLayers: 8,
@@ -267,9 +283,9 @@ it('migrates schema v3 galaxy spin from turns to radians and converts schema v4 
     coreSize: 1.55, coreDensity: 0.4, thickness: 0.12,
   } } })
 
-  expect(legacy.schemaVersion).toBe(9)
+  expect(legacy.schemaVersion).toBe(10)
   expect(legacy.scenes.galaxy.spin).toBeCloseTo(1.2 * Math.PI * 2, 10)
-  expect(current.schemaVersion).toBe(9)
+  expect(current.schemaVersion).toBe(10)
   expect(current.scenes.galaxy).toMatchObject({
     seed: '154684308', spin: 4.6, armWidth: 0.16,
     coreSize: 1.55 / 8.2, coreDensity: 0.248, thickness: 0.12 / 8.2,

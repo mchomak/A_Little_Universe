@@ -1,8 +1,8 @@
 window.STATE =
 {
-  "slug": "gallery05-cloud-atmosphere-v2",
-  "dir": "2026-11-01-gallery05-cloud-atmosphere-v2",
-  "title": "Облака и лунная дымка",
+  "slug": "gallery-cloud-controlled-pass",
+  "dir": "2026-11-01-gallery-cloud-controlled-pass--wip",
+  "title": "Галерея среди ночных облаков",
   "mode": "full",
   "depth": "normal",
   "polish": null,
@@ -10,61 +10,56 @@ window.STATE =
   "briefFile": "2026-11-01-brief.md",
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
-  "startedAt": "2026-11-01T03:28:33+03:00",
-  "updatedAt": "2026-11-01T04:05:31+03:00",
-  "finishedAt": "2026-11-01T04:05:31+03:00",
+  "startedAt": "2026-11-01T04:33:16+03:00",
+  "updatedAt": "2026-11-01T19:35:26+03:00",
+  "finishedAt": null,
   "stages": [
     {
       "id": "preflight",
       "status": "done",
-      "startedAt": "2026-11-01T03:28:33+03:00",
-      "finishedAt": "2026-11-01T03:28:33+03:00"
+      "startedAt": "2026-11-01T04:33:26+03:00",
+      "finishedAt": "2026-11-01T04:33:26+03:00"
     },
     {
       "id": "manifest",
       "status": "done",
-      "startedAt": "2026-11-01T03:28:33+03:00",
-      "finishedAt": "2026-11-01T03:28:33+03:00"
+      "startedAt": "2026-11-01T04:33:26+03:00",
+      "finishedAt": "2026-11-01T04:33:26+03:00"
     },
     {
       "id": "briefing",
       "status": "skipped",
-      "note": "Полный автомат"
+      "note": "full: self-briefing"
     },
     {
       "id": "spec",
       "status": "done",
-      "startedAt": "2026-11-01T03:28:33+03:00",
-      "finishedAt": "2026-11-01T03:28:33+03:00"
+      "startedAt": "2026-11-01T04:33:26+03:00",
+      "finishedAt": "2026-11-01T04:33:26+03:00"
     },
     {
       "id": "plan",
       "status": "skipped",
-      "note": "Единое изменение сцены"
+      "note": "T0: один проход"
     },
     {
       "id": "build",
-      "status": "done",
-      "startedAt": "2026-11-01T03:28:33+03:00",
-      "finishedAt": "2026-11-01T04:05:31+03:00"
+      "status": "active",
+      "startedAt": "2026-11-01T04:33:26+03:00"
     },
     {
       "id": "review",
-      "status": "done",
-      "finishedAt": "2026-11-01T04:05:31+03:00",
-      "startedAt": "2026-11-01T04:05:31+03:00"
+      "status": "pending"
     },
     {
       "id": "final",
-      "status": "done",
-      "finishedAt": "2026-11-01T04:05:31+03:00",
-      "startedAt": "2026-11-01T04:05:31+03:00"
+      "status": "pending"
     }
   ],
   "requirements": {
-    "total": 8,
-    "done": 8,
-    "inTicket": 0,
+    "total": 9,
+    "done": 0,
+    "inTicket": 9,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
@@ -72,15 +67,10 @@ window.STATE =
   },
   "tickets": [],
   "singlePass": {
-    "status": "done",
-    "startedAt": "2026-11-01T03:28:33+03:00",
-    "finishedAt": "2026-11-01T04:05:31+03:00",
-    "tests": "npm run check: 328 тестов"
+    "status": "in-progress",
+    "startedAt": "2026-11-01T04:33:16+03:00"
   },
-  "tests": {
-    "status": "passed",
-    "summary": "328 тестов, lint, typecheck и build"
-  },
+  "tests": "npm run check: 333 tests, lint, typecheck and production build passed",
   "debt": {
     "placeholders": [],
     "assumptions": [],
@@ -88,13 +78,12 @@ window.STATE =
   },
   "additions": [],
   "coverage": null,
-  "concerns": [],
+  "concerns": [
+    "?????? ????? UV ? ?????? ?????????; DPR default 2. ????????? ????????? WebGL ??/????? ??????????: browser access host unavailable / ?????????????? ???????? ??????? 3D fallback. MacBook M2 FPS ?? ???????."
+  ],
   "reviewers": {
     "manifestSpec": null,
     "craft": null
   },
-  "blind": {
-    "status": "partial",
-    "note": "Ревью отметило мягкие малоструктурные формы по сравнению с референсом; физический iPad не проверен."
-  }
+  "blind": null
 }

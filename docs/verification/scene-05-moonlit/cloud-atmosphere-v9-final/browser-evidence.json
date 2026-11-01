@@ -1,0 +1,209 @@
+{
+  "url": "http://127.0.0.1:5186/?debug",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "errors": [],
+  "shots": [
+    {
+      "filename": "01-entry.png",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "progress": 0,
+      "camera": [
+        0,
+        0,
+        6.15
+      ],
+      "renderer": {
+        "cameraPosition": [
+          0,
+          0,
+          6.15
+        ],
+        "calls": 121,
+        "triangles": 36888,
+        "geometries": 111,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    },
+    {
+      "filename": "02-forward-parallax.png",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "progress": 37.999416469502016,
+      "camera": [
+        0,
+        0,
+        -31.849416469502017
+      ],
+      "renderer": {
+        "cameraPosition": [
+          0,
+          0,
+          -31.849416469502017
+        ],
+        "calls": 112,
+        "triangles": 33282,
+        "geometries": 201,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    },
+    {
+      "filename": "03-backward-parallax.png",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "progress": 16.000367802243527,
+      "camera": [
+        0,
+        0,
+        -9.850367802243527
+      ],
+      "renderer": {
+        "cameraPosition": [
+          0,
+          0,
+          -9.850367802243527
+        ],
+        "calls": 130,
+        "triangles": 36602,
+        "geometries": 201,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    },
+    {
+      "filename": "04-photo-focus.png",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "focused",
+        "focus": 6,
+        "atEnd": false
+      },
+      "progress": 16.000135306883813,
+      "camera": [
+        0.8812669132505002,
+        0.12,
+        -34.93926028375605
+      ],
+      "renderer": {
+        "cameraPosition": [
+          0.8812669132505002,
+          0.12,
+          -34.93926028375605
+        ],
+        "calls": 45,
+        "triangles": 21220,
+        "geometries": 201,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    },
+    {
+      "filename": "05-free-view.png",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "progress": 16.000135306883813,
+      "camera": [
+        0,
+        0,
+        -9.850135306883812
+      ],
+      "renderer": {
+        "cameraPosition": [
+          0,
+          0,
+          -9.850135306883812
+        ],
+        "calls": 130,
+        "triangles": 36602,
+        "geometries": 201,
+        "canvas": [
+          1440,
+          816
+        ]
+      }
+    }
+  ],
+  "lowQuality": {
+    "screenshot": {
+      "filename": "06-low-quality-1024x768.png",
+      "snapshot": {
+        "phase": "explore",
+        "interaction": "walk",
+        "focus": null,
+        "atEnd": false
+      },
+      "progress": 16.000135306883813,
+      "camera": [
+        0,
+        0,
+        -9.850135306883812
+      ],
+      "renderer": {
+        "cameraPosition": [
+          0,
+          0,
+          -9.850135306883812
+        ],
+        "calls": 124,
+        "triangles": 12724,
+        "geometries": 200,
+        "canvas": [
+          1024,
+          684
+        ]
+      }
+    },
+    "viewport": {
+      "width": 1024,
+      "height": 768
+    },
+    "profile": {
+      "frames": 90,
+      "medianMs": 8.299999999999272,
+      "p95Ms": 8.400000000001455,
+      "renderer": {
+        "cameraPosition": [
+          0,
+          0,
+          -9.850135306883812
+        ],
+        "calls": 124,
+        "triangles": 12724,
+        "geometries": 200,
+        "canvas": [
+          1024,
+          684
+        ]
+      }
+    }
+  }
+}

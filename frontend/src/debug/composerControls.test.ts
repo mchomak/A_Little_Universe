@@ -85,23 +85,30 @@ describe('Scene Composer controls', () => {
   })
 
   it('imports, exports, live-edits, and resets moonlit gallery settings in the shared config store', async () => {
-    const imported = await importComposerJson(JSON.stringify({ schemaVersion: 5, scenes: { gallery: {
-      moonBrightness: 1.35, cloudDensity: 1.2, reflectionStrength: 0.4,
+    const imported = await importComposerJson(JSON.stringify({ schemaVersion: 9, scenes: { gallery: {
+      cloudLayerCount: 12,
+      moonBrightness: 1.35, cloudDensity: 1.2, cloudOpacity: 1.1, cloudDriftVariation: 0.85,
+      cloudForegroundAmount: 1.2, cloudBackgroundAmount: 0.6, cloudNearFloorAmount: 0.9,
+      cloudCoolTint: 1.2, cloudWhiteHighlight: 0.7, hazeMotionSpeed: 0.4, reflectionStrength: 0.4,
     } } }))
     expect(imported.ok).toBe(true)
-    expect(getConfig().scenes.gallery).toMatchObject({ moonBrightness: 1.35, cloudDensity: 1.2, reflectionStrength: 0.4 })
+    expect(getConfig().scenes.gallery).toMatchObject({ cloudLayerCount: 18, moonBrightness: 1.35, cloudDensity: 1.2, cloudOpacity: 1.1, cloudDriftVariation: 0.85, reflectionStrength: 0.4 })
 
     await setComposerField('scenes.gallery.moonSize', 1.4)
     expect(getConfig().scenes.gallery.moonSize).toBe(1.4)
-    const exported = JSON.parse(exportComposerJson()) as { scenes: { gallery: Record<string, unknown> } }
-    expect(exported.scenes.gallery).toMatchObject({ moonSize: 1.4, cloudDensity: 1.2, reflectionStrength: 0.4 })
+    const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
+    expect(exported.schemaVersion).toBe(10)
+    expect(exported.scenes.gallery).toMatchObject({ cloudLayerCount: 18, moonSize: 1.4, cloudDensity: 1.2, cloudOpacity: 1.1, cloudDriftVariation: 0.85, cloudCoolTint: 1.2, reflectionStrength: 0.4 })
+    expect((await importComposerJson(JSON.stringify(exported))).ok).toBe(true)
 
     await resetComposerField('scenes.gallery.moonSize')
     await resetComposerScope('gallery')
     expect(getConfig().scenes.gallery).toEqual({
       frameIntensity: 1, particleCount: 220, moonBrightness: 0.8, moonSize: 1,
-      cloudDensity: 0.85, cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 8, cloudDriftSpeed: 0.7,
-      hazeDensity: 0.7, hazeHeight: 0, reflectionStrength: 0.24,
+      cloudDensity: 1.12, cloudOpacity: 0.88, cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 18, cloudDriftSpeed: 0.82,
+      cloudDriftVariation: 0.65, cloudForegroundAmount: 1, cloudBackgroundAmount: 0.78, cloudNearFloorAmount: 1,
+      cloudCoolTint: 1, cloudWhiteHighlight: 0.48,
+      hazeDensity: 0.22, hazeHeight: 0, hazeMotionSpeed: 0.2, reflectionStrength: 0.24,
       reflectionBlur: 0.8, threadOpacity: 0.38, coldLightIntensity: 0.8,
       moonLightIntensity: 1.8, moonFillIntensity: 0.45, moonHaloIntensity: 1.2,
       moonCloudLightIntensity: 1, moonScatteringIntensity: 0.85,
@@ -119,7 +126,7 @@ describe('Scene Composer controls', () => {
       scenes: { prologue: Record<string, unknown> }
     }
 
-    expect(exported.schemaVersion).toBe(9)
+    expect(exported.schemaVersion).toBe(10)
     expect(exported.global.quality).toBe('low')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpeed')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpread')
@@ -139,7 +146,7 @@ describe('Scene Composer controls', () => {
     })
 
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(9)
+    expect(exported.schemaVersion).toBe(10)
     expect(exported.scenes.gallery).toMatchObject({ cloudIntensity: 1.35, cloudLayerCount: 6, hazeHeight: -1.1, moonCloudLightIntensity: 1.4 })
 
     await resetComposerField('scenes.gallery.hazeHeight')

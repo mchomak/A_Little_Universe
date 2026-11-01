@@ -11,7 +11,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 9
+  readonly schemaVersion: 10
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -94,12 +94,20 @@ export interface SceneComposerConfig {
       moonBrightness: number
       moonSize: number
       cloudDensity: number
+      cloudOpacity: number
       cloudIntensity: number
       cloudScale: number
       cloudLayerCount: number
       cloudDriftSpeed: number
+      cloudDriftVariation: number
+      cloudForegroundAmount: number
+      cloudBackgroundAmount: number
+      cloudNearFloorAmount: number
+      cloudCoolTint: number
+      cloudWhiteHighlight: number
       hazeDensity: number
       hazeHeight: number
+      hazeMotionSpeed: number
       reflectionStrength: number
       reflectionBlur: number
       threadOpacity: number
@@ -197,8 +205,8 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 9,
-  global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
+  schemaVersion: 10,
+  global: { quality: 'standard', dprMin: 1, dprMax: 2, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
     preparation: { fontFamily: 'marck-script', spacing: 24, entranceDuration: 0.8, typeScale: 1, lineHeight: 1.08, cardOpacity: 1 },
@@ -224,8 +232,10 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
     bloom: { flowerBloomDuration: 16 },
     gallery: {
       frameIntensity: 1, particleCount: 220, moonBrightness: 0.8, moonSize: 1,
-      cloudDensity: 0.85, cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 8, cloudDriftSpeed: 0.7,
-      hazeDensity: 0.7, hazeHeight: 0, reflectionStrength: 0.24,
+      cloudDensity: 1.12, cloudOpacity: 0.88, cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 18, cloudDriftSpeed: 0.82,
+      cloudDriftVariation: 0.65, cloudForegroundAmount: 1, cloudBackgroundAmount: 0.78, cloudNearFloorAmount: 1,
+      cloudCoolTint: 1, cloudWhiteHighlight: 0.48,
+      hazeDensity: 0.22, hazeHeight: 0, hazeMotionSpeed: 0.2, reflectionStrength: 0.24,
       reflectionBlur: 0.8, threadOpacity: 0.38, coldLightIntensity: 0.8,
       moonLightIntensity: 1.8, moonFillIntensity: 0.45, moonHaloIntensity: 1.2,
       moonCloudLightIntensity: 1, moonScatteringIntensity: 0.85,
@@ -290,7 +300,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || (inputVersion !== 1 && inputVersion !== 2 && inputVersion !== 3 && inputVersion !== 4 && inputVersion !== 5 && inputVersion !== 6 && inputVersion !== 7 && inputVersion !== 8 && inputVersion !== 9)) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || (inputVersion !== 1 && inputVersion !== 2 && inputVersion !== 3 && inputVersion !== 4 && inputVersion !== 5 && inputVersion !== 6 && inputVersion !== 7 && inputVersion !== 8 && inputVersion !== 9 && inputVersion !== 10)) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -298,7 +308,12 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const preparationInput = asRecord(scenesInput?.preparation)
   const prologueInput = asRecord(scenesInput?.prologue)
   const growthInput = asRecord(scenesInput?.growth)
-  const galleryInput = asRecord(scenesInput?.gallery)
+  const rawGalleryInput = asRecord(scenesInput?.gallery)
+  // Schema v9 capped this control at 12. Expand only that old maximum/default;
+  // intentionally reduced values (including zero) remain the user's choice.
+  const galleryInput = inputVersion === 9 && rawGalleryInput?.cloudLayerCount === 12
+    ? { ...rawGalleryInput, cloudLayerCount: DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.cloudLayerCount }
+    : rawGalleryInput
   const galaxyInput = asRecord(scenesInput?.galaxy)
   const galaxySettingsInput = migrateGalaxySettings(galaxyInput, inputVersion)
   const legacyParticleSpeed = numberValue(prologueInput?.particleSpeed, 1, 0.1, 10)
@@ -410,7 +425,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 9, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 10, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
@@ -489,12 +504,20 @@ function normalizeGallery(input: Record<string, unknown> | undefined): SceneComp
     moonBrightness: numberValue(input?.moonBrightness, d.moonBrightness, 0, 2),
     moonSize: numberValue(input?.moonSize, d.moonSize, 0.4, 1.8),
     cloudDensity: numberValue(input?.cloudDensity, d.cloudDensity, 0, 1.8),
+    cloudOpacity: numberValue(input?.cloudOpacity, d.cloudOpacity, 0, 1.8),
     cloudIntensity: numberValue(input?.cloudIntensity, d.cloudIntensity, 0, 2),
-    cloudScale: numberValue(input?.cloudScale, d.cloudScale, 0.75, 1.5),
-    cloudLayerCount: numberValue(input?.cloudLayerCount, d.cloudLayerCount, 0, 8, true),
+    cloudScale: numberValue(input?.cloudScale, d.cloudScale, 0.55, 2),
+    cloudLayerCount: numberValue(input?.cloudLayerCount, d.cloudLayerCount, 0, 18, true),
     cloudDriftSpeed: numberValue(input?.cloudDriftSpeed, d.cloudDriftSpeed, 0, 2),
+    cloudDriftVariation: numberValue(input?.cloudDriftVariation, d.cloudDriftVariation, 0, 1),
+    cloudForegroundAmount: numberValue(input?.cloudForegroundAmount, d.cloudForegroundAmount, 0, 1.6),
+    cloudBackgroundAmount: numberValue(input?.cloudBackgroundAmount, d.cloudBackgroundAmount, 0, 1.6),
+    cloudNearFloorAmount: numberValue(input?.cloudNearFloorAmount, d.cloudNearFloorAmount, 0, 1.6),
+    cloudCoolTint: numberValue(input?.cloudCoolTint, d.cloudCoolTint, 0, 1.5),
+    cloudWhiteHighlight: numberValue(input?.cloudWhiteHighlight, d.cloudWhiteHighlight, 0, 1.5),
     hazeDensity: numberValue(input?.hazeDensity, d.hazeDensity, 0, 1.8),
     hazeHeight: numberValue(input?.hazeHeight, d.hazeHeight, -3, 3),
+    hazeMotionSpeed: numberValue(input?.hazeMotionSpeed, d.hazeMotionSpeed, 0, 1),
     reflectionStrength: numberValue(input?.reflectionStrength, d.reflectionStrength, 0, 0.6),
     reflectionBlur: numberValue(input?.reflectionBlur, d.reflectionBlur, 0.3, 1),
     threadOpacity: numberValue(input?.threadOpacity, d.threadOpacity, 0, 0.8),

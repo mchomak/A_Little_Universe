@@ -449,12 +449,14 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const settings = config.scenes.gallery
   const quality = state.quality === 'low' || config.global.quality === 'low' ? 'low' : 'standard'
+  const skyColor = useMemo(() => new Color('#020713').lerp(new Color('#071d42'), Math.max(0, Math.min(1, settings.cloudCoolTint / 1.5))), [settings.cloudCoolTint])
   const halo = useMemo(() => canvasTexture((ctx, w, h) => { const gradient = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gradient.addColorStop(0, 'rgba(244,248,255,.34)'); gradient.addColorStop(.24, 'rgba(219,229,244,.13)'); gradient.addColorStop(1, 'rgba(206,220,239,0)'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h) }, 256, 256), [])
   useEffect(() => () => halo.dispose(), [halo])
   useEffect(() => { resetGallery() }, [state.revision])
   useEffect(() => bindGalleryGestures(gl.domElement, () => state.paused), [gl, state.paused])
   return <>
-    <fog attach="fog" args={['#080914', 55, 208]} />
+    <color attach="background" args={[skyColor]} />
+    <fog attach="fog" args={[skyColor, 55, 208 - settings.hazeDensity * 14]} />
     <MoonlitWorld settings={settings} quality={quality} halo={halo} />
     <Dust low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
     {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} />)}

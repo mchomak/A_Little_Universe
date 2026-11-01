@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FrontSide, NormalBlending } from 'three'
+import { BackSide, NormalBlending } from 'three'
 import { GALLERY_WORLD } from './world'
 import { createGalleryCloudVolumeMaterial, getGalleryVolumeDepthFade, setGalleryAtmosphereTime } from './cloudMaterial'
 
@@ -24,7 +24,7 @@ describe('gallery volumetric atmosphere material', () => {
     expect(material.transparent).toBe(true)
     expect(material.depthWrite).toBe(false)
     expect(material.depthTest).toBe(true)
-    expect(material.side).toBe(FrontSide)
+    expect(material.side).toBe(BackSide)
     expect(material.blending).toBe(NormalBlending)
     expect(material.defines?.CLOUD_STEPS).toBe(8)
     expect(material.uniforms.uCenter!.value.toArray()).toEqual([...cloudOptions.center])
@@ -32,10 +32,19 @@ describe('gallery volumetric atmosphere material', () => {
     expect(material.uniforms.uMoonPosition!.value.toArray()).toEqual([...GALLERY_WORLD.moon.position])
     expect(material.uniforms.uMoonLightIntensity!.value).toBe(1.1)
     expect(material.uniforms.uOpacity!.value).toBe(0.42)
+    expect(material.uniforms.uCloudDensity!.value).toBe(0.9)
     expect(material.uniforms.uCloudIntensity!.value).toBe(1.3)
-    expect(material.fragmentShader).toContain('float opticalDepth = density * uOpacity')
-    expect(material.fragmentShader).toContain('float softBoundary = cloudShape')
-    expect(material.fragmentShader).toContain('float cloudShape = smoothMax')
+    expect(material.uniforms.uBaseColor!.value.getHexString()).toBe('17375c')
+    expect(material.uniforms.uCoolTint!.value).toBe(1)
+    expect(material.uniforms.uWhiteHighlight!.value).toBe(0.48)
+    expect(material.uniforms.uSeed!.value).toBe(cloudOptions.seed)
+    expect(material.fragmentShader).toContain('float opticalDepth = density * uOpacity * uCloudIntensity * segmentLength * 0.16')
+    expect(material.fragmentShader).toContain('uCloudDensity * 0.18')
+    expect(material.fragmentShader).toContain('uWhiteHighlight')
+    expect(material.fragmentShader).toContain('vec3 blueAir')
+    expect(material.fragmentShader).toContain('vec3 uvDrift = vec3(time * 0.014')
+    expect(material.fragmentShader).toContain('softBoundary = smoothMax(smoothMax(lobeA, lobeB, 0.2), lobeC, 0.2)')
+    expect(material.fragmentShader).toContain('float lobeA = 1.0 - smoothstep')
     expect(material.fragmentShader).toContain('float silverEdge = smoothstep')
     expect(material.fragmentShader).toContain('transmittance *= 1.0 - sampleAlpha')
     material.dispose()
@@ -68,18 +77,26 @@ describe('gallery volumetric atmosphere material', () => {
     const material = createGalleryCloudVolumeMaterial({
       ...cloudOptions,
       kind: 'haze',
-      steps: 4,
+      steps: 6,
       center: [0, -1, -67],
       radii: [38, 3.8, 17],
     })
 
     expect(material.uniforms.uIsHaze!.value).toBe(1)
     expect(material.uniforms.uCenter!.value.toArray()).toEqual([0, -1, -67])
-    expect(material.defines?.CLOUD_STEPS).toBe(4)
+    expect(material.uniforms.uSeed!.value).toBe(0)
+    expect(material.defines?.CLOUD_STEPS).toBe(6)
+    expect(material.fragmentShader).toContain('noisePosition = sampleWorld * 0.045 + eddies + flow')
+    expect(material.fragmentShader).toContain('float sampleDepthFade = smoothstep(3.0, 16.0, distanceAlongRay)')
+    expect(material.fragmentShader).toContain('softBoundary = 1.0 - smoothstep(0.5, 1.0, radius)')
+    expect(material.fragmentShader).toContain('density = softBoundary * (0.22 + coverage * 0.58)')
     setGalleryAtmosphereTime([material], 18.5)
     expect(material.uniforms.uTime!.value).toBe(18.5)
     setGalleryAtmosphereTime([material], Number.NaN)
     expect(material.uniforms.uTime!.value).toBe(0)
+    const overlappingHaze = createGalleryCloudVolumeMaterial({ ...cloudOptions, kind: 'haze', seed: 227 })
+    expect(overlappingHaze.uniforms.uSeed!.value).toBe(material.uniforms.uSeed!.value)
+    overlappingHaze.dispose()
     material.dispose()
   })
 })
