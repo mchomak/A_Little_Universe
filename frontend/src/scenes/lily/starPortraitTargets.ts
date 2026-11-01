@@ -3,6 +3,8 @@ export type StarPortraitSource = {
   height: number
   photoRgba: Uint8ClampedArray
   matteRgba: Uint8ClampedArray
+  /** Grayscale detail priority, separate from the silhouette/coverage matte. Neutral is 128. */
+  importanceMask?: Uint8Array
 }
 
 export type StarPortraitSamplingSettings = {
@@ -39,6 +41,7 @@ type Candidate = {
   gradient: number
   colorGradient: number
   texture: number
+  importance: number
 }
 
 /**
@@ -113,6 +116,9 @@ export function sampleStarPortraitTargets(source: StarPortraitSource, settings: 
       const index = y * gridWidth + x
       const rawCoverage = coverage[index]!
       if (rawCoverage < threshold) continue
+      const sourcePixel = Math.floor(sourceOffsets[index]! / 4)
+      const importance = source.importanceMask ? source.importanceMask[sourcePixel]! / 128 : 1
+      if (importance <= 0) continue
 
       const left = coverage[y * gridWidth + Math.max(0, x - 1)]!
       const right = coverage[y * gridWidth + Math.min(gridWidth - 1, x + 1)]!
@@ -130,11 +136,11 @@ export function sampleStarPortraitTargets(source: StarPortraitSource, settings: 
       const texture = localTexture(photoLuma, gridWidth, gridHeight, x, y, luma)
       const featureWeight = Math.min(1, Math.max(0, (gradient * 1.55 + colorGradient * 1.2 + texture * 2.25 + matteEdge * 0.9) * contrastGain))
       const visibleCoverage = (rawCoverage - threshold) / Math.max(0.05, 1 - threshold)
-      const weight = Math.max(0.0001, visibleCoverage) * (featureFloor + detailGain * featureWeight * 6)
+      const weight = Math.max(0.0001, visibleCoverage) * (featureFloor + detailGain * featureWeight * 6) * importance
 
       totalWeight += weight
       cumulativeWeights[candidates.length] = totalWeight
-      candidates.push({ gridX: x, gridY: y, sourceOffset: sourceOffsets[index]!, tone: luma, coverage: visibleCoverage, matteEdge, gradient, colorGradient, texture })
+      candidates.push({ gridX: x, gridY: y, sourceOffset: sourceOffsets[index]!, tone: luma, coverage: visibleCoverage, matteEdge, gradient, colorGradient, texture, importance })
     }
   }
 
@@ -211,6 +217,7 @@ function validateSource(source: StarPortraitSource) {
   const expectedLength = source.width * source.height * 4
   if (source.photoRgba.length !== expectedLength) throw new RangeError('Photo RGBA buffer length does not match its dimensions.')
   if (source.matteRgba.length !== expectedLength) throw new RangeError('Matte RGBA buffer length does not match its dimensions.')
+  if (source.importanceMask && source.importanceMask.length !== source.width * source.height) throw new RangeError('Importance mask length does not match photo dimensions.')
 }
 
 function localTexture(values: Float32Array, width: number, height: number, x: number, y: number, center: number) {

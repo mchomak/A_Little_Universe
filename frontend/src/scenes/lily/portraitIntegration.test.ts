@@ -22,6 +22,7 @@ describe('Scene 04 portrait integration', () => {
       contrast: settings.contrast,
       backgroundThreshold: settings.backgroundThreshold,
       irregularity: settings.irregularity,
+      seed: settings.seed,
     }
     expect(toStarPortraitSamplingSettings(settings)).toEqual(expectedSampling)
 
@@ -184,6 +185,8 @@ describe('Scene 04 portrait integration', () => {
       glow: 1.8,
       minSize: 1.2,
       maxSize: 2.8,
+      minimumBrightness: 0.3,
+      contrast: 1,
     })
     const uniformScales = toLilyPortraitUniformScales(DEFAULT_PARTICLE_PORTRAIT_SETTINGS, scene.particleBrightness, scene.particleSize)
     expect(scene.particleBrightness * uniformScales.brightness).toBeCloseTo(DEFAULT_PARTICLE_PORTRAIT_SETTINGS.brightness)

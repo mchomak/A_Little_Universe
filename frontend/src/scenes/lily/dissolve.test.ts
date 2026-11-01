@@ -64,7 +64,7 @@ it('uses the same field for surface and particles and supports deterministic bac
   expect(material.fragmentShader).toContain('uLilyParticleBrightness * brightnessAccent')
   expect(material.fragmentShader).toContain('float core = mix(softCore, portraitCore, vPortraitMix)')
   expect(material.fragmentShader).toContain('float haloScale = mix(1.0, 0.55, vPortraitMix)')
-  expect(material.fragmentShader).toContain('float toneContrast = mix(0.95, 1.15, smoothstep(0.16, 0.82, vPortraitTone))')
+  expect(material.fragmentShader).toContain('float toneContrast = mix(0.95, 1.15, smoothstep(0.16, 0.82, portraitTone))')
   expect(material.vertexShader).toContain('vPortraitContrast = clamp(aPortraitMotion.w - 1.0, 0.0, 1.0)')
   expect(material.vertexShader).toContain('float featureSize = mix(0.92, 1.7, smoothstep(0.1, 0.48, vPortraitContrast))')
   expect(material.vertexShader).toContain('float portraitSize = mix(1.0, uLilyPortraitSize * featureSize * targetSeedSize, portraitMix)')
@@ -111,12 +111,15 @@ it('keeps shared portrait appearance neutral by default and clamps optional appe
   expect(uniforms.uLilyPortraitPhotoColorMix.value).toBe(0)
   expect(uniforms.uLilyPortraitOpacity.value).toBe(1)
   expect(uniforms.uLilyPortraitGlow.value).toBe(1)
+  expect(uniforms.uLilyPortraitMinimumBrightness.value).toBe(0)
+  expect(uniforms.uLilyPortraitContrast.value).toBe(1)
   expect(uniforms.uLilyPortraitPointMinSize.value).toBe(1)
   expect(uniforms.uLilyPortraitPointMaxSize.value).toBe(6)
   expect(material.vertexShader).toContain('attribute vec3 aPortraitSourceColor')
   expect(material.fragmentShader).toContain('uLilyPortraitPhotoColorMix')
   expect(material.fragmentShader).toContain('uLilyPortraitOpacity')
   expect(material.fragmentShader).toContain('uLilyPortraitGlow')
+  expect(material.fragmentShader).toContain('float portraitTone = clamp(0.5 + (vPortraitTone - 0.5) * uLilyPortraitContrast, uLilyPortraitMinimumBrightness, 1.0)')
   expect(material.fragmentShader).toContain('clamp(uLilyPortraitPhotoColorMix, 0.0, 1.0) * vPortraitMix')
   expect(material.fragmentShader).toContain('mix(1.0, uLilyPortraitGlow, vPortraitMix)')
   expect(material.fragmentShader).toContain('float opacity = mix(1.0, uLilyPortraitOpacity, vPortraitMix)')
@@ -130,20 +133,25 @@ it('keeps shared portrait appearance neutral by default and clamps optional appe
   expect(Array.from(geometry.getAttribute('aPortraitSourceColor').array)).toEqual([1, 1, 1, 1, 1, 1])
 
   updateLilyPortraitAppearance(uniforms, {
-    photoColorMix: 0.65, opacity: 0.75, glow: 1.5, minSize: 0.8, maxSize: 2.2,
+    photoColorMix: 0.65, opacity: 0.75, glow: 1.5, minSize: 0.8, maxSize: 2.2, minimumBrightness: 0.42, contrast: 1.35,
   })
   expect(uniforms.uLilyPortraitPhotoColorMix.value).toBe(0.65)
   expect(uniforms.uLilyPortraitOpacity.value).toBe(0.75)
   expect(uniforms.uLilyPortraitGlow.value).toBe(1.5)
+  expect(uniforms.uLilyPortraitMinimumBrightness.value).toBe(0.42)
+  expect(uniforms.uLilyPortraitContrast.value).toBe(1.35)
   expect(uniforms.uLilyPortraitPointMinSize.value).toBe(0.8)
   expect(uniforms.uLilyPortraitPointMaxSize.value).toBe(2.2)
 
   updateLilyPortraitAppearance(uniforms, {
     photoColorMix: -1, opacity: 3, glow: Number.NaN, minSize: 2, maxSize: 0.2,
+    minimumBrightness: 3, contrast: 0,
   })
   expect(uniforms.uLilyPortraitPhotoColorMix.value).toBe(0)
   expect(uniforms.uLilyPortraitOpacity.value).toBe(1)
   expect(uniforms.uLilyPortraitGlow.value).toBe(1)
+  expect(uniforms.uLilyPortraitMinimumBrightness.value).toBe(0.7)
+  expect(uniforms.uLilyPortraitContrast.value).toBe(0.5)
   expect(uniforms.uLilyPortraitPointMinSize.value).toBeLessThanOrEqual(uniforms.uLilyPortraitPointMaxSize.value)
   geometry.dispose()
   material.dispose()
@@ -152,7 +160,7 @@ it('keeps shared portrait appearance neutral by default and clamps optional appe
 it('keeps dark photo-derived portrait details visible within bounded emission', () => {
   const material = createLilyParticleMaterial(createLilyDissolveUniforms())
 
-  expect(material.fragmentShader).toContain('float toneContrast = mix(0.95, 1.15, smoothstep(0.16, 0.82, vPortraitTone))')
+  expect(material.fragmentShader).toContain('float toneContrast = mix(0.95, 1.15, smoothstep(0.16, 0.82, portraitTone))')
   expect(material.fragmentShader).toContain('gl_FragColor = vec4(color, min(0.9, glow * 0.58) * opacity)')
   material.dispose()
 })

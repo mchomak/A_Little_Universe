@@ -120,6 +120,7 @@ export interface LilyDissolveUniforms {
   uLilySceneTime: { value: number }; uLilyPortraitStart: { value: number }; uLilyPortraitDuration: { value: number }
   uLilyPortraitBrightness: { value: number }; uLilyPortraitSize: { value: number }
   uLilyPortraitPhotoColorMix: { value: number }; uLilyPortraitOpacity: { value: number }
+  uLilyPortraitMinimumBrightness: { value: number }; uLilyPortraitContrast: { value: number }
   uLilyPortraitGlow: { value: number }; uLilyPortraitPointMinSize: { value: number }; uLilyPortraitPointMaxSize: { value: number }
 }
 
@@ -177,6 +178,8 @@ export interface LilyPortraitAppearanceSettings {
   glow: number
   minSize: number
   maxSize: number
+  minimumBrightness?: number
+  contrast?: number
 }
 
 export function createLilyDissolveUniforms(): LilyDissolveUniforms {
@@ -191,6 +194,7 @@ export function createLilyDissolveUniforms(): LilyDissolveUniforms {
     uLilySceneTime: { value: 0 }, uLilyPortraitStart: { value: 12 }, uLilyPortraitDuration: { value: 8.5 },
     uLilyPortraitBrightness: { value: 1.8 }, uLilyPortraitSize: { value: 1.8 },
     uLilyPortraitPhotoColorMix: { value: 0 }, uLilyPortraitOpacity: { value: 1 },
+    uLilyPortraitMinimumBrightness: { value: 0 }, uLilyPortraitContrast: { value: 1 },
     uLilyPortraitGlow: { value: 1 }, uLilyPortraitPointMinSize: { value: 1 }, uLilyPortraitPointMaxSize: { value: LILY_PARTICLE_MAX_POINT_SIZE } }
 }
 
@@ -218,6 +222,8 @@ export function updateLilyPortraitAppearance(uniforms: LilyDissolveUniforms, set
   uniforms.uLilyPortraitPhotoColorMix.value = clampFinite(settings.photoColorMix, 0, 1, 0)
   uniforms.uLilyPortraitOpacity.value = clampFinite(settings.opacity, 0.2, 1, 1)
   uniforms.uLilyPortraitGlow.value = clampFinite(settings.glow, 0, 2, 1)
+  uniforms.uLilyPortraitMinimumBrightness.value = clampFinite(settings.minimumBrightness ?? 0, 0, 0.7, 0)
+  uniforms.uLilyPortraitContrast.value = clampFinite(settings.contrast ?? 1, 0.5, 2, 1)
 
   const maxSize = clampFinite(settings.maxSize, 0.8, 3, 1.55)
   const minSize = Math.min(clampFinite(settings.minSize, 0.4, 1.6, 0.65), maxSize)
@@ -657,6 +663,7 @@ export function createLilyParticleMaterial(uniforms: LilyDissolveUniforms) {
     fragmentShader: /* glsl */ `
       uniform vec3 uPearl; uniform vec3 uPink; uniform vec3 uGold; uniform float uLilyParticleBrightness; uniform float uLilyPortraitBrightness; uniform float uLilyPortraitSettledBrightness;
       uniform float uLilyPortraitPhotoColorMix; uniform float uLilyPortraitOpacity; uniform float uLilyPortraitGlow;
+      uniform float uLilyPortraitMinimumBrightness; uniform float uLilyPortraitContrast;
       varying float vAlpha; varying float vSeed; varying float vPart; varying float vPortraitMix; varying float vPortraitTone; varying float vPortraitContrast; varying float vPortraitSettled;
       varying float vPortraitTargetSeed; varying float vPortraitFeatureWeight;
       varying vec3 vPortraitSourceColor;
@@ -671,14 +678,15 @@ export function createLilyParticleMaterial(uniforms: LilyDissolveUniforms) {
         float featureAccent = mix(${glslFloat(LILY_PORTRAIT_MIN_FEATURE_ACCENT)}, ${glslFloat(LILY_PORTRAIT_MAX_FEATURE_ACCENT)}, smoothstep(0.1, 0.48, vPortraitContrast));
         float targetFeatureAccent = mix(0.95, 1.05, vPortraitFeatureWeight);
         float portraitBrightness = mix(1.0, uLilyPortraitBrightness * featureAccent * targetFeatureAccent, vPortraitMix);
-        float toneContrast = mix(${glslFloat(LILY_PORTRAIT_MIN_TONE_CONTRAST)}, ${glslFloat(LILY_PORTRAIT_MAX_TONE_CONTRAST)}, smoothstep(0.16, 0.82, vPortraitTone));
+        float portraitTone = clamp(0.5 + (vPortraitTone - 0.5) * uLilyPortraitContrast, uLilyPortraitMinimumBrightness, 1.0);
+        float toneContrast = mix(${glslFloat(LILY_PORTRAIT_MIN_TONE_CONTRAST)}, ${glslFloat(LILY_PORTRAIT_MAX_TONE_CONTRAST)}, smoothstep(0.16, 0.82, portraitTone));
         float sourceContrast = mix(1.0, toneContrast, vPortraitMix);
         float settledBrightness = mix(1.0, uLilyPortraitSettledBrightness, vPortraitSettled);
         float targetSeedAccent = mix(0.98, 1.02, vPortraitTargetSeed);
         float glow = (core + halo * haloScale) * vAlpha * uLilyParticleBrightness * brightnessAccent * portraitBrightness * sourceContrast * settledBrightness * targetSeedAccent;
         if (glow < 0.004) discard;
         vec3 vortexColor = vPart > 0.5 && vPart < 1.5 ? mix(uPearl, uGold, 0.55) : mix(uPearl, uPink, vSeed * 0.55);
-        vec3 sourceTone = mix(mix(uGold, uPink, 0.58), uPearl, smoothstep(0.16, 0.9, vPortraitTone));
+        vec3 sourceTone = mix(mix(uGold, uPink, 0.58), uPearl, smoothstep(0.16, 0.9, portraitTone));
         vec3 color = mix(vortexColor, sourceTone, vPortraitMix);
         color = mix(color, vPortraitSourceColor, clamp(uLilyPortraitPhotoColorMix, 0.0, 1.0) * vPortraitMix);
         float opacity = mix(1.0, uLilyPortraitOpacity, vPortraitMix);
