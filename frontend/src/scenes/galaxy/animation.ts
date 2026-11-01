@@ -64,3 +64,10 @@ export function getGalaxyMotionPhase(
   const greetingEnd = cosmosEnd + greetingDuration * settings.idleMotion * rate
   return scene === 'greeting' ? cosmosEnd + time * settings.idleMotion * rate : greetingEnd + time * settings.idleMotion * rate
 }
+
+/** Advances the post-reveal motion independently of any finite scene timeline. */
+export function advanceGalaxyAmbientPhase(phase: number, shaderTime: number, deltaSeconds: number, settings: Settings, reducedMotion = false) {
+  const delta = Number.isFinite(deltaSeconds) ? Math.max(0, Math.min(0.05, deltaSeconds)) : 0
+  const motionDelta = reducedMotion ? 0 : delta * settings.idleMotion * settings.motionSpeed
+  return { motionTime: (Number.isFinite(phase) ? phase : 0) + motionDelta, phaseTime: (Number.isFinite(shaderTime) ? shaderTime : 0) + delta }
+}

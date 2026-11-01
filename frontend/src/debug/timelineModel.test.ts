@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { filmReducer, initialFilmState } from '../engine/film'
-import { getSceneDuration, SCENES, TIMING } from '../engine/filmConfig'
+import { getGreetingFrames, getSceneDuration, SCENES, TIMING } from '../engine/filmConfig'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../systems/scene-config/config'
 import { activeFrameIndex, canSeekTimeline, timelineFrames } from './timelineModel'
 import { getGrowthFrames } from '../scenes/growth/seedProcedure'
@@ -42,6 +42,23 @@ describe('scene editor timeline', () => {
     const frames = timelineFrames('bloom', config)
     expect(frames.map(({ start }) => start)).toEqual([0, 11])
     expect(getSceneDuration('bloom', config)).toBe(17)
+  })
+  it('shows the active galaxy slowdown and greeting beats without the retired bouquet marker', () => {
+    const cosmos = timelineFrames('cosmos', DEFAULT_SCENE_COMPOSER_CONFIG)
+    const greetingFrames = getGreetingFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)
+    const greeting = timelineFrames('greeting', DEFAULT_SCENE_COMPOSER_CONFIG, 30)
+    expect(cosmos.map(({ label }) => label)).not.toContain('07.4 Букет')
+    expect(cosmos.map(({ label }) => label)).toContain('07.4 Плавное замедление')
+    expect(cosmos.find(({ label }) => label === '07.4 Плавное замедление')?.start).toBe(15.8)
+    expect(greeting.map(({ label }) => label)).toEqual([
+      '08.1 Первая фраза', '08.2 Вторая фраза', '08.3 Чтение', '08.4 Растворение первой',
+      '08.5 Растворение второй', '08.6 Начало письма', '08.7 Завершение титров', '09 Постоянный финал',
+    ])
+    expect(greeting[6]?.start).toBeCloseTo(greetingFrames.credits[0] + 30)
+    expect(greeting[7]?.start).toBe(greeting[6]?.start)
+    const replayLetter = timelineFrames('greeting', DEFAULT_SCENE_COMPOSER_CONFIG, 30, true)
+    expect(replayLetter.map(({ start }) => start)).toEqual([0, 30, 30])
+    expect(replayLetter.map(({ label }) => label)).toEqual(['08.6 Повторное письмо', '08.7 Завершение титров', '09 Постоянный финал'])
   })
   it('does not seek through waiting for a bud, gallery, preparation, transition or reading', () => {
     const bloom = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'bloom' }, true)

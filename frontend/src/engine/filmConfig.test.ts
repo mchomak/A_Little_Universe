@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../systems/scene-config/config'
-import { createHandwritingSchedule, getBloomSceneFrames, getGrowthSceneFrames, getPrologueCopy, getPrologueFrames, getPrologueParticleOpacity, getSceneDuration, retimeSceneElapsed } from './filmConfig'
+import { createHandwritingSchedule, getBloomSceneFrames, getCreditsScrollDuration, getCreditsScrollProgress, getGreetingFrames, getGrowthSceneFrames, getPrologueCopy, getPrologueFrames, getPrologueParticleOpacity, getSceneDuration, retimeSceneElapsed } from './filmConfig'
 
 describe('prologue frames', () => {
   it('fits awakening, reading and dust into eighteen seconds before the indefinite gate', () => {
@@ -64,6 +64,28 @@ describe('prologue frames', () => {
     expect(getPrologueParticleOpacity(16, frames, false)).toBe(0)
     expect(getPrologueParticleOpacity(17, frames, false)).toBe(0)
     expect(getPrologueParticleOpacity(14, frames, true)).toBe(0)
+  })
+})
+
+describe('greeting frames', () => {
+  it('overlaps handwriting, holds both phrases to read, then dissolves them in order', () => {
+    const frames = getGreetingFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)
+    expect(frames.first[0]).toBe(1)
+    expect(frames.second[0]).toBeGreaterThan(frames.first[0])
+    expect(frames.second[0]).toBeLessThan(frames.first[1])
+    expect(frames.reading[0]).toBe(frames.second[1])
+    expect(frames.reading[1] - frames.reading[0]).toBeGreaterThanOrEqual(6)
+    expect(frames.firstDissolve[0]).toBe(frames.reading[1])
+    expect(frames.secondDissolve[0]).toBeGreaterThan(frames.firstDissolve[0])
+    expect(frames.dissolve[1]).toBeGreaterThan(frames.secondDissolve[1])
+    expect(frames.credits[0]).toBeGreaterThan(frames.dissolve[1])
+  })
+
+  it('sets scroll duration from the measured text and viewport heights at a steady speed', () => {
+    expect(getCreditsScrollDuration(480, 800, 28)).toBe(1360 / 28)
+    expect(getCreditsScrollDuration(960, 800, 28)).toBeGreaterThan(getCreditsScrollDuration(480, 800, 28))
+    expect(getCreditsScrollProgress(30, 20, 100)).toBe(0.1)
+    expect(getCreditsScrollProgress(120, 20, 100)).toBe(1)
   })
 })
 

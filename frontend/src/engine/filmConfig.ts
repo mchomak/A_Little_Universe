@@ -11,8 +11,8 @@ export const TIMING = {
   identity: { duration: 34, flower: [0, 4], particles: [4, 8], name: [8, 13], morph: [13, 17], portrait: [17, 23], photo: [23, 34], caption: [28, 34] },
   gallery: { duration: 0, move: 1.2 },
   eye: { duration: 18, approach: [15, 18] },
-  cosmos: { duration: 26, iris: [0, 5], particles: [5, 11], spiral: [11, 15], bouquet: [15, 22], settle: [22, 26] },
-  greeting: { duration: 50, reveal: [0, 12], credits: [12, 50] },
+  cosmos: { duration: 26, iris: [0, 5], particles: [5, 11], spiral: [11, 15], settle: [22, 26] },
+  greeting: { duration: 300, crawlSpeed: 26, postDissolvePause: 1 },
   ending: { duration: 0 }, transition: 0.7,
   camera: { bloom: 16, gallery: 1.2, eye: 3, cosmos: 26 },
 } as const
@@ -128,6 +128,12 @@ export interface PrologueFrames {
   particleTravelDuration: number
 }
 
+export interface GreetingFrames extends PrologueFrames {
+  reading: readonly [number, number]
+  credits: readonly [number, number]
+  completion: number
+}
+
 export interface HandwritingStep {
   glyph: string
   start: number
@@ -187,6 +193,44 @@ export function getPrologueFrames(settings: PrologueFrameSettings): PrologueFram
     prompt: TIMING.prologue.prompt,
     particleTravelDuration,
   }
+}
+
+/** Reuses the prologue's handwriting and dissolve controls for the two final phrases. */
+export function getGreetingFrames(settings: PrologueFrameSettings): GreetingFrames {
+  const handwriting = bounded(settings.handwritingDuration, 0.5, 3.5, 3.5)
+  const interval = bounded(settings.interphraseInterval, 0.4, 2.5, 1.35)
+  const first: readonly [number, number] = [1, 1 + handwriting]
+  const secondStart = first[0] + interval
+  const secondDuration = bounded(handwriting * 2.05, 4.5, 8, 7.2)
+  const second: readonly [number, number] = [secondStart, secondStart + secondDuration]
+  const readStart = second[1]
+  const readDuration = Math.max(6, bounded(settings.readableHold, 0, 30, 2))
+  const dissolveStart = readStart + readDuration
+  const dissolveDuration = bounded(settings.fractureDuration, 0.8, 4, 1.5)
+  const firstDissolve: readonly [number, number] = [dissolveStart, dissolveStart + dissolveDuration]
+  const secondDissolve: readonly [number, number] = [dissolveStart + dissolveDuration * 0.5, dissolveStart + dissolveDuration * 1.5]
+  const particleTravelDuration = bounded(settings.particleDuration, 0.1, 20, 2.2)
+  const dissolve: readonly [number, number] = [dissolveStart, secondDissolve[1] + particleTravelDuration]
+  const creditsStart = dissolve[1] + TIMING.greeting.postDissolvePause
+  return {
+    duration: TIMING.greeting.duration,
+    seed: [0, 0], first, second, reading: [readStart, dissolveStart], hold: [readStart, dissolveStart],
+    dissolve, firstDissolve, secondDissolve, prompt: creditsStart, particleTravelDuration,
+    credits: [creditsStart, TIMING.greeting.duration], completion: TIMING.greeting.duration,
+  }
+}
+
+/** Scrolls the whole letter past both viewport edges at a constant, readable pixel speed. */
+export function getCreditsScrollDuration(contentHeight: number, viewportHeight: number, speed: number = TIMING.greeting.crawlSpeed): number {
+  const height = Number.isFinite(contentHeight) ? Math.max(0, contentHeight) : 0
+  const viewport = Number.isFinite(viewportHeight) ? Math.max(0, viewportHeight) : 0
+  const pixelsPerSecond = bounded(speed, 8, 80, TIMING.greeting.crawlSpeed)
+  return (height + viewport + 80) / pixelsPerSecond
+}
+
+export function getCreditsScrollProgress(time: number, start: number, duration: number): number {
+  if (![time, start, duration].every(Number.isFinite) || duration <= 0) return 0
+  return Math.min(1, Math.max(0, (time - start) / duration))
 }
 
 function bounded(value: number, min: number, max: number, fallback: number): number {
