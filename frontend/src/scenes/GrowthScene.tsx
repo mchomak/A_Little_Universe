@@ -236,7 +236,19 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
       </group>
     </group>}
     <group key="growth-environment">
-      <FloatingIsland runtime={runtime} radius={growthSettings.islandRadius} grassDensity={growthSettings.grassDensity} windSpeed={growthSettings.windSpeed} reducedMotion={reducedMotion} opacity={islandOpacity} />
+      <FloatingIsland
+        runtime={runtime}
+        radius={growthSettings.islandRadius}
+        thickness={growthSettings.islandThickness}
+        depth={growthSettings.islandDepth}
+        roughness={growthSettings.islandRoughness}
+        grassDensity={growthSettings.grassDensity}
+        grassHeight={growthSettings.grassHeight}
+        windStrength={growthSettings.windStrength}
+        windSpeed={growthSettings.windSpeed}
+        reducedMotion={reducedMotion}
+        opacity={islandOpacity}
+      />
       <mesh ref={mound} position={[0, 0, 0]} scale={[0.115, 0.0001, 0.115]}>
         <sphereGeometry args={[1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
         <meshBasicMaterial ref={moundMaterial} color="#EBC68F" transparent opacity={0} blending={AdditiveBlending} depthWrite={false} toneMapped={false} />

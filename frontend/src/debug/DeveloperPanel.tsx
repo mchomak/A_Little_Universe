@@ -125,8 +125,13 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.growth.seedScale', label: 'Масштаб семечка', unit: '×', min: 0.65, max: 1.4, step: 0.05 },
   ] },
   { name: 'Парящий остров', controls: [
-    { path: 'scenes.growth.islandRadius', label: 'Радиус острова', unit: '', min: 0.55, max: 1.05, step: 0.01 },
+    { path: 'scenes.growth.islandRadius', label: 'Размер острова', unit: '', min: 0.55, max: 1.05, step: 0.01 },
+    { path: 'scenes.growth.islandThickness', label: 'Толщина острова', unit: 'м', min: 0.1, max: 0.55, step: 0.01 },
+    { path: 'scenes.growth.islandDepth', label: 'Глубина нижней части', unit: 'м', min: 0.25, max: 1.4, step: 0.01 },
+    { path: 'scenes.growth.islandRoughness', label: 'Неровность краёв', unit: '×', min: 0, max: 1, step: 0.05 },
     { path: 'scenes.growth.grassDensity', label: 'Плотность травы', unit: 'шт.', min: 80, max: 720, step: 40 },
+    { path: 'scenes.growth.grassHeight', label: 'Высота травы', unit: 'м', min: 0.06, max: 0.28, step: 0.01 },
+    { path: 'scenes.growth.windStrength', label: 'Сила ветра', unit: '×', min: 0, max: 2.5, step: 0.05 },
     { path: 'scenes.growth.windSpeed', label: 'Скорость ветра', unit: '×', min: 0, max: 2.5, step: 0.05 },
   ] },
   { name: 'Анимация лилии', controls: [
@@ -552,7 +557,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–12. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–13. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])

@@ -41,6 +41,30 @@ describe('Scene Composer controls', () => {
     })
   })
 
+  it('keeps schema v12 scene settings compatible and round-trips all v13 island controls', async () => {
+    const legacy = await importComposerJson(JSON.stringify({
+      schemaVersion: 12,
+      scenes: { growth: { islandRadius: 0.9, grassDensity: 440, windSpeed: 0.6 } },
+    }))
+    expect(legacy.ok).toBe(true)
+    expect(getConfig().scenes.growth).toMatchObject({
+      islandRadius: 0.9, islandThickness: 0.24, islandDepth: 0.58, islandRoughness: 0.5,
+      grassDensity: 440, grassHeight: 0.14, windStrength: 1, windSpeed: 0.6,
+    })
+
+    await setComposerField('scenes.growth.islandThickness', 0.38)
+    await setComposerField('scenes.growth.islandDepth', 1.1)
+    await setComposerField('scenes.growth.islandRoughness', 0.8)
+    await setComposerField('scenes.growth.grassHeight', 0.22)
+    await setComposerField('scenes.growth.windStrength', 1.7)
+    const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { growth: Record<string, unknown> } }
+    expect(exported.schemaVersion).toBe(13)
+    expect(exported.scenes.growth).toMatchObject({
+      islandThickness: 0.38, islandDepth: 1.1, islandRoughness: 0.8, grassHeight: 0.22, windStrength: 1.7,
+    })
+    expect((await importComposerJson(JSON.stringify(exported))).ok).toBe(true)
+  })
+
   it('rejects import when the requested font is not ready and preserves the active config', async () => {
     await setComposerField('scenes.prologue.fontSize', 72)
     const before = getConfig()
@@ -97,7 +121,7 @@ describe('Scene Composer controls', () => {
     await setComposerField('scenes.gallery.moonSize', 1.4)
     expect(getConfig().scenes.gallery.moonSize).toBe(1.4)
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(12)
+    expect(exported.schemaVersion).toBe(13)
     expect(exported.scenes.gallery).toMatchObject({ cloudLayerCount: 18, moonSize: 1.4, cloudDensity: 1.2, cloudOpacity: 1.1, cloudDriftVariation: 0.85, cloudCoolTint: 1.2, reflectionStrength: 0.4 })
     expect((await importComposerJson(JSON.stringify(exported))).ok).toBe(true)
 
@@ -126,7 +150,7 @@ describe('Scene Composer controls', () => {
       scenes: { prologue: Record<string, unknown> }
     }
 
-    expect(exported.schemaVersion).toBe(12)
+    expect(exported.schemaVersion).toBe(13)
     expect(exported.global.quality).toBe('low')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpeed')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpread')
@@ -146,7 +170,7 @@ describe('Scene Composer controls', () => {
     })
 
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(12)
+    expect(exported.schemaVersion).toBe(13)
     expect(exported.scenes.gallery).toMatchObject({ cloudIntensity: 1.35, cloudLayerCount: 6, hazeHeight: -1.1, moonCloudLightIntensity: 1.4 })
 
     await resetComposerField('scenes.gallery.hazeHeight')

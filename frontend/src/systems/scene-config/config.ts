@@ -11,7 +11,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 12
+  readonly schemaVersion: 13
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -87,7 +87,12 @@ export interface SceneComposerConfig {
       seedScale: number
       flowerGrowthDuration: number
       islandRadius: number
+      islandThickness: number
+      islandDepth: number
+      islandRoughness: number
       grassDensity: number
+      grassHeight: number
+      windStrength: number
       windSpeed: number
     }>
     bloom: Readonly<{
@@ -253,7 +258,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 12,
+  schemaVersion: 13,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
@@ -276,7 +281,8 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       attractionRampDuration: 2.8, morphDamping: 7.2, formationDuration: 3.2,
       freeParticleFraction: 0.08, pearlColor: '#FFF4E8', roseColor: '#F4CCDA',
       lavenderColor: '#D7CCF1', coreGlow: 0.55, seedScale: 1, flowerGrowthDuration: 9,
-      islandRadius: 0.82, grassDensity: 360, windSpeed: 0.8,
+      islandRadius: 0.82, islandThickness: 0.24, islandDepth: 0.58, islandRoughness: 0.5,
+      grassDensity: 360, grassHeight: 0.14, windStrength: 1, windSpeed: 0.8,
     },
     bloom: {
       flowerBloomDuration: 16, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,
@@ -364,7 +370,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 12) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 13) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -479,7 +485,12 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       seedScale: numberValue(growthInput?.seedScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedScale, 0.65, 1.4),
       flowerGrowthDuration: numberValue(growthInput?.flowerGrowthDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.flowerGrowthDuration, 4, 14),
       islandRadius: numberValue(growthInput?.islandRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandRadius, 0.55, 1.05),
+      islandThickness: numberValue(growthInput?.islandThickness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandThickness, 0.1, 0.55),
+      islandDepth: numberValue(growthInput?.islandDepth, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandDepth, 0.25, 1.4),
+      islandRoughness: numberValue(growthInput?.islandRoughness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandRoughness, 0, 1),
       grassDensity: numberValue(growthInput?.grassDensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.grassDensity, 80, 720, true),
+      grassHeight: numberValue(growthInput?.grassHeight, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.grassHeight, 0.06, 0.28),
+      windStrength: numberValue(growthInput?.windStrength, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.windStrength, 0, 2.5),
       windSpeed: numberValue(growthInput?.windSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.windSpeed, 0, 2.5),
     },
     bloom: {
@@ -539,7 +550,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 12, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 13, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
