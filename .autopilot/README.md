@@ -21,6 +21,7 @@
 
 
 | 2026-10-29 | `2026-10-29-lily004-refinement` | сдан | Доработанная лилия .blend/GLB: PBR, Growth9/Bloom8, проверки и контракт окраски |
+| 2026-10-29 | `2026-10-29-scene04-portrait-direct` | сдан | Предыдущая версия Scene 04: лилия → ASCII-портрет → фото; визуальные материалы сохранены в `docs/verification/scene04-portrait-direct/` |
 
 | 2026-10-30 | `2026-10-30-lily-film-integration` | сдан | GLB лилии в фильме, клипы роста и раскрытия, настройки длительности и проверки |
 | 2026-10-30 | `2026-10-30-scene-07-galaxy--wip` | в работе | Scene 07 — Galaxy; desktop checks passed, tablet validation pending |
