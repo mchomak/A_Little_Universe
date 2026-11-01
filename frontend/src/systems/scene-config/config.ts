@@ -118,7 +118,14 @@ export interface SceneComposerConfig {
       cameraMoveDuration: number
       portraitStart: number
       portraitDuration: number
+      portraitStartProgress: number
       portraitFraction: number
+      portraitMinTurns: number
+      portraitMaxTurns: number
+      portraitSteering: number
+      portraitBraking: number
+      portraitSettledBrightness: number
+      vortexSpeedMultiplier: number
       portraitDetail: number
       portraitBrightness: number
       portraitSize: number
@@ -235,11 +242,13 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       textWritingDuration: 4.2, textParticleCount: 1800,
     },
     identity: {
-      dissolveDuration: 12, particleCount: 48000, particleSize: 2.3, edgeWidth: 0.035,
+      dissolveDuration: 12, particleCount: 80000, particleSize: 2.3, edgeWidth: 0.035,
       particleBrightness: 1.25, vortexRadius: 0.8, vortexExpansion: 0.45,
       swirlSpeed: 1, swirlAcceleration: 0.1, centerDissolveAt: 0.5,
       cameraPullback: 1.8, cameraRise: 0.65, cameraMoveDuration: 12,
-      portraitStart: 12, portraitDuration: 8.5, portraitFraction: 0.3, portraitDetail: 1.5,
+      portraitStart: 12, portraitDuration: 8.5, portraitStartProgress: 0.3, portraitFraction: 0.4,
+      portraitMinTurns: 0, portraitMaxTurns: 2, portraitSteering: 1, portraitBraking: 1,
+      portraitSettledBrightness: 1.15, vortexSpeedMultiplier: 0.9, portraitDetail: 1.5,
       portraitBrightness: 1.8, portraitSize: 1.8, portraitScale: 1.05, portraitOffsetX: 0, portraitOffsetY: 0,
     },
     galaxy: {
@@ -425,7 +434,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
     },
     identity: {
       dissolveDuration: numberValue(identityInput?.dissolveDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.dissolveDuration, 2, 18),
-      particleCount: numberValue(identityInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleCount, 1000, 64000, true),
+      particleCount: numberValue(identityInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleCount, 1000, 100000, true),
       particleSize: numberValue(identityInput?.particleSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleSize, 0.5, 6),
       edgeWidth: numberValue(identityInput?.edgeWidth, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.edgeWidth, 0.005, 0.1),
       particleBrightness: numberValue(identityInput?.particleBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.particleBrightness, 0.25, 2),
@@ -439,7 +448,14 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       cameraMoveDuration: numberValue(identityInput?.cameraMoveDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.cameraMoveDuration, 1, 18),
       portraitStart: numberValue(identityInput?.portraitStart, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitStart, 0, 30),
       portraitDuration: numberValue(identityInput?.portraitDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitDuration, 2, 16),
-      portraitFraction: numberValue(identityInput?.portraitFraction, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitFraction, 0.05, 0.35),
+      portraitStartProgress: numberValue(identityInput?.portraitStartProgress, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitStartProgress, 0, 1),
+      portraitFraction: numberValue(identityInput?.portraitFraction, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitFraction, 0, 0.45),
+      portraitMinTurns: numberValue(identityInput?.portraitMinTurns, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitMinTurns, 0, 8),
+      portraitMaxTurns: numberValue(identityInput?.portraitMaxTurns, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitMaxTurns, 0, 8),
+      portraitSteering: numberValue(identityInput?.portraitSteering, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitSteering, 0, 4),
+      portraitBraking: numberValue(identityInput?.portraitBraking, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitBraking, 0, 8),
+      portraitSettledBrightness: numberValue(identityInput?.portraitSettledBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitSettledBrightness, 1, 2),
+      vortexSpeedMultiplier: numberValue(identityInput?.vortexSpeedMultiplier, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.vortexSpeedMultiplier, 0, 2),
       portraitDetail: numberValue(identityInput?.portraitDetail, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitDetail, 0.5, 2),
       portraitBrightness: numberValue(identityInput?.portraitBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitBrightness, 1.1, 2),
       portraitSize: numberValue(identityInput?.portraitSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitSize, 0.6, 1.8),
@@ -448,6 +464,9 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       portraitOffsetY: numberValue(identityInput?.portraitOffsetY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.portraitOffsetY, -1, 1),
     },
     galaxy: normalizeGalaxy(galaxySettingsInput),
+  }
+  if (scenes.identity.portraitMinTurns > scenes.identity.portraitMaxTurns) {
+    scenes.identity.portraitMaxTurns = scenes.identity.portraitMinTurns
   }
   if (scenes.prologue.particleSizeMin > scenes.prologue.particleSizeMax) {
     scenes.prologue.particleSizeMax = scenes.prologue.particleSizeMin

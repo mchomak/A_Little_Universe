@@ -147,7 +147,7 @@ const BLOOM_CONTROLS: readonly NumericControl[] = [
 
 const DISSOLVE_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.identity.dissolveDuration', label: 'Длительность растворения', unit: 'с', min: 2, max: 18, step: 0.1 },
-  { path: 'scenes.identity.particleCount', label: 'Плотность частиц', unit: 'шт.', min: 1000, max: 64000, step: 1000 },
+  { path: 'scenes.identity.particleCount', label: 'Плотность частиц', unit: 'шт.', min: 1000, max: 100000, step: 1000 },
   { path: 'scenes.identity.particleSize', label: 'Размер частиц', unit: 'px', min: 0.5, max: 6, step: 0.1 },
   { path: 'scenes.identity.particleBrightness', label: 'Яркость частиц', unit: '×', min: 0.25, max: 2, step: 0.05 },
   { path: 'scenes.identity.edgeWidth', label: 'Ширина светящейся границы', unit: '', min: 0.005, max: 0.1, step: 0.005 },
@@ -159,9 +159,15 @@ const DISSOLVE_CONTROLS: readonly NumericControl[] = [
 ]
 
 const PORTRAIT_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.identity.portraitStart', label: 'Начало сборки', unit: 'с', min: 0, max: 30, step: 0.1 },
+  { path: 'scenes.identity.portraitStartProgress', label: 'Начало захвата портрета', unit: '%', min: 0, max: 100, step: 1, displayScale: 100 },
   { path: 'scenes.identity.portraitDuration', label: 'Длительность сборки', unit: 'с', min: 2, max: 16, step: 0.1 },
-  { path: 'scenes.identity.portraitFraction', label: 'Доля вихря для портрета', unit: '%', min: 5, max: 35, step: 1, displayScale: 100 },
+  { path: 'scenes.identity.portraitFraction', label: 'Доля частиц вихря для портрета', unit: '%', min: 0, max: 45, step: 1, displayScale: 100 },
+  { path: 'scenes.identity.portraitMinTurns', label: 'Минимум витков до фиксации', unit: 'витка', min: 0, max: 8, step: 0.1 },
+  { path: 'scenes.identity.portraitMaxTurns', label: 'Максимум витков до фиксации', unit: 'витка', min: 0, max: 8, step: 0.1 },
+  { path: 'scenes.identity.portraitSteering', label: 'Сила отклонения к портрету', unit: '×', min: 0, max: 4, step: 0.05 },
+  { path: 'scenes.identity.portraitBraking', label: 'Торможение при фиксации', unit: '×', min: 0, max: 8, step: 0.1 },
+  { path: 'scenes.identity.portraitSettledBrightness', label: 'Яркость закреплённой частицы', unit: '×', min: 1, max: 2, step: 0.05 },
+  { path: 'scenes.identity.vortexSpeedMultiplier', label: 'Скорость вихря', unit: '×', min: 0, max: 2, step: 0.05 },
   { path: 'scenes.identity.portraitDetail', label: 'Детализация портрета', unit: '×', min: 0.5, max: 2, step: 0.05 },
   { path: 'scenes.identity.portraitBrightness', label: 'Яркость портрета', unit: '×', min: 1.1, max: 2, step: 0.05 },
   { path: 'scenes.identity.portraitSize', label: 'Размер точек портрета', unit: '×', min: 0.6, max: 1.8, step: 0.05 },

@@ -8,46 +8,117 @@ it('migrates old configs to bounded scene 04 dissolve settings', () => {
     .toMatchObject({ dissolveDuration: 6, particleCount: 4000, particleSize: 3, edgeWidth: 0.06 })
   expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: { dissolveDuration: 4, particleCount: 12000 } } }).scenes.identity)
     .toMatchObject({ dissolveDuration: 4, particleCount: 12000 })
-  expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: { dissolveDuration: 100, particleCount: 90000, particleSize: 0, edgeWidth: 1 } } }).scenes.identity)
+  expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: { dissolveDuration: 100, particleCount: 100001, particleSize: 0, edgeWidth: 1 } } }).scenes.identity)
     .toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity)
 })
 
 it('provides bounded scene 04 vortex controls with center dissolve at half petal progress', () => {
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity).toMatchObject({
-    particleCount: 48000, particleBrightness: 1.25, vortexRadius: 0.8, vortexExpansion: 0.45,
+    particleCount: 80000, particleBrightness: 1.25, vortexRadius: 0.8, vortexExpansion: 0.45,
     swirlSpeed: 1, swirlAcceleration: 0.1, centerDissolveAt: 0.5,
   })
   expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: {
-    particleCount: 64000, particleBrightness: 2, vortexRadius: 3, vortexExpansion: 1.5,
+    particleCount: 100000, particleBrightness: 2, vortexRadius: 3, vortexExpansion: 1.5,
     swirlSpeed: 8, swirlAcceleration: 3, centerDissolveAt: 0.9,
   } } }).scenes.identity).toMatchObject({
-    particleCount: 64000, particleBrightness: 2, vortexRadius: 3, vortexExpansion: 1.5,
+    particleCount: 100000, particleBrightness: 2, vortexRadius: 3, vortexExpansion: 1.5,
     swirlSpeed: 8, swirlAcceleration: 3, centerDissolveAt: 0.9,
   })
   expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: {
-    particleCount: 65000, particleBrightness: 2.1, vortexRadius: 0.4, vortexExpansion: -0.1,
+    particleCount: 100001, particleBrightness: 2.1, vortexRadius: 0.4, vortexExpansion: -0.1,
     swirlSpeed: 9, swirlAcceleration: 4, centerDissolveAt: 1,
   } } }).scenes.identity).toMatchObject(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity)
 })
 
 it('normalizes bounded scene 04 portrait assembly controls', () => {
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity).toMatchObject({
-    portraitStart: 12, portraitDuration: 8.5, portraitFraction: 0.3, portraitDetail: 1.5,
+    portraitStart: 12, portraitDuration: 8.5, portraitFraction: 0.4, portraitDetail: 1.5,
     portraitBrightness: 1.8, portraitSize: 1.8, portraitScale: 1.05, portraitOffsetX: 0, portraitOffsetY: 0,
   })
   expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: {
     portraitStart: 40, portraitDuration: 0.5, portraitFraction: 0.9, portraitDetail: 3,
     portraitBrightness: 0.5, portraitSize: 3, portraitScale: 2, portraitOffsetX: 4, portraitOffsetY: -4,
   } } }).scenes.identity).toMatchObject({
-    portraitStart: 12, portraitDuration: 8.5, portraitFraction: 0.3, portraitDetail: 1.5,
+    portraitStart: 12, portraitDuration: 8.5, portraitFraction: 0.4, portraitDetail: 1.5,
     portraitBrightness: 1.8, portraitSize: 1.8, portraitScale: 1.05, portraitOffsetX: 0, portraitOffsetY: 0,
   })
   expect(normalizeConfig({ schemaVersion: 5, scenes: { identity: {
-    portraitStart: 0, portraitDuration: 2, portraitFraction: 0.05, portraitDetail: 0.5,
+    portraitStart: 0, portraitDuration: 2, portraitFraction: 0, portraitDetail: 0.5,
     portraitBrightness: 1.1, portraitSize: 0.6, portraitScale: 0.55, portraitOffsetX: -1, portraitOffsetY: 1,
   } } }).scenes.identity).toMatchObject({
-    portraitStart: 0, portraitDuration: 2, portraitFraction: 0.05, portraitDetail: 0.5,
+    portraitStart: 0, portraitDuration: 2, portraitFraction: 0, portraitDetail: 0.5,
     portraitBrightness: 1.1, portraitSize: 0.6, portraitScale: 0.55, portraitOffsetX: -1, portraitOffsetY: 1,
+  })
+})
+
+it('defaults scene 04 portrait capture to the approved fraction-of-dissolve controls', () => {
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity).toMatchObject({
+    particleCount: 80000,
+    portraitStartProgress: 0.3,
+    portraitFraction: 0.4,
+    portraitMinTurns: 0,
+    portraitMaxTurns: 2,
+    portraitSteering: 1,
+    portraitBraking: 1,
+    portraitSettledBrightness: 1.15,
+    vortexSpeedMultiplier: 0.9,
+  })
+  expect(normalizeConfig({ schemaVersion: 4 }).scenes.identity).toMatchObject({
+    particleCount: 80000,
+    portraitStartProgress: 0.3,
+    portraitFraction: 0.4,
+    portraitMinTurns: 0,
+    portraitMaxTurns: 2,
+    portraitSteering: 1,
+    portraitBraking: 1,
+    portraitSettledBrightness: 1.15,
+    vortexSpeedMultiplier: 0.9,
+  })
+})
+
+it('normalizes capture limits and repairs turn ordering without losing legacy settings', () => {
+  const legacy = normalizeConfig({ schemaVersion: 1, scenes: { identity: { portraitStart: 9, portraitFraction: 0.3 } } })
+  expect(legacy.scenes.identity).toMatchObject({
+    portraitStart: 9,
+    portraitStartProgress: 0.3,
+    portraitFraction: 0.3,
+    portraitMinTurns: 0,
+    portraitMaxTurns: 2,
+  })
+
+  const valid = normalizeConfig({ schemaVersion: 5, scenes: { identity: {
+    particleCount: 100000, portraitStartProgress: 0, portraitFraction: 0,
+    portraitMinTurns: 3.5, portraitMaxTurns: 1.5, portraitSteering: 2.2,
+    portraitBraking: 3.4, portraitSettledBrightness: 1.4, vortexSpeedMultiplier: 0.75,
+  } } }).scenes.identity
+  expect(valid).toMatchObject({
+    particleCount: 100000, portraitStartProgress: 0, portraitFraction: 0,
+    portraitMinTurns: 3.5, portraitMaxTurns: 3.5, portraitSteering: 2.2,
+    portraitBraking: 3.4, portraitSettledBrightness: 1.4, vortexSpeedMultiplier: 0.75,
+  })
+
+  const upperBounds = normalizeConfig({ schemaVersion: 5, scenes: { identity: {
+    portraitStartProgress: 1, portraitFraction: 0.45,
+  } } }).scenes.identity
+  expect(upperBounds).toMatchObject({ portraitStartProgress: 1, portraitFraction: 0.45 })
+
+  const otherScenes = normalizeConfig({ schemaVersion: 5, scenes: {
+    identity: { portraitStartProgress: 0.5 },
+    prologue: { fontSize: 72 },
+    galaxy: { starCount: 42000 },
+  } })
+  expect(otherScenes.scenes.prologue.fontSize).toBe(72)
+  expect(otherScenes.scenes.galaxy.starCount).toBe(42000)
+
+  const damaged = normalizeConfig({ schemaVersion: 5, scenes: { identity: {
+    particleCount: 100001, portraitStartProgress: -0.1, portraitFraction: 0.5,
+    portraitMinTurns: -1, portraitMaxTurns: 9, portraitSteering: 5,
+    portraitBraking: Number.NaN, portraitSettledBrightness: 0.5, vortexSpeedMultiplier: 3,
+  } } }).scenes.identity
+  expect(damaged).toMatchObject({
+    particleCount: 80000, portraitStartProgress: 0.3, portraitFraction: 0.4,
+    portraitMinTurns: 0, portraitMaxTurns: 2, portraitSteering: 1,
+    portraitBraking: 1, portraitSettledBrightness: 1.15, vortexSpeedMultiplier: 0.9,
   })
 })
 
