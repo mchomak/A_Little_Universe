@@ -20,6 +20,8 @@ export function GreetingOverlay({ state, dispatch, runtime, reducedMotion }: Pro
   const geometry = useRef({ startY: 0, distance: 1 })
   const paused = useRef(false)
   const completed = useRef(false)
+  const crawlStartedRef = useRef(false)
+  const elapsedRef = useRef(state.elapsed)
   const [crawlStarted, setCrawlStarted] = useState(false)
   const [crawlPaused, setCrawlPaused] = useState(false)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
@@ -39,6 +41,18 @@ export function GreetingOverlay({ state, dispatch, runtime, reducedMotion }: Pro
     element.style.transform = `translate3d(-50%, ${startY - distance * value}px, 0)`
   }, [])
 
+  const setCrawlVisibility = useCallback((visible: boolean) => {
+    if (crawlStartedRef.current === visible) return
+    crawlStartedRef.current = visible
+    setCrawlStarted(visible)
+  }, [])
+
+  const syncCrawlPause = useCallback(() => {
+    const shouldPause = paused.current || state.paused || state.reading || document.hidden
+    if (!shouldPause && crawlTween.current?.paused && crawlTween.current.progress >= 1) completed.current = false
+    crawlTween.current?.setPaused(shouldPause)
+  }, [state.paused, state.reading])
+
   const measureCrawl = useCallback(() => {
     const element = crawl.current
     const viewport = section.current
@@ -50,8 +64,12 @@ export function GreetingOverlay({ state, dispatch, runtime, reducedMotion }: Pro
     if (!crawlTween.current) renderProgress(0)
   }, [renderProgress])
 
-  const startCrawl = useCallback((time: number) => {
-    if (crawlTween.current || completed.current) return
+  const startCrawl = useCallback((time: number, seekExisting = false) => {
+    if (crawlTween.current) {
+      if (seekExisting) crawlTween.current.seek(time)
+      setCrawlVisibility(true)
+      return
+    }
     measureCrawl()
     const viewportHeight = section.current?.getBoundingClientRect().height ?? 0
     const contentHeight = crawl.current?.getBoundingClientRect().height ?? 0
@@ -62,26 +80,38 @@ export function GreetingOverlay({ state, dispatch, runtime, reducedMotion }: Pro
       startAt,
       duration,
       playbackSpeed: state.speed,
-      onProgress: renderProgress,
+      paused: paused.current || state.paused || state.reading || document.hidden,
+      onProgress: (progress) => {
+        if (progress < 1) completed.current = false
+        renderProgress(progress)
+      },
       onComplete: () => {
         if (completed.current) return
         completed.current = true
         dispatch({ type: 'greeting-complete' })
       },
     })
-    setCrawlStarted(true)
-  }, [dispatch, frames.credits, measureCrawl, renderProgress, state.returnToEnding, state.speed])
+    setCrawlVisibility(true)
+  }, [dispatch, frames.credits, measureCrawl, renderProgress, setCrawlVisibility, state.returnToEnding, state.speed, state.paused, state.reading])
+
+  useLayoutEffect(() => { elapsedRef.current = state.elapsed }, [state.elapsed])
 
   useLayoutEffect(() => {
     const startAt = state.returnToEnding ? 0 : frames.credits[0]
-    let started = false
-    const check = (time: number) => {
-      if (!started && time >= startAt) { started = true; startCrawl(time) }
+    const syncToTime = (time: number, seekExisting: boolean) => {
+      if (time < startAt) {
+        crawlTween.current?.seek(time)
+        setCrawlVisibility(false)
+        return
+      }
+      startCrawl(time, seekExisting)
     }
-    check(state.elapsed)
-    const unsubscribe = runtime.subscribeFrame(check)
+    syncToTime(elapsedRef.current, true)
+    const unsubscribe = runtime.subscribeFrame((time) => {
+      if (time >= startAt && !crawlStartedRef.current) syncToTime(time, true)
+    })
     return unsubscribe
-  }, [frames.credits, runtime, startCrawl, state.elapsed, state.returnToEnding])
+  }, [frames.credits, runtime, setCrawlVisibility, startCrawl, state.revision, state.returnToEnding])
 
   useLayoutEffect(() => {
     window.dispatchEvent(new Event('greeting-layout'))
@@ -90,6 +120,7 @@ export function GreetingOverlay({ state, dispatch, runtime, reducedMotion }: Pro
   useLayoutEffect(() => () => {
     crawlTween.current?.dispose()
     crawlTween.current = null
+    crawlStartedRef.current = false
   }, [])
 
   useLayoutEffect(() => {
@@ -103,21 +134,18 @@ export function GreetingOverlay({ state, dispatch, runtime, reducedMotion }: Pro
   }, [crawlStarted, measureCrawl])
 
   useLayoutEffect(() => { crawlTween.current?.setSpeed(state.speed) }, [state.speed])
+  useLayoutEffect(() => { syncCrawlPause() }, [syncCrawlPause])
   useLayoutEffect(() => {
-    const onVisibility = () => {
-      if (document.hidden) crawlTween.current?.pause()
-      else if (!paused.current) crawlTween.current?.resume()
-    }
+    const onVisibility = () => syncCrawlPause()
     document.addEventListener('visibilitychange', onVisibility)
     return () => document.removeEventListener('visibilitychange', onVisibility)
-  }, [])
+  }, [syncCrawlPause])
 
   const toggleCrawl = () => {
     const nextPaused = !paused.current
     paused.current = nextPaused
     setCrawlPaused(nextPaused)
-    if (nextPaused) crawlTween.current?.pause()
-    else crawlTween.current?.resume()
+    syncCrawlPause()
   }
 
   const lineStyle = (top: string, size: string) => ({

@@ -52,9 +52,45 @@ it('re-seeds the crawl from DEV seek time, preserves absolute progress on resize
     const final = seek(completionTime!, 200)
     expect(final.progress).toBe(1)
     expect(completions).toBe(1)
+    const pausedCompletion = filmReducer(state, { type: 'greeting-complete' })
+    expect(pausedCompletion.scene).toBe('greeting')
+    state = { ...pausedCompletion, paused: false }
     expect(filmReducer(state, { type: 'greeting-complete' }).scene).toBe('ending')
   } finally {
     resources.crawl?.dispose()
     resources.clock?.dispose()
+  }
+})
+
+it('can seek backward and holds a terminal seek until playback resumes', () => {
+  let completions = 0
+  const crawl = createCreditsCrawlTween({
+    time: 25,
+    startAt: 0,
+    duration: 100,
+    playbackSpeed: 1,
+    paused: true,
+    onProgress: () => undefined,
+    onComplete: () => { completions += 1 },
+  })
+
+  try {
+    expect(crawl.progress).toBeCloseTo(0.25)
+    expect(crawl.paused).toBe(true)
+
+    crawl.seek(60)
+    expect(crawl.progress).toBeCloseTo(0.6)
+    crawl.seek(10)
+    expect(crawl.progress).toBeCloseTo(0.1)
+
+    crawl.seek(100)
+    expect(crawl.progress).toBe(1)
+    expect(completions).toBe(0)
+
+    crawl.resume()
+    expect(completions).toBe(1)
+    expect(crawl.paused).toBe(false)
+  } finally {
+    crawl.dispose()
   }
 })

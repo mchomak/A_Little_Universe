@@ -72,9 +72,11 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
       return { ...initialFilmState, mode: 'playing', speed: state.speed, quality: state.quality, revision: state.revision + 1 }
     case 'replay-letter':
       if (state.scene !== 'ending') return state
-      return { ...enter(state, 'greeting'), mode: 'playing', elapsed: 0, returnToEnding: true }
+      return { ...enter(state, 'greeting'), mode: 'playing', elapsed: 0, paused: false, returnToEnding: true }
     case 'greeting-complete':
-      return state.scene === 'greeting' ? { ...enter(state, 'ending'), returnToEnding: false } : state
+      return state.scene === 'greeting' && !state.paused && !state.reading
+        ? { ...enter(state, 'ending'), returnToEnding: false }
+        : state
     case 'open-reading':
       if (state.scene === 'ending') return { ...enter(state, 'greeting'), reading: true, returnToEnding: true }
       return state.scene === 'greeting' ? { ...state, reading: true } : state

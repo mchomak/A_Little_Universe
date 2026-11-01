@@ -197,8 +197,9 @@ describe('film navigation', () => {
 
   it('replays only the letter from the ending and returns to the same ending after the crawl', () => {
     const ending: FilmState = { ...initialFilmState, scene: 'ending', mode: 'ended', elapsed: 0 }
-    const replay = filmReducer(ending, { type: 'replay-letter' })
+    const replay = filmReducer({ ...ending, paused: true }, { type: 'replay-letter' })
     expect([replay.scene, replay.mode, replay.elapsed, replay.returnToEnding]).toEqual(['greeting', 'playing', 0, true])
+    expect(replay.paused).toBe(false)
     const replaySeek = filmReducer(replay, { type: 'dev-seek', time: 12 }, true)
     expect([replaySeek.scene, replaySeek.mode, replaySeek.elapsed, replaySeek.returnToEnding]).toEqual(['greeting', 'playing', 12, true])
     const finished = filmReducer(replay, { type: 'greeting-complete' })
@@ -211,6 +212,13 @@ describe('film navigation', () => {
     expect([waiting.scene, waiting.mode]).toEqual(['greeting', 'waiting'])
     expect(filmReducer(waiting, { type: 'timeline-update', time: 40, revision: waiting.revision })).toBe(waiting)
     expect(filmReducer(waiting, { type: 'greeting-complete' }).scene).toBe('ending')
+  })
+
+  it('does not leave the greeting while the global film is paused or the letter is open', () => {
+    const paused: FilmState = { ...initialFilmState, scene: 'greeting', mode: 'playing', paused: true }
+    const reading: FilmState = { ...paused, paused: false, reading: true }
+    expect(filmReducer(paused, { type: 'greeting-complete' })).toBe(paused)
+    expect(filmReducer(reading, { type: 'greeting-complete' })).toBe(reading)
   })
 })
 
