@@ -97,7 +97,7 @@ describe('Scene Composer controls', () => {
     await setComposerField('scenes.gallery.moonSize', 1.4)
     expect(getConfig().scenes.gallery.moonSize).toBe(1.4)
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(11)
+    expect(exported.schemaVersion).toBe(12)
     expect(exported.scenes.gallery).toMatchObject({ cloudLayerCount: 18, moonSize: 1.4, cloudDensity: 1.2, cloudOpacity: 1.1, cloudDriftVariation: 0.85, cloudCoolTint: 1.2, reflectionStrength: 0.4 })
     expect((await importComposerJson(JSON.stringify(exported))).ok).toBe(true)
 
@@ -108,12 +108,39 @@ describe('Scene Composer controls', () => {
       cloudDensity: 1.12, cloudOpacity: 0.88, cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 18, cloudDriftSpeed: 0.82,
       cloudDriftVariation: 0.65, cloudForegroundAmount: 1, cloudBackgroundAmount: 0.78, cloudNearFloorAmount: 1,
       cloudCoolTint: 1.35, cloudWhiteHighlight: 0.24,
-      hazeDensity: 0.22, hazeHeight: 0, hazeMotionSpeed: 0.2, reflectionStrength: 0.24,
-      reflectionBlur: 0.8, threadOpacity: 0.38, coldLightIntensity: 0.58,
+      hazeDensity: 0.22, hazeHeight: 0, hazeMotionSpeed: 0.2, reflectionStrength: 0.42,
+      reflectionBlur: 0.6, waterDistortion: 0.008, waterRippleSpeed: 0.12,
+      waterNormalStrength: 0.22, moonHighlightStrength: 0.7, waterOpacity: 0.9,
+      threadOpacity: 0.38, coldLightIntensity: 0.58,
       moonLightIntensity: 1.25, moonFillIntensity: 0.22, moonHaloIntensity: 1.2,
       moonCloudLightIntensity: 0.72, moonScatteringIntensity: 0.62,
       moonLightColor: '#C3D8F2', moonPositionX: 0.2, moonPositionY: 16, moonPositionZ: -126,
       moonTargetX: 0, moonTargetY: -2.35, moonTargetZ: -34, moonHaloRadius: 1, moonGodRaysIntensity: 0.12,
+    })
+  })
+
+  it('imports, live-edits, exports, and resets all schema v12 gallery water controls', async () => {
+    const waterSettings = {
+      reflectionStrength: 0.53, reflectionBlur: 0.37, waterDistortion: 0.044,
+      waterRippleSpeed: 0.67, waterNormalStrength: 0.91, moonHighlightStrength: 1.68, waterOpacity: 0.73,
+    }
+    const imported = await importComposerJson(JSON.stringify({ schemaVersion: 12, scenes: { gallery: waterSettings } }))
+
+    expect(imported.ok).toBe(true)
+    expect(getConfig().scenes.gallery).toMatchObject(waterSettings)
+
+    await setComposerField('scenes.gallery.waterDistortion', 0.02)
+    expect(getConfig().scenes.gallery.waterDistortion).toBe(0.02)
+    const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
+    expect(exported.schemaVersion).toBe(12)
+    expect(exported.scenes.gallery).toMatchObject({ ...waterSettings, waterDistortion: 0.02 })
+
+    await resetComposerField('scenes.gallery.waterDistortion')
+    expect(getConfig().scenes.gallery.waterDistortion).toBe(0.008)
+    await resetComposerScope('gallery')
+    expect(getConfig().scenes.gallery).toMatchObject({
+      reflectionStrength: 0.42, reflectionBlur: 0.6, waterDistortion: 0.008,
+      waterRippleSpeed: 0.12, waterNormalStrength: 0.22, moonHighlightStrength: 0.7, waterOpacity: 0.9,
     })
   })
 
@@ -126,7 +153,7 @@ describe('Scene Composer controls', () => {
       scenes: { prologue: Record<string, unknown> }
     }
 
-    expect(exported.schemaVersion).toBe(11)
+    expect(exported.schemaVersion).toBe(12)
     expect(exported.global.quality).toBe('low')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpeed')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpread')
@@ -146,7 +173,7 @@ describe('Scene Composer controls', () => {
     })
 
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(11)
+    expect(exported.schemaVersion).toBe(12)
     expect(exported.scenes.gallery).toMatchObject({ cloudIntensity: 1.35, cloudLayerCount: 6, hazeHeight: -1.1, moonCloudLightIntensity: 1.4 })
 
     await resetComposerField('scenes.gallery.hazeHeight')
