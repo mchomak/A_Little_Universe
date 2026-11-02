@@ -1,0 +1,32 @@
+{
+  "format": "a-little-universe/scene04-portrait-settings",
+  "version": 1,
+  "settings": {
+    "version": 2,
+    "seed": 20903,
+    "count": 32000,
+    "minSize": 1.2,
+    "maxSize": 2.8,
+    "brightness": 2,
+    "opacity": 1,
+    "glow": 1.8,
+    "detailBoost": 2,
+    "fillDensity": 1.9,
+    "contrast": 1.75,
+    "backgroundThreshold": 0.16,
+    "irregularity": 0.55,
+    "photoColorMix": 0.25,
+    "minimumBrightness": 0.3,
+    "portraitContrast": 1,
+    "scale": 0.95,
+    "offsetX": 0,
+    "offsetY": 0
+  },
+  "editor": {
+    "maskOpacity": 0.42,
+    "brushSize": 22,
+    "brushSoftness": 0.55,
+    "brushIntensity": 0.8,
+    "brushValue": 0
+  }
+}
