@@ -3,9 +3,8 @@ import { filmDuration, filmReducer, initialFilmState, type FilmAction, type Film
 import { MEMORIES } from './filmConfig'
 import { resetConfig, updateConfig } from '../systems/scene-config/config'
 
-const duration = { prologue: 18, growth: 16, bloom: 22, identity: 34, gallery: 0, eye: 18, cosmos: 26, greeting: 300, ending: 0 }
 const complete = (state: FilmState) => filmReducer(
-  filmReducer(state, { type: 'timeline-update', time: duration[state.scene], revision: state.revision }),
+  filmReducer(state, { type: 'timeline-update', time: filmDuration(state), revision: state.revision }),
   { type: 'timeline-complete', revision: state.revision },
 )
 
@@ -45,9 +44,9 @@ it('keeps configured full clip durations inside the scene endpoint and preserves
   try {
     let growth = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'growth' }, true)
     await updateConfig({ scenes: { growth: { formationDuration: 3.5, flowerGrowthDuration: 7 } } })
-    expect(filmDuration(growth)).toBe(14.3)
+    expect(filmDuration(growth)).toBe(15.7)
     growth = filmReducer(growth, { type: 'dev-seek', time: 999 }, true)
-    expect(growth.elapsed).toBe(14.3)
+    expect(growth.elapsed).toBe(15.7)
     growth = filmReducer(growth, { type: 'timeline-complete', revision: growth.revision })
     expect([growth.scene, growth.mode, growth.elapsed]).toEqual(['bloom', 'waiting', 0])
 

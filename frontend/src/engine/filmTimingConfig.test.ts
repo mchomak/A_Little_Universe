@@ -32,6 +32,42 @@ it('retimes paused Growth using the canonical pose through edits, restore, and u
   }
 })
 
+it('retimes an actively playing Growth scene when the fall duration changes', async () => {
+  const dispatch = vi.fn()
+  const state = { ...initialFilmState, scene: 'growth' as const, mode: 'playing' as const, paused: false, elapsed: 4 }
+  const runtimeTime = 4.3
+  const unsubscribe = subscribeFilmTimingConfig({ getState: () => state, getRuntimeTime: () => runtimeTime, dispatch, enabled: true })
+
+  try {
+    const before = getConfig()
+    await updateConfig({ scenes: { growth: { seedFallDuration: 3.6 } } })
+    const after = getConfig()
+    const expected = retimeSceneElapsed('growth', runtimeTime, before, after, 'playing')
+    expect(dispatch).toHaveBeenLastCalledWith({ type: 'dev-seek', time: expected })
+    expect(expected).toBeGreaterThan(runtimeTime)
+  } finally {
+    unsubscribe()
+  }
+})
+
+it('retimes a paused Growth scene from its frozen canonical runtime time when the fall duration changes', async () => {
+  const dispatch = vi.fn()
+  const state = { ...initialFilmState, scene: 'growth' as const, mode: 'playing' as const, paused: true, elapsed: 4 }
+  const runtimeTime = 4.3
+  const unsubscribe = subscribeFilmTimingConfig({ getState: () => state, getRuntimeTime: () => runtimeTime, dispatch, enabled: true })
+
+  try {
+    const before = getConfig()
+    await updateConfig({ scenes: { growth: { seedFallDuration: 3.6 } } })
+    const after = getConfig()
+    const expected = retimeSceneElapsed('growth', runtimeTime, before, after, 'playing')
+    expect(dispatch).toHaveBeenLastCalledWith({ type: 'dev-seek', time: expected })
+    expect(expected).toBeGreaterThan(state.elapsed)
+  } finally {
+    unsubscribe()
+  }
+})
+
 it('keeps the Bloom touch gate at time zero while retiming its configured opening', async () => {
   const dispatch = vi.fn()
   const state = { ...initialFilmState, scene: 'bloom' as const, mode: 'waiting' as const, paused: true }

@@ -14,8 +14,8 @@ describe('scene editor timeline', () => {
   })
   it('maps the new seed stages to seekable positions inside the growth scene', () => {
     const frames = timelineFrames('growth', DEFAULT_SCENE_COMPOSER_CONFIG)
-    expect(frames.map(({ start }) => start)).toEqual([0, 3.2, 4.4, 4.9, 5.1, 14.1])
-    expect(TIMING.growth.duration).toBe(16)
+    expect(frames.map(({ start }) => start)).toEqual([0, 3.2, 5.8, 6.3, 6.5, 15.5])
+    expect(TIMING.growth.duration).toBe(17.4)
     expect(SCENES.growth.duration).toBe(TIMING.growth.duration)
     expect(frames.every((frame) => frame.start >= 0 && frame.start < SCENES.growth.duration)).toBe(true)
 
@@ -29,9 +29,9 @@ describe('scene editor timeline', () => {
     } }
     const delayed = timelineFrames('growth', slowerFormation)
     expect(delayed[1]?.start).toBe(3.5)
-    expect(delayed[2]?.start).toBe(4.7)
+    expect(delayed[2]?.start).toBe(6.1)
     expect(getGrowthFrames(slowerFormation.scenes.growth).fall[0]).toBe(3.5)
-    expect(getSceneDuration('growth', slowerFormation)).toBe(16.3)
+    expect(getSceneDuration('growth', slowerFormation)).toBe(17.7)
     expect(delayed.at(-1)?.start).toBeLessThan(getSceneDuration('growth', slowerFormation))
   })
   it('moves the Bloom contemplation marker and timeline endpoint with the configured clip', () => {

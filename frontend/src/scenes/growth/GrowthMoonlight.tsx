@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useThree } from '@react-three/fiber'
-import { AdditiveBlending, Color, NormalBlending, Object3D, type DirectionalLight, type HemisphereLight, type ShaderMaterial } from 'three'
+import { AdditiveBlending, Color, DoubleSide, NormalBlending, Object3D, type DirectionalLight, type HemisphereLight, type ShaderMaterial } from 'three'
 import type { FilmRuntime } from '../../engine/runtime'
 import {
   getGrowthMoonlightBeamLayout, getGrowthMoonlightLevels, growthContactShadowFragmentShader,
@@ -32,6 +32,7 @@ export function GrowthMoonlight({
   const uniforms = useMemo(() => ({
     uMoonColor: { value: new Color() },
     uOpacity: { value: 0 },
+    uScatteringIntensity: { value: 0 },
     uBeamRadius: { value: 0 },
     uSoftness: { value: 0 },
   }), [])
@@ -45,13 +46,15 @@ export function GrowthMoonlight({
         settings.moonBeamIntensity,
         growthProgress.current,
         environmentOpacity.current,
+        settings.moonScatteringIntensity,
       )
       if (key.current) key.current.intensity = levels.key
       if (fill.current) fill.current.intensity = levels.fill
       if (beam.current) {
         beam.current.uniforms.uOpacity!.value = levels.beam
+        beam.current.uniforms.uScatteringIntensity!.value = levels.scattering
         ;(beam.current.uniforms.uMoonColor!.value as Color).copy(lightColor)
-        beam.current.uniforms.uBeamRadius!.value = settings.moonBeamRadius
+        beam.current.uniforms.uBeamRadius!.value = layout.radius
         beam.current.uniforms.uSoftness!.value = settings.moonBeamSoftness
       }
       if (contactShadow.current) contactShadow.current.uniforms.uOpacity!.value = levels.shadow
@@ -61,7 +64,8 @@ export function GrowthMoonlight({
     return runtime.subscribePresentation(update)
   }, [
     environmentOpacity, growthProgress, invalidate, lightColor, lightTarget, runtime,
-    settings.moonBeamIntensity, settings.moonBeamRadius, settings.moonBeamSoftness, settings.moonLightIntensity,
+    layout.radius, settings.moonBeamIntensity, settings.moonBeamRadius, settings.moonBeamSoftness,
+    settings.moonLightIntensity, settings.moonScatteringIntensity,
   ])
 
   return <group>
@@ -89,6 +93,7 @@ export function GrowthMoonlight({
         uniforms={uniforms}
         transparent
         blending={AdditiveBlending}
+        side={DoubleSide}
         depthWrite={false}
         toneMapped={false}
       />

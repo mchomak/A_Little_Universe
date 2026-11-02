@@ -17,6 +17,7 @@ export function subscribeFilmTimingConfig({ getState, getRuntimeTime, dispatch, 
     const before = previous
     const current = getState()
     const growthTimingChanged = before.scenes.growth.formationDuration !== next.scenes.growth.formationDuration
+      || before.scenes.growth.seedFallDuration !== next.scenes.growth.seedFallDuration
       || before.scenes.growth.flowerGrowthDuration !== next.scenes.growth.flowerGrowthDuration
     const bloomTimingChanged = before.scenes.bloom.flowerBloomDuration !== next.scenes.bloom.flowerBloomDuration
     previous = next

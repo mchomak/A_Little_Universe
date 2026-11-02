@@ -13,7 +13,7 @@ import { configureCameraFarPlane, focusCamera } from '../scenes/gallery/camera'
 import { GALLERY_ART } from '../scenes/gallery/artDirection'
 import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
-import { getGrowthCameraPose } from '../scenes/growth/seedProcedure'
+import { getGrowthBloomEntryCameraPose, getGrowthCameraPose } from '../scenes/growth/seedProcedure'
 import { getBloomCameraMoveDuration, getBloomCloseupPose } from './bloomCamera'
 import { galaxyCameraPose, interpolateCameraPose } from '../scenes/galaxy/camera'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
@@ -49,7 +49,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
   const build = useCallback(() => {
     const p = pose.current
     const front = { x: 0, y: 0, z: 5.6, tx: 0, ty: 0, tz: 0 }
-    const flowerSide = getGrowthCameraPose(getGrowthSceneFrames(growthSettings).duration, reducedMotion, growthSettings)
+    const flowerSide = getGrowthBloomEntryCameraPose(growthSettings, reducedMotion)
     const bloomFrames = getBloomSceneFrames(bloomSettings)
     const flowerCloseup = getBloomCloseupPose(bloomSettings)
     const timeline = gsap.timeline({ onUpdate: render })
@@ -66,14 +66,15 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const galaxyPose = (distance: number, angle: number) => galaxyCameraPose(
       distance, angle, galaxySettings.cameraFocusX, galaxySettings.cameraFocusY,
     )
-    const initial = scene === 'bloom' ? flowerSide : scene === 'identity' ? flowerCloseup
+    const initial = scene === 'growth' ? getGrowthCameraPose(0, reducedMotion, growthSettings)
+      : scene === 'bloom' ? flowerSide : scene === 'identity' ? flowerCloseup
       : scene === 'eye' ? { ...front, z: 4.8 }
       : scene === 'cosmos' ? galaxyPose(galaxySettings.cameraStartDistance, galaxySettings.cameraStartAngle)
         : scene === 'greeting' || scene === 'ending' ? galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle) : front
     const previousPose = { ...p }
     const preserveEyeEntry = scene === 'cosmos' && previousScene === 'eye' && !reducedMotion
     Object.assign(p, reducedMotion && scene === 'cosmos' ? galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
-      : reducedMotion ? front : initial)
+      : reducedMotion && scene !== 'growth' ? front : initial)
     if (preserveEyeEntry) Object.assign(p, previousPose)
     render()
     if (scene === 'growth') {

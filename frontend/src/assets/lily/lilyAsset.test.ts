@@ -53,13 +53,13 @@ it('keeps the actual Growth and Bloom clip poses stable across endpoint, forward
     player.seek(getGrowthClipTime(time, growthFrames, growthClip.duration))
     return head.scale.x
   }
-  expect(growthPose(12.9)).toBeGreaterThan(0.1)
-  const fullGrowth = growthPose(14.1)
+  expect(growthPose(growthFrames.model[0] + 7.8)).toBeGreaterThan(0.1)
+  const fullGrowth = growthPose(growthFrames.model[1])
   expect(fullGrowth).toBeCloseTo(1, 3)
-  expect(growthPose(14.4)).toBeCloseTo(fullGrowth, 3)
-  expect(growthPose(16)).toBeCloseTo(fullGrowth, 3)
-  growthPose(12.9)
-  expect(growthPose(16)).toBeCloseTo(fullGrowth, 3)
+  expect(growthPose(growthFrames.model[1] + 0.3)).toBeCloseTo(fullGrowth, 3)
+  expect(growthPose(growthFrames.duration)).toBeCloseTo(fullGrowth, 3)
+  growthPose(growthFrames.model[0] + 7.8)
+  expect(growthPose(growthFrames.duration)).toBeCloseTo(fullGrowth, 3)
 
   player.play('Bloom', LoopOnce, 1)
   const bloomPose = (time: number) => {

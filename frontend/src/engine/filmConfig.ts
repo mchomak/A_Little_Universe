@@ -6,7 +6,7 @@ export const SCENE_ORDER = ['prologue', 'growth', 'bloom', 'identity', 'gallery'
 
 export const TIMING = {
   prologue: { duration: 18, seed: [0, 2], first: [2, 5.5], second: [7, 10.5], hold: [10.5, 12.5], dissolve: [12.5, 16], prompt: 18 },
-  growth: { duration: 16, formation: [0, 3.2], fall: [3.2, 4.4], landing: [4.4, 4.9], moonlight: [4.9, 6.4], handoff: [5.1, 5.85], sprout: [5.85, 14.2], stem: [10, 14.2], settle: [14.2, 16] },
+  growth: { duration: 17.4, formation: [0, 3.2], fall: [3.2, 5.8], landing: [5.8, 6.3], moonlight: [6.3, 7.8], handoff: [6.5, 7.25], sprout: [7.25, 15.5], stem: [11.3, 15.5], settle: [15.5, 17.4] },
   bloom: { duration: 22, opening: [0, 16], contemplate: [16, 22] },
   identity: { duration: 34, flower: [0, 4], particles: [4, 8], name: [8, 13], morph: [13, 17], portrait: [17, 23], photo: [23, 34], caption: [28, 34] },
   gallery: { duration: 0, move: 1.2 },
@@ -21,6 +21,7 @@ export interface GrowthSceneFrames {
   duration: number
   formation: readonly [number, number]
   fall: readonly [number, number]
+  islandReveal: readonly [number, number]
   landing: readonly [number, number]
   moonlight: readonly [number, number]
   handoff: readonly [number, number]
@@ -44,7 +45,8 @@ const round = (value: number) => Number(value.toFixed(2))
 /** Model growth begins with the seed-to-sprout handoff; the existing settle beat remains after the GLB clip. */
 export function getGrowthSceneFrames(settings: SceneComposerConfig['scenes']['growth'] = getConfig().scenes.growth): GrowthSceneFrames {
   const formationEnd = round(clamp(settings.formationDuration, 2.5, 3.5, 3.2))
-  const fallEnd = round(formationEnd + 1.2)
+  const fallEnd = round(formationEnd + clamp(settings.seedFallDuration, 1.8, 4.5, 2.6))
+  const islandRevealDuration = clamp(settings.islandRevealDuration, 0.4, 3, 1.5)
   const modelStart = round(fallEnd + 0.7)
   const handoffEnd = round(fallEnd + 1.45)
   const modelEnd = round(modelStart + clamp(settings.flowerGrowthDuration, 4, 14, 9))
@@ -53,6 +55,7 @@ export function getGrowthSceneFrames(settings: SceneComposerConfig['scenes']['gr
     duration,
     formation: [0, formationEnd],
     fall: [formationEnd, fallEnd],
+    islandReveal: [round(Math.max(0, fallEnd - islandRevealDuration)), fallEnd],
     landing: [fallEnd, round(fallEnd + 0.5)],
     moonlight: [round(fallEnd + 0.5), round(fallEnd + 2)],
     handoff: [modelStart, handoffEnd],
