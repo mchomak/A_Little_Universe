@@ -3,12 +3,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { createGalleryPlanarReflectionPass } from './planarReflection'
 
 describe('gallery planar reflection target', () => {
-  it('uses a 1024 standard target with a safe color-buffer fallback', () => {
+  it('uses a 2048 standard target with a safe color-buffer fallback', () => {
     const halfFloat = createGalleryPlanarReflectionPass({ quality: 'standard', supportsFloatColorBuffer: true })
     const fallback = createGalleryPlanarReflectionPass({ quality: 'standard', supportsFloatColorBuffer: false })
 
-    expect(halfFloat.target.width).toBe(1024)
-    expect(halfFloat.target.height).toBe(1024)
+    expect(halfFloat.target.width).toBe(2048)
+    expect(halfFloat.target.height).toBe(2048)
     expect(halfFloat.target.texture.type).toBe(HalfFloatType)
     expect(halfFloat.target.texture.colorSpace).toBe(NoColorSpace)
     expect(halfFloat.target.texture.minFilter).toBe(LinearFilter)
@@ -16,8 +16,13 @@ describe('gallery planar reflection target', () => {
     expect(halfFloat.target.depthBuffer).toBe(true)
     expect(fallback.target.texture.type).toBe(UnsignedByteType)
 
+    const low = createGalleryPlanarReflectionPass({ quality: 'low', supportsFloatColorBuffer: false })
+    expect(low.target.width).toBe(512)
+    expect(low.target.height).toBe(512)
+
     halfFloat.dispose()
     fallback.dispose()
+    low.dispose()
   })
 
   it('mirrors the active camera position and view direction across the floor plane', () => {

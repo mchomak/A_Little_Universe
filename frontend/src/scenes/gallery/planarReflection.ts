@@ -29,7 +29,10 @@ export function createGalleryPlanarReflectionPass(options: {
   quality: GalleryReflectionQuality
   supportsFloatColorBuffer: boolean
 }): GalleryPlanarReflectionPass {
-  const resolution = options.quality === 'low' ? 512 : 1024
+  // The reflected gallery covers a large share of the image on desktop. Keep
+  // the full-size target for the M2 presentation profile; low quality remains
+  // available as an explicit fallback for constrained devices.
+  const resolution = options.quality === 'low' ? 512 : 2048
   const target = new WebGLRenderTarget(resolution, resolution, {
     format: RGBAFormat,
     type: options.supportsFloatColorBuffer ? HalfFloatType : UnsignedByteType,

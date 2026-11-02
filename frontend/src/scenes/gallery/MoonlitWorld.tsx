@@ -90,7 +90,7 @@ export function MoonlitWorld({
   const lightTarget = useMemo(() => [settings.moonTargetX, settings.moonTargetY, settings.moonTargetZ] as const,
     [settings.moonTargetX, settings.moonTargetY, settings.moonTargetZ])
   const hazeMasses = useMemo(() => getGalleryHazeMasses(quality), [quality])
-  const atmosphereGeometry = useMemo(() => new SphereGeometry(1, quality === 'low' ? 30 : 48, quality === 'low' ? 20 : 32), [quality])
+  const atmosphereGeometry = useMemo(() => new SphereGeometry(1, quality === 'low' ? 30 : 64, quality === 'low' ? 20 : 48), [quality])
   const cloudMaterials = useMemo(() => cloudMasses.map((mass) => {
     const layerSettings = settings.cloudLayers[mass.layer]
     const radii = getGalleryCloudRadii(mass, layerSettings, quality)
@@ -114,7 +114,7 @@ export function MoonlitWorld({
       * (mass.moonInteraction ? 1.35 : mass.layer === 'nearLow' ? 1.65 : mass.layer === 'waterline' ? 1.55 : 1),
     moonOcclusion: mass.moonInteraction === true,
     driftSpeed: reducedMotion ? 0 : layerSettings.driftSpeed,
-    steps: quality === 'low' ? 4 : 6,
+    steps: quality === 'low' ? 4 : 10,
   })
   }), [cloudMasses, moonPosition, quality, reducedMotion, settings.cloudCoolTint, settings.cloudLayers, settings.cloudWhiteHighlight, settings.coldLightIntensity, settings.moonCloudLightIntensity, settings.moonLightColor, settings.moonLightIntensity])
   const hazeMaterials = useMemo(() => hazeMasses.map((mass) => createGalleryCloudVolumeMaterial({
@@ -131,7 +131,7 @@ export function MoonlitWorld({
     moonColor: settings.moonLightColor,
     moonLightIntensity: settings.moonLightIntensity * settings.coldLightIntensity * settings.moonCloudLightIntensity * 0.72,
     driftSpeed: reducedMotion ? 0 : settings.hazeMotionSpeed,
-    steps: quality === 'low' ? 4 : 6,
+    steps: quality === 'low' ? 4 : 10,
   })), [hazeMasses, moonPosition, quality, reducedMotion, settings.cloudCoolTint, settings.cloudWhiteHighlight, settings.coldLightIntensity, settings.hazeDensity, settings.hazeHeight, settings.hazeMotionSpeed, settings.moonCloudLightIntensity, settings.moonLightColor, settings.moonLightIntensity])
   const moonSurface = useMoonSurfaceTextures()
   const moonHaloTexture = useMemo(() => createMoonHaloTexture(), [])

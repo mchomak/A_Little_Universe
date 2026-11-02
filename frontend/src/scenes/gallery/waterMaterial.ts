@@ -91,6 +91,8 @@ function waterHeight(u: number, v: number) {
   return Math.sin(TAU * (2 * u + v)) * 0.28
     + Math.sin(TAU * (5 * v - 3 * u)) * 0.15
     + Math.sin(TAU * (9 * u + 7 * v)) * 0.04
+    + Math.sin(TAU * (15 * u - 11 * v)) * 0.014
+    + Math.sin(TAU * (19 * v + 13 * u)) * 0.008
 }
 
 export function createGalleryWaterNormalTexture(size = 128) {

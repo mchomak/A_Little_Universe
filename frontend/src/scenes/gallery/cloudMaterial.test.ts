@@ -82,6 +82,19 @@ describe('gallery volumetric atmosphere material', () => {
     material.dispose()
   })
 
+  it('keeps cloud and haze noise at their original spatial scales', () => {
+    const material = createGalleryCloudVolumeMaterial(cloudOptions)
+
+    expect(material.defines?.CLOUD_DETAIL_OCTAVE).toBeUndefined()
+    expect(material.fragmentShader).toContain('float broadFrequency = 2.3;')
+    expect(material.fragmentShader).toContain('float detailFrequency = 7.1;')
+    expect(material.fragmentShader).toContain('broadFrequency = 1.55;')
+    expect(material.fragmentShader).toContain('detailFrequency = 4.4;')
+    expect(material.fragmentShader).not.toContain('fineDetail')
+
+    material.dispose()
+  })
+
   it('uses a depth-tested near shell for wisps that softly overlap the moon', () => {
     const volume = createGalleryCloudVolumeMaterial(cloudOptions)
     const moonWisp = createGalleryCloudVolumeMaterial({ ...cloudOptions, moonOcclusion: true })

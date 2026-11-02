@@ -25,7 +25,7 @@ export function WetFloor({
     quality,
     supportsFloatColorBuffer,
   }), [quality, supportsFloatColorBuffer])
-  const normalTexture = useMemo(() => createGalleryWaterNormalTexture(), [])
+  const normalTexture = useMemo(() => createGalleryWaterNormalTexture(quality === 'low' ? 128 : 512), [quality])
   const waterMaterial = useMemo(() => createGalleryWaterMaterial(
     reflectionPass.target.texture,
     normalTexture,

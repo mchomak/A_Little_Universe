@@ -1,4 +1,4 @@
-import { DataTexture, Matrix4, PerspectiveCamera, Texture } from 'three'
+import { DataTexture, Matrix4, PerspectiveCamera, RepeatWrapping, Texture } from 'three'
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 import { calculateMoonReflectionTrack, calculateWaterMoonReflectionGain, createGalleryWaterMaterial, createGalleryWaterNormalTexture, updateGalleryWaterCamera, updateGalleryWaterMaterial } from './waterMaterial'
@@ -78,5 +78,17 @@ describe('gallery water material', () => {
     material.dispose()
     normal.dispose()
     reflection.dispose()
+  })
+
+  it('builds a high-resolution normal field with fine, low-amplitude surface detail', () => {
+    const normal = createGalleryWaterNormalTexture(512)
+
+    expect(normal.image.width).toBe(512)
+    expect(normal.image.height).toBe(512)
+    expect(normal.image.data).toHaveLength(512 * 512 * 4)
+    expect(normal.wrapS).toBe(RepeatWrapping)
+    expect(new Set(normal.image.data).size).toBeGreaterThan(32)
+
+    normal.dispose()
   })
 })
