@@ -14,8 +14,8 @@ it('collapses a coincident reflection depth span to a finite shader fallback', (
   expect(getMoonReflectionDepthSpan(-126, -126)).toBe(0)
   expect(getMoonReflectionDepthSpan(-126, -125.99999)).toBe(0)
   expect(getMoonReflectionDepthSpan(-126, -34)).toBe(92)
-  const wetFloorShader = readFileSync(new URL('./WetFloor.tsx', import.meta.url), 'utf8')
-  expect(wetFloorShader).toContain('abs(uMoonDepthSpan) < 0.0001 ? 0.5')
+  const waterShader = readFileSync(new URL('./waterMaterial.ts', import.meta.url), 'utf8')
+  expect(waterShader).toContain('abs(uMoonDepthSpan) < 0.0001 ? 1.0')
 })
 
 it('keeps the frame tint subtle and bounded by directional moon fill', () => {

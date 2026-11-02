@@ -73,10 +73,12 @@ export function MoonlitWorld({
   settings,
   quality,
   halo,
+  reducedMotion,
 }: {
   settings: GallerySettings
   quality: GalleryQuality
   halo: CanvasTexture
+  reducedMotion: boolean
 }) {
   const cloudMasses = useMemo(() => getGalleryCloudMassesForCount(quality, settings.cloudLayerCount), [quality, settings.cloudLayerCount])
   const cloudMeshes = useRef<(Mesh | null)[]>([])
@@ -225,7 +227,7 @@ export function MoonlitWorld({
   const moon = { ...GALLERY_WORLD.moon, position: moonPosition }
   const moonScale = settings.moonSize
   return <group>
-    <WetFloor settings={settings} />
+    <WetFloor settings={settings} quality={quality} reducedMotion={reducedMotion} />
     {cloudMasses.map((mass, index) => <mesh
       key={mass.id}
       ref={(mesh) => { cloudMeshes.current[index] = mesh }}
