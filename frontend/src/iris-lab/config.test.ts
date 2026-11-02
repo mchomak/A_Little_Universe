@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyViewMode, builtInPresets, cameraViews, defaults, identifyIrisGradingPreset, irisGradingPresets, parseConfig, toggleIrisPreview, updateGradingColor, updateGradingSetting } from './config'
+import { applyViewMode, builtInPresets, cameraViews, defaults, getIrisBloomSettings, identifyIrisGradingPreset, irisGradingPresets, isPhotoIrisMode, parseConfig, toggleIrisPreview, updateGradingColor, updateGradingSetting } from './config'
 import { hexToOklch } from './gradingMath'
 
 const legacyGrading = {
@@ -60,6 +60,43 @@ describe('Iris Lab configuration', () => {
     expect(fibers.display.mode).toBe('Cinematic Fiber Iris')
     expect(parseConfig(fibers).blueEye.irisCenterX).toBe(0.42)
     expect(builtInPresets['Cinematic Fiber Iris']?.display.mode).toBe('Cinematic Fiber Iris')
+  })
+
+  it('adds Run 017 Blue Fibers as a centered 2D iris mode without spherical model layers', () => {
+    const view = applyViewMode(structuredClone(defaults), 'Run 017 Blue Fibers')
+    const preset = builtInPresets['Run 017 Blue Fibers']!
+    expect(isPhotoIrisMode(view.display.mode)).toBe(true)
+    expect(view.display.showModel).toBe(false)
+    expect(view.layers.eyeball).toBe(defaults.layers.eyeball)
+    expect(view.layers.cornea).toBe(defaults.layers.cornea)
+    expect(view.blueEye.irisCenterX).toBe(0.5)
+    expect(view.blueEye.irisCenterY).toBe(0.5)
+    expect(view.blueEye.irisRadiusX).toBeCloseTo(0.46)
+    expect(view.blueEye.irisRadiusY).toBeCloseTo(0.46)
+    expect(view.blueEye.pupilRadiusX).toBeCloseTo(0.08)
+    expect(view.blueEye.pupilRadiusY).toBeCloseTo(0.08)
+    expect(view.blueEye.irisColorStrength).toBe(1)
+    expect(view.blueEye.pupilDarkness).toBeGreaterThan(0.95)
+    expect(view.blueEye.showFiberRibbons).toBe(true)
+    expect(view.blueEye.showFiberSparks).toBe(true)
+    expect(view.blueEye.bloomStrength).toBe(0)
+    expect(preset.display.mode).toBe('Run 017 Blue Fibers')
+    const original = applyViewMode(view, 'Original')
+    expect(original.layers.eyeball).toBe(defaults.layers.eyeball)
+    expect(original.layers.cornea).toBe(defaults.layers.cornea)
+    expect(builtInPresets['Cinematic Fiber Iris']?.display.mode).toBe('Cinematic Fiber Iris')
+  })
+
+  it('routes Run 017 bloom through blueEye strength while preserving the shared glow path for Original', () => {
+    const run017 = applyViewMode(structuredClone(defaults), 'Run 017 Blue Fibers')
+    run017.blueEye.bloomStrength = 0.37
+    run017.effects.glow = 0.91
+    expect(getIrisBloomSettings(run017)).toEqual({ enabled: true, strength: 0.37 })
+    run017.blueEye.bloomStrength = 0
+    expect(getIrisBloomSettings(run017)).toEqual({ enabled: false, strength: 0 })
+
+    const original = applyViewMode(run017, 'Original')
+    expect(getIrisBloomSettings(original)).toEqual({ enabled: true, strength: 0.91 })
   })
 
   it('uses schema v6 for photo masks and view modes while preserving persisted OKLCH grading fields', () => {
@@ -197,7 +234,7 @@ describe('Iris Lab configuration', () => {
   })
 
   it('preserves existing app presets and camera views', () => {
-    expect(Object.keys(builtInPresets)).toHaveLength(11)
+    expect(Object.keys(builtInPresets)).toHaveLength(12)
     expect(builtInPresets['Memory Signal']?.display.mode).toBe('Memory Signal')
     expect(builtInPresets['Blue Fibers']?.display.mode).toBe('Fire Eye Fibers')
     expect(builtInPresets['Blue Particle Eye']?.display.mode).toBe('Blue Particle Eye')

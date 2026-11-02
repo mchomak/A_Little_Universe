@@ -9,11 +9,12 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import { loadIrisAssets, type IrisAssets } from './assets'
+import { loadIrisAssets, resolveIrisPhotoSource, type IrisAssets } from './assets'
 import { sampleMemorySignalPixels } from './memorySignal'
 import { MemorySignalBaseline } from './MemorySignalBaselineView'
 import { memorySignalBaselineDefaults } from './memorySignalBaseline'
 import { BlueParticleEyeView } from './BlueParticleEyeView'
+import { getIrisBloomSettings, isPhotoIrisMode } from './config'
 import type { CameraConfig, LabConfig, LabStats } from './config'
 import { irisGradingFunctionsGlsl, irisGradingUniformsGlsl } from './gradingShader'
 
@@ -188,7 +189,18 @@ function CameraRig({config, revision, onChange, onCameraReader}: {config: Camera
 function Post({config,albedoOnly,baseline}: {config:LabConfig;albedoOnly:boolean;baseline:boolean}) {
  const {gl,scene,camera,size}=useThree(); const composer=useMemo(()=>{ const c=new EffectComposer(gl);c.addPass(new RenderPass(scene,camera));c.addPass(new UnrealBloomPass(new THREE.Vector2(1,1),.2,.35,.85));if(!baseline)c.addPass(new OutputPass());return c },[gl,scene,camera,baseline])
  useEffect(()=>{const previous=gl.info.autoReset;gl.info.autoReset=false;return()=>{gl.info.autoReset=previous;composer.passes.forEach(p=>p.dispose());composer.dispose()}},[composer,gl]);useEffect(()=>{composer.setSize(size.width,size.height)},[composer,size]);
- useFrame(()=>{if(albedoOnly){gl.toneMapping=THREE.NoToneMapping;gl.toneMappingExposure=1;gl.info.reset();gl.render(scene,camera);return}gl.toneMapping=baseline||config.effects.toneMapping===0?THREE.NoToneMapping:config.effects.toneMapping===1?THREE.ReinhardToneMapping:THREE.ACESFilmicToneMapping;gl.toneMappingExposure=baseline?1:config.effects.exposure; const photoIris=config.display.mode==='Blue Particle Eye'||config.display.mode==='Cinematic Fiber Iris';const photoBloomStrength=config.blueEye.bloomStrength;const bloom=composer.passes[1] as UnrealBloomPass;bloom.enabled=baseline||(config.layers.bloom&&(!photoIris||photoBloomStrength>0)); bloom.strength=baseline?memorySignalBaselineDefaults.bloomStrength:photoIris?photoBloomStrength:config.effects.glow;bloom.radius=baseline?memorySignalBaselineDefaults.bloomRadius:config.effects.bloomRadius;bloom.threshold=baseline?memorySignalBaselineDefaults.bloomThreshold:config.effects.bloomThreshold;gl.info.reset();composer.render()},1);return null
+ useFrame(()=>{
+  if(albedoOnly){gl.toneMapping=THREE.NoToneMapping;gl.toneMappingExposure=1;gl.info.reset();gl.render(scene,camera);return}
+  gl.toneMapping=baseline||config.effects.toneMapping===0?THREE.NoToneMapping:config.effects.toneMapping===1?THREE.ReinhardToneMapping:THREE.ACESFilmicToneMapping
+  gl.toneMappingExposure=baseline?1:config.effects.exposure
+  const irisBloom=getIrisBloomSettings(config)
+  const bloom=composer.passes[1] as UnrealBloomPass
+  bloom.enabled=baseline||irisBloom.enabled
+  bloom.strength=baseline?memorySignalBaselineDefaults.bloomStrength:irisBloom.strength
+  bloom.radius=baseline?memorySignalBaselineDefaults.bloomRadius:config.effects.bloomRadius
+  bloom.threshold=baseline?memorySignalBaselineDefaults.bloomThreshold:config.effects.bloomThreshold
+  gl.info.reset();composer.render()
+ },1);return null
 }
 
 function Environment({strength}:{strength:number}) {
@@ -367,8 +379,9 @@ export function EyeViewport({config,cameraView,onCameraChange,onCameraReader,onS
  useEffect(()=>{let active=true;let loaded:IrisAssets|null=null;loadIrisAssets().then(value=>{loaded=value;if(active)setAssets(value);else value.dispose()}).catch(e=>{if(active)setError(e instanceof Error?e.message:String(e))});return()=>{active=false;loaded?.dispose()}},[])
  if(error)return <div role="alert">Could not load run_017: {error}</div>;if(!assets)return <div>Loading run_017...</div>
  const baseline=config.display.mode==='Memory Signal Baseline'
- const photoIris=config.display.mode==='Blue Particle Eye'||config.display.mode==='Cinematic Fiber Iris'
- const photoSource=imageSource??'/__iris-assets/source-eye.png'
+  const photoIris=isPhotoIrisMode(config.display.mode)
+  const photoSource=resolveIrisPhotoSource(config.display.mode,imageSource,import.meta.env.DEV)??''
+  const baselineSource=imageSource??(import.meta.env.DEV?'/__iris-assets/source-eye.png':null)
  const photoCamera=photoIris?{...config.camera,distance:Math.min(config.camera.distance,3.25),targetX:0,targetY:0}:config.camera
- return <><Canvas key={String(config.effects.antialias)} frameloop={visible?'always':'never'} dpr={baseline?Math.min(2,window.devicePixelRatio):Math.min(2,config.effects.dpr)} camera={baseline?{position:[0,0,500],fov:60,near:1,far:3000}:{position:[0,0,5.25],fov:config.camera.fov,near:.01,far:100}} gl={{antialias:baseline?false:config.effects.antialias,preserveDrawingBuffer:true}}>{!baseline&&!albedoOnly&&!photoIris&&<Environment strength={config.lighting.environment}/>}<ContextEvents onChange={setContextLost}/><color attach="background" args={[baseline?'#000000':photoIris?'#020612':albedoOnly?'#777a80':config.lighting.background]}/>{baseline?<MemorySignalBaseline imageSource={photoSource} onCount={onMemorySignalCount??(()=>{})} onStatus={onBaselineStatus??(()=>{})}/>:<><CameraRig config={photoCamera} revision={cameraView} onChange={onCameraChange} onCameraReader={onCameraReader}/>{photoIris?<BlueParticleEyeView config={config} imageSource={photoSource} onPointCount={onMemorySignalCount??(()=>{})} onStatus={onBaselineStatus??(()=>{})}/>:<Eye config={config} assets={assets} diagnostic={diagnostic} previewGrading={previewGrading} albedoOnly={albedoOnly} imageSource={imageSource} onMemorySignalCount={onMemorySignalCount}/>}</>}<Metrics config={config} assets={assets} onStats={onStats} diagnostic={diagnostic}/><Post config={config} albedoOnly={albedoOnly} baseline={baseline}/></Canvas>{contextLost && <div role="alert">WebGL context lost. Waiting for restoration.</div>}</>
+ return <><Canvas key={String(config.effects.antialias)} frameloop={visible?'always':'never'} dpr={baseline?Math.min(2,window.devicePixelRatio):Math.min(2,config.effects.dpr)} camera={baseline?{position:[0,0,500],fov:60,near:1,far:3000}:{position:[0,0,5.25],fov:config.camera.fov,near:.01,far:100}} gl={{antialias:baseline?false:config.effects.antialias,preserveDrawingBuffer:true}}>{!baseline&&!albedoOnly&&!photoIris&&<Environment strength={config.lighting.environment}/>}<ContextEvents onChange={setContextLost}/><color attach="background" args={[baseline?'#000000':photoIris?'#020612':albedoOnly?'#777a80':config.lighting.background]}/>{baseline?<MemorySignalBaseline imageSource={baselineSource} onCount={onMemorySignalCount??(()=>{})} onStatus={onBaselineStatus??(()=>{})}/>:<><CameraRig config={photoCamera} revision={cameraView} onChange={onCameraChange} onCameraReader={onCameraReader}/>{photoIris?<BlueParticleEyeView config={config} imageSource={photoSource} onPointCount={onMemorySignalCount??(()=>{})} onStatus={onBaselineStatus??(()=>{})}/>:<Eye config={config} assets={assets} diagnostic={diagnostic} previewGrading={previewGrading} albedoOnly={albedoOnly} imageSource={imageSource} onMemorySignalCount={onMemorySignalCount}/>}</>}<Metrics config={config} assets={assets} onStats={onStats} diagnostic={diagnostic}/><Post config={config} albedoOnly={albedoOnly} baseline={baseline}/></Canvas>{contextLost && <div role="alert">WebGL context lost. Waiting for restoration.</div>}</>
 }

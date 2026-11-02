@@ -161,6 +161,7 @@ function BlueParticleEyeSourceView({ config, imageSource, onPointCount, onStatus
   const fiberUniforms = useMemo(() => ({ time: { value: 0 }, animationSpeed: { value: 0.02 }, movement: { value: 0 }, opacity: { value: 1 }, brightness: { value: 1} }), [])
   const sparkUniforms = useMemo(() => ({ time: { value: 0 }, animationSpeed: { value: 0.02 }, movement: { value: 0 }, opacity: { value: 1 }, brightness: { value: 1} }), [])
   const blue = config.blueEye
+  const showFiberLayers = config.display.mode === 'Cinematic Fiber Iris' || config.display.mode === 'Run 017 Blue Fibers'
   const originX = (Math.cos(blue.irisRotation) * (blue.pupilCenterX - blue.irisCenterX) + Math.sin(blue.irisRotation) * (blue.pupilCenterY - blue.irisCenterY)) / blue.irisRadiusX
   const originY = -(-Math.sin(blue.irisRotation) * (blue.pupilCenterX - blue.irisCenterX) + Math.cos(blue.irisRotation) * (blue.pupilCenterY - blue.irisCenterY)) / blue.irisRadiusY
   const innerRadius = Math.max(blue.pupilRadiusX / blue.irisRadiusX, blue.pupilRadiusY / blue.irisRadiusY) * 1.015
@@ -217,10 +218,10 @@ function BlueParticleEyeSourceView({ config, imageSource, onPointCount, onStatus
     {sourceGeometry && blue.showSourceParticles && <points geometry={sourceGeometry} frustumCulled={false}>
       <shaderMaterial ref={pointMaterial} vertexShader={PHOTO_VERTEX} fragmentShader={PHOTO_FRAGMENT} uniforms={photoUniforms} transparent depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
     </points>}
-    {config.display.mode === 'Cinematic Fiber Iris' && blue.showFiberRibbons && <mesh geometry={fiberGeometry} frustumCulled={false}>
+    {showFiberLayers && blue.showFiberRibbons && <mesh geometry={fiberGeometry} frustumCulled={false}>
       <shaderMaterial ref={ribbonMaterial} vertexShader={FIBER_VERTEX} fragmentShader={FIBER_FRAGMENT} uniforms={fiberUniforms} transparent depthWrite={false} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} toneMapped={false} />
     </mesh>}
-    {config.display.mode === 'Cinematic Fiber Iris' && blue.showFiberSparks && <points geometry={sparkGeometry} frustumCulled={false}>
+    {showFiberLayers && blue.showFiberSparks && <points geometry={sparkGeometry} frustumCulled={false}>
       <shaderMaterial ref={sparkMaterial} vertexShader={SPARK_VERTEX} fragmentShader={SPARK_FRAGMENT} uniforms={sparkUniforms} transparent depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
     </points>}
   </group>

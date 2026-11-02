@@ -44,7 +44,7 @@ export type BlueEyeSettings = {
 
 export type LabConfig = {
   version: 6
-  display: { mode: 'Original' | 'Memory Signal' | 'Memory Signal Baseline' | 'Blue Particle Eye' | 'Cinematic Fiber Iris' | 'Fire Eye Fibers' | 'Hybrid'; showModel: boolean; modelOpacity: number; particleOpacity: number; fiberOpacity: number }
+  display: { mode: 'Original' | 'Memory Signal' | 'Memory Signal Baseline' | 'Blue Particle Eye' | 'Cinematic Fiber Iris' | 'Run 017 Blue Fibers' | 'Fire Eye Fibers' | 'Hybrid'; showModel: boolean; modelOpacity: number; particleOpacity: number; fiberOpacity: number }
   camera: { distance: number; azimuth: number; elevation: number; fov: number; targetX: number; targetY: number; autoRotate: boolean; autoSpeed: number; locked: boolean }
   eye: { scale: number; irisRadius: number; pupilRadius: number; irisDepth: number; corneaScale: number; corneaCurvature: number }
   material: { scleraTint: string; roughness: number; reflection: number; corneaOpacity: number; corneaRoughness: number; irisBrightness: number; irisContrast: number; irisSaturation: number; irisDetail: number }
@@ -64,12 +64,24 @@ export type LabStats = { fps: number; drawCalls: number; particles: number; geom
 export type IrisPreviewState = { previewGrading: boolean; albedoOnly: boolean }
 export type IrisPreviewAction = keyof IrisPreviewState
 
+export function isPhotoIrisMode(mode: IrisViewMode): boolean {
+  return mode === 'Blue Particle Eye' || mode === 'Cinematic Fiber Iris' || mode === 'Run 017 Blue Fibers'
+}
+
+export function getIrisBloomSettings(config: LabConfig): { enabled: boolean; strength: number } {
+  const photoIris = isPhotoIrisMode(config.display.mode)
+  const strength = photoIris ? config.blueEye.bloomStrength : config.effects.glow
+  return { enabled: config.layers.bloom && (!photoIris || strength > 0), strength }
+}
+
 /** Selects a view composition while leaving camera, grading and other adjustments intact. */
 export function applyViewMode(config: LabConfig, mode: IrisViewMode): LabConfig {
   const hybrid = mode === 'Hybrid'
+  const run017 = mode === 'Run 017 Blue Fibers'
   return {
     ...config,
     display: { ...config.display, mode, showModel: mode === 'Original' || hybrid },
+    ...(run017 ? { blueEye: { ...config.blueEye, irisCenterX: 0.5, irisCenterY: 0.5, irisRadiusX: 0.46, irisRadiusY: 0.46, pupilCenterX: 0.5, pupilCenterY: 0.5, pupilRadiusX: 0.08, pupilRadiusY: 0.08 } } : {}),
     layers: {
       ...config.layers,
       memorySignal: mode === 'Memory Signal' || hybrid,
@@ -200,6 +212,7 @@ export const builtInPresets: Record<string, LabConfig> = {
   'Memory Signal': { ...copy(defaults), display: { ...defaults.display, mode: 'Memory Signal', showModel: false }, particles: { ...defaults.particles, density: 0.92, size: 0.88, brightness: 1.12, depth: 0.025 }, effects: { ...defaults.effects, glow: 0.32, glowColor: '#a9d8ff' }, layers: { ...defaults.layers, memorySignal: true, proceduralFibers: false, primaryFibers: false, secondaryFibers: false, microParticles: false, highlightParticles: false, atmosphericGlow: false } },
   'Blue Particle Eye': applyViewMode(copy(defaults), 'Blue Particle Eye'),
   'Cinematic Fiber Iris': { ...applyViewMode(copy(defaults), 'Cinematic Fiber Iris'), fibers: { ...defaults.fibers, density: 0.86, secondaryDensity: 0.72, length: 1.12, secondaryLength: 0.82, thickness: 1.15, secondaryThickness: 0.72, curvature: 0.64, secondaryCurvature: 0.58, brightness: 0.92, secondaryBrightness: 0.72, branching: 0.25, glow: 0.35, secondaryGlow: 0.2, opacity: 0.92, noiseScale: 4.2 } },
+  'Run 017 Blue Fibers': { ...applyViewMode(copy(defaults), 'Run 017 Blue Fibers'), camera: { ...defaults.camera, distance: 3.25 }, blueEye: { ...defaults.blueEye, irisCenterX: 0.5, irisCenterY: 0.5, irisRadiusX: 0.46, irisRadiusY: 0.46, pupilCenterX: 0.5, pupilCenterY: 0.5, pupilRadiusX: 0.08, pupilRadiusY: 0.08, irisFocus: 1, outerEyeFade: 1, irisColorStrength: 1, pupilDarkness: 0.99, particleDensity: 0.3, particleSize: 1.2, particleBrightness: 1.3, fiberDensity: 0.84, fiberLength: 1.08, fiberCurvature: 0.78, fiberThickness: 1.1, fiberBrightness: 1.16, fiberDepth: 0.2, bloomStrength: 0 } },
   'Blue Fibers': { ...copy(defaults), display: { ...defaults.display, mode: 'Fire Eye Fibers', showModel: false }, fibers: { ...defaults.fibers, density: 0.72, secondaryDensity: 0.44, brightness: 0.8, opacity: 0.92 }, colorGrading: irisGradingPresets['Vasilisa Natural Blue'], layers: { ...defaults.layers, memorySignal: false, proceduralFibers: true, microParticles: false, highlightParticles: false, atmosphericGlow: false, primaryFibers: false, secondaryFibers: false } },
   'Hybrid Cinematic': { ...copy(defaults), display: { ...defaults.display, mode: 'Hybrid' }, particles: { ...defaults.particles, density: 0.88, size: 0.92, brightness: 0.96 }, fibers: { ...defaults.fibers, density: 0.8, secondaryDensity: 0.56, brightness: 0.72, opacity: 0.88 }, effects: { ...defaults.effects, glow: 0.55, glowColor: '#9ccaff', bloomThreshold: 0.64 }, colorGrading: irisGradingPresets['Cinematic Blue'], layers: { ...defaults.layers, memorySignal: true, proceduralFibers: true } },
 }
@@ -247,7 +260,7 @@ function validateGroup(group: string, source: unknown, target: Record<string, un
   for (const key of Object.keys(target)) {
     const next = values[key]
     if (typeof next !== typeof target[key] || (typeof next === 'number' && !Number.isFinite(next)) || (typeof next === 'string' && !(group === 'display' && key === 'mode') && !/^#[0-9a-f]{6}$/i.test(next))) throw new Error(`Invalid setting: ${group}.${key}`)
-    if (group === 'display' && key === 'mode' && !['Original', 'Memory Signal', 'Memory Signal Baseline', 'Blue Particle Eye', 'Cinematic Fiber Iris', 'Fire Eye Fibers', 'Hybrid'].includes(next as string)) throw new Error('Invalid display mode')
+    if (group === 'display' && key === 'mode' && !['Original', 'Memory Signal', 'Memory Signal Baseline', 'Blue Particle Eye', 'Cinematic Fiber Iris', 'Run 017 Blue Fibers', 'Fire Eye Fibers', 'Hybrid'].includes(next as string)) throw new Error('Invalid display mode')
     const bounds = limits[`${group}.${key}`]
     if (typeof next === 'number' && (!bounds || next < bounds[0] || next > bounds[1])) throw new Error(`Out of range: ${group}.${key}`)
     if (group === 'effects' && key === 'toneMapping' && !Number.isInteger(next)) throw new Error('Invalid tone mapping')
