@@ -23,8 +23,55 @@ describe('Iris Lab configuration', () => {
     expect(original.layers.proceduralFibers).toBe(false)
   })
 
-  it('uses schema v4 for view modes and exposes every persisted OKLCH grading field', () => {
-    expect(defaults.version).toBe(4)
+  it('adds a standalone source-faithful Memory Signal Baseline mode without changing the original or legacy mode', () => {
+    const baseline = applyViewMode(structuredClone(defaults), 'Memory Signal Baseline')
+    expect(baseline.display.mode).toBe('Memory Signal Baseline')
+    expect(baseline.display.showModel).toBe(false)
+    expect(baseline.layers.memorySignal).toBe(false)
+    expect(parseConfig(baseline).display.mode).toBe('Memory Signal Baseline')
+    expect(applyViewMode(baseline, 'Original').display.showModel).toBe(true)
+  })
+
+  it('adds focused photo iris modes with independent editable masks and leaves shared appearance tuning untouched', () => {
+    const input = structuredClone(defaults)
+    input.camera.distance = 4.9
+    input.particles = { ...input.particles, density: 0.73, size: 2.3, glow: 0.61, opacity: 0.44, brightness: 1.4 }
+    input.fibers = { ...input.fibers, density: 0.33, curvature: 0.18, length: 0.91, thickness: 0.64, brightness: 0.42, opacity: 0.55, noiseScale: 8.1 }
+    input.effects.glow = 0.63
+    input.layers.bloom = true
+    const blue = applyViewMode(input, 'Blue Particle Eye')
+    blue.blueEye.irisCenterX = 0.42
+    const fibers = applyViewMode(blue, 'Cinematic Fiber Iris')
+    const original = applyViewMode(fibers, 'Original')
+
+    expect(blue.display.showModel).toBe(false)
+    expect(blue.layers.bloom).toBe(true)
+    expect(blue.effects.glow).toBe(0.63)
+    expect(blue.blueEye.irisFocus).toBe(1)
+    expect(blue.blueEye.pupilDarkness).toBeGreaterThan(0.95)
+    expect(blue.blueEye.particleDensity).toBe(0.3)
+    expect(blue.camera).toEqual(input.camera)
+    expect(blue.particles).toEqual(input.particles)
+    expect(fibers.fibers).toEqual(input.fibers)
+    expect(original.particles).toEqual(input.particles)
+    expect(original.fibers).toEqual(input.fibers)
+    expect(original.effects).toEqual(input.effects)
+    expect(original.layers.bloom).toBe(true)
+    expect(fibers.display.mode).toBe('Cinematic Fiber Iris')
+    expect(parseConfig(fibers).blueEye.irisCenterX).toBe(0.42)
+    expect(builtInPresets['Cinematic Fiber Iris']?.display.mode).toBe('Cinematic Fiber Iris')
+  })
+
+  it('uses schema v6 for photo masks and view modes while preserving persisted OKLCH grading fields', () => {
+    expect(defaults.version).toBe(6)
+    expect(Object.keys(defaults.blueEye)).toEqual([
+      'irisCenterX', 'irisCenterY', 'irisRadiusX', 'irisRadiusY', 'irisRotation',
+      'pupilCenterX', 'pupilCenterY', 'pupilRadiusX', 'pupilRadiusY', 'pupilRotation',
+      'irisFocus', 'outerEyeFade', 'irisColorStrength', 'pupilDarkness', 'particleDepth',
+      'particleDensity', 'particleSize', 'particleOpacity', 'particleBrightness', 'particleScatter',
+      'fiberDensity', 'fiberLength', 'fiberCurvature', 'fiberThickness', 'fiberBrightness', 'fiberOpacity', 'fiberNoiseScale', 'fiberDepth', 'fiberAnimationSpeed', 'bloomStrength',
+      'showSourceParticles', 'showFiberRibbons', 'showFiberSparks',
+    ])
     expect(Object.keys(defaults.colorGrading).sort()).toEqual([
       'enabled', 'strength', 'targetBlueHue', 'blueChroma', 'grayRecolorStrength', 'lightnessPreservation', 'brightness', 'contrast',
       'innerZoneRadius', 'amberHue', 'amberChroma', 'amberPreservation', 'amberTransitionWidth',
@@ -34,7 +81,7 @@ describe('Iris Lab configuration', () => {
     ].sort())
   })
 
-  it('round trips v4 values without mutating the shared defaults', () => {
+  it('round trips v5 photo mask values without mutating the shared defaults', () => {
     const input = structuredClone(defaults)
     input.camera.azimuth = 0.4
     input.particles.size = 2
@@ -49,7 +96,7 @@ describe('Iris Lab configuration', () => {
     delete legacyV1.colorGrading
     legacyV1.version = 1
     const migratedV1 = parseConfig(legacyV1)
-    expect(migratedV1.version).toBe(4)
+    expect(migratedV1.version).toBe(6)
     expect(migratedV1.colorGrading).toEqual(defaults.colorGrading)
 
     const legacyV2 = structuredClone(defaults) as Record<string, unknown>
@@ -57,7 +104,7 @@ describe('Iris Lab configuration', () => {
     legacyV2.camera = { ...defaults.camera, azimuth: 0.41 }
     legacyV2.colorGrading = legacyGrading
     const migratedV2 = parseConfig(legacyV2)
-    expect(migratedV2.version).toBe(4)
+    expect(migratedV2.version).toBe(6)
     expect(migratedV2.camera.azimuth).toBe(0.41)
     expect(migratedV2.colorGrading.grayRecolorStrength).toBe(legacyGrading.blueCyanBalance)
     expect(migratedV2.colorGrading.brightness).toBe(legacyGrading.brightness)
@@ -76,11 +123,34 @@ describe('Iris Lab configuration', () => {
     const migratedV3 = parseConfig(legacyV3)
     expect(migratedV3.display.mode).toBe('Original')
     expect(migratedV3.memorySignal).toEqual(defaults.memorySignal)
-    expect(migratedV3.version).toBe(4)
+    expect(migratedV3.version).toBe(6)
+  })
+
+  it('migrates v4 configs by adding the default photo mask', () => {
+    const previous = structuredClone(defaults) as Record<string, unknown>
+    previous.version = 4
+    delete previous.blueEye
+    const migrated = parseConfig(previous)
+    expect(migrated.version).toBe(6)
+    expect(migrated.blueEye).toEqual(defaults.blueEye)
+  })
+
+  it('migrates schema v5 photo masks while preserving user mask values and adding local particle settings', () => {
+    const previous = structuredClone(defaults) as unknown as Record<string, unknown>
+    previous.version = 5
+    const oldBlueEye = previous.blueEye as Record<string, unknown>
+    oldBlueEye.irisCenterX = 0.41
+    for (const key of ['particleDensity', 'particleSize', 'particleOpacity', 'particleBrightness', 'particleScatter', 'fiberDensity', 'fiberLength', 'fiberCurvature', 'fiberThickness', 'fiberBrightness', 'fiberOpacity', 'fiberNoiseScale', 'fiberDepth', 'fiberAnimationSpeed', 'bloomStrength']) delete oldBlueEye[key]
+    const migrated = parseConfig(previous)
+    expect(migrated.version).toBe(6)
+    expect(migrated.blueEye.irisCenterX).toBe(0.41)
+    expect(migrated.blueEye.particleDensity).toBe(defaults.blueEye.particleDensity)
+    expect(migrated.blueEye.fiberCurvature).toBe(defaults.blueEye.fiberCurvature)
+    expect(migrated.blueEye.bloomStrength).toBe(0)
   })
 
   it('rejects unsupported versions, missing fields, invalid ranges and malformed colors', () => {
-    expect(() => parseConfig({ ...defaults, version: 5 })).toThrow()
+    expect(() => parseConfig({ ...defaults, version: 7 })).toThrow()
     expect(() => parseConfig({ ...defaults, camera: {} })).toThrow()
     expect(() => parseConfig({ ...defaults, effects: { ...defaults.effects, dpr: Number.NaN } })).toThrow()
     expect(() => parseConfig({ ...defaults, effects: { ...defaults.effects, dpr: -1 } })).toThrow()
@@ -91,6 +161,7 @@ describe('Iris Lab configuration', () => {
     expect(() => parseConfig({ ...defaults, colorGrading: { ...defaults.colorGrading, mainBlueColor: 'blue' } })).toThrow()
     expect(() => parseConfig({ ...defaults, eye: { ...defaults.eye, irisRadius: 10 } })).toThrow()
     expect(() => parseConfig({ ...defaults, fibers: { ...defaults.fibers, secondaryLength: 3 } })).toThrow()
+    expect(() => parseConfig({ ...defaults, blueEye: { ...defaults.blueEye, irisRadiusX: 0.01 } })).toThrow()
     expect(() => parseConfig({ ...defaults, effects: { ...defaults.effects, toneMapping: 1.5 } })).toThrow()
   })
 
@@ -126,9 +197,11 @@ describe('Iris Lab configuration', () => {
   })
 
   it('preserves existing app presets and camera views', () => {
-    expect(Object.keys(builtInPresets)).toHaveLength(9)
+    expect(Object.keys(builtInPresets)).toHaveLength(11)
     expect(builtInPresets['Memory Signal']?.display.mode).toBe('Memory Signal')
     expect(builtInPresets['Blue Fibers']?.display.mode).toBe('Fire Eye Fibers')
+    expect(builtInPresets['Blue Particle Eye']?.display.mode).toBe('Blue Particle Eye')
+    expect(builtInPresets['Cinematic Fiber Iris']?.display.mode).toBe('Cinematic Fiber Iris')
     expect(builtInPresets['Hybrid Cinematic']?.layers.memorySignal).toBe(true)
     expect(builtInPresets['Natural Eye']?.effects.mix).not.toBe(builtInPresets['Cosmic Blue']?.effects.mix)
     expect(cameraViews['Macro Iris']?.distance).toBeLessThan(cameraViews['Full Eye']!.distance)
