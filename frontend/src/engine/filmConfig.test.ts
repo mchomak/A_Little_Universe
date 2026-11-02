@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+﻿import { describe, expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../systems/scene-config/config'
 import { createHandwritingSchedule, getBloomSceneFrames, getCreditsScrollDuration, getCreditsScrollProgress, getGreetingFrames, getGrowthSceneFrames, getPrologueCopy, getPrologueFrames, getPrologueParticleOpacity, getSceneDuration, retimeSceneElapsed } from './filmConfig'
 
@@ -90,10 +90,10 @@ describe('greeting frames', () => {
 })
 
 describe('Lily scene timing', () => {
-  it('uses the v16 default fall duration when a saved value is not finite', () => {
+  it('uses the v17 default fall duration when a saved value is not finite', () => {
     const settings = { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, seedFallDuration: Number.NaN }
     const growth = getGrowthSceneFrames(settings)
-    expect(growth.fall[1] - growth.fall[0]).toBeCloseTo(3.6, 5)
+    expect(growth.fall[1] - growth.fall[0]).toBeCloseTo(4.8, 5)
   })
 
   it('fits full Growth and Bloom clips plus the existing handoff and contemplation beats', () => {

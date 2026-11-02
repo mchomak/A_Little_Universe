@@ -6,16 +6,42 @@ export interface GrowthCloudMass {
   seed: number
   position: readonly [number, number, number]
   radii: readonly [number, number, number]
+  /** Thin wisps can cross the seed path briefly while keeping its silhouette readable. */
+  pathCrossing?: boolean
+  densityScale?: number
+  /** Only sparse far masses persist into lily growth. */
+  persistent?: boolean
 }
 
+/** Distributed along the seed's full fall, with near, island-level and deep-background layers. */
 const GROWTH_CLOUD_LAYOUT: readonly GrowthCloudMass[] = [
-  { id: 'near-left', seed: 11, position: [-2.05, 0.35, 1.1], radii: [0.82, 0.62, 0.74] },
-  { id: 'far-right', seed: 23, position: [2.38, 2.15, -3.0], radii: [0.95, 0.72, 0.9] },
-  { id: 'near-right', seed: 37, position: [3.0, -0.2, 1.55], radii: [0.82, 0.6, 0.68] },
-  { id: 'far-left', seed: 41, position: [-2.72, 1.55, -3.5], radii: [0.99, 0.68, 0.92] },
-  { id: 'deep-right', seed: 53, position: [3.4, 0.45, -4.4], radii: [0.75, 0.58, 0.8] },
-  { id: 'near-back-left', seed: 67, position: [-3.2, -0.85, 2.85], radii: [0.82, 0.6, 0.76] },
+  { id: 'high-near-left', seed: 11, position: [-3.05, 5.2, 2.5], radii: [0.95, 0.64, 0.82] },
+  { id: 'upper-far-right', seed: 23, position: [3.35, 4.85, -4.8], radii: [1.02, 0.72, 0.96] },
+  { id: 'upper-path-wisp', seed: 37, position: [0.28, 3.35, 0.12], radii: [0.65, 0.38, 0.68], pathCrossing: true, densityScale: 0.22 },
+  { id: 'high-far-left', seed: 41, position: [-3.55, 4.15, -4.1], radii: [1.08, 0.73, 0.98] },
+  { id: 'mid-high-near-left', seed: 53, position: [-3.3, 3.8, 3.1], radii: [0.9, 0.62, 0.84] },
+  { id: 'mid-high-far-right', seed: 67, position: [3.7, 3.45, -5.4], radii: [1.1, 0.75, 0.98] },
+  { id: 'upper-mid-path-wisp', seed: 71, position: [-0.32, 2.25, -0.1], radii: [0.62, 0.34, 0.66], pathCrossing: true, densityScale: 0.24 },
+  { id: 'mid-far-left', seed: 83, position: [-3.55, 2.75, -4.7], radii: [1.06, 0.7, 0.94] },
+  { id: 'mid-path-wisp', seed: 97, position: [0.35, 1.05, 0.08], radii: [0.68, 0.36, 0.7], pathCrossing: true, densityScale: 0.22 },
+  { id: 'mid-far-right', seed: 101, position: [3.35, 2.05, -5.2], radii: [1.04, 0.71, 0.96] },
+  { id: 'low-near-right', seed: 113, position: [2.75, 1.7, 2.25], radii: [0.86, 0.62, 0.78] },
+  { id: 'low-far-left', seed: 127, position: [-3.7, 1.35, -4.4], radii: [1.1, 0.74, 1.02] },
+  { id: 'island-near-left', seed: 131, position: [-3.05, 1, 2.6], radii: [0.92, 0.66, 0.84] },
+  { id: 'island-far-right', seed: 149, position: [3.45, 0.65, -5.2], radii: [1.08, 0.73, 0.98], persistent: true },
+  { id: 'low-path-wisp', seed: 157, position: [-0.28, -0.1, -0.15], radii: [0.62, 0.4, 0.68], pathCrossing: true, densityScale: 0.24 },
+  { id: 'island-far-left', seed: 163, position: [-3.65, -0.05, -4.7], radii: [1.08, 0.72, 1], persistent: true },
+  { id: 'low-background-left', seed: 179, position: [-4.1, -0.4, -6.2], radii: [1.14, 0.76, 1.08], persistent: true },
+  { id: 'low-background-right', seed: 191, position: [3.8, -0.75, -6], radii: [1.12, 0.74, 1.04], persistent: true },
+  { id: 'deep-low-near-left', seed: 199, position: [-3.1, -1.05, 2.4], radii: [0.9, 0.63, 0.82] },
+  { id: 'deep-low-far-right', seed: 211, position: [3.55, -1.35, -5.4], radii: [1.08, 0.73, 1] },
+  { id: 'high-background-left', seed: 223, position: [-4.2, 5.55, -6.8], radii: [1.18, 0.77, 1.1] },
+  { id: 'deep-near-right', seed: 227, position: [3.05, -1.7, 2.8], radii: [0.94, 0.65, 0.86] },
+  { id: 'high-background-right', seed: 239, position: [4.05, 5.9, -6.4], radii: [1.16, 0.76, 1.08] },
+  { id: 'deep-near-left', seed: 241, position: [-3.2, -2.05, 2.45], radii: [0.92, 0.64, 0.84] },
 ]
+
+export const MAX_GROWTH_CLOUD_MASSES = GROWTH_CLOUD_LAYOUT.length
 
 export const GROWTH_CLOUD_RAY_STEPS = 12
 
@@ -95,18 +121,21 @@ const cloudFragmentShader = `
       float broadNoise = softNoise(flowPoint);
       float detailNoise = softNoise(flowPoint * 1.85 + vec3(4.3, 1.7, 8.1));
 
+      float shapeX = sin(uSeed * 0.19) * 0.15;
+      float shapeY = cos(uSeed * 0.13) * 0.12;
+      float shapeZ = sin(uSeed * 0.17) * 0.14;
       vec3 shiftedPoint = localPoint + vec3(
-        sin(uSeed * 0.12) * 0.035,
-        cos(uSeed * 0.09) * 0.025,
-        sin(uSeed * 0.07) * 0.03
+        sin(uSeed * 0.12) * 0.08,
+        cos(uSeed * 0.09) * 0.065,
+        sin(uSeed * 0.07) * 0.075
       );
-      float turnAngle = uSeed * 0.11;
+      float turnAngle = uSeed * 0.17;
       mat2 cloudTurn = mat2(cos(turnAngle), -sin(turnAngle), sin(turnAngle), cos(turnAngle));
       shiftedPoint.xz = cloudTurn * shiftedPoint.xz;
-      float lobeA = 1.0 - smoothstep(0.36, 0.9, length((shiftedPoint - vec3(-0.38, -0.06, 0.02)) * vec3(1.28, 1.36, 1.18)));
-      float lobeB = 1.0 - smoothstep(0.38, 0.91, length((shiftedPoint - vec3(0.31, 0.02, -0.08)) * vec3(1.32, 1.2, 1.26)));
-      float lobeC = 1.0 - smoothstep(0.34, 0.86, length((shiftedPoint - vec3(-0.08, 0.34, 0.11)) * vec3(1.38, 1.42, 1.2)));
-      float lobeD = 1.0 - smoothstep(0.34, 0.85, length((shiftedPoint - vec3(0.07, -0.32, 0.14)) * vec3(1.26, 1.38, 1.32)));
+      float lobeA = 1.0 - smoothstep(0.36, 0.9, length((shiftedPoint - vec3(-0.38 + shapeX, -0.06 + shapeY, 0.02 + shapeZ)) * vec3(1.28, 1.36, 1.18)));
+      float lobeB = 1.0 - smoothstep(0.38, 0.91, length((shiftedPoint - vec3(0.31 - shapeY, 0.02 + shapeZ, -0.08 - shapeX)) * vec3(1.32, 1.2, 1.26)));
+      float lobeC = 1.0 - smoothstep(0.34, 0.86, length((shiftedPoint - vec3(-0.08 + shapeZ, 0.34 - shapeX, 0.11 + shapeY)) * vec3(1.38, 1.42, 1.2)));
+      float lobeD = 1.0 - smoothstep(0.34, 0.85, length((shiftedPoint - vec3(0.07 - shapeX, -0.32 + shapeY, 0.14 - shapeZ)) * vec3(1.26, 1.38, 1.32)));
       float cloudBody = smoothUnion(smoothUnion(lobeA, lobeB, 0.17), smoothUnion(lobeC, lobeD, 0.16), 0.18);
       float edgeErosion = (broadNoise - 0.5) * 0.66 + (detailNoise - 0.5) * 0.29;
       cloudBody = smoothstep(0.12, 0.55, cloudBody + edgeErosion);
@@ -147,10 +176,41 @@ export interface GrowthCloudMaterialOptions {
 }
 
 export function getGrowthCloudMasses(count: number, scale: number): GrowthCloudMass[] {
-  const safeCount = Number.isFinite(count) ? Math.max(0, Math.min(GROWTH_CLOUD_LAYOUT.length, Math.floor(count))) : 3
+  const safeCount = Number.isFinite(count) ? Math.max(0, Math.min(GROWTH_CLOUD_LAYOUT.length, Math.floor(count))) : 18
   const safeScale = Number.isFinite(scale) ? Math.max(0.4, Math.min(2, scale)) : 1
   const positionScale = 1 + (safeScale - 1) * 0.35
-  return GROWTH_CLOUD_LAYOUT.slice(0, safeCount).map((mass) => ({
+  const verticalLayout = GROWTH_CLOUD_LAYOUT.map((mass) => {
+    const crossing = mass.pathCrossing ?? false
+    const xJitter = seededVariation(mass.seed, 1) * (crossing ? 0 : 0.72)
+    const yJitter = seededVariation(mass.seed, 2) * (crossing ? 0.1 : 0.4)
+    const zJitter = seededVariation(mass.seed, 3) * (crossing ? 0 : 1.25)
+    const radiusVariation = [4, 5, 6].map((salt) => 1 + seededVariation(mass.seed, salt) * 0.24) as [number, number, number]
+    return {
+      ...mass,
+      position: [mass.position[0] + xJitter, mass.position[1] + yJitter, mass.position[2] + zJitter] as const,
+      radii: [mass.radii[0] * radiusVariation[0], mass.radii[1] * radiusVariation[1], mass.radii[2] * radiusVariation[2]] as const,
+    }
+  }).sort((a, b) => a.position[1] - b.position[1])
+  // Lower cloud-count values keep coverage from the island through the full descent.
+  const selectedMasses = safeCount === 0 ? [] : safeCount === 1
+    ? [verticalLayout[Math.floor(verticalLayout.length / 2)]!]
+    : safeCount >= 4
+      ? (() => {
+        const wisps = verticalLayout.filter(({ pathCrossing }) => pathCrossing)
+        const background = verticalLayout.filter(({ pathCrossing }) => !pathCrossing)
+        const persistent = background.filter(({ persistent: keep }) => keep)
+        const reserved = safeCount >= 8 ? [...wisps, ...persistent]
+          : [...wisps, ...persistent.slice(0, Math.max(0, safeCount - wisps.length))]
+        const candidates = verticalLayout.filter((mass) => !reserved.includes(mass))
+        const candidateCount = Math.max(0, safeCount - reserved.length)
+        const selectedCandidates = candidateCount === 0 ? [] : candidateCount === 1
+          ? [candidates[Math.floor(candidates.length / 2)]!]
+          : Array.from({ length: candidateCount }, (_, index) =>
+            candidates[Math.round(index * (candidates.length - 1) / (candidateCount - 1))]!)
+        return [...reserved, ...selectedCandidates].sort((a, b) => a.position[1] - b.position[1])
+      })()
+      : Array.from({ length: safeCount }, (_, index) => verticalLayout[Math.round(index * (verticalLayout.length - 1) / (safeCount - 1))]!)
+  return selectedMasses.map((mass) => ({
     ...mass,
     position: [mass.position[0] * positionScale, mass.position[1] * safeScale, mass.position[2] * safeScale],
     radii: [mass.radii[0] * safeScale, mass.radii[1] * safeScale, mass.radii[2] * safeScale],
@@ -162,15 +222,19 @@ export function getGrowthCloudVisibility(
   frames: GrowthFrames,
   cloudOpacity: number,
   environmentOpacity: number,
+  persistent = false,
 ): number {
   if (!Number.isFinite(time)) return 0
   const opacity = clampFinite(cloudOpacity, 0, 1, 0)
   const environment = clampFinite(environmentOpacity, 0, 1, 0)
-  if (opacity === 0 || environment === 0 || time < frames.fall[0] || time >= frames.handoff[1]) return 0
+  const visibilityEnd = persistent ? frames.duration : frames.handoff[1]
+  if (opacity === 0 || environment === 0 || time < frames.fall[0] || time >= visibilityEnd) return 0
   const fadeInEnd = Math.min(frames.handoff[0], frames.fall[0] + 0.7)
-  const fadeOutStart = Math.max(frames.handoff[0], frames.handoff[1] - 0.7)
+  const fadeOutStart = persistent
+    ? Math.max(frames.handoff[1], frames.duration - 0.9)
+    : Math.max(frames.handoff[0], frames.handoff[1] - 0.7)
   const fadeIn = smoothstep(frames.fall[0], fadeInEnd, time)
-  const fadeOut = 1 - smoothstep(fadeOutStart, frames.handoff[1], time)
+  const fadeOut = 1 - smoothstep(fadeOutStart, visibilityEnd, time)
   return opacity * environment * fadeIn * fadeOut
 }
 
@@ -227,4 +291,9 @@ function smoothstep(from: number, to: number, value: number): number {
 
 function clampFinite(value: number, min: number, max: number, fallback: number): number {
   return Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback
+}
+
+function seededVariation(seed: number, salt: number): number {
+  const value = Math.sin(seed * 12.9898 + salt * 78.233) * 43758.5453
+  return (value - Math.floor(value)) * 2 - 1
 }

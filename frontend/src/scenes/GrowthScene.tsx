@@ -120,7 +120,7 @@ function SeedMatter({ count, settings, runtime, simulationRef, syncRef, gpuReady
 }
 
 /** Analytic GPU trajectories: no particle histories, React frame updates or timers. */
-function SeedParticles({ mode, count, materialRef, fallRange, impactRadius, impactStrength, impactLifetime, orbitCount, orbitRadius, orbitTilt, orbitSpeed, formationDuration }: {
+function SeedParticles({ mode, count, materialRef, fallRange, impactRadius, impactStrength, impactLifetime, orbitCount, orbitRadius, orbitTilt, orbitSpeed, formationDuration, seedFallAcceleration, seedFallHeight, seedTrailSpread, seedTrailLifetime, seedTrailLiftSpeed }: {
   mode: number
   count: number
   materialRef: RefObject<ShaderMaterial | null>
@@ -133,13 +133,20 @@ function SeedParticles({ mode, count, materialRef, fallRange, impactRadius, impa
   orbitTilt: number
   orbitSpeed: number
   formationDuration: number
+  seedFallAcceleration: number
+  seedFallHeight: number
+  seedTrailSpread: number
+  seedTrailLifetime: number
+  seedTrailLiftSpeed: number
 }) {
   const positions = useMemo(() => sampleSeedParticleSeeds(count), [count])
   const uniforms = useMemo(() => ({
     time: { value: 0 }, opacity: { value: 0 }, mode: { value: mode }, height: { value: 1 }, reduced: { value: 0 }, dpr: { value: 1 },
     fallRange: { value: new Vector2(...fallRange) }, impactRadius: { value: impactRadius }, impactStrength: { value: impactStrength }, impactLifetime: { value: impactLifetime },
     orbitCount: { value: orbitCount }, orbitRadius: { value: orbitRadius }, orbitTilt: { value: orbitTilt }, orbitSpeed: { value: orbitSpeed }, formationDuration: { value: formationDuration }, orbitAbsorption: { value: 0 },
-  }), [mode, fallRange, impactRadius, impactLifetime, impactStrength, orbitCount, orbitRadius, orbitSpeed, orbitTilt, formationDuration])
+    seedFallAcceleration: { value: seedFallAcceleration }, seedFallHeight: { value: seedFallHeight },
+    seedTrailSpread: { value: seedTrailSpread }, seedTrailLifetime: { value: seedTrailLifetime }, seedTrailLiftSpeed: { value: seedTrailLiftSpeed },
+  }), [mode, fallRange, impactRadius, impactLifetime, impactStrength, orbitCount, orbitRadius, orbitSpeed, orbitTilt, formationDuration, seedFallAcceleration, seedFallHeight, seedTrailSpread, seedTrailLifetime, seedTrailLiftSpeed])
   return <points frustumCulled={false}>
     <bufferGeometry><bufferAttribute attach="attributes-position" args={[positions, 3]} /></bufferGeometry>
     <shaderMaterial ref={materialRef} vertexShader={particleVertex} fragmentShader={particleFragment} uniforms={uniforms} transparent blending={AdditiveBlending} depthWrite={false} toneMapped={false} />
@@ -195,6 +202,11 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
     orbitTilt: growthSettings.seedOrbitTilt,
     orbitSpeed: growthSettings.seedOrbitSpeed,
     formationDuration: growthSettings.formationDuration,
+    seedFallAcceleration: growthSettings.seedFallAcceleration,
+    seedFallHeight: growthSettings.seedFallHeight,
+    seedTrailSpread: growthSettings.seedTrailSpread,
+    seedTrailLifetime: growthSettings.seedTrailLifetime,
+    seedTrailLiftSpeed: growthSettings.seedTrailLiftSpeed,
   }
   const fallRange = growthFrames.fall
   const identityScene = state.scene === 'identity'
@@ -226,12 +238,17 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
           material.uniforms.orbitSpeed!.value = growthSettings.seedOrbitSpeed
           material.uniforms.formationDuration!.value = growthSettings.formationDuration
           material.uniforms.orbitAbsorption!.value = pose.orbitAbsorption
+          material.uniforms.seedFallAcceleration!.value = growthSettings.seedFallAcceleration
+          material.uniforms.seedFallHeight!.value = growthSettings.seedFallHeight
+          material.uniforms.seedTrailSpread!.value = growthSettings.seedTrailSpread
+          material.uniforms.seedTrailLifetime!.value = growthSettings.seedTrailLifetime
+          material.uniforms.seedTrailLiftSpeed!.value = growthSettings.seedTrailLiftSpeed
         }
       }
       if (seed.current) {
         seed.current.position.set(0, getSeedShellCenterY(pose), 0)
         seed.current.scale.setScalar(pose.seedSize)
-        seed.current.rotation.set(0, pose.spinAngle, pose.wobbleAngle)
+        seed.current.rotation.set(pose.tumbleAngle, pose.spinAngle, pose.wobbleAngle)
         seed.current.visible = pose.seedOpacity > 0
       }
       if (coreAnchor.current) {
@@ -271,7 +288,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
     {!environmentOnly && <group key="growth-seed">
       <SeedParticles mode={0} count={low ? 28 : 76} materialRef={orbit} fallRange={fallRange} {...particleSettings} />
       {!reducedMotion && <>
-        <SeedParticles mode={1} count={low ? 12 : 30} materialRef={trail} fallRange={fallRange} {...particleSettings} />
+        <SeedParticles mode={1} count={low ? Math.max(6, Math.round(growthSettings.seedTrailParticleCount * 0.5)) : growthSettings.seedTrailParticleCount} materialRef={trail} fallRange={fallRange} {...particleSettings} />
         {growthSettings.seedImpactParticles > 0 && <SeedParticles mode={2} count={low ? Math.ceil(growthSettings.seedImpactParticles * 0.6) : growthSettings.seedImpactParticles} materialRef={sparks} fallRange={fallRange} {...particleSettings} />}
       </>}
       <group ref={seed}>

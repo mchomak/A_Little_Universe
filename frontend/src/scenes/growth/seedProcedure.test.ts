@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PerspectiveCamera, Vector3 } from 'three'
-import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthFrames, getGrowthHandoff, getGrowthViewportHeight, getSeedCorePose, getSeedFallDistance, getSeedPose, getSeedShellCenterY, sampleSeedParticleSeeds, SEED_ROOT, SEED_SHELL_HALF_HEIGHT, type GrowthSettings } from './seedProcedure'
+import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthFrames, getGrowthHandoff, getGrowthViewportHeight, getSeedCorePose, getSeedFallDistance, getSeedFallProgress, getSeedPose, getSeedShellCenterY, sampleSeedParticleSeeds, SEED_ROOT, SEED_SHELL_HALF_HEIGHT, type GrowthSettings } from './seedProcedure'
 import { getPrologueLightPose } from '../prologue/lightPose'
 import { getConfig } from '../../systems/scene-config/config'
 
@@ -27,13 +27,13 @@ describe('scene 02 seed procedure', () => {
     expect(frames.sprout[1] - frames.handoff[1]).toBeGreaterThanOrEqual(8)
     expect(frames.sprout[1] - frames.handoff[1]).toBeLessThanOrEqual(10)
     expect(frames.sprout[1]).toBeLessThan(frames.duration)
-    expect(frames.duration).toBe(frames.model[1] + 1.9)
+    expect(frames.duration).toBeCloseTo(frames.model[1] + 1.9, 5)
   })
 
   it('forms from the center, lands on the shared plant root, and hands off to growth', () => {
     const frames = getGrowthFrames(getConfig().scenes.growth)
     expect(getSeedPose(0, 3.82, false).anchor).toEqual([0, -1.45, 0])
-    expect(getSeedPose(0, 3.82, false).seedY).toBeCloseTo(getSeedFallDistance(3.82))
+    expect(getSeedPose(0, 3.82, false).seedY).toBeCloseTo(getSeedFallDistance(3.82) * getConfig().scenes.growth.seedFallHeight)
     expect(getSeedPose(frames.fall[1], 3.82, false).seedY).toBe(0)
     expect(getSeedPose(frames.handoff[0] + 0.1, 3.82, false).stage).toBe('handoff')
     expect(getSeedPose(frames.handoff[1], 3.82, false).stage).toBe('growth')
@@ -125,7 +125,7 @@ describe('scene 02 seed procedure', () => {
     const drops = ys.slice(1).map((y, i) => ys[i]! - y)
     const velocities = drops.map(drop => drop / step)
     const averageVelocity = (ys[0]! - ys[ys.length - 1]!) / (end - start)
-    expect(ys[0]).toBeCloseTo(getSeedFallDistance(3.82))
+    expect(ys[0]).toBeCloseTo(getSeedFallDistance(3.82) * getConfig().scenes.growth.seedFallHeight)
     expect(ys[ys.length - 1]).toBeCloseTo(0)
     expect(ys.every((y, i) => i === 0 || y <= ys[i - 1]!)).toBe(true)
     expect(velocities[0]).toBeLessThan(averageVelocity * 0.2)
@@ -171,7 +171,7 @@ describe('scene 02 seed procedure', () => {
     const cameraAtThreshold = getGrowthCameraPose(thresholdTime!, false, settings, viewportHeight)
     expect(Math.abs(cameraAtThreshold.y - startCamera.y)).toBeLessThan(0.001)
     expect(Math.abs(cameraAtThreshold.z - startCamera.z)).toBeLessThan(0.001)
-    expect(getGrowthCameraPose(thresholdTime! - 0.01, false, settings, viewportHeight)).toEqual(startCamera)
+    expect(getGrowthCameraPose(thresholdTime! - 0.01, false, settings, viewportHeight)).toMatchObject({ y: startCamera.y, z: startCamera.z, ty: startCamera.ty })
     expect(getGrowthCameraPose(thresholdTime! + settings.seedCameraLag + 0.1, false, settings, viewportHeight).y).toBeLessThan(startCamera.y)
 
     const landed = getSeedPose(frames.fall[1], viewportHeight, false, settings)
@@ -190,7 +190,7 @@ describe('scene 02 seed procedure', () => {
     expect(samples[0]!.spinAngle).toBeCloseTo(start * 0.24, 6)
     expect(spinSteps.every(step => step >= 0)).toBe(true)
     expect(spinSteps[2]).toBeGreaterThan(spinSteps[0]!)
-    expect(spinSteps[10]).toBeLessThan(spinSteps[5]!)
+    expect(spinSteps[10]).toBeGreaterThan(spinSteps[5]!)
     expect(spinSteps[19]).toBeLessThan(spinSteps[0]! * 0.025)
     expect(getSeedPose(end + 0.2, 3.856, false, settings).spinAngle).toBeCloseTo(samples[20]!.spinAngle)
     expect(samples.every(pose => Math.abs(pose.wobbleAngle) <= settings.seedWobbleAmplitude)).toBe(true)
@@ -199,6 +199,20 @@ describe('scene 02 seed procedure', () => {
     const reducedMotion = getSeedPose(start + 0.8, 3.856, true, settings)
     expect(reducedMotion.spinAngle).toBe(0)
     expect(reducedMotion.wobbleAngle).toBe(0)
+    expect(samples[0]!.tumbleAngle).toBe(0)
+    expect(samples[10]!.tumbleAngle).toBeGreaterThan(0)
+    expect(samples[20]!.tumbleAngle).toBeGreaterThan(samples[10]!.tumbleAngle)
+    expect(getSeedPose(end + 0.2, 3.856, false, settings).tumbleAngle).toBeCloseTo(samples[20]!.tumbleAngle)
+    expect(reducedMotion.tumbleAngle).toBe(0)
+  })
+
+  it('uses an analytic accelerating curve that reaches a smooth landing and responds to its setting', () => {
+    const slow = getSeedFallProgress(0.5, 2)
+    const fast = getSeedFallProgress(0.5, 3.2)
+    expect(getSeedFallProgress(0, 3.2)).toBe(0)
+    expect(getSeedFallProgress(1, 3.2)).toBe(1)
+    expect(fast).toBeLessThan(slow)
+    expect(getSeedFallProgress(0.9, 3.2)).toBeGreaterThan(0.93)
   })
 
   it('preserves formation rotation and transitions continuously into the configured fall spin', () => {

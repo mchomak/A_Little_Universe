@@ -129,10 +129,13 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.growth.seedOrbitRadius', label: 'Радиус орбиты', unit: 'м', min: 0.24, max: 0.62, step: 0.01 },
     { path: 'scenes.growth.seedOrbitTilt', label: 'Наклон орбиты', unit: 'рад', min: 0.15, max: 1.2, step: 0.01 },
     { path: 'scenes.growth.seedOrbitSpeed', label: 'Скорость орбиты', unit: '×', min: 0, max: 2, step: 0.05 },
-    { path: 'scenes.growth.seedFallDuration', label: 'Длительность падения', unit: 'с', min: 1.8, max: 4.5, step: 0.05 },
+    { path: 'scenes.growth.seedFallDuration', label: 'Длительность падения', unit: 'с', min: 1.8, max: 6.5, step: 0.05 },
+    { path: 'scenes.growth.seedFallAcceleration', label: 'Ускорение падения', unit: '×', min: 1, max: 4, step: 0.05 },
+    { path: 'scenes.growth.seedFallHeight', label: 'Высота начала падения', unit: '× высоты кадра', min: 1, max: 1.8, step: 0.01 },
     { path: 'scenes.growth.seedCameraLag', label: 'Запаздывание камеры', unit: 'с', min: 0.1, max: 0.8, step: 0.01 },
     { path: 'scenes.growth.seedCameraFollowSpeed', label: 'Скорость сглаженного слежения камеры', unit: 'с⁻¹', min: 0.1, max: 8, step: 0.1 },
     { path: 'scenes.growth.seedSpinSpeed', label: 'Скорость вращения семечка', unit: 'рад/с', min: 0, max: 4, step: 0.05 },
+    { path: 'scenes.growth.seedTumbleSpeed', label: 'Вращение по поперечной оси', unit: 'рад/с', min: 0, max: 3, step: 0.05 },
     { path: 'scenes.growth.seedWobbleAmplitude', label: 'Амплитуда покачивания семечка', unit: 'рад', min: 0, max: 0.35, step: 0.005 },
   ] },
   { name: 'Парящий остров', controls: [
@@ -147,13 +150,17 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
   ] },
   { name: 'След и удар семечка', controls: [
     { path: 'scenes.growth.seedTrailIntensity', label: 'Интенсивность следа', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.seedTrailSpread', label: 'Разлёт осколков следа', unit: 'м', min: 0, max: 0.5, step: 0.01 },
+    { path: 'scenes.growth.seedTrailLifetime', label: 'Время жизни осколков следа', unit: 'с', min: 0.15, max: 2, step: 0.05 },
+    { path: 'scenes.growth.seedTrailLiftSpeed', label: 'Скорость отлёта вверх', unit: 'м/с', min: 0.1, max: 2, step: 0.05 },
+    { path: 'scenes.growth.seedTrailParticleCount', label: 'Количество осколков', unit: 'шт.', min: 12, max: 128, step: 1 },
     { path: 'scenes.growth.seedImpactStrength', label: 'Сила удара', unit: '×', min: 0, max: 1, step: 0.01 },
     { path: 'scenes.growth.seedImpactRadius', label: 'Радиус удара', unit: 'м', min: 0.1, max: 1.2, step: 0.01 },
     { path: 'scenes.growth.seedImpactParticles', label: 'Частицы удара', unit: 'шт.', min: 0, max: 180, step: 1 },
     { path: 'scenes.growth.seedImpactLifetime', label: 'Время жизни частиц удара', unit: 'с', min: 0.2, max: 1.6, step: 0.05 },
   ] },
   { name: 'Облака', controls: [
-    { path: 'scenes.growth.cloudCount', label: 'Количество облаков', unit: 'шт.', min: 0, max: 6, step: 1 },
+    { path: 'scenes.growth.cloudCount', label: 'Количество облаков', unit: 'шт.', min: 0, max: 24, step: 1 },
     { path: 'scenes.growth.cloudDensity', label: 'Плотность облаков', unit: '×', min: 0, max: 2, step: 0.05 },
     { path: 'scenes.growth.cloudScale', label: 'Масштаб облаков', unit: '×', min: 0.4, max: 2, step: 0.05 },
     { path: 'scenes.growth.cloudDriftSpeed', label: 'Скорость облаков', unit: '×', min: 0, max: 2, step: 0.05 },
@@ -591,7 +598,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–16. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–17. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -803,5 +810,3 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
     </aside>
   )
 }
-
-

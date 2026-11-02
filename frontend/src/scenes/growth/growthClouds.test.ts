@@ -15,25 +15,38 @@ describe('Scene 02 independent clouds', () => {
   it('builds a layered deterministic set outside the flower center', () => {
     const masses = getGrowthCloudMasses(4, 1)
     const mainClouds = getGrowthCloudMasses(3, 1)
-    const verticalSpan = Math.max(...mainClouds.map(({ position }) => position[1]))
-      - Math.min(...mainClouds.map(({ position }) => position[1]))
+    const fullField = getGrowthCloudMasses(24, 1)
+    const defaultField = getGrowthCloudMasses(18, 1)
+    const verticalSpan = Math.max(...fullField.map(({ position }) => position[1]))
+      - Math.min(...fullField.map(({ position }) => position[1]))
 
     expect(masses).toHaveLength(4)
-    expect(verticalSpan).toBeGreaterThan(2.2)
+    expect(verticalSpan).toBeGreaterThan(7.5)
     expect(mainClouds.every(({ radii }) => radii[1] >= 0.58)).toBe(true)
-    expect(new Set(masses.map(({ position }) => position[2])).size).toBeGreaterThan(1)
-    expect(new Set(masses.map(({ position }) => position[1])).size).toBeGreaterThan(1)
-    expect(masses.every(({ position, radii }) => Math.abs(position[0]) - radii[0] > 0.2)).toBe(true)
+    expect(new Set(fullField.map(({ position }) => position[2] < 0 ? 'background' : 'foreground')).size).toBe(2)
+    expect(fullField.some(({ position }) => position[1] < -1.45)).toBe(true)
+    expect(fullField.some(({ position }) => position[1] > 1.7)).toBe(true)
+    expect(masses.every(({ pathCrossing, densityScale }) => pathCrossing && densityScale! < 0.35)).toBe(true)
+    expect(masses.every(({ position, radii }) => (position[0] / radii[0]) ** 2 + (position[2] / radii[2]) ** 2 < 1)).toBe(true)
+    expect(defaultField.filter(({ pathCrossing }) => pathCrossing)).toHaveLength(4)
+    expect(defaultField.filter(({ persistent }) => persistent)).toHaveLength(4)
+    expect(fullField.filter(({ pathCrossing }) => pathCrossing)).toHaveLength(4)
+    expect(fullField.filter(({ pathCrossing }) => !pathCrossing)
+      .every(({ position, radii }) => Math.abs(position[0]) - radii[0] > 0.2)).toBe(true)
+    expect(new Set(fullField.map(({ position }) => position[0].toFixed(2))).size).toBeGreaterThan(20)
+    expect(new Set(fullField.map(({ radii }) => radii[0].toFixed(2))).size).toBeGreaterThan(18)
     expect(getGrowthCloudMasses(4, 1)).toEqual(masses)
     expect(getGrowthCloudMasses(0, 1)).toEqual([])
   })
 
   it('bounds count and scale without allowing dense clouds to cover the center', () => {
-    expect(getGrowthCloudMasses(99, 2)).toHaveLength(6)
+    expect(getGrowthCloudMasses(99, 2)).toHaveLength(24)
     expect(getGrowthCloudMasses(-2, 1)).toHaveLength(0)
     for (const scale of [0.4, 1, 2]) {
-      const masses = getGrowthCloudMasses(6, scale)
-      expect(masses.every(({ position, radii }) => Math.abs(position[0]) - radii[0] > 0.2)).toBe(true)
+      const masses = getGrowthCloudMasses(24, scale)
+      expect(masses.filter(({ pathCrossing }) => !pathCrossing)
+        .every(({ position, radii }) => Math.abs(position[0]) - radii[0] > 0.2)).toBe(true)
+      expect(masses.filter(({ pathCrossing, densityScale }) => pathCrossing && densityScale! <= 0.32)).toHaveLength(4)
     }
     expect(getGrowthCloudMasses(1, Number.NaN)[0]!.radii[0]).toBeCloseTo(getGrowthCloudMasses(1, 1)[0]!.radii[0])
   })
@@ -53,6 +66,18 @@ describe('Scene 02 independent clouds', () => {
     expect(getGrowthCloudVisibility(Number.NaN, frames, 0.42, 1)).toBe(0)
     expect(getGrowthCloudVisibility(fallStart + 0.5, frames, 0.42, 0.5))
       .toBeCloseTo(getGrowthCloudVisibility(fallStart + 0.5, frames, 0.42, 1) * 0.5)
+  })
+
+  it('keeps only the sparse far island clouds through lily growth, then fades them before the next scene', () => {
+    const frames = getGrowthFrames(getConfig().scenes.growth)
+    const handoffEnd = frames.handoff[1]
+
+    expect(getGrowthCloudVisibility(handoffEnd + 0.4, frames, 0.42, 1)).toBe(0)
+    expect(getGrowthCloudVisibility(handoffEnd + 0.4, frames, 0.42, 1, true)).toBeGreaterThan(0)
+    expect(getGrowthCloudVisibility(frames.duration - 0.45, frames, 0.42, 1, true)).toBeGreaterThan(0)
+    expect(getGrowthCloudVisibility(frames.duration, frames, 0.42, 1, true)).toBe(0)
+    expect(getGrowthCloudVisibility(handoffEnd + 0.4, frames, 0.42, 0.5, true))
+      .toBeCloseTo(getGrowthCloudVisibility(handoffEnd + 0.4, frames, 0.42, 1, true) * 0.5)
   })
 
   it('uses absolute time for bounded cloud drift and stops it at zero speed', () => {

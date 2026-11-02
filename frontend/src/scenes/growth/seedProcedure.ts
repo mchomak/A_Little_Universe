@@ -48,6 +48,13 @@ export function getSeedFallDistance(viewportHeight: number): number {
   return Math.max(Math.abs(SEED_ROOT[1]), height * SEED_SCREEN_CAMERA_START_FRACTION)
 }
 
+/** Fast acceleration through most of the fall with a smooth, zero-speed landing. */
+export function getSeedFallProgress(progress: number, acceleration: number): number {
+  const u = clamp01(progress)
+  const a = Number.isFinite(acceleration) ? Math.min(4, Math.max(1, acceleration)) : 2.6
+  return clamp01(1 - (1 - u ** a) ** 3)
+}
+
 export interface SeedPose {
   anchor: typeof SEED_ROOT
   stage: SeedStage
@@ -58,6 +65,7 @@ export interface SeedPose {
   growthWeight: number
   seedY: number
   spinAngle: number
+  tumbleAngle: number
   wobbleAngle: number
   trailOpacity: number
   impact: number
@@ -98,25 +106,21 @@ const smooth = (value: number) => {
   const x = clamp01(value)
   return x * x * (3 - 2 * x)
 }
-const getIntegratedSpin = (fallProgress: number, fallDuration: number, targetSpeed: number) => {
-  const u = clamp01(fallProgress)
-  const steps = 16
-  const step = u / steps
-  const velocity = (progress: number) => (0.24 + (targetSpeed - 0.24) * smooth(progress / 0.12)) * (1 - smooth(progress))
-  let sum = velocity(0) + velocity(u)
-  for (let index = 1; index < steps; index += 1) sum += velocity(index * step) * (index % 2 === 0 ? 2 : 4)
-  return fallDuration * step * sum / 3
-}
-const inverseSmooth = (value: number) => {
+const inverseFall = (value: number, acceleration: number) => {
   const target = clamp01(value)
   let low = 0
   let high = 1
-  for (let iteration = 0; iteration < 20; iteration += 1) {
+  for (let iteration = 0; iteration < 24; iteration += 1) {
     const middle = (low + high) * 0.5
-    if (smooth(middle) < target) low = middle
+    if (getSeedFallProgress(middle, acceleration) < target) low = middle
     else high = middle
   }
   return (low + high) * 0.5
+}
+const getSeedSpinProgress = (value: number, acceleration: number) => {
+  const u = clamp01(value)
+  const a = Number.isFinite(acceleration) ? Math.min(4, Math.max(1, acceleration)) : 3.2
+  return 1 - (1 - u ** a) ** 6
 }
 const progress = (time: number, range: readonly [number, number]) => {
   const [start, end] = range
@@ -132,13 +136,16 @@ export function getGrowthProgress(time: number, range: readonly [number, number]
 export function getSeedPose(time: number, viewportHeight: number, reducedMotion: boolean, settings: GrowthSettings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth): SeedPose {
   const { formation, fall, landing, handoff, moonlight, sprout } = getGrowthFrames(settings)
   const forming = progress(time, formation)
-  // Ease in as the seed falls, then settle to zero velocity at the exact landing frame.
+  // The seed gathers speed through the fall, then arrives with zero velocity at contact.
   const fallTime = clamp01((time - fall[0]) / (fall[1] - fall[0]))
-  const falling = smooth(fallTime)
+  const falling = getSeedFallProgress(fallTime, settings.seedFallAcceleration)
   const fallDuration = fall[1] - fall[0]
-  const fallDistance = getSeedFallDistance(viewportHeight)
+  const fallDistance = getSeedFallDistance(viewportHeight) * settings.seedFallHeight
+  const spinCarry = 0.24 * fallDuration * (1 - (1 - fallTime) ** 2.2) / 2.2
+  const fallSpin = getSeedSpinProgress(fallTime, settings.seedFallAcceleration)
   const spinAngle = reducedMotion ? 0 : time <= fall[0] ? time * 0.24
-    : fall[0] * 0.24 + getIntegratedSpin(fallTime, fallDuration, settings.seedSpinSpeed)
+    : fall[0] * 0.24 + spinCarry + settings.seedSpinSpeed * fallDuration * fallSpin
+  const tumbleAngle = reducedMotion ? 0 : settings.seedTumbleSpeed * fallDuration * fallSpin
   const wobbleAmplitude = 0.035 + (settings.seedWobbleAmplitude - 0.035) * smooth(fallTime / 0.12)
   const wobbleAngle = reducedMotion ? 0 : Math.sin(time * 1.8) * wobbleAmplitude * (1 - falling)
   const transfer = progress(time, handoff)
@@ -171,6 +178,7 @@ export function getSeedPose(time: number, viewportHeight: number, reducedMotion:
     growthWeight,
     seedY: fallDistance * (1 - falling),
     spinAngle,
+    tumbleAngle,
     wobbleAngle,
     trailOpacity: reducedMotion ? 0 : progress(time, [fall[0], fall[0] + 0.25]) * (1 - progress(time, [landing[0], landing[0] + 0.35])) * 0.75 * settings.seedTrailIntensity,
     impact: reducedMotion ? 1 : clamp01((time - landing[0]) / (landing[1] - landing[0])),
@@ -195,18 +203,18 @@ export function getSeedPose(time: number, viewportHeight: number, reducedMotion:
 export function getGrowthCameraPose(time: number, reducedMotion: boolean, settings: GrowthSettings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, viewportHeight = getGrowthViewportHeight(1024, 768)): CameraPose {
   if (reducedMotion) return { x: 0, y: -0.2, z: 7.8, tx: 0, ty: -0.2, tz: 0 }
   const frames = getGrowthFrames(settings)
-  const fallDistance = getSeedFallDistance(viewportHeight)
+  const fallDistance = getSeedFallDistance(viewportHeight) * settings.seedFallHeight
   const startY = SEED_ROOT[1] + fallDistance
   const fallDuration = frames.fall[1] - frames.fall[0]
   const desiredScreenY = SEED_FOLLOW_START_SCREEN_FRACTION
   const initialDrop = Math.max(0, desiredScreenY - 0.5) * viewportHeight
-  const thresholdProgress = inverseSmooth(initialDrop / fallDistance)
+  const thresholdProgress = inverseFall(initialDrop / fallDistance, settings.seedFallAcceleration)
   const thresholdTime = frames.fall[0] + thresholdProgress * fallDuration
   const trackingTime = time - settings.seedCameraLag
   const baselineProgress = clamp01((thresholdTime - settings.seedCameraLag - frames.fall[0]) / fallDuration)
-  const baselineDrop = fallDistance * smooth(baselineProgress)
+  const baselineDrop = fallDistance * getSeedFallProgress(baselineProgress, settings.seedFallAcceleration)
   const trackingProgress = clamp01((trackingTime - frames.fall[0]) / fallDuration)
-  const trackingDrop = fallDistance * smooth(trackingProgress)
+  const trackingDrop = fallDistance * getSeedFallProgress(trackingProgress, settings.seedFallAcceleration)
   const remainingDrop = Math.max(0.001, fallDistance - baselineDrop)
   const pathFollow = time < thresholdTime ? 0 : smooth((trackingDrop - baselineDrop) / remainingDrop)
   const response = 1 - Math.exp(-settings.seedCameraFollowSpeed * Math.max(0, time - thresholdTime))

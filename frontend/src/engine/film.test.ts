@@ -44,9 +44,9 @@ it('keeps configured full clip durations inside the scene endpoint and preserves
   try {
     let growth = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'growth' }, true)
     await updateConfig({ scenes: { growth: { formationDuration: 3.5, flowerGrowthDuration: 7 } } })
-    expect(filmDuration(growth)).toBe(16.7)
+    expect(filmDuration(growth)).toBe(17.9)
     growth = filmReducer(growth, { type: 'dev-seek', time: 999 }, true)
-    expect(growth.elapsed).toBe(16.7)
+    expect(growth.elapsed).toBe(17.9)
     growth = filmReducer(growth, { type: 'timeline-complete', revision: growth.revision })
     expect([growth.scene, growth.mode, growth.elapsed]).toEqual(['bloom', 'waiting', 0])
 

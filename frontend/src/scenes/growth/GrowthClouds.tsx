@@ -3,12 +3,12 @@ import { useThree } from '@react-three/fiber'
 import { Color, Group, Mesh, ShaderMaterial, SphereGeometry, Vector3 } from 'three'
 import type { FilmRuntime } from '../../engine/runtime'
 import {
-  createGrowthCloudVolumeMaterial, getGrowthCloudDrift, getGrowthCloudMasses,
+  createGrowthCloudVolumeMaterial, getGrowthCloudDrift, getGrowthCloudMasses, MAX_GROWTH_CLOUD_MASSES,
   getGrowthCloudMotionTime, getGrowthCloudVisibility, setGrowthCloudMoonPosition,
 } from './growthCloudMath'
 import type { GrowthFrames, GrowthSettings } from './seedProcedure'
 
-const CLOUD_RENDER_LIMIT = 6
+const CLOUD_RENDER_LIMIT = MAX_GROWTH_CLOUD_MASSES
 const noRaycast = () => undefined
 
 /** Small moonlit volumes attached to the shared Scene 02 world and FilmRuntime. */
@@ -46,7 +46,6 @@ export function GrowthClouds({
   useLayoutEffect(() => {
     const update = (time: number) => {
       const safeTime = Number.isFinite(time) ? time : 0
-      const opacity = getGrowthCloudVisibility(safeTime, frames, settings.cloudOpacity, environmentOpacity.current)
       const motionTime = getGrowthCloudMotionTime(safeTime, reducedMotion)
       const motionSpeed = reducedMotion ? 0 : settings.cloudDriftSpeed
       root.current?.getWorldPosition(rootOrigin)
@@ -54,17 +53,18 @@ export function GrowthClouds({
       moonColor.set(settings.moonLightColor)
 
       for (let index = 0; index < CLOUD_RENDER_LIMIT; index++) {
+        const mesh = meshes.current[index]
+        const mass = masses[index]
         const material = materialRefs.current[index]
         if (!material) continue
+        const opacity = getGrowthCloudVisibility(safeTime, frames, settings.cloudOpacity, environmentOpacity.current, mass?.persistent)
         material.uniforms.uOpacity!.value = opacity
-        material.uniforms.uDensity!.value = settings.cloudDensity
+        material.uniforms.uDensity!.value = settings.cloudDensity * (mass?.densityScale ?? 1)
         material.uniforms.uLightIntensity!.value = settings.cloudLightIntensity
         material.uniforms.uMoonColor!.value.copy(moonColor)
         material.uniforms.uMoonPosition!.value.copy(moonPosition)
         material.uniforms.uTime!.value = motionTime * motionSpeed
 
-        const mesh = meshes.current[index]
-        const mass = masses[index]
         if (!mesh || !mass) continue
         const drift = getGrowthCloudDrift(mass, motionTime, motionSpeed)
         mesh.position.set(mass.position[0] + drift[0], mass.position[1] + drift[1], mass.position[2] + drift[2])
@@ -95,7 +95,6 @@ export function GrowthClouds({
       visible={false}
       raycast={noRaycast}
       renderOrder={-4}
-      frustumCulled={false}
     >
       <primitive object={geometry} attach="geometry" />
       <primitive
