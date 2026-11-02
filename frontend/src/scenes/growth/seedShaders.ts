@@ -155,13 +155,13 @@ uniform float orbitAbsorption;
       p = vec3(x * cos(tiltZ) - tiltedY * sin(tiltZ), tiltedY * cos(tiltZ) + x * sin(tiltZ), tiltedZ);
       float fallProgress = clamp((time - fallRange.x) / (fallRange.y - fallRange.x), 0.0, 1.0);
       float fallEase = smoothstep(0.0, 1.0, fallProgress);
-      p.y += 1.45 * (1.0 - fallEase);
+      p.y += max(1.45, height * 0.62) * (1.0 - fallEase);
       alpha *= smoothstep(0.0, 0.16, time) * (1.0 - smoothstep(0.84, 1.0, formation));
     } else if (mode < 1.5) {
       float delay = r * 0.48;
       float past = clamp((time - delay - fallRange.x) / (fallRange.y - fallRange.x), 0.0, 1.0);
       float fallEase = smoothstep(0.0, 1.0, past);
-      p = vec3(sin(angle) * 0.024 * r, 1.45 * (1.0 - fallEase) + height * 0.065 * (0.84 * fallEase + 0.56), cos(angle) * 0.025);
+      p = vec3(sin(angle) * 0.024 * r, max(1.45, height * 0.62) * (1.0 - fallEase) + height * 0.065 * (0.84 * fallEase + 0.56), cos(angle) * 0.025);
       alpha *= (1.0 - r * 0.65) * smoothstep(fallRange.x, fallRange.x + 0.15, time - delay);
     } else {
       float age = max(0.0, time - fallRange.y);

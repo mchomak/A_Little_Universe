@@ -40,7 +40,7 @@ it('retimes an actively playing Growth scene when the fall duration changes', as
 
   try {
     const before = getConfig()
-    await updateConfig({ scenes: { growth: { seedFallDuration: 3.6 } } })
+    await updateConfig({ scenes: { growth: { seedFallDuration: 4 } } })
     const after = getConfig()
     const expected = retimeSceneElapsed('growth', runtimeTime, before, after, 'playing')
     expect(dispatch).toHaveBeenLastCalledWith({ type: 'dev-seek', time: expected })
@@ -58,7 +58,7 @@ it('retimes a paused Growth scene from its frozen canonical runtime time when th
 
   try {
     const before = getConfig()
-    await updateConfig({ scenes: { growth: { seedFallDuration: 3.6 } } })
+    await updateConfig({ scenes: { growth: { seedFallDuration: 4 } } })
     const after = getConfig()
     const expected = retimeSceneElapsed('growth', runtimeTime, before, after, 'playing')
     expect(dispatch).toHaveBeenLastCalledWith({ type: 'dev-seek', time: expected })

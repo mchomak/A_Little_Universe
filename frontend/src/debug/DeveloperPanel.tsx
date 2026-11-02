@@ -131,13 +131,15 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.growth.seedOrbitSpeed', label: 'Скорость орбиты', unit: '×', min: 0, max: 2, step: 0.05 },
     { path: 'scenes.growth.seedFallDuration', label: 'Длительность падения', unit: 'с', min: 1.8, max: 4.5, step: 0.05 },
     { path: 'scenes.growth.seedCameraLag', label: 'Запаздывание камеры', unit: 'с', min: 0.1, max: 0.8, step: 0.01 },
+    { path: 'scenes.growth.seedCameraFollowSpeed', label: 'Скорость сглаженного слежения камеры', unit: 'с⁻¹', min: 0.1, max: 8, step: 0.1 },
+    { path: 'scenes.growth.seedSpinSpeed', label: 'Скорость вращения семечка', unit: 'рад/с', min: 0, max: 4, step: 0.05 },
+    { path: 'scenes.growth.seedWobbleAmplitude', label: 'Амплитуда покачивания семечка', unit: 'рад', min: 0, max: 0.35, step: 0.005 },
   ] },
   { name: 'Парящий остров', controls: [
     { path: 'scenes.growth.islandRadius', label: 'Размер острова', unit: '', min: 0.55, max: 1.05, step: 0.01 },
     { path: 'scenes.growth.islandThickness', label: 'Толщина острова', unit: 'м', min: 0.1, max: 0.55, step: 0.01 },
     { path: 'scenes.growth.islandDepth', label: 'Глубина нижней части', unit: 'м', min: 0.25, max: 1.4, step: 0.01 },
     { path: 'scenes.growth.islandRoughness', label: 'Неровность краёв', unit: '×', min: 0, max: 1, step: 0.05 },
-    { path: 'scenes.growth.islandRevealDuration', label: 'Длительность появления острова', unit: 'с', min: 0.4, max: 3, step: 0.05 },
     { path: 'scenes.growth.grassDensity', label: 'Плотность травы', unit: 'шт.', min: 80, max: 720, step: 40 },
     { path: 'scenes.growth.grassHeight', label: 'Высота травы', unit: 'м', min: 0.06, max: 0.28, step: 0.01 },
     { path: 'scenes.growth.windStrength', label: 'Сила ветра', unit: '×', min: 0, max: 2.5, step: 0.05 },
@@ -589,7 +591,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–15. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–16. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])

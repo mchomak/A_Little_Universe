@@ -4,7 +4,7 @@ import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, G
 import type { SceneProps } from '../engine/sceneTypes'
 import { getIdentityEnvironmentOpacity, shouldMountGrowthClouds } from '../engine/sceneContinuity'
 import { useSceneAnimation } from './shared/animation'
-import { getGrowthFrames, getGrowthProgress, getGrowthViewportHeight, getSeedCorePose, getSeedParticleCount, getSeedPose, getSeedShellCenterY, sampleSeedParticleSeeds, SEED_ROOT, SEED_SHELL_HALF_HEIGHT, type GrowthSettings } from './growth/seedProcedure'
+import { getGrowthFrames, getGrowthViewportHeight, getSeedCorePose, getSeedParticleCount, getSeedPose, getSeedShellCenterY, sampleSeedParticleSeeds, SEED_ROOT, SEED_SHELL_HALF_HEIGHT, type GrowthSettings } from './growth/seedProcedure'
 import { coreFragment, haloFragment, impactWaveFragment, particleFragment, particleVertex, seedFragment, seedSurfaceVertex, surfaceVertex } from './growth/seedShaders'
 import { createSeedParticleReferences } from './growth/seedTargets'
 import { RecStudioParticleSimulation } from './growth/recstudioSimulation'
@@ -205,7 +205,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
     const pose = getSeedPose(poseTime, height, reducedMotion, growthSettings)
     const worldOpacity = identityScene ? getIdentityEnvironmentOpacity(time, config.scenes.identity.dissolveDuration) : 1
     environmentOpacity.current = worldOpacity
-    islandOpacity.current = worldOpacity * getGrowthProgress(poseTime, frames.islandReveal)
+    islandOpacity.current = worldOpacity
     moonlightProgress.current = pose.moonlight
     if (!environmentOnly) {
       matterSyncRef.current?.(time, growthSettings)
@@ -231,7 +231,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
       if (seed.current) {
         seed.current.position.set(0, getSeedShellCenterY(pose), 0)
         seed.current.scale.setScalar(pose.seedSize)
-        seed.current.rotation.set(0, reducedMotion ? 0 : time * 0.24, reducedMotion ? 0 : Math.sin(time * 1.8) * 0.035 * (1 - pose.fall))
+        seed.current.rotation.set(0, pose.spinAngle, pose.wobbleAngle)
         seed.current.visible = pose.seedOpacity > 0
       }
       if (coreAnchor.current) {

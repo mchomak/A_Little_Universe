@@ -13,7 +13,7 @@ import { configureCameraFarPlane, focusCamera } from '../scenes/gallery/camera'
 import { GALLERY_ART } from '../scenes/gallery/artDirection'
 import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
-import { getGrowthBloomEntryCameraPose, getGrowthCameraPose } from '../scenes/growth/seedProcedure'
+import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthViewportHeight } from '../scenes/growth/seedProcedure'
 import { getBloomCameraMoveDuration, getBloomCloseupPose } from './bloomCamera'
 import { galaxyCameraPose, interpolateCameraPose } from '../scenes/galaxy/camera'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
@@ -24,6 +24,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
   const camera = useThree((state) => state.camera)
   const invalidate = useThree((state) => state.invalidate)
   const aspect = useThree((state) => state.size.width / Math.max(state.size.height, 1))
+  const growthViewportHeight = useThree(({ size }) => getGrowthViewportHeight(size.width, size.height))
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const growthSettings = config.scenes.growth
   const bloomSettings = config.scenes.bloom
@@ -49,7 +50,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
   const build = useCallback(() => {
     const p = pose.current
     const front = { x: 0, y: 0, z: 5.6, tx: 0, ty: 0, tz: 0 }
-    const flowerSide = getGrowthBloomEntryCameraPose(growthSettings, reducedMotion)
+    const flowerSide = getGrowthBloomEntryCameraPose(growthSettings, reducedMotion, growthViewportHeight)
     const bloomFrames = getBloomSceneFrames(bloomSettings)
     const flowerCloseup = getBloomCloseupPose(bloomSettings)
     const timeline = gsap.timeline({ onUpdate: render })
@@ -66,7 +67,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const galaxyPose = (distance: number, angle: number) => galaxyCameraPose(
       distance, angle, galaxySettings.cameraFocusX, galaxySettings.cameraFocusY,
     )
-    const initial = scene === 'growth' ? getGrowthCameraPose(0, reducedMotion, growthSettings)
+    const initial = scene === 'growth' ? getGrowthCameraPose(0, reducedMotion, growthSettings, growthViewportHeight)
       : scene === 'bloom' ? flowerSide : scene === 'identity' ? flowerCloseup
       : scene === 'eye' ? { ...front, z: 4.8 }
       : scene === 'cosmos' ? galaxyPose(galaxySettings.cameraStartDistance, galaxySettings.cameraStartAngle)
@@ -80,10 +81,10 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     if (scene === 'growth') {
       const cursor = { time: 0 }
       timeline.eventCallback('onUpdate', () => {
-        Object.assign(p, getGrowthCameraPose(cursor.time, reducedMotion, growthSettings))
+        Object.assign(p, getGrowthCameraPose(cursor.time, reducedMotion, growthSettings, growthViewportHeight))
         render()
       })
-      Object.assign(p, getGrowthCameraPose(0, reducedMotion, growthSettings))
+      Object.assign(p, getGrowthCameraPose(0, reducedMotion, growthSettings, growthViewportHeight))
       const duration = getGrowthSceneFrames(growthSettings).duration
       return timeline.to(cursor, { time: duration, duration, ease: 'none' })
     }
@@ -108,7 +109,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       if (slowdown > 0) timeline.to(p, { ...finish, duration: slowdown, ease: 'sine.out' })
     }
     return timeline
-  }, [bloomSettings, galaxySettings, growthSettings, identitySettings, reducedMotion, render, revision, scene])
+  }, [bloomSettings, galaxySettings, growthSettings, growthViewportHeight, identitySettings, reducedMotion, render, revision, scene])
   useSceneTimeline(build, { runtime })
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return

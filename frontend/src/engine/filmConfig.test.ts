@@ -90,6 +90,12 @@ describe('greeting frames', () => {
 })
 
 describe('Lily scene timing', () => {
+  it('uses the v16 default fall duration when a saved value is not finite', () => {
+    const settings = { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, seedFallDuration: Number.NaN }
+    const growth = getGrowthSceneFrames(settings)
+    expect(growth.fall[1] - growth.fall[0]).toBeCloseTo(3.6, 5)
+  })
+
   it('fits full Growth and Bloom clips plus the existing handoff and contemplation beats', () => {
     const growth = getGrowthSceneFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth)
     const bloom = getBloomSceneFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom)

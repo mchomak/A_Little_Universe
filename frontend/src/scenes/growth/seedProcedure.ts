@@ -5,6 +5,8 @@ import { DEFAULT_SCENE_COMPOSER_CONFIG, type SceneComposerConfig } from '../../s
 export type SeedStage = 'forming' | 'falling' | 'landed' | 'handoff' | 'growth'
 export const SEED_ROOT = [0, -1.45, 0] as const
 export const SEED_SHELL_HALF_HEIGHT = 0.72
+export const SEED_SCREEN_CAMERA_START_FRACTION = 0.62
+export const SEED_FOLLOW_START_SCREEN_FRACTION = 0.62
 export type GrowthSettings = SceneComposerConfig['scenes']['growth']
 
 export interface GrowthFrames {
@@ -40,6 +42,12 @@ export function getGrowthViewportHeight(width: number, height: number): number {
   return 2 * distance * Math.tan(fov * Math.PI / 360)
 }
 
+/** The seed begins 62% of the viewport above the fixed soil anchor. */
+export function getSeedFallDistance(viewportHeight: number): number {
+  const height = Number.isFinite(viewportHeight) ? Math.max(0, viewportHeight) : 0
+  return Math.max(Math.abs(SEED_ROOT[1]), height * SEED_SCREEN_CAMERA_START_FRACTION)
+}
+
 export interface SeedPose {
   anchor: typeof SEED_ROOT
   stage: SeedStage
@@ -49,6 +57,8 @@ export interface SeedPose {
   lightTransfer: number
   growthWeight: number
   seedY: number
+  spinAngle: number
+  wobbleAngle: number
   trailOpacity: number
   impact: number
   growthTime: number
@@ -88,6 +98,26 @@ const smooth = (value: number) => {
   const x = clamp01(value)
   return x * x * (3 - 2 * x)
 }
+const getIntegratedSpin = (fallProgress: number, fallDuration: number, targetSpeed: number) => {
+  const u = clamp01(fallProgress)
+  const steps = 16
+  const step = u / steps
+  const velocity = (progress: number) => (0.24 + (targetSpeed - 0.24) * smooth(progress / 0.12)) * (1 - smooth(progress))
+  let sum = velocity(0) + velocity(u)
+  for (let index = 1; index < steps; index += 1) sum += velocity(index * step) * (index % 2 === 0 ? 2 : 4)
+  return fallDuration * step * sum / 3
+}
+const inverseSmooth = (value: number) => {
+  const target = clamp01(value)
+  let low = 0
+  let high = 1
+  for (let iteration = 0; iteration < 20; iteration += 1) {
+    const middle = (low + high) * 0.5
+    if (smooth(middle) < target) low = middle
+    else high = middle
+  }
+  return (low + high) * 0.5
+}
 const progress = (time: number, range: readonly [number, number]) => {
   const [start, end] = range
   return smooth((time - start) / Math.max(0.001, end - start))
@@ -105,6 +135,12 @@ export function getSeedPose(time: number, viewportHeight: number, reducedMotion:
   // Ease in as the seed falls, then settle to zero velocity at the exact landing frame.
   const fallTime = clamp01((time - fall[0]) / (fall[1] - fall[0]))
   const falling = smooth(fallTime)
+  const fallDuration = fall[1] - fall[0]
+  const fallDistance = getSeedFallDistance(viewportHeight)
+  const spinAngle = reducedMotion ? 0 : time <= fall[0] ? time * 0.24
+    : fall[0] * 0.24 + getIntegratedSpin(fallTime, fallDuration, settings.seedSpinSpeed)
+  const wobbleAmplitude = 0.035 + (settings.seedWobbleAmplitude - 0.035) * smooth(fallTime / 0.12)
+  const wobbleAngle = reducedMotion ? 0 : Math.sin(time * 1.8) * wobbleAmplitude * (1 - falling)
   const transfer = progress(time, handoff)
   const lightTransfer = progress(time, [0, 1.15])
   const impactAge = time - fall[1]
@@ -133,7 +169,9 @@ export function getSeedPose(time: number, viewportHeight: number, reducedMotion:
     handoff: transfer,
     lightTransfer,
     growthWeight,
-    seedY: 1.45 * (1 - falling),
+    seedY: fallDistance * (1 - falling),
+    spinAngle,
+    wobbleAngle,
     trailOpacity: reducedMotion ? 0 : progress(time, [fall[0], fall[0] + 0.25]) * (1 - progress(time, [landing[0], landing[0] + 0.35])) * 0.75 * settings.seedTrailIntensity,
     impact: reducedMotion ? 1 : clamp01((time - landing[0]) / (landing[1] - landing[0])),
     growthTime: Math.max(0, time - handoff[0]),
@@ -153,25 +191,43 @@ export function getSeedPose(time: number, viewportHeight: number, reducedMotion:
   }
 }
 
-/** Delayed pursuit preserves downward screen motion; returns to the existing bloom framing. */
-export function getGrowthCameraPose(time: number, reducedMotion: boolean, settings: GrowthSettings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth): CameraPose {
+/** Delayed pursuit holds the seed at its opening screen position before tracking toward the fixed soil. */
+export function getGrowthCameraPose(time: number, reducedMotion: boolean, settings: GrowthSettings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, viewportHeight = getGrowthViewportHeight(1024, 768)): CameraPose {
   if (reducedMotion) return { x: 0, y: -0.2, z: 7.8, tx: 0, ty: -0.2, tz: 0 }
   const frames = getGrowthFrames(settings)
+  const fallDistance = getSeedFallDistance(viewportHeight)
+  const startY = SEED_ROOT[1] + fallDistance
+  const fallDuration = frames.fall[1] - frames.fall[0]
+  const desiredScreenY = SEED_FOLLOW_START_SCREEN_FRACTION
+  const initialDrop = Math.max(0, desiredScreenY - 0.5) * viewportHeight
+  const thresholdProgress = inverseSmooth(initialDrop / fallDistance)
+  const thresholdTime = frames.fall[0] + thresholdProgress * fallDuration
   const trackingTime = time - settings.seedCameraLag
-  const follow = progress(trackingTime, [frames.fall[0] + 0.1, frames.fall[1] + 0.42])
+  const baselineProgress = clamp01((thresholdTime - settings.seedCameraLag - frames.fall[0]) / fallDuration)
+  const baselineDrop = fallDistance * smooth(baselineProgress)
+  const trackingProgress = clamp01((trackingTime - frames.fall[0]) / fallDuration)
+  const trackingDrop = fallDistance * smooth(trackingProgress)
+  const remainingDrop = Math.max(0.001, fallDistance - baselineDrop)
+  const pathFollow = time < thresholdTime ? 0 : smooth((trackingDrop - baselineDrop) / remainingDrop)
+  const response = 1 - Math.exp(-settings.seedCameraFollowSpeed * Math.max(0, time - thresholdTime))
+  const follow = pathFollow * response
   const settle = progress(time, [frames.handoff[1], frames.duration])
   const parallax = Math.sin(Math.max(0, trackingTime) * 0.72) * 0.025 * follow * (1 - settle)
-  const framingDrop = 0.22 * Math.max(follow, settle)
+  const followY = startY + (-0.02 - startY) * follow
+  const followTargetY = startY + (-0.12 - startY) * follow
+  const y = followY + (-0.02 - followY) * settle
+  const ty = followTargetY + (-0.12 - followTargetY) * settle
+  const followZ = 5.6 + 1.4 * follow
   return {
-    x: parallax, y: -0.42 * follow * (1 - settle) + 0.2 * settle - framingDrop,
-    z: 5.6 + 1.1 * follow + 1.1 * settle,
-    tx: parallax * 0.35, ty: -0.42 * follow * (1 - settle) + 0.1 * settle - framingDrop, tz: 0,
+    x: parallax, y,
+    z: followZ + (7.8 - followZ) * settle,
+    tx: parallax * 0.35, ty, tz: 0,
   }
 }
 
 /** The same endpoint is used to enter Bloom, so both scenes share an identical camera pose. */
-export function getGrowthBloomEntryCameraPose(settings: GrowthSettings, reducedMotion: boolean): CameraPose {
-  return getGrowthCameraPose(getGrowthFrames(settings).duration, reducedMotion, settings)
+export function getGrowthBloomEntryCameraPose(settings: GrowthSettings, reducedMotion: boolean, viewportHeight = getGrowthViewportHeight(1024, 768)): CameraPose {
+  return getGrowthCameraPose(getGrowthFrames(settings).duration, reducedMotion, settings, viewportHeight)
 }
 
 export interface GrowthHandoff {

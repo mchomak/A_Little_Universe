@@ -11,7 +11,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 15
+  readonly schemaVersion: 16
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -100,6 +100,9 @@ export interface SceneComposerConfig {
       seedOrbitSpeed: number
       seedFallDuration: number
       seedCameraLag: number
+      seedCameraFollowSpeed: number
+      seedSpinSpeed: number
+      seedWobbleAmplitude: number
       islandRevealDuration: number
       seedTrailIntensity: number
       seedImpactStrength: number
@@ -285,7 +288,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 15,
+  schemaVersion: 16,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
@@ -311,7 +314,9 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       islandRadius: 0.82, islandThickness: 0.24, islandDepth: 0.58, islandRoughness: 0.5,
       grassDensity: 360, grassHeight: 0.14, windStrength: 1, windSpeed: 0.8,
       seedOrbitCount: 3, seedOrbitRadius: 0.4, seedOrbitTilt: 0.62, seedOrbitSpeed: 0.85,
-      seedFallDuration: 2.6, seedCameraLag: 0.3, islandRevealDuration: 1.5,
+      seedFallDuration: 3.6, seedCameraLag: 0.3,
+      seedCameraFollowSpeed: 3, seedSpinSpeed: 1, seedWobbleAmplitude: 0.08,
+      islandRevealDuration: 1.5,
       seedTrailIntensity: 1, seedImpactStrength: 0.6, seedImpactRadius: 0.72,
       seedImpactParticles: 64, seedImpactLifetime: 0.85,
       moonLightIntensity: 1.2, moonLightColor: '#AFC9F5', moonBeamRadius: 2,
@@ -406,7 +411,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 15) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 16) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -534,6 +539,9 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       seedOrbitSpeed: numberValue(growthInput?.seedOrbitSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedOrbitSpeed, 0, 2),
       seedFallDuration: numberValue(growthInput?.seedFallDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedFallDuration, 1.8, 4.5),
       seedCameraLag: numberValue(growthInput?.seedCameraLag, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedCameraLag, 0.1, 0.8),
+      seedCameraFollowSpeed: numberValue(growthInput?.seedCameraFollowSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedCameraFollowSpeed, 0.1, 8),
+      seedSpinSpeed: numberValue(growthInput?.seedSpinSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedSpinSpeed, 0, 4),
+      seedWobbleAmplitude: numberValue(growthInput?.seedWobbleAmplitude, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedWobbleAmplitude, 0, 0.35),
       islandRevealDuration: numberValue(growthInput?.islandRevealDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandRevealDuration, 0.4, 3),
       seedTrailIntensity: numberValue(growthInput?.seedTrailIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedTrailIntensity, 0, 2),
       seedImpactStrength: numberValue(growthInput?.seedImpactStrength, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedImpactStrength, 0, 1),
@@ -613,7 +621,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 15, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 16, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
