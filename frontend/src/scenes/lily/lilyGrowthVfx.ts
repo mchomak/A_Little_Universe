@@ -9,7 +9,7 @@ import type { SceneComposerConfig } from '../../systems/scene-config/config'
 import type { Quality } from '../../engine/film'
 
 const IMPULSE_POINTS = 14
-const PARTICLE_CAPACITY = 240
+const PARTICLE_CAPACITY = 528
 const CORE_POINTS = 2
 const TOTAL_POINTS = IMPULSE_POINTS + CORE_POINTS + PARTICLE_CAPACITY
 const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, Number.isFinite(value) ? value : 0))
@@ -61,7 +61,7 @@ export function getGrowthVfxParticleLimit(count: number, quality: Quality): numb
   return Math.round(requested * (quality === 'low' ? 0.5 : 1))
 }
 
-type GrowthParticleSource = 'stem' | 'leafA' | 'leafB' | 'bud'
+export type GrowthParticleSource = 'stem' | 'leafA' | 'leafB' | 'bud'
 
 function createActivationReader(clip: AnimationClip, source: GrowthParticleSource): (time: number) => number {
   const read = (node: string, property: 'scale' | 'morphTargetInfluences', component: number) => {
@@ -120,17 +120,24 @@ export interface LilyGrowthVfx {
   dispose(): void
   /** Stable typed arrays are exposed for runtime verification and diagnostics. */
   readonly geometry: BufferGeometry
+  /** Growth-only particle material is exposed for live DEV diagnostics. */
+  readonly material: ShaderMaterial
+  /** Stable per-particle organ labels aligned with the particle tail of the buffers. */
+  readonly particleSources: readonly GrowthParticleSource[]
 }
 
 const vertexShader = /* glsl */`
   attribute float aSize;
   attribute float aOpacity;
+  attribute float aGlow;
   varying vec3 vColor;
   varying float vOpacity;
+  varying float vGlow;
   uniform float uPixelRatio;
   void main() {
     vColor = color;
     vOpacity = aOpacity;
+    vGlow = aGlow;
     vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
     gl_PointSize = max(1.0, aSize * uPixelRatio);
     gl_Position = projectionMatrix * viewPosition;
@@ -140,13 +147,16 @@ const vertexShader = /* glsl */`
 const fragmentShader = /* glsl */`
   varying vec3 vColor;
   varying float vOpacity;
+  varying float vGlow;
   uniform float uBrightness;
+  uniform float uGlowStrength;
   void main() {
     float radius = length(gl_PointCoord - vec2(0.5)) * 2.0;
     float halo = exp(-radius * radius * 5.2) * (1.0 - smoothstep(0.72, 1.0, radius));
     float core = exp(-radius * radius * 24.0);
-    float alpha = vOpacity * (halo * 0.72 + core * 0.36);
-    gl_FragColor = vec4(vColor * uBrightness, alpha);
+    float glow = uGlowStrength * vGlow;
+    float alpha = vOpacity * (halo * (0.72 + glow * 0.52) + core * (0.36 + glow * 0.13));
+    gl_FragColor = vec4(vColor * uBrightness * (1.0 + glow * 0.28), alpha);
   }
 `
 
@@ -158,9 +168,15 @@ function unit(seed: number) {
 interface ParticleSeed {
   source: GrowthParticleSource
   phase: number
+  pathPosition: number
+  densitySample: number
   birthTime: number
   life: number
   size: number
+  speed: number
+  opacity: number
+  brightness: number
+  glow: number
   angle: number
   drift: number
   color: Color
@@ -169,17 +185,34 @@ interface ParticleSeed {
 function createParticleSeeds(clip: AnimationClip): ParticleSeed[] {
   return Array.from({ length: PARTICLE_CAPACITY }, (_, index) => {
     const selector = unit(index + 10)
-    const source = selector < 0.68 ? 'stem' : selector < 0.79 ? 'leafA' : selector < 0.9 ? 'leafB' : 'bud'
+    const source = selector < 0.5 ? 'stem' : selector < 0.65 ? 'leafA' : selector < 0.8 ? 'leafB' : 'bud'
     const phase = unit(index + 300)
     const phaseThreshold = 0.04 + phase * 0.84
+    const tier = unit(index + 1800)
+    const brightness = tier < 0.7 ? 0.8 + unit(index + 1900) * 0.2
+      : tier < 0.965 ? 1.04 + unit(index + 2000) * 0.16
+        : 1.36 + unit(index + 2100) * 0.24
     return {
       source,
       // These thresholds are measured against each zone's actual posed activation,
       // never against an independent wall clock or guessed clip-time window.
       phase: phaseThreshold,
+      // Separate the spatial sample from its activation threshold. At early stages,
+      // only recently activated seeds are alive; using phase for both would pin the
+      // whole visible stem stream to the newest tip of the short posed curve.
+      pathPosition: unit(index + 2700),
+      // A second stable sample thins only the earliest stem stream without creating
+      // frame-to-frame randomness or biasing the retained points toward either end.
+      densitySample: unit(index + 3600),
       birthTime: getGrowthVfxBirthTime(clip, source, phaseThreshold),
-      life: 0.55 + unit(index + 600) * 0.8,
-      size: 0.65 + unit(index + 900) * 0.9,
+      life: 0.72 + unit(index + 600) * 0.56,
+      size: unit(index + 900),
+      speed: 0.8 + unit(index + 1500) * 0.4,
+      opacity: 0.72 + unit(index + 1600) * 0.28,
+      brightness,
+      glow: tier < 0.7 ? 0.18 + unit(index + 2200) * 0.28
+        : tier < 0.965 ? 0.55 + unit(index + 2300) * 0.25
+          : 1.05 + unit(index + 2400) * 0.25,
       angle: unit(index + 1200) * Math.PI * 2,
       drift: 0.35 + unit(index + 1500) * 0.65,
       color: new Color(source === 'bud'
@@ -194,11 +227,11 @@ function findMesh(root: Object3D, name: string): Mesh | null {
   return found instanceof Mesh ? found : null
 }
 
-function writePoint(positions: Float32Array, sizes: Float32Array, opacities: Float32Array, colors: Float32Array, index: number,
-  point: Vector3, size: number, opacity: number, color: Color) {
+function writePoint(positions: Float32Array, sizes: Float32Array, opacities: Float32Array, colors: Float32Array, glows: Float32Array, index: number,
+  point: Vector3, size: number, opacity: number, color: Color, glow = 0) {
   const offset = index * 3
   positions[offset] = point.x; positions[offset + 1] = point.y; positions[offset + 2] = point.z
-  sizes[index] = size; opacities[index] = opacity
+  sizes[index] = size; opacities[index] = opacity; glows[index] = glow
   colors[offset] = color.r; colors[offset + 1] = color.g; colors[offset + 2] = color.b
 }
 
@@ -298,16 +331,18 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
   const positions = new Float32Array(TOTAL_POINTS * 3)
   const sizes = new Float32Array(TOTAL_POINTS)
   const opacities = new Float32Array(TOTAL_POINTS)
+  const glows = new Float32Array(TOTAL_POINTS)
   const colors = new Float32Array(TOTAL_POINTS * 3)
   geometry.setAttribute('position', new BufferAttribute(positions, 3).setUsage(StreamDrawUsage))
   geometry.setAttribute('aSize', new BufferAttribute(sizes, 1).setUsage(StreamDrawUsage))
   geometry.setAttribute('aOpacity', new BufferAttribute(opacities, 1).setUsage(StreamDrawUsage))
+  geometry.setAttribute('aGlow', new BufferAttribute(glows, 1).setUsage(StreamDrawUsage))
   geometry.setAttribute('color', new BufferAttribute(colors, 3).setUsage(StreamDrawUsage))
   geometry.setDrawRange(0, TOTAL_POINTS)
   const material = new ShaderMaterial({
     vertexShader, fragmentShader, transparent: true, depthWrite: false, blending: AdditiveBlending,
     toneMapped: false, vertexColors: true,
-    uniforms: { uPixelRatio: { value: 1 }, uBrightness: { value: 1 } },
+    uniforms: { uPixelRatio: { value: 1 }, uBrightness: { value: 1 }, uGlowStrength: { value: 1 } },
   })
   const points = new Points(geometry, material)
   points.frustumCulled = false
@@ -338,12 +373,14 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
     parentInverse: new Matrix4(), meshToLocal: new Matrix4(),
   }
   const seeds = createParticleSeeds(growthClip)
+  const particleSources = Object.freeze(seeds.map(seed => seed.source))
   const particleScratch = Array.from({ length: PARTICLE_CAPACITY }, () => [new Vector3(), new Vector3(), new Vector3()] as [Vector3, Vector3, Vector3])
   const baseColor = new Color('#F5D9A4').lerp(new Color('#FFF4E8'), 0.18)
   const pearl = new Color('#FFF4E8')
   const pulseColor = new Color('#F4DFB8')
+  const tintColor = new Color('#FFF4E8')
+  const particleColor = new Color()
   const anchor = new Vector3()
-  const tangent = new Vector3()
   const pathPoint = new Vector3()
   const pathAhead = new Vector3()
   const particleCenter = new Vector3()
@@ -371,8 +408,8 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
       base.getWorldPosition(anchor)
       parent.worldToLocal(anchor)
     } else anchor.set(0, 0, 0)
-    writePoint(positions, sizes, opacities, colors, IMPULSE_POINTS, anchor, 23, coreOpacity * settings.vfxCoreIntensity * 0.42, baseColor)
-    writePoint(positions, sizes, opacities, colors, IMPULSE_POINTS + 1, anchor, 8.5, coreOpacity * settings.vfxCoreIntensity, pearl)
+    writePoint(positions, sizes, opacities, colors, glows, IMPULSE_POINTS, anchor, 23, coreOpacity * settings.vfxCoreIntensity * 0.42, baseColor)
+    writePoint(positions, sizes, opacities, colors, glows, IMPULSE_POINTS + 1, anchor, 8.5, coreOpacity * settings.vfxCoreIntensity, pearl)
 
     const curveCount = frame.scene === 'growth' ? getStemCurve(stem, parent, curve, binsData) : 0
     const active = frame.scene === 'growth' && !frame.reducedMotion ? envelope.activity : 0
@@ -432,47 +469,60 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
         const fringe = Math.sin(index * 1.72 + frame.clipTime * 2.3) * 0.004
         pathPoint.x += fringe; pathPoint.z -= fringe * 0.7
       } else pathPoint.set(0, -1000, 0)
-      writePoint(positions, sizes, opacities, colors, index, pathPoint, 3.6 + (1 - trail) * 3.2, opacity, pulseColor)
+      writePoint(positions, sizes, opacities, colors, glows, index, pathPoint, 3.6 + (1 - trail) * 3.2, opacity, pulseColor)
     }
 
-    const lifeSeconds = Math.max(0.25, 0.98 / settings.vfxParticleSpeed)
     const particleLimit = getGrowthVfxParticleLimit(settings.vfxParticleCount, frame.quality)
+    tintColor.set(settings.vfxParticleTint)
+    const earlyStemFlow = 1 - smooth(pulseProgress / 0.45)
+    const earlyStemDensity = 0.16 + 0.84 * (1 - earlyStemFlow) ** 2
+    const stemActivation = stem?.morphTargetInfluences?.[0] === undefined
+      ? pulseProgress : clamp(1 - stem.morphTargetInfluences[0])
     for (let index = 0; index < PARTICLE_CAPACITY; index++) {
       const seed = seeds[index]!
       const slot = IMPULSE_POINTS + CORE_POINTS + index
-      const zoneActivation = seed.source === 'stem' ? pulseProgress
+      const zoneActivation = seed.source === 'stem' ? stemActivation
         : seed.source === 'bud' ? getBudGrowthActivation(head?.scale.x ?? 0)
           : leafActivation[seed.source === 'leafA' ? 0 : 1]!
       const age = frame.clipTime - seed.birthTime
-      const life = lifeSeconds * seed.life
-      let opacity = active * smooth(age / 0.16) * (1 - smooth((age - life + 0.12) / 0.28))
+      const life = settings.vfxParticleLifetime * seed.life
+      const fadeInDuration = Math.min(0.18, life * 0.3)
+      const fadeOutStart = life * 0.64
+      const fadeOutDuration = Math.max(0.08, life - fadeOutStart)
+      let opacity = active * smooth(age / fadeInDuration) * (1 - smooth((age - fadeOutStart) / fadeOutDuration))
       if (age < 0 || age > life || zoneActivation < seed.phase || index >= particleLimit) opacity = 0
+      const earlyDensityReveal = seed.source === 'stem' && earlyStemFlow > 0
+        ? smooth((earlyStemDensity - seed.densitySample + 0.08) / 0.16)
+        : 1
       let sampled = false
       const surface = particleSurface
+      const travel = age * settings.vfxParticleSpeed * seed.speed
       if (opacity > 0.002) {
         if (seed.source === 'stem' && curveCount) {
-          const emitterProgress = clamp(seed.phase + 0.018 + age * 0.018)
+          const trailProgress = clamp(1 - age / life)
+          const emitterProgress = clamp(seed.pathPosition * 0.92 + trailProgress * 0.08 + travel * 0.045)
           sampleCurve(curve, emitterProgress, particleCenter)
-          sampleCurve(curve, Math.min(1, emitterProgress + 0.035), pathAhead)
-          tangent.subVectors(pathAhead, particleCenter).normalize()
-          const radius = 0.018 + seed.drift * 0.018
-          const angle = seed.angle + age * settings.vfxParticleSpeed * 1.45
-          surface.copy(particleCenter).addScaledVector(tangent, age * settings.vfxParticleSpeed * 0.035)
+          const radius = (0.014 + seed.drift * 0.014 + settings.vfxParticleSpread * (0.022 + seed.drift * 0.014))
+            * (1 - earlyStemFlow * 0.3)
+          const angle = seed.angle + travel * 1.45
+          surface.copy(particleCenter)
           surface.x += Math.cos(angle) * radius
           surface.z += Math.sin(angle) * radius
+          surface.y += (unit(index + 3000) - 0.5) * settings.vfxParticleSpread * 0.05 * earlyStemFlow
           sampled = true
         } else if (seed.source === 'leafA' || seed.source === 'leafB') {
           const leafIndex = seed.source === 'leafA' ? 0 : 1
           const leaf = leaves[leafIndex]
           sampled = sampleMeshSurface(leaf, index, parent, surface, particleScratch[index]!)
           if (sampled) {
-            const angle = seed.angle + age * settings.vfxParticleSpeed
+            const angle = seed.angle + travel
             const direction = leafDirections[leafIndex]!
             const perpendicular = leafPerpendicular[leafIndex]!
             secondPerpendicular.crossVectors(direction, perpendicular).normalize()
-            surface.addScaledVector(direction, age * settings.vfxParticleSpeed * 0.09)
-            surface.addScaledVector(perpendicular, Math.cos(angle) * 0.018)
-            surface.addScaledVector(secondPerpendicular, Math.sin(angle) * 0.018)
+            surface.addScaledVector(direction, travel * 0.09)
+            const radius = 0.008 + settings.vfxParticleSpread * 0.032
+            surface.addScaledVector(perpendicular, Math.cos(angle) * radius)
+            surface.addScaledVector(secondPerpendicular, Math.sin(angle) * radius)
             const arrival = getGrowthZonePulse(pulseProgress, leafZoneProgress[leafIndex]!, pulseWidth * 0.55, leafActivation[leafIndex]!)
             opacity *= 1 + arrival * 1.2
           }
@@ -480,8 +530,8 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
           sampled = sampleMeshSurface(bud, index + 400, parent, surface, particleScratch[index]!)
           if (sampled) {
             // A small orbit follows the animated bud surface for a moment, then lifts away.
-            const angle = seed.angle + age * settings.vfxParticleSpeed * 0.75
-            const radius = 0.012 + age * 0.012
+            const angle = seed.angle + travel * 0.75
+            const radius = 0.009 + settings.vfxParticleSpread * 0.026 + age * 0.008
             surface.addScaledVector(budDirection, age * 0.025)
             surface.addScaledVector(budPerpendicular, Math.cos(angle) * radius)
             surface.addScaledVector(secondPerpendicular, Math.sin(angle) * radius)
@@ -491,19 +541,29 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
         }
       }
       if (!sampled) { surface.set(0, -1000, 0); opacity = 0 }
-      const size = settings.vfxParticleSize * seed.size
-      writePoint(positions, sizes, opacities, colors, slot, surface, size, opacity * settings.vfxParticleBrightness, seed.color)
+      const size = settings.vfxParticleSize * (1 - settings.vfxParticleSizeVariation * 0.5 + seed.size * settings.vfxParticleSizeVariation)
+      const sparkleSize = seed.glow > 1 ? 1 + (seed.glow - 1) * 0.24 : 1
+      const effectiveGlow = seed.glow * (seed.source === 'stem' ? 1 - earlyStemFlow * 0.22 : 1)
+      const glowSize = 1 + effectiveGlow * settings.vfxParticleGlow * 0.55
+      particleColor.copy(seed.color).multiply(tintColor)
+      const earlySoftening = seed.source === 'stem' ? 1 - earlyStemFlow * 0.25 : 1
+      writePoint(positions, sizes, opacities, colors, glows, slot, surface, size * sparkleSize * glowSize,
+        opacity * earlyDensityReveal * earlySoftening * seed.opacity * seed.brightness * settings.vfxParticleBrightness, particleColor, effectiveGlow)
     }
     geometry.attributes.position!.needsUpdate = true
     geometry.attributes.aSize!.needsUpdate = true
     geometry.attributes.aOpacity!.needsUpdate = true
+    geometry.attributes.aGlow!.needsUpdate = true
     geometry.attributes.color!.needsUpdate = true
     material.uniforms.uPixelRatio!.value = frame.pixelRatio
     material.uniforms.uBrightness!.value = 1
+    material.uniforms.uGlowStrength!.value = settings.vfxParticleGlow
   }
 
   return {
     geometry,
+    material,
+    particleSources,
     update,
     dispose() {
       if (disposed) return

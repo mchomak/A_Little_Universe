@@ -97,7 +97,7 @@ describe('Scene Composer controls', () => {
     await setComposerField('scenes.gallery.moonSize', 1.4)
     expect(getConfig().scenes.gallery.moonSize).toBe(1.4)
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(12)
+    expect(exported.schemaVersion).toBe(13)
     expect(exported.scenes.gallery).toMatchObject({ cloudLayerCount: 18, moonSize: 1.4, cloudDensity: 1.2, cloudOpacity: 1.1, cloudDriftVariation: 0.85, cloudCoolTint: 1.2, reflectionStrength: 0.4 })
     expect((await importComposerJson(JSON.stringify(exported))).ok).toBe(true)
 
@@ -126,7 +126,7 @@ describe('Scene Composer controls', () => {
       scenes: { prologue: Record<string, unknown> }
     }
 
-    expect(exported.schemaVersion).toBe(12)
+    expect(exported.schemaVersion).toBe(13)
     expect(exported.global.quality).toBe('low')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpeed')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpread')
@@ -141,7 +141,7 @@ describe('Scene Composer controls', () => {
     expect(getConfig().scenes.growth).toMatchObject(patch)
 
     const exported = exportComposerJson()
-    expect(JSON.parse(exported)).toMatchObject({ schemaVersion: 12, scenes: { growth: patch } })
+    expect(JSON.parse(exported)).toMatchObject({ schemaVersion: 13, scenes: { growth: patch } })
     await resetConfig('all')
     expect((await importComposerJson(exported)).ok).toBe(true)
     expect(getConfig().scenes.growth).toMatchObject(patch)
@@ -160,7 +160,7 @@ describe('Scene Composer controls', () => {
     })
 
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(12)
+    expect(exported.schemaVersion).toBe(13)
     expect(exported.scenes.gallery).toMatchObject({ cloudIntensity: 1.35, cloudLayerCount: 6, hazeHeight: -1.1, moonCloudLightIntensity: 1.4 })
 
     await resetComposerField('scenes.gallery.hazeHeight')

@@ -1,97 +1,128 @@
 window.STATE =
 {
-  "slug": "lily-growth-vfx",
-  "dir": "2026-11-02-lily-growth-vfx",
-  "title": "Scene 02: Lily growth VFX",
-  "mode": "full",
-  "depth": "normal",
-  "polish": null,
-  "tier": "T0",
-  "briefFile": "2026-11-02-brief.md",
-  "memoryFile": "AGENTS.md",
-  "skillDir": "C:\\Users\\McHomak\\.agents\\skills\\autopilot",
-  "startedAt": "2026-11-02T03:37:01+03:00",
-  "updatedAt": "2026-11-02T04:43:26+03:00",
-  "finishedAt": "2026-11-02T04:43:26+03:00",
-  "stages": [
-    {
-      "id": "preflight",
-      "status": "done",
-      "startedAt": "2026-11-02T03:37:01+03:00",
-      "finishedAt": "2026-11-02T04:16:21+03:00"
-    },
-    {
-      "id": "manifest",
-      "status": "done",
-      "startedAt": "2026-11-02T03:37:01+03:00",
-      "finishedAt": "2026-11-02T04:16:21+03:00"
-    },
-    {
-      "id": "briefing",
-      "status": "done",
-      "startedAt": "2026-11-02T03:37:01+03:00",
-      "finishedAt": "2026-11-02T04:16:21+03:00"
-    },
-    {
-      "id": "spec",
-      "status": "done",
-      "startedAt": "2026-11-02T03:37:01+03:00",
-      "finishedAt": "2026-11-02T04:16:21+03:00"
-    },
-    {
-      "id": "plan",
-      "status": "done",
-      "startedAt": "2026-11-02T03:37:01+03:00",
-      "finishedAt": "2026-11-02T04:16:21+03:00"
-    },
-    {
-      "id": "build",
-      "status": "done",
-      "startedAt": "2026-11-02T03:37:01+03:00",
-      "finishedAt": "2026-11-02T04:43:26+03:00"
-    },
-    {
-      "id": "review",
-      "status": "done",
-      "startedAt": "2026-11-02T03:37:01+03:00",
-      "finishedAt": "2026-11-02T04:43:26+03:00"
-    },
-    {
-      "id": "final",
-      "status": "done",
-      "startedAt": "2026-11-02T03:37:01+03:00",
-      "finishedAt": "2026-11-02T04:43:26+03:00"
-    }
-  ],
-  "requirements": {
-    "total": 14,
-    "done": 14,
-    "inTicket": 0,
-    "inSpec": 0,
-    "placeholder": 0,
-    "deferred": 0,
-    "dropped": 0
-  },
-  "tickets": [],
-  "singlePass": {
-    "status": "done",
-    "startedAt": "2026-11-02T03:37:01+03:00",
-    "finishedAt": "2026-11-02T04:43:26+03:00"
-  },
-  "tests": {
-    "summary": "npm run check: 90 files, 428 tests, lint, typecheck, build passed"
-  },
-  "debt": {
-    "placeholders": [],
-    "assumptions": [],
-    "emptyEnv": []
-  },
-  "additions": [],
-  "coverage": null,
-  "concerns": [],
-  "reviewers": {
-    "manifestSpec": null,
-    "craft": null
-  },
-  "blind": null
+    "startedAt":  "2026-11-02T13:33:27+03:00",
+    "tier":  "T0",
+    "additions":  [
+
+                  ],
+    "coverage":  {
+                     "resolution":  "Added exact organ distribution and default count",
+                     "findings":  1
+                 },
+    "briefFile":  "2026-11-02-brief.md",
+    "debt":  {
+                 "emptyEnv":  [
+
+                              ],
+                 "placeholders":  [
+
+                                  ],
+                 "assumptions":  [
+
+                                 ]
+             },
+    "slug":  "lily-growth-particles",
+    "dir":  "2026-11-02-lily-growth-particles",
+    "singlePass":  {
+                       "status":  "done",
+                       "startedAt":  "2026-11-02T13:34:47+03:00",
+                       "finishedAt":  "2026-11-02T19:15:00+03:00",
+                       "files":  [
+                                     "frontend/src/scenes/lily/lilyGrowthVfx.ts",
+                                     "frontend/src/debug/DeveloperPanel.tsx",
+                                     "frontend/src/debug/composerControls.ts",
+                                     "frontend/src/systems/scene-config/config.ts",
+                                     "frontend/src/systems/scene-config/README.md",
+                                     "frontend/src/assets/lily/lilyAsset.test.ts"
+                                 ],
+                       "tests":  {
+                                     "passed":  430,
+                                     "failed":  0
+                                 }
+                   },
+    "skillDir":  "C:\\Users\\McHomak\\.agents\\skills\\autopilot",
+    "memoryFile":  "AGENTS.md",
+    "tickets":  [
+
+                ],
+    "tests":  {
+                  "passed":  430,
+                  "failed":  0
+              },
+    "title":  "Scene 02: Lily Growth Particles",
+    "stages":  [
+                   {
+                       "status":  "done",
+                       "startedAt":  "2026-11-02T13:34:47+03:00",
+                       "id":  "preflight",
+                       "finishedAt":  "2026-11-02T19:15:00+03:00"
+                   },
+                   {
+                       "status":  "done",
+                       "startedAt":  "2026-11-02T13:34:47+03:00",
+                       "id":  "manifest",
+                       "finishedAt":  "2026-11-02T19:15:00+03:00"
+                   },
+                   {
+                       "status":  "done",
+                       "startedAt":  "2026-11-02T13:34:47+03:00",
+                       "id":  "briefing",
+                       "finishedAt":  "2026-11-02T19:15:00+03:00"
+                   },
+                   {
+                       "status":  "done",
+                       "startedAt":  "2026-11-02T13:34:47+03:00",
+                       "id":  "spec",
+                       "finishedAt":  "2026-11-02T19:15:00+03:00"
+                   },
+                   {
+                       "status":  "skipped",
+                       "startedAt":  null,
+                       "id":  "plan",
+                       "note":  "T0: single bounded implementation"
+                   },
+                   {
+                       "status":  "done",
+                       "startedAt":  "2026-11-02T13:34:47+03:00",
+                       "id":  "build",
+                       "finishedAt":  "2026-11-02T19:15:00+03:00"
+                   },
+                   {
+                       "status":  "done",
+                       "startedAt":  "2026-11-02T19:15:00+03:00",
+                       "id":  "review",
+                       "finishedAt":  "2026-11-02T19:15:00+03:00"
+                   },
+                   {
+                       "status":  "done",
+                       "startedAt":  "2026-11-02T19:15:00+03:00",
+                       "id":  "final",
+                       "finishedAt":  "2026-11-02T19:15:00+03:00"
+                   }
+               ],
+    "blind":  {
+                  "status":  "passed",
+                  "notes":  "Visual scene review; independent brief review; 430 tests"
+              },
+    "polish":  null,
+    "updatedAt":  "2026-11-02T19:15:00+03:00",
+    "reviewers":  {
+                      "craft":  null,
+                      "manifestSpec":  null
+                  },
+    "requirements":  {
+                         "done":  34,
+                         "inTicket":  0,
+                         "inSpec":  0,
+                         "total":  34,
+                         "deferred":  0,
+                         "dropped":  0,
+                         "placeholder":  0
+                     },
+    "finishedAt":  "2026-11-02T19:15:00+03:00",
+    "mode":  "full",
+    "depth":  "normal",
+    "concerns":  [
+                     "MacBook M2 performance was not measured on target hardware."
+                 ]
 }

@@ -125,16 +125,23 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.growth.vfxCoreIntensity', label: 'Интенсивность ядра лилии', unit: '×', min: 0, max: 1.5, step: 0.05 },
     { path: 'scenes.growth.vfxPulseBrightness', label: 'Яркость импульса роста', unit: '×', min: 0, max: 2, step: 0.05 },
     { path: 'scenes.growth.vfxPulseWidth', label: 'Ширина светового следа', unit: '', min: 0.025, max: 0.3, step: 0.005 },
-    { path: 'scenes.growth.vfxParticleCount', label: 'Частицы роста', unit: 'шт.', min: 0, max: 240, step: 4 },
-    { path: 'scenes.growth.vfxParticleSize', label: 'Размер частиц роста', unit: 'px', min: 0.5, max: 6, step: 0.1 },
-    { path: 'scenes.growth.vfxParticleSpeed', label: 'Скорость частиц роста', unit: '×', min: 0.2, max: 2, step: 0.05 },
-    { path: 'scenes.growth.vfxParticleBrightness', label: 'Яркость частиц роста', unit: '×', min: 0, max: 2, step: 0.05 },
     { path: 'scenes.growth.seedScale', label: 'Масштаб семечка', unit: '×', min: 0.65, max: 1.4, step: 0.05 },
   ] },
   { name: 'Анимация лилии', controls: [
     { path: 'scenes.growth.flowerGrowthDuration', label: 'Длительность Growth', unit: 'с', min: 4, max: 14, step: 0.25 },
     { path: 'scenes.bloom.flowerBloomDuration', label: 'Длительность Bloom', unit: 'с', min: 6, max: 24, step: 0.25 },
   ] },
+]
+
+const LILY_GROWTH_PARTICLE_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.growth.vfxParticleCount', label: 'Particle Count / Density', unit: 'шт.', min: 0, max: 528, step: 8 },
+  { path: 'scenes.growth.vfxParticleSize', label: 'Particle Size', unit: 'px', min: 0.75, max: 8, step: 0.1 },
+  { path: 'scenes.growth.vfxParticleSizeVariation', label: 'Size Variation', unit: '×', min: 0, max: 1.5, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleBrightness', label: 'Brightness / Intensity', unit: '×', min: 0, max: 2.5, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleGlow', label: 'Glow Strength', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleSpeed', label: 'Particle Speed', unit: '×', min: 0.2, max: 2, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleLifetime', label: 'Lifetime', unit: 'с', min: 0.3, max: 3, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleSpread', label: 'Spread / Radius', unit: '×', min: 0, max: 1.5, step: 0.05 },
 ]
 
 const BLOOM_CONTROLS: readonly NumericControl[] = [
@@ -554,7 +561,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–12. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–13. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -706,6 +713,10 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
               <select id="composer-scenes-growth-particleQuality" value={config.scenes.growth.particleQuality} onChange={(event) => { void changeField('scenes.growth.particleQuality', event.target.value) }}><option value="low">Низкое · 2304</option><option value="standard">Обычное · 4096</option><option value="high">Высокое · 9216</option></select>
             </div>
             {GROWTH_GROUPS.map(group => <details key={group.name} open={group.name === 'Частицы и формирование'}><summary>{group.name}</summary>{group.controls.map(range)}</details>)}
+          </details>
+          <details open><summary>Lily Growth Particles</summary>
+            {LILY_GROWTH_PARTICLE_CONTROLS.map(range)}
+            {color('scenes.growth.vfxParticleTint', 'Color / Tint')}
           </details>
           <p>Обе длительности анимации цветка настраиваются здесь и в сцене раскрытия.</p>
           <details><summary>Палитра частиц</summary>

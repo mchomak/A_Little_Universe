@@ -30,3 +30,36 @@ it('leaves defaults active when the optional startup file is missing or malforme
     vi.unstubAllGlobals()
   }
 })
+
+it('persists only Lily growth particle settings in DEV storage and restores them after reload', async () => {
+  vi.resetModules()
+  const values = new Map<string, string>()
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value) },
+  }
+  vi.stubGlobal('window', { localStorage: storage })
+  try {
+    const { DEFAULT_SCENE_COMPOSER_CONFIG, updateConfig } = await import('./config')
+    await updateConfig({ scenes: {
+      growth: { vfxParticleCount: 496, vfxParticleSize: 4.2, vfxParticleGlow: 0.8, vfxParticleTint: '#D9C6FF' },
+      prologue: { fontSize: 66 },
+    } })
+
+    const key = 'a-little-universe:dev:lily-growth-particles:v3'
+    const saved = JSON.parse(values.get(key) ?? 'null')
+    expect(saved).toMatchObject({ vfxParticleCount: 496, vfxParticleSize: 4.2, vfxParticleGlow: 0.8, vfxParticleTint: '#D9C6FF' })
+    expect(Object.keys(saved).sort()).toEqual([
+      'vfxParticleBrightness', 'vfxParticleCount', 'vfxParticleGlow', 'vfxParticleLifetime',
+      'vfxParticleSize', 'vfxParticleSizeVariation', 'vfxParticleSpeed', 'vfxParticleSpread', 'vfxParticleTint',
+    ])
+
+    vi.resetModules()
+    const reloaded = await import('./config')
+    expect(reloaded.getConfig().scenes.growth).toMatchObject(saved)
+    expect(reloaded.getConfig().scenes.prologue.fontSize).toBe(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontSize)
+  } finally {
+    vi.unstubAllGlobals()
+    vi.resetModules()
+  }
+})

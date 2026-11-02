@@ -1,6 +1,6 @@
 # Scene Composer configuration
 
-`SceneComposerConfig` is an immutable schema version 12. `normalizeConfig(input)` accepts partial schema v1–v12 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the current gallery and identity controls; schema v12 adds bounded Lily growth VFX controls. The store publishes font changes only after the selected local font is ready.
+`SceneComposerConfig` is an immutable schema version 13. `normalizeConfig(input)` accepts partial schema v1–v13 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the current gallery and identity controls; schema v12 added bounded Lily growth core and pulse controls; schema v13 adds expressive, bounded Lily growth particle settings. The store publishes font changes only after the selected local font is ready.
 
 The public store is:
 
@@ -11,7 +11,7 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v12.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v13. In development, only the nine Lily growth particle settings are stored in local storage under `a-little-universe:dev:lily-growth-particles:v3`; production startup files and other scene settings are not persisted by editor changes.
 
 Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its 0.1–20 second travel-window meaning, with the cinematic default now 2.2 seconds; `particleFadeDuration` controls individual dust fade and defaults to 1.2 seconds. `particleReturnFraction` is ignored. The light, atmosphere, typography and interaction fields are additive schema-v2 fields: missing fields in both v1 and v2 files receive current defaults.
 
@@ -19,7 +19,7 @@ An optional production override can contain only values that differ from the def
 
 ```json
 {
-  "schemaVersion": 12,
+  "schemaVersion": 13,
   "global": { "quality": "low" },
   "scenes": {
     "preparation": {
@@ -60,6 +60,8 @@ An optional production override can contain only values that differ from the def
 | Preload | Glow, particle count, movement speed, collapse duration | 0–2, 40–300 integer, 0.1–4, 0–4 |
 | Preparation | Spacing, entrance duration | 0–64, 0–5 |
 | Preparation | Heading scale, line height, card opacity | 0.9–1.1, 0.9–1.5, 0.85–1 |
+| Lily Growth Particles | Count, size, variation, brightness, glow | 0–528 integer (440), 0.75–8 px (3.4), 0–1.5 (0.65), 0–2.5 (1.15), 0–2 (1.35) |
+| Lily Growth Particles | Speed, lifetime, spread, tint | 0.2–2 (0.95), 0.3–3 s (2.3), 0–1.5 (0.65), hex color (`#FFF4E8`) |
 | Gallery light | Moon light color/intensity; halo intensity/radius | `#C3D8F2`; 0–3; 0–2; 0–2.5 |
 | Gallery light | Scattering / godray intensity | 0–1.5; 0–0.8 |
 | Gallery light | Moon position X / Y / Z | −12–12 / 4–24 / −180–−80 world units |

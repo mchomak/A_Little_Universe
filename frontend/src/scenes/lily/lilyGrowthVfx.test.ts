@@ -33,7 +33,11 @@ it('derives leaf and bud particle bursts from their posed GLB growth values', ()
 it('scales the particle workload when the film switches to low quality', () => {
   expect(getGrowthVfxParticleLimit(88, 'standard')).toBe(88)
   expect(getGrowthVfxParticleLimit(88, 'low')).toBe(44)
-  expect(getGrowthVfxParticleLimit(500, 'standard')).toBe(240)
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleCount).toBe(440)
+  expect(getGrowthVfxParticleLimit(440, 'standard')).toBe(440)
+  expect(getGrowthVfxParticleLimit(440, 'low')).toBe(220)
+  expect(getGrowthVfxParticleLimit(600, 'standard')).toBe(528)
+  expect(getGrowthVfxParticleLimit(600, 'low')).toBe(264)
 })
 
 it('concentrates the local glow only as the pulse reaches a forming zone', () => {
