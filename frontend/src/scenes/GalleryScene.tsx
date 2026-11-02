@@ -5,7 +5,7 @@ import { galleryDistanceOpacity, galleryFocusOpacity } from './gallery/visibilit
 import { galleryPhotoBlurAtFocus, galleryPhotoLightAtFocus, GALLERY_ART } from './gallery/artDirection'
 import { createFrameParticleGeometry } from './gallery/frameParticles'
 import { createGalleryDustGeometry, getGalleryDustCount } from './gallery/dust'
-import { createFrameFootprintMaterial, createPhotoReflectionLayout, createPhotoReflectionMaterial, updateFrameFootprintMaterial, updatePhotoReflectionMaterial, PHOTO_REFLECTION_PLANE_ROTATION_X, type GalleryArtSettings } from './gallery/reflections'
+import type { GalleryArtSettings } from './gallery/reflections'
 import { createMemoryThreadAccentGeometry, createMemoryThreadGeometry, createMemoryThreadMaterial, createMemoryThreadPaths, GALLERY_MEMORY_RENDER_ORDER, GALLERY_THREAD_RENDER_ORDER, memoryThreadOpacity, updateMemoryThreadMaterial } from './gallery/threads'
 import { GALLERY_WORLD } from './gallery/world'
 import { getMoonFrameTintStrength, getMoonPhotoIllumination } from './gallery/moonLighting'
@@ -140,14 +140,14 @@ function frameShaderMaterial() {
     toneMapped: false,
   })
 }
-function Photo({ url, width, height, fallback, onAspect, material, reflectionMaterial }: { url: string; width: number; height: number; fallback: CanvasTexture | null; onAspect: (value: number) => void; material: RefObject<ShaderMaterial | null>; reflectionMaterial: RefObject<ShaderMaterial | null> }) {
+function Photo({ url, width, height, fallback, onAspect, material }: { url: string; width: number; height: number; fallback: CanvasTexture | null; onAspect: (value: number) => void; material: RefObject<ShaderMaterial | null> }) {
   const [texture, setTexture] = useState<Texture | null>(null)
   useEffect(() => {
     let active = true; let loaded: Texture | null = null
-    new TextureLoader().load(url, (value) => { if (!active) { value.dispose(); return } loaded = value; setColorSpace(value); const image = value.image as HTMLImageElement; if (image.naturalWidth && image.naturalHeight) onAspect(image.naturalWidth / image.naturalHeight); setShaderUniform(material.current, 'map', value); setShaderUniform(reflectionMaterial.current, 'map', value); setTexture(value) }, undefined, () => { if (active) setTexture(null) })
+    new TextureLoader().load(url, (value) => { if (!active) { value.dispose(); return } loaded = value; setColorSpace(value); const image = value.image as HTMLImageElement; if (image.naturalWidth && image.naturalHeight) onAspect(image.naturalWidth / image.naturalHeight); setShaderUniform(material.current, 'map', value); setTexture(value) }, undefined, () => { if (active) setTexture(null) })
     return () => { active = false; loaded?.dispose() }
-  }, [url, onAspect, material, reflectionMaterial])
-  useEffect(() => { setShaderUniform(material.current, 'map', texture ?? fallback); setShaderUniform(reflectionMaterial.current, 'map', texture ?? fallback) }, [fallback, material, reflectionMaterial, texture])
+  }, [url, onAspect, material])
+  useEffect(() => { setShaderUniform(material.current, 'map', texture ?? fallback) }, [fallback, material, texture])
   return <mesh><planeGeometry args={[width, height]} /><primitive object={material.current!} attach="material" /></mesh>
 }
 function setMaterialAlpha(saved: { material: Material; opacity: number; transparent: boolean; depthWrite: boolean }, alpha: number) { saved.material.opacity = saved.opacity * alpha; saved.material.transparent = alpha < 1 || saved.transparent; saved.material.depthWrite = alpha < 1 ? false : saved.depthWrite }
@@ -157,9 +157,6 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   const group = useRef<Group>(null)
   const glow = useRef<MeshBasicMaterial>(null)
   const captionMaterial = useRef<MeshBasicMaterial>(null)
-  const reflectionRoot = useRef<Group>(null)
-  const reflection = useRef<Mesh>(null)
-  const frameFootprint = useRef<Mesh>(null)
   const contourMaterials = useRef<(MeshBasicMaterial | null)[]>([])
   const frameHaloMaterials = useRef<(MeshBasicMaterial | null)[]>([])
   const worldPosition = useMemo(() => new Vector3(), [])
@@ -172,25 +169,19 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   const caption = useMemo(() => captionTexture(memory.caption), [memory.caption])
   const photoMaterial = useMemo(() => photoShaderMaterial(memory.order === 0 ? firstPhoto : image ?? firstPhoto), [firstPhoto, image, memory.order])
   const photoMaterialRef = useRef(photoMaterial)
-  const [reflectionMaterial] = useState(() => createPhotoReflectionMaterial(memory.order === 0 ? firstPhoto : image ?? firstPhoto, settings))
-  const [frameFootprintMaterial] = useState(() => createFrameFootprintMaterial(halo))
-  const reflectionMaterialRef = useRef(reflectionMaterial)
   const frameMaterial = useMemo(() => frameShaderMaterial(), [])
   const frameMaterialRef = useRef(frameMaterial)
   const visual = useRef({ alpha: 0, focusAmount: 0 })
 
   useEffect(() => {
     photoMaterialRef.current = photoMaterial
-    reflectionMaterialRef.current = reflectionMaterial
-  }, [photoMaterial, reflectionMaterial])
+  }, [photoMaterial])
   useEffect(() => () => {
     image?.dispose()
     caption.dispose()
     photoMaterial.dispose()
-    reflectionMaterial.dispose()
-    frameFootprintMaterial.dispose()
     frameMaterial.dispose()
-  }, [image, caption, photoMaterial, reflectionMaterial, frameFootprintMaterial, frameMaterial])
+  }, [image, caption, photoMaterial, frameMaterial])
   useEffect(() => { setColorSpace(firstPhoto) }, [firstPhoto])
   useEffect(() => {
     const saved: { material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[] = []
@@ -237,11 +228,9 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
       if (material) material.opacity = Math.min(1, alpha * 0.5 * frameIntensity * focusGlow)
     }
     if (glow.current) glow.current.opacity = Math.min(1, alpha * 0.2 * frameIntensity * focusGlow)
-    updateFrameFootprintMaterial(frameFootprintMaterial, alpha * settings.reflectionStrength * frameIntensity)
     setShaderUniform(frameMaterialRef.current, 'uOpacity', alpha * (0.48 + 0.2 * focusAmount))
     setShaderUniform(frameMaterialRef.current, 'uFocus', focusAmount)
-    if (reflectionMaterialRef.current) updatePhotoReflectionMaterial(reflectionMaterialRef.current, settings, alpha)
-  }, [frameFootprintMaterial, settings])
+  }, [settings])
   useEffect(() => { applyArtSettings() }, [applyArtSettings])
 
   useFrame(({ camera }) => {
@@ -298,27 +287,13 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     applyArtSettings(alpha, focusAmount)
     if (captionMaterial.current) captionMaterial.current.opacity = visible * (0.65 + 0.35 * focusAmount) * focusAlpha * distanceAlpha * (1 - m.exit / GALLERY.exit)
 
-    const reflectionLayout = createPhotoReflectionLayout({
-      position: photoPosition,
-      yaw: group.current.rotation.y,
-      width,
-      height,
-      scale: group.current.scale.x,
-      floorY: GALLERY_WORLD.floor.y,
-    })
-    if (reflectionRoot.current) {
-      reflectionRoot.current.position.set(...reflectionLayout.position)
-      reflectionRoot.current.rotation.set(0, reflectionLayout.yaw, 0)
-      reflectionRoot.current.scale.setScalar(reflectionLayout.scale)
-      reflectionRoot.current.visible = group.current.visible
-    }
   })
 
   return <>
     <group ref={group} renderOrder={GALLERY_MEMORY_RENDER_ORDER} onClick={(event) => { event.stopPropagation(); if (!paused) galleryFocus(memory.order) }}>
       <mesh position={[0, 0, -0.04]}><boxGeometry args={[width + 0.08, height + 0.08, 0.07]} /><meshStandardMaterial color="#171b23" roughness={0.96} metalness={0.02} /></mesh>
       <mesh position={[0, 0, -0.07]}><planeGeometry args={[width + 0.36, height + 0.36]} /><meshBasicMaterial ref={glow} map={halo} color="#ffd7b0" transparent opacity={0.2} depthWrite={false} blending={AdditiveBlending} toneMapped={false} /></mesh>
-      {memory.order === 0 ? <FirstMemoryCard photoMaterial={photoMaterial} frameTone="moonlight" /> : memory.image ? <Photo url={memory.image} width={width} height={height} fallback={image} onAspect={setAspect} material={photoMaterialRef} reflectionMaterial={reflectionMaterialRef} /> : <mesh><planeGeometry args={[width, height]} /><primitive object={photoMaterial} attach="material" /></mesh>}
+      {memory.order === 0 ? <FirstMemoryCard photoMaterial={photoMaterial} frameTone="moonlight" /> : memory.image ? <Photo url={memory.image} width={width} height={height} fallback={image} onAspect={setAspect} material={photoMaterialRef} /> : <mesh><planeGeometry args={[width, height]} /><primitive object={photoMaterial} attach="material" /></mesh>}
       {([-1, 1] as const).map(side => <group key={side}>
         <mesh position={[0, side * (height / 2 + 0.025), 0.01]}>
           <planeGeometry args={[width + 0.36, 0.16]} />
@@ -339,16 +314,6 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
       </group>)}
       <points geometry={frameParticles}><primitive object={frameMaterial} attach="material" /></points>
       <mesh position={[0, -height / 2 - 0.34, 0.02]}><planeGeometry args={[3.4, 0.33]} /><meshBasicMaterial ref={captionMaterial} map={caption} transparent opacity={0.65} depthWrite={false} toneMapped={false} /></mesh>
-    </group>
-    <group ref={reflectionRoot} visible={false}>
-      <mesh ref={reflection} position={[0, 0.006, 0]} rotation={[PHOTO_REFLECTION_PLANE_ROTATION_X, 0, 0]} raycast={() => undefined}>
-        <planeGeometry args={[width, height * 0.85]} />
-        <primitive object={reflectionMaterial} attach="material" />
-      </mesh>
-      <mesh ref={frameFootprint} position={[0, 0.002, 0]} rotation={[PHOTO_REFLECTION_PLANE_ROTATION_X, 0, 0]} raycast={() => undefined}>
-        <planeGeometry args={[width * 1.12, height * 0.85 * 1.25]} />
-        <primitive object={frameFootprintMaterial} attach="material" />
-      </mesh>
     </group>
   </>
 }
@@ -457,7 +422,7 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
   return <>
     <color attach="background" args={[skyColor]} />
     <fog attach="fog" args={[skyColor, 55, 208 - settings.hazeDensity * 14]} />
-    <MoonlitWorld settings={settings} quality={quality} halo={halo} />
+    <MoonlitWorld settings={settings} quality={quality} halo={halo} reducedMotion={reducedMotion} />
     <Dust low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
     {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} />)}
     <MemoryThreads settings={settings} low={quality === 'low'} paused={state.paused} halo={halo} />

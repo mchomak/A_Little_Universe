@@ -191,8 +191,17 @@ const GALLERY_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.particleCount', label: 'Количество частиц', unit: 'шт.', min: 0, max: 600, step: 1 },
   { path: 'scenes.gallery.moonBrightness', label: 'Яркость лунной сферы', unit: '×', min: 0, max: 2, step: 0.05 },
   { path: 'scenes.gallery.moonSize', label: 'Размер луны', unit: '×', min: 0.4, max: 1.8, step: 0.05 },
+  { path: 'scenes.gallery.waterBaseBrightness', label: 'Базовая яркость воды', unit: '×', min: 0, max: 1.5, step: 0.01 },
   { path: 'scenes.gallery.reflectionStrength', label: 'Сила отражений', unit: '×', min: 0, max: 0.6, step: 0.01 },
   { path: 'scenes.gallery.reflectionBlur', label: 'Размытие отражений', unit: '×', min: 0.3, max: 1, step: 0.01 },
+  { path: 'scenes.gallery.reflectionFalloff', label: 'Затухание отражений', unit: '×', min: 0.25, max: 2.5, step: 0.01 },
+  { path: 'scenes.gallery.waterDistortion', label: 'Искажение воды', unit: '×', min: 0, max: 0.05, step: 0.001 },
+  { path: 'scenes.gallery.waterDistortionScale', label: 'Масштаб микронормалей', unit: '×', min: 0.25, max: 3, step: 0.01 },
+  { path: 'scenes.gallery.waterRippleSpeed', label: 'Скорость ряби', unit: '×', min: 0, max: 1, step: 0.01 },
+  { path: 'scenes.gallery.waterNormalStrength', label: 'Сила нормалей воды', unit: '×', min: 0, max: 1, step: 0.01 },
+  { path: 'scenes.gallery.moonHighlightStrength', label: 'Сила лунного блика', unit: '×', min: 0, max: 2, step: 0.01 },
+  { path: 'scenes.gallery.moonReflectionSpread', label: 'Ширина лунной дорожки', unit: '×', min: 0.25, max: 2.5, step: 0.01 },
+  { path: 'scenes.gallery.waterOpacity', label: 'Непрозрачность воды', unit: '×', min: 0, max: 1, step: 0.01 },
   { path: 'scenes.gallery.threadOpacity', label: 'Прозрачность световых нитей', unit: '×', min: 0, max: 0.8, step: 0.01 },
   { path: 'scenes.gallery.coldLightIntensity', label: 'Интенсивность холодного света', unit: '×', min: 0, max: 1.8, step: 0.05 },
   { path: 'scenes.gallery.moonLightIntensity', label: 'Общий лунный свет', unit: '×', min: 0, max: 3, step: 0.05 },
@@ -209,18 +218,26 @@ const GALLERY_CONTROLS: readonly NumericControl[] = [
 ]
 
 const GALLERY_CLOUD_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
-  { name: 'Облачные массы', controls: [
-    { path: 'scenes.gallery.cloudDensity', label: 'Плотность облаков', unit: '×', min: 0, max: 1.8, step: 0.05 },
-    { path: 'scenes.gallery.cloudOpacity', label: 'Непрозрачность облаков', unit: '×', min: 0, max: 1.8, step: 0.05 },
-    { path: 'scenes.gallery.cloudScale', label: 'Размер облачных масс', unit: '×', min: 0.55, max: 2, step: 0.05 },
-    { path: 'scenes.gallery.cloudLayerCount', label: 'Количество облачных масс', unit: 'шт.', min: 0, max: 18, step: 1 },
-    { path: 'scenes.gallery.cloudForegroundAmount', label: 'Ближние облака', unit: '×', min: 0, max: 1.6, step: 0.05 },
-    { path: 'scenes.gallery.cloudBackgroundAmount', label: 'Дальние облака', unit: '×', min: 0, max: 1.6, step: 0.05 },
-    { path: 'scenes.gallery.cloudNearFloorAmount', label: 'Облака у пола', unit: '×', min: 0, max: 1.6, step: 0.05 },
-    { path: 'scenes.gallery.cloudIntensity', label: 'Контраст облачной формы', unit: '×', min: 0, max: 2, step: 0.05 },
-  ] },
+  ...([
+    { id: 'far', name: 'Far Clouds · дальний слой', maxCount: 14 },
+    { id: 'mid', name: 'Mid Clouds · боковые массы', maxCount: 20 },
+    { id: 'nearLow', name: 'Near Low Clouds · за фотографиями', maxCount: 24 },
+    { id: 'waterline', name: 'Waterline Clouds · дымка над водой', maxCount: 32 },
+  ] as const).map(({ id, name, maxCount }) => ({
+    name,
+    controls: [
+      { path: `scenes.gallery.cloudLayers.${id}.count`, label: 'Количество масс', unit: 'шт.', min: 0, max: maxCount, step: 1 },
+      { path: `scenes.gallery.cloudLayers.${id}.density`, label: 'Плотность', unit: '×', min: 0, max: 1.8, step: 0.05 },
+      { path: `scenes.gallery.cloudLayers.${id}.scale`, label: 'Масштаб', unit: '×', min: 0.55, max: 2, step: 0.05 },
+      { path: `scenes.gallery.cloudLayers.${id}.opacity`, label: 'Непрозрачность', unit: '×', min: 0, max: 1.8, step: 0.05 },
+      { path: `scenes.gallery.cloudLayers.${id}.brightness`, label: 'Яркость', unit: '×', min: 0, max: 2, step: 0.05 },
+      { path: `scenes.gallery.cloudLayers.${id}.driftSpeed`, label: 'Скорость дрейфа', unit: '×', min: 0, max: 2, step: 0.05 },
+      { path: `scenes.gallery.cloudLayers.${id}.height`, label: 'Высота', unit: 'м', min: -8, max: 12, step: 0.1 },
+      { path: `scenes.gallery.cloudLayers.${id}.distance`, label: 'Отступ от галереи', unit: 'м', min: 0, max: 24, step: 0.25 },
+      { path: `scenes.gallery.cloudLayers.${id}.softness`, label: 'Мягкость края', unit: '×', min: 0, max: 1, step: 0.025 },
+    ].map(control => ({ ...control, path: control.path as ComposerFieldPath })),
+  })),
   { name: 'Дрейф и дымка', controls: [
-    { path: 'scenes.gallery.cloudDriftSpeed', label: 'Скорость дрейфа облаков', unit: '×', min: 0, max: 2, step: 0.05 },
     { path: 'scenes.gallery.cloudDriftVariation', label: 'Разница дрейфа по глубине', unit: '×', min: 0, max: 1, step: 0.05 },
     { path: 'scenes.gallery.hazeDensity', label: 'Плотность дымки', unit: '×', min: 0, max: 1.8, step: 0.05 },
     { path: 'scenes.gallery.hazeHeight', label: 'Высота дымки', unit: 'м.', min: -3, max: 3, step: 0.1 },
@@ -547,7 +564,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–11. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–13. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -722,11 +739,9 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         </>}
         {selected === 'gallery' && <details open><summary>Scene 05 — Лунная галерея</summary>
           {color('scenes.gallery.moonLightColor', 'Цвет лунного света')}
-          {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.name === 'Облачные массы'}><summary>{group.name}</summary>
-            {group.controls.map(control => rangeWithMax(control,
-              control.path === 'scenes.gallery.cloudLayerCount' && (state.quality === 'low' || config.global.quality === 'low') ? 14 : control.max,
-            ))}
-            {group.name === 'Облачные массы' && <p>В сцене 24 объёмные формы; рендер ограничен 18 массами в обычном качестве и 14 в низком.</p>}
+          {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.name.startsWith('Near Low') || group.name.startsWith('Waterline')}><summary>{group.name}</summary>
+            {group.controls.map(range)}
+            {group.name.startsWith('Waterline') && <p>Для устойчивого времени кадра сцена отображает не более 36 объёмных масс (20 в низком профиле); все четыре слоя сохраняют отдельные квоты.</p>}
           </details>)}
           {GALLERY_CONTROLS.map(range)}
         </details>}

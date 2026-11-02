@@ -77,8 +77,8 @@ describe('gallery photo reflection layout', () => {
 
     expect(material).toBeInstanceOf(ShaderMaterial)
     expect(material.uniforms.map?.value).toBe(texture)
-    expect(material.uniforms.uStrength?.value).toBe(0.24)
-    expect(material.uniforms.uBlur?.value).toBe(0.8)
+    expect(material.uniforms.uStrength?.value).toBe(0.5)
+    expect(material.uniforms.uBlur?.value).toBe(0.52)
     expect(material.fragmentShader).toContain('mix(0.04, 0.12, clamp(uBlur, 0.0, 1.0))')
     expect(material.fragmentShader).toContain('vec2 reflectedUv = vec2(vUv.x, 1.0 - vUv.y)')
     expect(material.fragmentShader).toContain('pow(clamp(vUv.y, 0.0, 1.0), 1.75)')

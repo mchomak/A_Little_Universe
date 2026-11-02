@@ -1,0 +1,1 @@
+Ориентиры пользователя: three.js/examples/jsm/objects/Water.js; drei/src/core/MeshReflectorMaterial.tsx; drei/docs/shaders/mesh-reflector-material.mdx. Approved K05-01–04; тёмная почти гладкая поверхность с тонким слоем воды.
