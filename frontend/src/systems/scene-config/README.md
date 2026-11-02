@@ -19,7 +19,7 @@ An optional production override can contain only values that differ from the def
 
 ```json
 {
-  "schemaVersion": 13,
+  "schemaVersion": 14,
   "global": { "quality": "low" },
   "scenes": {
     "preparation": {
