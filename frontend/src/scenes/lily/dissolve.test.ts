@@ -434,6 +434,35 @@ it('captures unique detached particles that are visible at their time-specific c
   geometry.dispose()
 })
 
+it('assigns a limited number of visible routes across the whole portrait and keeps authored appearance', () => {
+  const source: LilySurfaceSource = {
+    center: [0, 0, 0], radius: 1, minY: 0, maxY: 1,
+    sample: () => [1, 0.5, 0], sampleSurface: () => ({ position: [1, 0.5, 0], part: 0 }),
+  }
+  const targets = Array.from({ length: 1000 }, (_, index) => ({
+    u: 0.5, v: index / 1000, tone: 0.5, contrast: 0.3, featureWeight: 0.4,
+    seed: 0.25, photoColorLinear: [0.2, 0.4, 0.6] as const, artSize: 0.75, artBrightness: 0.45,
+  }))
+  const basis = createPortraitCameraBasis({ eye: [0, 0, 6], lookAt: [0, 0, 0], aspect: 4 / 3, fovDegrees: 38, planeDistance: 3 })
+  const options = {
+    targets, targetPositions: targets.map((target) => [0, target.v, 0] as [number, number, number]),
+    start: 2, duration: 8.5, dissolveDuration: 12, edgeWidth: 0.035, cameraBasisAtTime: () => basis,
+    capture: { portraitStartProgress: 0.3, portraitFraction: 0.4, portraitMinTurns: 0, portraitMaxTurns: 0,
+      portraitSteering: 1, portraitBraking: 1, portraitSettledBrightness: 1.15, vortexSpeedMultiplier: 0.9 },
+    settings: { particleBrightness: 1.25, vortexRadius: 0.8, vortexExpansion: 0.45, swirlSpeed: 0, swirlAcceleration: 0, centerDissolveAt: 0.5 },
+  } as unknown as NonNullable<Parameters<typeof createLilyParticleGeometry>[2]>
+  const geometry = createLilyParticleGeometry(source, 80, options)
+  const route = geometry.getAttribute('aPortraitRoute'), target = geometry.getAttribute('aPortraitTarget')
+  const selected = Array.from({ length: route.count }, (_, index) => index).filter((index) => route.getX(index) > 0.5)
+  expect(selected.length).toBeGreaterThan(0)
+  expect(selected.length).toBeLessThanOrEqual(32)
+  expect(Math.min(...selected.map((index) => target.getY(index)))).toBeLessThan(0.2)
+  expect(Math.max(...selected.map((index) => target.getY(index)))).toBeGreaterThan(0.8)
+  expect(selected.every((index) => Math.abs(geometry.getAttribute('aArtSize').getX(index) - 0.75) < 1e-5)).toBe(true)
+  expect(selected.every((index) => Math.abs(geometry.getAttribute('aArtBrightness').getX(index) - 0.45) < 1e-5)).toBe(true)
+  geometry.dispose()
+})
+
 it('does not assign positive-turn routes when swirl speed and acceleration are both zero', () => {
   const source: LilySurfaceSource = {
     center: [0, 0, 0], radius: 1, minY: 0, maxY: 1,

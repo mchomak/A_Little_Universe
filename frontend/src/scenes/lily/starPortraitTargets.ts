@@ -25,6 +25,10 @@ export type StarPortraitPoint = {
   featureWeight: number
   seed: number
   photoColorLinear: readonly [number, number, number]
+  /** Optional authored appearance from an approved portrait export. */
+  artSize?: number
+  artBrightness?: number
+  type?: 'fill' | 'contour' | 'flow' | 'support'
 }
 
 const MAX_PARTICLES = 32_000

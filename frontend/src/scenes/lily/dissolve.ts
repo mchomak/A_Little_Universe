@@ -283,6 +283,8 @@ export function createLilyParticleGeometry(source: LilySurfaceSource, count: num
   const portraitSourceColors = new Float32Array(count * 3)
   const portraitSeedData = new Float32Array(count * 3)
   const portraitRoute = new Float32Array(count)
+  const artSize = new Float32Array(count), artBrightness = new Float32Array(count)
+  artSize.fill(1); artBrightness.fill(1)
   portraitSourceColors.fill(1)
   for (let i = 0; i < count; i++) {
     const sample = source.sampleSurface(i, count)
@@ -294,16 +296,24 @@ export function createLilyParticleGeometry(source: LilySurfaceSource, count: num
   if (portrait) {
     if (isVisiblePortraitGeometry(portrait)) {
       const routes = planVisiblePortraitRoutes(positions, parts, seeds, count, source, portrait)
-      for (let targetIndex = 0; targetIndex < routes.length; targetIndex++) {
-        const route = routes[targetIndex]!
+      const totalTargets = Math.min(portrait.targets.length, portrait.targetPositions.length)
+      const targetIndices = selectRepresentativePortraitTargets(portrait.targets.slice(0, totalTargets), routes.length)
+      for (let routeIndex = 0; routeIndex < routes.length; routeIndex++) {
+        const route = routes[routeIndex]!
+        // The approved export is ordered by reveal region. Sampling across the
+        // entire ordering preserves the full silhouette even when fewer routes
+        // are visible than there are target points.
+        const targetIndex = targetIndices[routeIndex]!
         const target = portrait.targets[targetIndex]!
         const targetPosition = portrait.targetPositions[targetIndex]!
-        const stage = Math.min(3, Math.floor(targetIndex / Math.max(1, routes.length) * 4))
+        const stage = Math.min(3, Math.floor(routeIndex / Math.max(1, routes.length) * 4))
         const index = route.index, i3 = index * 3, i4 = index * 4
         portraitTargets.set([targetPosition[0], targetPosition[1], targetPosition[2], stage], i4)
         portraitMotion.set([route.launchTime, route.travelDuration, clampFinite(target.tone, 0, 1, 0.5), 1 + clampFinite(target.contrast, 0, 1, 0)], i4)
         portraitSourceColors.set(target.photoColorLinear.map((channel) => clampFinite(channel, 0, 1, 1)), i3)
         portraitSeedData.set([clampFinite(target.seed, 0, 1, 0.5), clampFinite(target.featureWeight, 0, 1, 0.5), route.captureMotion ? 1 : 0], index * 3)
+        artSize[index] = clampFinite(target.artSize ?? 1, 0, 3, 1)
+        artBrightness[index] = clampFinite(target.artBrightness ?? 1, 0, 4, 1)
         portraitRoute[index] = 1
       }
     } else {
@@ -342,7 +352,41 @@ export function createLilyParticleGeometry(source: LilySurfaceSource, count: num
   geometry.setAttribute('aPortraitSourceColor', new BufferAttribute(portraitSourceColors, 3))
   geometry.setAttribute('aPortraitSeedData', new BufferAttribute(portraitSeedData, 3))
   geometry.setAttribute('aPortraitRoute', new BufferAttribute(portraitRoute, 1))
+  geometry.setAttribute('aArtSize', new BufferAttribute(artSize, 1))
+  geometry.setAttribute('aArtBrightness', new BufferAttribute(artBrightness, 1))
   return geometry
+}
+
+/** Preserve the full reveal-ordered portrait and retain rare authored layers. */
+export function selectRepresentativePortraitTargets(targets: readonly StarPortraitPoint[], requested: number): number[] {
+  const count = Math.max(0, Math.min(targets.length, Math.floor(requested)))
+  if (count === 0) return []
+  const contours = targets.flatMap((point, index) => point.type === 'contour' ? [index] : [])
+  const others = targets.flatMap((point, index) => point.type === 'contour' ? [] : [index])
+  // The hand-authored eye, nose and mouth accents are scarce; ordinary
+  // downsampling can remove almost all of them even with thousands of routes.
+  const contourCount = Math.max(count - others.length, count >= contours.length + 3 ? contours.length : Math.min(contours.length, Math.max(1, Math.floor(count * 0.2))))
+  const selected = Array.from({ length: contourCount }, (_, index) => contours[Math.floor((index + 0.5) * contours.length / contourCount)]!)
+  const remaining = count - selected.length
+  for (let index = 0; index < remaining; index++) selected.push(others[Math.floor((index + 0.5) * others.length / remaining)]!)
+  const kinds = ['contour', 'flow', 'support', 'fill'] as const
+  const present = kinds.filter((kind) => targets.some((point) => (point.type ?? 'fill') === kind))
+  if (count >= present.length) {
+    for (const kind of present) {
+      if (selected.some((index) => (targets[index]!.type ?? 'fill') === kind)) continue
+      const candidates = targets.flatMap((point, index) => (point.type ?? 'fill') === kind ? [index] : [])
+      const replacement = candidates[Math.floor(candidates.length / 2)]!
+      const counts = new Map<string, number>()
+      for (const index of selected) { const type = targets[index]!.type ?? 'fill'; counts.set(type, (counts.get(type) ?? 0) + 1) }
+      let best = -1, distance = Infinity
+      selected.forEach((index, position) => {
+        const type = targets[index]!.type ?? 'fill'
+        if (type !== 'contour' && (counts.get(type) ?? 0) > 1 && Math.abs(index - replacement) < distance) { best = position; distance = Math.abs(index - replacement) }
+      })
+      if (best >= 0) selected[best] = replacement
+    }
+  }
+  return selected.sort((a, b) => a - b)
 }
 
 interface PlannedPortraitRoute { index: number; launchTime: number; travelDuration: number; captureMotion: boolean }
