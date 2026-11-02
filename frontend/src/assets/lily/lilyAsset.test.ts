@@ -6,7 +6,9 @@ import { expect, it } from 'vitest'
 import { getBloomSceneFrames, getGrowthSceneFrames } from '../../engine/filmConfig'
 import { getGrowthClipTime, getSyncedBloomClipTime } from '../../scenes/lily/animationTiming'
 import { LilyAnimationPlayer } from '../../scenes/lily/animationPlayer'
+import { createLilyGrowthVfx, getGrowthVfxBirthTime } from '../../scenes/lily/lilyGrowthVfx'
 import { createLilyGeometryParticleSource } from '../../scenes/lily/particleSource'
+import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 
 interface GlbDocument {
   accessors: Array<{ max?: number[] }>
@@ -122,6 +124,46 @@ it('samples the actual open GLB morph and maps its vertices into the identity sc
   expect(worldSample[2]).toBeCloseTo(first[2] * 3, 4)
   player.dispose()
   worldPlayer.dispose()
+})
+
+it('samples actual Growth geometry deterministically after forward and backward timeline seeks', async () => {
+  const source = readFileSync(new URL('./lily_004_final.glb', import.meta.url))
+  const gltf = await parseAnimationFixture(source)
+  const model = clone(gltf.scene) as Group
+  const wrapper = new Group()
+  wrapper.position.set(0, -1.45, 0)
+  wrapper.scale.setScalar(3)
+  wrapper.add(model)
+  const player = new LilyAnimationPlayer(model, gltf.animations)
+  const clip = gltf.animations.find(({ name }) => name === 'Growth')!
+  const effect = createLilyGrowthVfx(wrapper, model, clip)
+  const stemBirth = getGrowthVfxBirthTime(clip, 'stem', 0.5)
+  const secondLeafBirth = getGrowthVfxBirthTime(clip, 'leafB', 0.5)
+  const firstLeafBirth = getGrowthVfxBirthTime(clip, 'leafA', 0.5)
+  const budBirth = getGrowthVfxBirthTime(clip, 'bud', 0.5)
+  expect(stemBirth).toBeLessThan(secondLeafBirth)
+  expect(secondLeafBirth).toBeLessThan(firstLeafBirth)
+  expect(firstLeafBirth).toBeLessThan(budBirth)
+  const frames = getGrowthSceneFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth)
+  const sample = (time: number) => {
+    const clipTime = getGrowthClipTime(time, frames, clip.duration)
+    player.play('Growth', LoopOnce, 1)
+    player.seek(clipTime)
+    effect.update({ scene: 'growth', time, clipTime, clipDuration: clip.duration, frames, pixelRatio: 1.5, reducedMotion: false, quality: 'standard' }, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth)
+    return {
+      positions: Array.from(effect.geometry.getAttribute('position').array),
+      opacity: Array.from(effect.geometry.getAttribute('aOpacity').array),
+    }
+  }
+
+  const middle = sample(frames.handoff[1] + 1.2)
+  const later = sample(frames.model[1] - 0.3)
+  expect(later.positions).not.toEqual(middle.positions)
+  const rewind = sample(frames.handoff[1] + 1.2)
+  expect(rewind).toEqual(middle)
+  expect(rewind.opacity.some(value => value > 0)).toBe(true)
+  effect.dispose()
+  player.dispose()
 })
 
 async function parseAnimationFixture(source: Buffer): Promise<{ scene: Object3D; animations: AnimationClip[] }> {

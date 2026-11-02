@@ -11,7 +11,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 11
+  readonly schemaVersion: 12
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -84,6 +84,13 @@ export interface SceneComposerConfig {
       roseColor: string
       lavenderColor: string
       coreGlow: number
+      vfxCoreIntensity: number
+      vfxPulseBrightness: number
+      vfxPulseWidth: number
+      vfxParticleCount: number
+      vfxParticleSize: number
+      vfxParticleSpeed: number
+      vfxParticleBrightness: number
       seedScale: number
       flowerGrowthDuration: number
     }>
@@ -250,7 +257,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 11,
+  schemaVersion: 12,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
@@ -272,7 +279,10 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       cloudRadius: 0.6, noiseStrength: 0.55, attractionStrength: 11.5,
       attractionRampDuration: 2.8, morphDamping: 7.2, formationDuration: 3.2,
       freeParticleFraction: 0.08, pearlColor: '#FFF4E8', roseColor: '#F4CCDA',
-      lavenderColor: '#D7CCF1', coreGlow: 0.55, seedScale: 1, flowerGrowthDuration: 9,
+      lavenderColor: '#D7CCF1', coreGlow: 0.55,
+      vfxCoreIntensity: 0.65, vfxPulseBrightness: 0.8, vfxPulseWidth: 0.14,
+      vfxParticleCount: 88, vfxParticleSize: 2, vfxParticleSpeed: 0.75, vfxParticleBrightness: 0.7,
+      seedScale: 1, flowerGrowthDuration: 9,
     },
     bloom: {
       flowerBloomDuration: 16, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,
@@ -360,7 +370,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 11) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 12) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -472,6 +482,13 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       roseColor: colorValue(growthInput?.roseColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.roseColor),
       lavenderColor: colorValue(growthInput?.lavenderColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lavenderColor),
       coreGlow: numberValue(growthInput?.coreGlow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.coreGlow, 0, 1.5),
+      vfxCoreIntensity: numberValue(growthInput?.vfxCoreIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxCoreIntensity, 0, 1.5),
+      vfxPulseBrightness: numberValue(growthInput?.vfxPulseBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseBrightness, 0, 2),
+      vfxPulseWidth: numberValue(growthInput?.vfxPulseWidth, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseWidth, 0.025, 0.3),
+      vfxParticleCount: numberValue(growthInput?.vfxParticleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleCount, 0, 240, true),
+      vfxParticleSize: numberValue(growthInput?.vfxParticleSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleSize, 0.5, 6),
+      vfxParticleSpeed: numberValue(growthInput?.vfxParticleSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleSpeed, 0.2, 2),
+      vfxParticleBrightness: numberValue(growthInput?.vfxParticleBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleBrightness, 0, 2),
       seedScale: numberValue(growthInput?.seedScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedScale, 0.65, 1.4),
       flowerGrowthDuration: numberValue(growthInput?.flowerGrowthDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.flowerGrowthDuration, 4, 14),
     },
@@ -532,7 +549,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 11, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 12, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {

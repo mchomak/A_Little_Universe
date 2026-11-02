@@ -12,6 +12,7 @@ import { attachLilyAnimationPlayer, LilyAnimationPlayer } from './animationPlaye
 import { subscribeLilyAnimationClock } from './animationClock'
 import { createLilyGeometryParticleSource, lilyDissolvePart, type LilySurfaceSource } from './particleSource'
 import { patchLilyMaterial, setLilySurfaceBounds, updateLilyDissolve, updateLilyParticleSettings, type LilyDissolveUniforms } from './dissolve'
+import { createLilyGrowthVfx, type LilyGrowthVfx } from './lilyGrowthVfx'
 
 const MODEL_POSITION: [number, number, number] = [0, -1.45, 0]
 const MODEL_SCALE = 3
@@ -64,11 +65,14 @@ function setLilyOpacity(states: LilyMaterialState[], opacity: number) {
 export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, dissolveUniforms }: SceneProps & { onParticleSource?: (source: LilySurfaceSource) => void; dissolveUniforms: LilyDissolveUniforms }) {
   const gltf = useGLTF(LILY_MODEL_URL)
   const invalidate = useThree(({ invalidate }) => invalidate)
+  const pixelRatio = useThree(({ viewport }) => viewport.dpr)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const model = useMemo(() => clone(gltf.scene) as Group, [gltf.scene])
   const stateRef = useRef(state)
   const playerRef = useRef<LilyAnimationPlayer | null>(null)
   const modelRef = useRef<Group | null>(null)
+  const wrapperRef = useRef<Group | null>(null)
+  const growthVfxRef = useRef<LilyGrowthVfx | null>(null)
   const materialsRef = useRef<LilyMaterialState[]>([])
   const particleSourceRef = useRef<LilySurfaceSource | null>(null)
   const waitingForTouch = state.scene === 'bloom' && state.mode === 'waiting'
@@ -82,6 +86,17 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
     }
   }, [model, dissolveUniforms])
   useLayoutEffect(() => attachLilyAnimationPlayer(playerRef, model, gltf.animations), [gltf.animations, model])
+  useLayoutEffect(() => {
+    const wrapper = wrapperRef.current
+    const growthClip = gltf.animations.find((animation) => animation.name === 'Growth')
+    if (!wrapper || !growthClip) return
+    const effects = createLilyGrowthVfx(wrapper, model, growthClip)
+    growthVfxRef.current = effects
+    return () => {
+      effects.dispose()
+      if (growthVfxRef.current === effects) growthVfxRef.current = null
+    }
+  }, [gltf.animations, model])
   useLayoutEffect(() => {
     if (state.scene !== 'identity' || particleSourceRef.current || !onParticleSource) return
     const clip = gltf.animations.find((animation) => animation.name === 'Bloom')
@@ -103,17 +118,21 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
     const player = playerRef.current
     if (!modelObject || !player) return
     const scene = currentState.scene
+    const growthFrames = getGrowthSceneFrames(config.scenes.growth)
+    const growthClip = gltf.animations.find((animation) => animation.name === 'Growth')
+    let growthClipTime = 0
     updateLilyDissolve(dissolveUniforms, scene === 'identity', time, config.scenes.identity.dissolveDuration, config.scenes.identity.edgeWidth)
     updateLilyParticleSettings(dissolveUniforms, config.scenes.identity)
     if (scene === 'growth') {
-      const frames = getGrowthSceneFrames(config.scenes.growth)
-      const clip = gltf.animations.find((animation) => animation.name === 'Growth')
+      const frames = growthFrames
+      const clip = growthClip
       const visible = time >= frames.model[0]
       modelObject.visible = visible
       setLilyOpacity(materialsRef.current, 1)
       if (visible && clip) {
         player.play('Growth', LoopOnce, 1)
-        player.seek(getGrowthClipTime(time, frames, clip.duration))
+        growthClipTime = getGrowthClipTime(time, frames, clip.duration)
+        player.seek(growthClipTime)
       }
     } else if (scene === 'bloom') {
       modelObject.visible = true
@@ -150,8 +169,12 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
       setLilyOpacity(materialsRef.current, 1)
       player.stop()
     }
+    growthVfxRef.current?.update({
+      scene, time, clipTime: growthClipTime, clipDuration: growthClip?.duration ?? 9,
+      frames: growthFrames, pixelRatio, reducedMotion, quality: currentState.quality,
+    }, config.scenes.growth)
     invalidate()
-  }, [config.scenes.bloom, config.scenes.growth, config.scenes.identity, dissolveUniforms, gltf.animations, invalidate, reducedMotion])
+  }, [config.scenes.bloom, config.scenes.growth, config.scenes.identity, dissolveUniforms, gltf.animations, invalidate, pixelRatio, reducedMotion])
 
   useLayoutEffect(() => {
     const sync = () => draw(runtime.time, runtime.presentationTime)
@@ -159,7 +182,7 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
     return subscribeLilyAnimationClock(runtime, sync, waitingForTouch, reducedMotion)
   }, [draw, model, runtime, waitingForTouch, reducedMotion])
 
-  return <group position={MODEL_POSITION} scale={MODEL_SCALE}>
+  return <group ref={wrapperRef} position={MODEL_POSITION} scale={MODEL_SCALE}>
     <primitive ref={modelRef} object={model} dispose={null} />
   </group>
 }

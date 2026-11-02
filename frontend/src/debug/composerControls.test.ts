@@ -97,7 +97,7 @@ describe('Scene Composer controls', () => {
     await setComposerField('scenes.gallery.moonSize', 1.4)
     expect(getConfig().scenes.gallery.moonSize).toBe(1.4)
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(11)
+    expect(exported.schemaVersion).toBe(12)
     expect(exported.scenes.gallery).toMatchObject({ cloudLayerCount: 18, moonSize: 1.4, cloudDensity: 1.2, cloudOpacity: 1.1, cloudDriftVariation: 0.85, cloudCoolTint: 1.2, reflectionStrength: 0.4 })
     expect((await importComposerJson(JSON.stringify(exported))).ok).toBe(true)
 
@@ -126,11 +126,25 @@ describe('Scene Composer controls', () => {
       scenes: { prologue: Record<string, unknown> }
     }
 
-    expect(exported.schemaVersion).toBe(11)
+    expect(exported.schemaVersion).toBe(12)
     expect(exported.global.quality).toBe('low')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpeed')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpread')
     expect(exported.scenes.prologue).not.toHaveProperty('particleReturnFraction')
+  })
+
+  it('imports, exports, and preserves Lily growth VFX controls', async () => {
+    const patch = { vfxCoreIntensity: 1.1, vfxPulseBrightness: 1.4, vfxPulseWidth: 0.22,
+      vfxParticleCount: 180, vfxParticleSize: 3, vfxParticleSpeed: 1.2, vfxParticleBrightness: 1.3 }
+    const imported = await importComposerJson(JSON.stringify({ schemaVersion: 12, scenes: { growth: patch } }))
+    expect(imported.ok).toBe(true)
+    expect(getConfig().scenes.growth).toMatchObject(patch)
+
+    const exported = exportComposerJson()
+    expect(JSON.parse(exported)).toMatchObject({ schemaVersion: 12, scenes: { growth: patch } })
+    await resetConfig('all')
+    expect((await importComposerJson(exported)).ok).toBe(true)
+    expect(getConfig().scenes.growth).toMatchObject(patch)
   })
 
   it('imports, exports, and resets the schema v7 atmosphere controls', async () => {
@@ -146,7 +160,7 @@ describe('Scene Composer controls', () => {
     })
 
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(11)
+    expect(exported.schemaVersion).toBe(12)
     expect(exported.scenes.gallery).toMatchObject({ cloudIntensity: 1.35, cloudLayerCount: 6, hazeHeight: -1.1, moonCloudLightIntensity: 1.4 })
 
     await resetComposerField('scenes.gallery.hazeHeight')

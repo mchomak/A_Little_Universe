@@ -122,6 +122,13 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
   ] },
   { name: 'Свет и размер', controls: [
     { path: 'scenes.growth.coreGlow', label: 'Свечение ядра', unit: '×', min: 0, max: 1.5, step: 0.05 },
+    { path: 'scenes.growth.vfxCoreIntensity', label: 'Интенсивность ядра лилии', unit: '×', min: 0, max: 1.5, step: 0.05 },
+    { path: 'scenes.growth.vfxPulseBrightness', label: 'Яркость импульса роста', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.vfxPulseWidth', label: 'Ширина светового следа', unit: '', min: 0.025, max: 0.3, step: 0.005 },
+    { path: 'scenes.growth.vfxParticleCount', label: 'Частицы роста', unit: 'шт.', min: 0, max: 240, step: 4 },
+    { path: 'scenes.growth.vfxParticleSize', label: 'Размер частиц роста', unit: 'px', min: 0.5, max: 6, step: 0.1 },
+    { path: 'scenes.growth.vfxParticleSpeed', label: 'Скорость частиц роста', unit: '×', min: 0.2, max: 2, step: 0.05 },
+    { path: 'scenes.growth.vfxParticleBrightness', label: 'Яркость частиц роста', unit: '×', min: 0, max: 2, step: 0.05 },
     { path: 'scenes.growth.seedScale', label: 'Масштаб семечка', unit: '×', min: 0.65, max: 1.4, step: 0.05 },
   ] },
   { name: 'Анимация лилии', controls: [
@@ -547,7 +554,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–11. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–12. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
