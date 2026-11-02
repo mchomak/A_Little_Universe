@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { builtInPresets, cameraViews, defaults, identifyIrisGradingPreset, irisGradingPresets, parseConfig, toggleIrisPreview, updateGradingColor, updateGradingSetting } from './config'
+import { applyViewMode, builtInPresets, cameraViews, defaults, identifyIrisGradingPreset, irisGradingPresets, parseConfig, toggleIrisPreview, updateGradingColor, updateGradingSetting } from './config'
 import { hexToOklch } from './gradingMath'
 
 const legacyGrading = {
@@ -8,8 +8,23 @@ const legacyGrading = {
 }
 
 describe('Iris Lab configuration', () => {
-  it('uses schema v3 and exposes every persisted OKLCH grading field', () => {
-    expect(defaults.version).toBe(3)
+  it('makes Fire Eye a standalone iris view, keeps its model toggle manual, and clears new effects from Original', () => {
+    const fire = applyViewMode({ ...structuredClone(defaults), layers: { ...defaults.layers, primaryFibers: true, memorySignal: true, proceduralFibers: false } }, 'Fire Eye Fibers')
+    expect(fire.display.showModel).toBe(false)
+    expect(fire.layers.proceduralFibers).toBe(true)
+    expect(fire.layers.memorySignal).toBe(false)
+    expect(fire.layers.primaryFibers).toBe(false)
+    expect({ ...fire, display: { ...fire.display, showModel: true } }.display.showModel).toBe(true)
+    expect(builtInPresets['Blue Fibers']!.display.showModel).toBe(false)
+
+    const original = applyViewMode(fire, 'Original')
+    expect(original.display.showModel).toBe(true)
+    expect(original.layers.memorySignal).toBe(false)
+    expect(original.layers.proceduralFibers).toBe(false)
+  })
+
+  it('uses schema v4 for view modes and exposes every persisted OKLCH grading field', () => {
+    expect(defaults.version).toBe(4)
     expect(Object.keys(defaults.colorGrading).sort()).toEqual([
       'enabled', 'strength', 'targetBlueHue', 'blueChroma', 'grayRecolorStrength', 'lightnessPreservation', 'brightness', 'contrast',
       'innerZoneRadius', 'amberHue', 'amberChroma', 'amberPreservation', 'amberTransitionWidth',
@@ -19,7 +34,7 @@ describe('Iris Lab configuration', () => {
     ].sort())
   })
 
-  it('round trips v3 values without mutating the shared defaults', () => {
+  it('round trips v4 values without mutating the shared defaults', () => {
     const input = structuredClone(defaults)
     input.camera.azimuth = 0.4
     input.particles.size = 2
@@ -29,12 +44,12 @@ describe('Iris Lab configuration', () => {
     expect(defaults.camera.azimuth).toBe(0)
   })
 
-  it('migrates v1 and legacy HSV v2 settings to v3 without losing other groups', () => {
+  it('migrates v1, v2 and v3 settings while adding default look-development controls', () => {
     const legacyV1 = structuredClone(defaults) as Record<string, unknown>
     delete legacyV1.colorGrading
     legacyV1.version = 1
     const migratedV1 = parseConfig(legacyV1)
-    expect(migratedV1.version).toBe(3)
+    expect(migratedV1.version).toBe(4)
     expect(migratedV1.colorGrading).toEqual(defaults.colorGrading)
 
     const legacyV2 = structuredClone(defaults) as Record<string, unknown>
@@ -42,16 +57,30 @@ describe('Iris Lab configuration', () => {
     legacyV2.camera = { ...defaults.camera, azimuth: 0.41 }
     legacyV2.colorGrading = legacyGrading
     const migratedV2 = parseConfig(legacyV2)
-    expect(migratedV2.version).toBe(3)
+    expect(migratedV2.version).toBe(4)
     expect(migratedV2.camera.azimuth).toBe(0.41)
     expect(migratedV2.colorGrading.grayRecolorStrength).toBe(legacyGrading.blueCyanBalance)
     expect(migratedV2.colorGrading.brightness).toBe(legacyGrading.brightness)
     expect(migratedV2.colorGrading.contrast).toBe(legacyGrading.contrast)
     expect(migratedV2.colorGrading.strength).toBe(legacyGrading.strength)
+
+    const legacyV3 = structuredClone(defaults) as Record<string, unknown>
+    legacyV3.version = 3
+    delete legacyV3.display
+    delete legacyV3.memorySignal
+    const oldFibers = legacyV3.fibers as Record<string, unknown>
+    for (const key of ['opacity', 'noiseScale', 'fineFrequency', 'coarseFrequency', 'radialAlignment', 'depth', 'animationSpeed']) delete oldFibers[key]
+    const oldLayers = legacyV3.layers as Record<string, unknown>
+    delete oldLayers.memorySignal
+    delete oldLayers.proceduralFibers
+    const migratedV3 = parseConfig(legacyV3)
+    expect(migratedV3.display.mode).toBe('Original')
+    expect(migratedV3.memorySignal).toEqual(defaults.memorySignal)
+    expect(migratedV3.version).toBe(4)
   })
 
   it('rejects unsupported versions, missing fields, invalid ranges and malformed colors', () => {
-    expect(() => parseConfig({ ...defaults, version: 4 })).toThrow()
+    expect(() => parseConfig({ ...defaults, version: 5 })).toThrow()
     expect(() => parseConfig({ ...defaults, camera: {} })).toThrow()
     expect(() => parseConfig({ ...defaults, effects: { ...defaults.effects, dpr: Number.NaN } })).toThrow()
     expect(() => parseConfig({ ...defaults, effects: { ...defaults.effects, dpr: -1 } })).toThrow()
@@ -97,7 +126,10 @@ describe('Iris Lab configuration', () => {
   })
 
   it('preserves existing app presets and camera views', () => {
-    expect(Object.keys(builtInPresets)).toHaveLength(5)
+    expect(Object.keys(builtInPresets)).toHaveLength(9)
+    expect(builtInPresets['Memory Signal']?.display.mode).toBe('Memory Signal')
+    expect(builtInPresets['Blue Fibers']?.display.mode).toBe('Fire Eye Fibers')
+    expect(builtInPresets['Hybrid Cinematic']?.layers.memorySignal).toBe(true)
     expect(builtInPresets['Natural Eye']?.effects.mix).not.toBe(builtInPresets['Cosmic Blue']?.effects.mix)
     expect(cameraViews['Macro Iris']?.distance).toBeLessThan(cameraViews['Full Eye']!.distance)
     for (const config of Object.values(builtInPresets)) expect(parseConfig(config)).toEqual(config)
