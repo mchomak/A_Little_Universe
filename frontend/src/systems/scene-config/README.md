@@ -1,6 +1,6 @@
 # Scene Composer configuration
 
-`SceneComposerConfig` is an immutable schema version 12. `normalizeConfig(input)` accepts partial schema v1–v12 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the gallery and identity controls; schema v12 adds the five gallery water settings. Previously saved `reflectionStrength` and `reflectionBlur` values are preserved, while documents that omit them use the updated defaults. The store publishes font changes only after the selected local font is ready.
+`SceneComposerConfig` is an immutable schema version 13. `normalizeConfig(input)` accepts partial schema v1–v13 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the gallery and identity controls; schema v12 adds the first gallery water settings; schema v13 adds independent water base brightness, reflection falloff, micro-normal scale, and moon reflection spread. Saved v12 water values are preserved; the new controls receive current defaults when absent. The store publishes font changes only after the selected local font is ready.
 
 The public store is:
 
@@ -11,7 +11,7 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v12.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v13.
 
 Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its 0.1–20 second travel-window meaning, with the cinematic default now 2.2 seconds; `particleFadeDuration` controls individual dust fade and defaults to 1.2 seconds. `particleReturnFraction` is ignored. The light, atmosphere, typography and interaction fields are additive schema-v2 fields: missing fields in both v1 and v2 files receive current defaults.
 
@@ -19,7 +19,7 @@ An optional production override can contain only values that differ from the def
 
 ```json
 {
-  "schemaVersion": 12,
+  "schemaVersion": 13,
   "global": { "quality": "low" },
   "scenes": {
     "preparation": {
@@ -64,10 +64,11 @@ An optional production override can contain only values that differ from the def
 | Gallery light | Scattering / godray intensity | 0–1.5; 0–0.8 |
 | Gallery light | Moon position X / Y / Z | −12–12 / 4–24 / −180–−80 world units |
 | Gallery light | Light target X / Y / Z | −40–40 / −12–14 / −180–40 world units |
-| Gallery water | Reflection strength / blur | 0–0.6 (0.42) / 0.3–1 (0.6) |
-| Gallery water | Distortion / ripple speed | 0–0.05 (0.008) / 0–1 (0.12) |
-| Gallery water | Normal strength / moon highlight | 0–1 (0.22) / 0–2 (0.7) |
-| Gallery water | Water opacity | 0–1 (0.9) |
+| Gallery water | Base brightness | 0–1.5 (0.72) |
+| Gallery water | Reflection strength / blur / falloff | 0–0.6 (0.5) / 0.3–1 (0.52) / 0.25–2.5 (1.25) |
+| Gallery water | Distortion / micro-normal scale / ripple speed | 0–0.05 (0.008) / 0.25–3 (1) / 0–1 (0.12) |
+| Gallery water | Normal strength / moon highlight / moon spread | 0–1 (0.22) / 0–2 (0.92) / 0.25–2.5 (1.15) |
+| Gallery water | Water opacity | 0–1 (1) |
 | Prologue | Font size, line height, position Y | 16–160, 0.8–2.5, 10–80 |
 | Prologue | Handwriting duration/rhythm, phrase interval, readable hold | 0.5–20, 0.1–3, 0–8, 0–30 |
 | Prologue | Particle count | 300–6000 integer; default 1800 |

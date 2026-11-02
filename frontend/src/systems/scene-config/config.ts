@@ -11,7 +11,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 12
+  readonly schemaVersion: 13
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -155,10 +155,14 @@ export interface SceneComposerConfig {
       hazeMotionSpeed: number
       reflectionStrength: number
       reflectionBlur: number
+      reflectionFalloff: number
+      waterBaseBrightness: number
       waterDistortion: number
+      waterDistortionScale: number
       waterRippleSpeed: number
       waterNormalStrength: number
       moonHighlightStrength: number
+      moonReflectionSpread: number
       waterOpacity: number
       threadOpacity: number
       coldLightIntensity: number
@@ -255,7 +259,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 12,
+  schemaVersion: 13,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
@@ -300,9 +304,10 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       cloudDensity: 1.12, cloudOpacity: 0.88, cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 18, cloudDriftSpeed: 0.82,
       cloudDriftVariation: 0.65, cloudForegroundAmount: 1, cloudBackgroundAmount: 0.78, cloudNearFloorAmount: 1,
       cloudCoolTint: 1.35, cloudWhiteHighlight: 0.24,
-      hazeDensity: 0.22, hazeHeight: 0, hazeMotionSpeed: 0.2, reflectionStrength: 0.42,
-      reflectionBlur: 0.6, waterDistortion: 0.008, waterRippleSpeed: 0.12,
-      waterNormalStrength: 0.22, moonHighlightStrength: 0.7, waterOpacity: 0.9,
+      hazeDensity: 0.22, hazeHeight: 0, hazeMotionSpeed: 0.2, reflectionStrength: 0.5,
+      reflectionBlur: 0.52, reflectionFalloff: 1.25, waterBaseBrightness: 0.72,
+      waterDistortion: 0.008, waterDistortionScale: 1, waterRippleSpeed: 0.12,
+      waterNormalStrength: 0.22, moonHighlightStrength: 0.92, moonReflectionSpread: 1.15, waterOpacity: 1,
       threadOpacity: 0.38, coldLightIntensity: 0.58,
       moonLightIntensity: 1.25, moonFillIntensity: 0.22, moonHaloIntensity: 1.2,
       moonCloudLightIntensity: 0.72, moonScatteringIntensity: 0.62,
@@ -367,7 +372,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 12) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 13) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -539,7 +544,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 12, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 13, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
@@ -584,10 +589,14 @@ function normalizeGallery(input: Record<string, unknown> | undefined): SceneComp
     hazeMotionSpeed: numberValue(input?.hazeMotionSpeed, d.hazeMotionSpeed, 0, 1),
     reflectionStrength: numberValue(input?.reflectionStrength, d.reflectionStrength, 0, 0.6),
     reflectionBlur: numberValue(input?.reflectionBlur, d.reflectionBlur, 0.3, 1),
+    reflectionFalloff: numberValue(input?.reflectionFalloff, d.reflectionFalloff, 0.25, 2.5),
+    waterBaseBrightness: numberValue(input?.waterBaseBrightness, d.waterBaseBrightness, 0, 1.5),
     waterDistortion: numberValue(input?.waterDistortion, d.waterDistortion, 0, 0.05),
+    waterDistortionScale: numberValue(input?.waterDistortionScale, d.waterDistortionScale, 0.25, 3),
     waterRippleSpeed: numberValue(input?.waterRippleSpeed, d.waterRippleSpeed, 0, 1),
     waterNormalStrength: numberValue(input?.waterNormalStrength, d.waterNormalStrength, 0, 1),
     moonHighlightStrength: numberValue(input?.moonHighlightStrength, d.moonHighlightStrength, 0, 2),
+    moonReflectionSpread: numberValue(input?.moonReflectionSpread, d.moonReflectionSpread, 0.25, 2.5),
     waterOpacity: numberValue(input?.waterOpacity, d.waterOpacity, 0, 1),
     threadOpacity: numberValue(input?.threadOpacity, d.threadOpacity, 0, 0.8),
     coldLightIntensity: numberValue(input?.coldLightIntensity, d.coldLightIntensity, 0, 1.8),

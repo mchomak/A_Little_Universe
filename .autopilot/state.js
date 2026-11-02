@@ -1,147 +1,84 @@
 window.STATE =
 {
-  "slug": "gallery-thin-water",
-  "dir": "2026-11-02-gallery-thin-water",
-  "title": "Тонкий слой воды · сцена 05",
+  "slug": "water-art-41",
+  "dir": "2026-11-02-water-art-41",
+  "title": "Scene 05: water art 4.1",
   "mode": "full",
   "depth": "normal",
-  "polish": null,
-  "tier": "T1",
+  "tier": "T0",
   "briefFile": "2026-11-02-brief.md",
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
-  "startedAt": "2026-11-02T01:16:54+03:00",
-  "updatedAt": "2026-11-02T04:47:03+03:00",
-  "finishedAt": "2026-11-02T04:47:03+03:00",
+  "startedAt": "2026-11-02T13:43:28+03:00",
+  "updatedAt": "2026-11-02T15:12:00+03:00",
+  "finishedAt": "2026-11-02T15:12:00+03:00",
   "stages": [
     {
       "id": "preflight",
       "status": "done",
-      "startedAt": "2026-11-02T01:16:54+03:00",
-      "finishedAt": "2026-11-02T04:47:03+03:00"
+      "startedAt": "2026-11-02T13:43:28+03:00",
+      "finishedAt": "2026-11-02T15:12:00+03:00"
     },
     {
       "id": "manifest",
       "status": "done",
-      "startedAt": "2026-11-02T01:16:54+03:00",
-      "finishedAt": "2026-11-02T04:47:03+03:00"
+      "startedAt": "2026-11-02T13:43:28+03:00",
+      "finishedAt": "2026-11-02T15:12:00+03:00"
     },
     {
       "id": "briefing",
       "status": "skipped",
-      "note": "полный автомат — самобрифинг"
+      "note": "full mode self-briefing"
     },
     {
       "id": "spec",
       "status": "done",
-      "startedAt": "2026-11-02T01:16:54+03:00",
-      "finishedAt": "2026-11-02T04:47:03+03:00"
+      "startedAt": "2026-11-02T13:43:28+03:00",
+      "finishedAt": "2026-11-02T15:12:00+03:00"
     },
     {
       "id": "plan",
       "status": "done",
-      "startedAt": "2026-11-02T01:18:07+03:00",
-      "finishedAt": "2026-11-02T04:47:03+03:00"
+      "startedAt": "2026-11-02T13:43:28+03:00",
+      "finishedAt": "2026-11-02T15:12:00+03:00"
     },
     {
       "id": "build",
       "status": "done",
-      "startedAt": "2026-11-02T01:18:07+03:00",
-      "finishedAt": "2026-11-02T04:47:03+03:00"
+      "startedAt": "2026-11-02T13:43:28+03:00",
+      "finishedAt": "2026-11-02T15:12:00+03:00"
     },
     {
       "id": "review",
       "status": "done",
-      "startedAt": "2026-11-02T01:45:18+03:00",
-      "finishedAt": "2026-11-02T04:47:03+03:00"
+      "finishedAt": "2026-11-02T15:12:00+03:00"
     },
     {
       "id": "final",
       "status": "done",
-      "finishedAt": "2026-11-02T04:47:03+03:00"
+      "finishedAt": "2026-11-02T15:12:00+03:00"
     }
   ],
   "requirements": {
-    "total": 18,
-    "done": 18,
+    "total": 11,
+    "done": 11,
     "inTicket": 0,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
     "dropped": 0
   },
-  "tickets": [
-    {
-      "id": "01",
-      "title": "Параметры воды",
-      "requirements": [
-        "R09",
-        "R10",
-        "R11",
-        "R12",
-        "R13",
-        "R14",
-        "R15"
-      ],
-      "blockedBy": [],
-      "wave": 1,
-      "zone": [
-        "scene-config",
-        "DeveloperPanel"
-      ],
-      "status": "done",
-      "startedAt": "2026-11-02T01:18:07+03:00",
-      "retries": 0,
-      "repairs": 0,
-      "handoffs": 0,
-      "finishedAt": "2026-11-02T04:47:03+03:00",
-      "commit": "475e665",
-      "tests": {
-        "passed": 429,
-        "failed": 0
-      }
-    },
-    {
-      "id": "02",
-      "title": "Вода и реальные отражения",
-      "requirements": [
-        "R01",
-        "R02",
-        "R03",
-        "R04",
-        "R05",
-        "R06",
-        "R07",
-        "R08",
-        "R16",
-        "R17",
-        "R18"
-      ],
-      "blockedBy": [],
-      "wave": 1,
-      "zone": [
-        "gallery",
-        "GalleryScene"
-      ],
-      "status": "done",
-      "retries": 0,
-      "repairs": 1,
-      "handoffs": 0,
-      "startedAt": "2026-11-02T01:35:27+03:00",
-      "repairFindings": [
-        "Первый браузерный кадр: отражения не видны; двойное преобразование world position в textureMatrix. Исправить и подтвердить визуально."
-      ],
-      "finishedAt": "2026-11-02T04:47:03+03:00",
-      "commit": "d2f114f",
-      "tests": {
-        "passed": 429,
-        "failed": 0
-      }
+  "tickets": [],
+  "singlePass": {
+    "startedAt": "2026-11-02T13:43:28+03:00",
+    "finishedAt": "2026-11-02T15:12:00+03:00",
+    "tests": {
+      "passed": 432,
+      "failed": 0
     }
-  ],
-  "singlePass": null,
+  },
   "tests": {
-    "passed": 429,
+    "passed": 432,
     "failed": 0,
     "files": 91,
     "lint": "passed",
@@ -151,29 +88,27 @@ window.STATE =
   "debt": {
     "placeholders": [],
     "assumptions": [
-      "Продолжение ветки ночной палитры 7a92f50; RT standard 1024"
+      "Saved prior screenshot and approved keyframes are used because no new attachment is visible"
     ],
     "emptyEnv": []
   },
   "additions": [],
   "coverage": {
-    "found": 4,
-    "fixed": 4,
+    "found": 1,
+    "fixed": 1,
     "deferred": 0
   },
   "concerns": [
-    "1024 standard RT,512 low; physical M2/Safari unmeasured",
-    "Soft distant blue wash and moon path are next artistic tuning; no blockers"
+    "Shallow moon-to-target ray may have clamped floor intersection; default unaffected",
+    "M2/Safari and long duration flicker not measured"
   ],
   "reviewers": {
-    "manifestSpec": "/root/water_spec_review",
-    "craft": "/root/review"
+    "manifestSpec": "/root/water_quality_review",
+    "craft": "/root/water_quality_review"
   },
   "blind": {
-    "verdict": "accepted first water pass",
-    "blocking": 0,
-    "notes": [
-      "Distant soft blue wash and moon path tuning remain next artistic pass"
-    ]
-  }
+    "verdict": "visual and independent review passed",
+    "blocking": 0
+  },
+  "polish": null
 }
