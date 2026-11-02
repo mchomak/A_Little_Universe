@@ -14,6 +14,8 @@ import type { ParticlePortraitSettings } from './config'
 
 export const SCENE04_PORTRAIT_SHADER_FORMULA = 'scene04-lily-portrait-v1'
 
+type TypedPortraitPoint = StarPortraitPoint & { type?: 'contour' | 'support' | 'flow' | 'fill'; artSize?: number; artBrightness?: number }
+
 /**
  * Export the sampler's native point shape and the current Scene 04 target
  * shape. Each target has deterministic reference size and center-glow values;
@@ -21,12 +23,12 @@ export const SCENE04_PORTRAIT_SHADER_FORMULA = 'scene04-lily-portrait-v1'
  * that make the eventual scene render differ from those reference values.
  */
 export function createScene04PortraitPointExport(
-  sampledPoints: readonly StarPortraitPoint[],
+  sampledPoints: readonly TypedPortraitPoint[],
   width: number,
   height: number,
   settings: ParticlePortraitSettings,
 ) {
-  const points = orderLilyPortraitTargets(sampledPoints)
+  const points = orderLilyPortraitTargets(sampledPoints) as TypedPortraitPoint[]
   return {
     format: 'a-little-universe/scene04-star-portrait-points',
     version: 1,
@@ -40,6 +42,10 @@ export function createScene04PortraitPointExport(
     points: points.map((point, index) => ({
       // Preserve the StarPortraitPoint fields consumed by the current runtime.
       ...point,
+      // Keep the point class explicit for future staged reveal controls.
+      type: point.type ?? 'fill',
+      artSize: point.artSize ?? 1,
+      artBrightness: point.artBrightness ?? 1,
       // This object can be passed to the existing PortraitTarget integration.
       target: {
         uv: [point.u, point.v],

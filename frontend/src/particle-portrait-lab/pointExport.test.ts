@@ -82,4 +82,24 @@ describe('scene 04 point export', () => {
     })
     expect(result.renderContract.referenceSystem.runtimeDependencies).toContain('camera-space view.z and display DPR')
   })
+
+  it('retains each generated particle class in the scene-compatible export', () => {
+    const point: TypedPoint = {
+      u: 0.5, v: 0.5, tone: 0.5, contrast: 0.5, featureWeight: 1, seed: 0.5,
+      photoColorLinear: [0.2, 0.2, 0.2], type: 'flow', artSize: 1.3, artBrightness: 1.1,
+    }
+    const result = createScene04PortraitPointExport([point], 640, 480, DEFAULT_PARTICLE_PORTRAIT_SETTINGS)
+    expect(result.points[0]).toMatchObject({ type: 'flow', artSize: 1.3, artBrightness: 1.1 })
+  })
+
+  it('exports support particles as a typed extension of the existing target format', () => {
+    const point: TypedPoint = {
+      u: 0.5, v: 0.5, tone: 0.5, contrast: 0.35, featureWeight: 0.45, seed: 0.25,
+      photoColorLinear: [0.2, 0.2, 0.2], type: 'support', artSize: 0.8, artBrightness: 0.45,
+    }
+    const result = createScene04PortraitPointExport([point], 640, 480, DEFAULT_PARTICLE_PORTRAIT_SETTINGS)
+    expect(result.points[0]).toMatchObject({ type: 'support', artSize: 0.8, artBrightness: 0.45, target: { uv: [0.5, 0.5] } })
+  })
 })
+
+type TypedPoint = StarPortraitPoint & { type: 'contour' | 'support' | 'flow' | 'fill'; artSize: number; artBrightness: number }

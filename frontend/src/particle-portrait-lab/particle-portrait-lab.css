@@ -69,9 +69,13 @@
 .ppl-pane-heading { display: flex; justify-content: space-between; gap: 10px; color: #d4d1dc; font-size: 11px; font-weight: 600; }
 .ppl-pane-heading span:last-child { color: var(--ppl-muted); font-size: 10px; font-weight: 400; font-variant-numeric: tabular-nums; }
 .ppl-frame { position: relative; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid #202131; background: var(--ppl-bg); isolation: isolate; }
+.ppl-photo-frame, .ppl-result-frame { touch-action: none; }
+.ppl-result-frame { cursor: grab; }
+.ppl-result-transform { position: absolute; inset: 0; transform-origin: center; }
 .ppl-result-frame { box-shadow: inset 0 0 0 1px #151624; }
 .ppl-canvas { position: absolute !important; z-index: 1; inset: 0; width: 100% !important; height: 100% !important; }
 .ppl-source-image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
+.ppl-photo-frame img { -webkit-user-drag: none; user-select: none; }
 .ppl-mask-canvas { position: absolute; z-index: 2; inset: 0; display: block; width: 100%; height: 100%; cursor: crosshair; }
 .ppl-mask-canvas--drawing { cursor: none; }
 .ppl-loading,
@@ -153,3 +157,9 @@
   .particle-portrait-lab button { transition: none; }
   .ppl-compute-status i { animation: none; }
 }
+
+.ppl-photo-transform { position: absolute; inset: 0; transform-origin: center; }
+
+.ppl-stroke-overlay { position: absolute; z-index: 3; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+.ppl-edge-overlay { position:absolute; z-index:2; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; }
