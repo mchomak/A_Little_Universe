@@ -7,7 +7,7 @@ import moonHeightUrl from '../../assets/gallery-moonlit/ldem-3-8bit.jpg'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
 import { createGalleryCloudVolumeMaterial, setGalleryAtmosphereTime } from './cloudMaterial'
 import { createMoonHaloTexture } from './worldTextures'
-import { GALLERY_WORLD, getGalleryCloudDrift, getGalleryCloudMassesForCount, getGalleryCloudRegionAmount, getGalleryHazeMasses, getGalleryMoonScatteringLayers, type GalleryQuality } from './world'
+import { GALLERY_WORLD, getGalleryCloudDrift, getGalleryCloudMassesForLayerCounts, getGalleryCloudPosition, getGalleryCloudRadii, getGalleryCloudRenderOrder, getGalleryHazeMasses, getGalleryMoonScatteringLayers, type GalleryQuality } from './world'
 import { WetFloor } from './WetFloor'
 import { galleryMotion } from './controller'
 
@@ -80,7 +80,7 @@ export function MoonlitWorld({
   halo: CanvasTexture
   reducedMotion: boolean
 }) {
-  const cloudMasses = useMemo(() => getGalleryCloudMassesForCount(quality, settings.cloudLayerCount), [quality, settings.cloudLayerCount])
+  const cloudMasses = useMemo(() => getGalleryCloudMassesForLayerCounts(quality, settings.cloudLayers), [quality, settings.cloudLayers])
   const cloudMeshes = useRef<(Mesh | null)[]>([])
   const hazeMeshes = useRef<(Mesh | null)[]>([])
   const diffuseHaloMesh = useRef<Mesh>(null)
@@ -92,28 +92,31 @@ export function MoonlitWorld({
   const hazeMasses = useMemo(() => getGalleryHazeMasses(quality), [quality])
   const atmosphereGeometry = useMemo(() => new SphereGeometry(1, quality === 'low' ? 30 : 48, quality === 'low' ? 20 : 32), [quality])
   const cloudMaterials = useMemo(() => cloudMasses.map((mass) => {
-    const radii = mass.radii.map((radius) => radius * settings.cloudScale) as [number, number, number]
+    const layerSettings = settings.cloudLayers[mass.layer]
+    const radii = getGalleryCloudRadii(mass, layerSettings, quality)
+    const localRadiance = mass.layer === 'nearLow' ? 1.45 : mass.layer === 'waterline' ? 1.5 : 1
+    const localSilverEdge = mass.layer === 'nearLow' ? 2 : mass.layer === 'waterline' ? 2.4 : 1
+    const localDefinition = mass.layer === 'nearLow' ? 0.85 : mass.layer === 'waterline' ? 0.82 : 1
     return createGalleryCloudVolumeMaterial({
     kind: 'cloud',
-    center: mass.position,
+    center: getGalleryCloudPosition(mass, layerSettings),
     radii,
     seed: mass.seed,
-    opacity: mass.opacity * settings.cloudOpacity * getGalleryCloudRegionAmount(mass.region, {
-      foreground: settings.cloudForegroundAmount,
-      background: settings.cloudBackgroundAmount,
-      nearFloor: settings.cloudNearFloorAmount,
-    }) * 0.82,
-    density: settings.cloudDensity,
-    intensity: settings.cloudIntensity,
+    opacity: mass.opacity * layerSettings.opacity * (mass.moonInteraction || mass.layer === 'nearLow' || mass.layer === 'waterline' ? 1 : 0.82),
+    density: layerSettings.density * (mass.moonInteraction ? 1.45 : 1),
+    intensity: Math.min(2, layerSettings.brightness * localRadiance),
+    softness: layerSettings.softness * localDefinition,
     coolTint: settings.cloudCoolTint,
-    whiteHighlight: settings.cloudWhiteHighlight,
+    whiteHighlight: Math.min(1.5, settings.cloudWhiteHighlight * localSilverEdge),
     moonPosition,
     moonColor: settings.moonLightColor,
-    moonLightIntensity: settings.moonLightIntensity * settings.coldLightIntensity * settings.moonCloudLightIntensity * 0.72,
-    driftSpeed: settings.cloudDriftSpeed,
-    steps: quality === 'low' ? 5 : 8,
+    moonLightIntensity: settings.moonLightIntensity * settings.coldLightIntensity * settings.moonCloudLightIntensity * 0.72
+      * (mass.moonInteraction ? 1.35 : mass.layer === 'nearLow' ? 1.65 : mass.layer === 'waterline' ? 1.55 : 1),
+    moonOcclusion: mass.moonInteraction === true,
+    driftSpeed: reducedMotion ? 0 : layerSettings.driftSpeed,
+    steps: quality === 'low' ? 4 : 6,
   })
-  }), [cloudMasses, moonPosition, quality, settings.cloudBackgroundAmount, settings.cloudCoolTint, settings.cloudDensity, settings.cloudDriftSpeed, settings.cloudForegroundAmount, settings.cloudIntensity, settings.cloudNearFloorAmount, settings.cloudOpacity, settings.cloudScale, settings.cloudWhiteHighlight, settings.coldLightIntensity, settings.moonCloudLightIntensity, settings.moonLightColor, settings.moonLightIntensity])
+  }), [cloudMasses, moonPosition, quality, reducedMotion, settings.cloudCoolTint, settings.cloudLayers, settings.cloudWhiteHighlight, settings.coldLightIntensity, settings.moonCloudLightIntensity, settings.moonLightColor, settings.moonLightIntensity])
   const hazeMaterials = useMemo(() => hazeMasses.map((mass) => createGalleryCloudVolumeMaterial({
     kind: 'haze',
     center: [mass.position[0], mass.position[1] + settings.hazeHeight, mass.position[2]],
@@ -127,9 +130,9 @@ export function MoonlitWorld({
     moonPosition,
     moonColor: settings.moonLightColor,
     moonLightIntensity: settings.moonLightIntensity * settings.coldLightIntensity * settings.moonCloudLightIntensity * 0.72,
-    driftSpeed: settings.hazeMotionSpeed,
+    driftSpeed: reducedMotion ? 0 : settings.hazeMotionSpeed,
     steps: quality === 'low' ? 4 : 6,
-  })), [hazeMasses, moonPosition, quality, settings.cloudCoolTint, settings.cloudWhiteHighlight, settings.coldLightIntensity, settings.hazeDensity, settings.hazeHeight, settings.hazeMotionSpeed, settings.moonCloudLightIntensity, settings.moonLightColor, settings.moonLightIntensity])
+  })), [hazeMasses, moonPosition, quality, reducedMotion, settings.cloudCoolTint, settings.cloudWhiteHighlight, settings.coldLightIntensity, settings.hazeDensity, settings.hazeHeight, settings.hazeMotionSpeed, settings.moonCloudLightIntensity, settings.moonLightColor, settings.moonLightIntensity])
   const moonSurface = useMoonSurfaceTextures()
   const moonHaloTexture = useMemo(() => createMoonHaloTexture(), [])
   const scatteringLayers = useMemo(() => getGalleryMoonScatteringLayers(moonPosition, lightTarget), [lightTarget, moonPosition])
@@ -192,7 +195,7 @@ export function MoonlitWorld({
   }, [moonHaloTexture])
   useEffect(() => () => cloudMaterials.forEach((material) => material.dispose()), [cloudMaterials])
   useFrame(() => {
-    const time = galleryMotion.time
+    const time = reducedMotion ? 0 : galleryMotion.time
     setGalleryAtmosphereTime([...cloudMaterials, ...hazeMaterials, ...scatteringMaterials], time)
     const haloBreath = 0.97 + 0.03 * Math.sin(time * 0.24)
     const diffuseHalo = diffuseHaloMesh.current?.material
@@ -200,16 +203,18 @@ export function MoonlitWorld({
     const lunarHalo = moonHaloMesh.current?.material
     if (lunarHalo && !Array.isArray(lunarHalo)) lunarHalo.opacity = Math.min(0.5, settings.moonHaloIntensity * 0.4) * (0.985 + 0.015 * Math.sin(time * 0.2 + 0.6))
     cloudMasses.forEach((mass, index) => {
-      const drift = getGalleryCloudDrift(mass, time, settings.cloudDriftSpeed, settings.cloudDriftVariation)
-      const x = mass.position[0] + drift[0]
-      const y = mass.position[1] + drift[1]
-      const z = mass.position[2] + drift[2]
+      const layerSettings = settings.cloudLayers[mass.layer]
+      const basePosition = getGalleryCloudPosition(mass, layerSettings)
+      const drift = getGalleryCloudDrift(mass, time, reducedMotion ? 0 : layerSettings.driftSpeed, settings.cloudDriftVariation)
+      const x = basePosition[0] + drift[0]
+      const y = basePosition[1] + drift[1]
+      const z = basePosition[2] + drift[2]
       cloudMeshes.current[index]?.position.set(x, y, z)
       const center = cloudMaterials[index]?.uniforms.uCenter?.value as Vector3 | undefined
       center?.set(x, y, z)
     })
     hazeMasses.forEach((mass, index) => {
-      const drift = getGalleryCloudDrift(mass, time, settings.hazeMotionSpeed * 2.5, 0.35)
+      const drift = getGalleryCloudDrift(mass, time, reducedMotion ? 0 : settings.hazeMotionSpeed * 2.5, 0.35)
       const x = mass.position[0] + drift[0]
       const y = mass.position[1] + settings.hazeHeight + drift[1]
       const z = mass.position[2] + drift[2]
@@ -231,11 +236,11 @@ export function MoonlitWorld({
     {cloudMasses.map((mass, index) => <mesh
       key={mass.id}
       ref={(mesh) => { cloudMeshes.current[index] = mesh }}
-      position={mass.position}
-      scale={mass.radii.map((radius) => radius * settings.cloudScale) as [number, number, number]}
-      visible={settings.cloudDensity > 0}
+      position={getGalleryCloudPosition(mass, settings.cloudLayers[mass.layer])}
+      scale={getGalleryCloudRadii(mass, settings.cloudLayers[mass.layer], quality)}
+      visible={settings.cloudLayers[mass.layer].density > 0 && settings.cloudLayers[mass.layer].count > 0}
       raycast={ignoreRaycast}
-      renderOrder={-3}
+      renderOrder={getGalleryCloudRenderOrder(mass)}
     >
       <primitive object={atmosphereGeometry} attach="geometry" />
       <primitive object={cloudMaterials[index]!} attach="material" />

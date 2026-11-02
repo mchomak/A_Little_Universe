@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BackSide, NormalBlending } from 'three'
+import { BackSide, FrontSide, NormalBlending } from 'three'
 import { GALLERY_WORLD } from './world'
 import { createGalleryCloudVolumeMaterial, getGalleryVolumeDepthFade, setGalleryAtmosphereTime } from './cloudMaterial'
 
@@ -38,13 +38,15 @@ describe('gallery volumetric atmosphere material', () => {
     expect(material.uniforms.uCoolTint!.value).toBe(1)
     expect(material.uniforms.uWhiteHighlight!.value).toBe(0.48)
     expect(material.uniforms.uSeed!.value).toBe(cloudOptions.seed)
-    expect(material.fragmentShader).toContain('float opticalDepth = density * uOpacity * uCloudIntensity * segmentLength * 0.16')
+    expect(material.fragmentShader).toContain('float opticalDepth = density * uOpacity * segmentLength * 0.16')
+    expect(material.fragmentShader).toContain('mix(coolBase * innerShade, uMoonColor, lunarLift) * uCloudIntensity')
     expect(material.fragmentShader).toContain('uCloudDensity * 0.18')
     expect(material.fragmentShader).toContain('uWhiteHighlight')
     expect(material.fragmentShader).toContain('vec3 blueAir')
     expect(material.fragmentShader).toContain('vec3 uvDrift = vec3(time * 0.014')
-    expect(material.fragmentShader).toContain('softBoundary = smoothMax(smoothMax(lobeA, lobeB, 0.2), lobeC, 0.2)')
+    expect(material.fragmentShader).toContain('softBoundary = smoothMax(smoothMax(lobeA, lobeB, edgeSoftness), lobeC, edgeSoftness)')
     expect(material.fragmentShader).toContain('float lobeA = 1.0 - smoothstep')
+    expect(material.fragmentShader).toContain('float cloudTexture = broad * 0.52 + detail * 0.48')
     expect(material.fragmentShader).toContain('float silverEdge = smoothstep')
     expect(material.fragmentShader).toContain('transmittance *= 1.0 - sampleAlpha')
     material.dispose()
@@ -71,6 +73,26 @@ describe('gallery volumetric atmosphere material', () => {
     expect(material.uniforms.uDriftSpeed!.value).toBe(2)
     expect(material.uniforms.uOpacity!.value).toBe(1.5)
     material.dispose()
+  })
+
+  it('applies a bounded softness control to the procedural cloud edges', () => {
+    const material = createGalleryCloudVolumeMaterial({ ...cloudOptions, softness: 0.86 })
+    expect(material.uniforms.uSoftness!.value).toBe(0.86)
+    expect(material.fragmentShader).toContain('uSoftness')
+    material.dispose()
+  })
+
+  it('uses a depth-tested near shell for wisps that softly overlap the moon', () => {
+    const volume = createGalleryCloudVolumeMaterial(cloudOptions)
+    const moonWisp = createGalleryCloudVolumeMaterial({ ...cloudOptions, moonOcclusion: true })
+
+    expect(volume.side).toBe(BackSide)
+    expect(moonWisp.side).toBe(FrontSide)
+    expect(moonWisp.depthTest).toBe(true)
+    expect(moonWisp.depthWrite).toBe(false)
+
+    volume.dispose()
+    moonWisp.dispose()
   })
 
   it('keeps the broad haze mode soft and follows the shared gallery clock', () => {

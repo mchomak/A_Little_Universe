@@ -1,4 +1,4 @@
-import { BackSide, Color, NormalBlending, ShaderMaterial, Vector3 } from 'three'
+import { BackSide, Color, FrontSide, NormalBlending, ShaderMaterial, Vector3 } from 'three'
 
 export interface GalleryCloudVolumeMaterialOptions {
   kind: 'cloud' | 'haze'
@@ -8,6 +8,7 @@ export interface GalleryCloudVolumeMaterialOptions {
   opacity: number
   density?: number
   intensity: number
+  softness?: number
   coolTint?: number
   whiteHighlight?: number
   moonPosition: readonly [number, number, number]
@@ -15,6 +16,8 @@ export interface GalleryCloudVolumeMaterialOptions {
   moonLightIntensity: number
   driftSpeed: number
   steps: number
+  /** Draw the near shell in front of the opaque lunar disc while retaining depth occlusion elsewhere. */
+  moonOcclusion?: boolean
 }
 
 const cloudVolumeVertexShader = `
@@ -41,6 +44,7 @@ const cloudVolumeFragmentShader = `
   uniform float uOpacity;
   uniform float uCloudDensity;
   uniform float uCloudIntensity;
+  uniform float uSoftness;
   uniform float uCoolTint;
   uniform float uWhiteHighlight;
   uniform float uTime;
@@ -140,21 +144,23 @@ const cloudVolumeFragmentShader = `
       density = softBoundary * (0.22 + coverage * 0.58) * (0.8 + broad * 0.2) * sampleDepthFade;
     } else {
       // A soft, noise-warped 3D boundary leaves darker gaps inside each cloud mass.
-      float edgeWarp = (broad - 0.5) * 0.92 + (detail - 0.5) * 0.5;
+      float edgeWarp = (broad - 0.5) * 0.88 + (detail - 0.5) * 0.72;
       float rotation = uSeed * 0.137;
       mat2 rotationXZ = mat2(cos(rotation), -sin(rotation), sin(rotation), cos(rotation));
       vec2 rotatedXZ = rotationXZ * localPosition.xz;
       vec3 shapePosition = vec3(rotatedXZ.x, localPosition.y, rotatedXZ.y);
       shapePosition -= vec3(sin(uSeed * 0.31) * 0.07, cos(uSeed * 0.19) * 0.045, sin(uSeed * 0.11) * 0.07);
-      float lobeA = 1.0 - smoothstep(0.46 + edgeWarp * 0.2, 0.91 + edgeWarp * 0.2,
+      float edgeSoftness = mix(0.12, 0.38, clamp(uSoftness, 0.0, 1.0));
+      float lobeA = 1.0 - smoothstep(0.46 + edgeWarp * 0.2, 0.91 + edgeWarp * 0.2 + edgeSoftness,
         length((shapePosition - vec3(-0.24, 0.02, -0.08)) * vec3(1.42, 1.32, 1.2)));
-      float lobeB = 1.0 - smoothstep(0.48 + edgeWarp * 0.2, 0.9 + edgeWarp * 0.2,
+      float lobeB = 1.0 - smoothstep(0.48 + edgeWarp * 0.2, 0.9 + edgeWarp * 0.2 + edgeSoftness,
         length((shapePosition - vec3(0.23, 0.1, 0.04)) * vec3(1.48, 1.28, 1.34)));
-      float lobeC = 1.0 - smoothstep(0.42 + edgeWarp * 0.2, 0.87 + edgeWarp * 0.2,
+      float lobeC = 1.0 - smoothstep(0.42 + edgeWarp * 0.2, 0.87 + edgeWarp * 0.2 + edgeSoftness,
         length((shapePosition - vec3(-0.02, -0.19, 0.18)) * vec3(1.28, 1.48, 1.32)));
-      softBoundary = smoothMax(smoothMax(lobeA, lobeB, 0.2), lobeC, 0.2);
-      float interior = smoothstep(0.42 - uCloudDensity * 0.18, 0.72, broad * 0.62 + detail * 0.38);
-      density = softBoundary * interior * (0.58 + detail * 0.42) * uCloudDensity;
+      softBoundary = smoothMax(smoothMax(lobeA, lobeB, edgeSoftness), lobeC, edgeSoftness);
+      float cloudTexture = broad * 0.52 + detail * 0.48;
+      float interior = smoothstep(mix(0.52, 0.34, uSoftness) - uCloudDensity * 0.18, mix(0.7, 0.84, uSoftness), cloudTexture);
+      density = softBoundary * interior * (0.46 + broad * 0.22 + detail * 0.32) * uCloudDensity;
     }
 
       vec3 localMoonDirection = normalize((uMoonPosition - sampleWorld) * inverseRadii);
@@ -167,13 +173,13 @@ const cloudVolumeFragmentShader = `
       if (isHaze > 0.5) lightResponse = 0.012 + moonNearby * 0.065 * whiteStrength;
       float lightBreath = 0.96 + 0.04 * sin(time * 0.22 + uSeed * 0.07);
       float lunarLift = clamp(lightResponse * uMoonLightIntensity * lightBreath * 0.95, 0.0, 0.32);
-      float innerShade = 0.58 + broad * 0.3 + (1.0 - radius) * 0.1;
+      float innerShade = 0.48 + broad * 0.34 + detail * 0.2 + (1.0 - radius) * 0.1;
       vec3 blueAir = vec3(0.025, 0.11, 0.28);
       vec3 coolBase = mix(uBaseColor, blueAir, clamp(uCoolTint / 1.5, 0.0, 1.0));
-      vec3 sampleColor = mix(coolBase * innerShade, uMoonColor, lunarLift);
+      vec3 sampleColor = mix(coolBase * innerShade, uMoonColor, lunarLift) * uCloudIntensity;
 
-      // Integrate density through the ellipsoid instead of shading its surface.
-      float opticalDepth = density * uOpacity * uCloudIntensity * segmentLength * 0.16;
+      // Brightness changes cloud radiance; opacity and density alone control coverage.
+      float opticalDepth = density * uOpacity * segmentLength * 0.16;
       float sampleAlpha = 1.0 - exp(-max(opticalDepth, 0.0));
       float contribution = transmittance * sampleAlpha;
       accumulatedColor += sampleColor * contribution;
@@ -208,6 +214,7 @@ export function createGalleryCloudVolumeMaterial(options: GalleryCloudVolumeMate
       uOpacity: { value: Math.max(0, Math.min(1.5, options.opacity)) },
       uCloudDensity: { value: Math.max(0, Math.min(1.8, options.density ?? 0.9)) },
       uCloudIntensity: { value: Math.max(0, Math.min(2, options.intensity)) },
+      uSoftness: { value: Math.max(0, Math.min(1, options.softness ?? 0.78)) },
       uCoolTint: { value: Math.max(0, Math.min(1.5, options.coolTint ?? 1)) },
       uWhiteHighlight: { value: Math.max(0, Math.min(1.5, options.whiteHighlight ?? 0.48)) },
       uMoonLightIntensity: { value: Math.max(0, options.moonLightIntensity) },
@@ -220,8 +227,9 @@ export function createGalleryCloudVolumeMaterial(options: GalleryCloudVolumeMate
     depthWrite: false,
     depthTest: true,
     blending: NormalBlending,
-    // Ray-march the whole ellipsoid from its exit shell. BackSide also keeps the volume visible when the camera enters it.
-    side: BackSide,
+    // Most volumes use the exit shell so they remain visible when the camera enters them. Wisps in front of the moon
+    // use the near shell, allowing their depth-tested volume to softly overlap the opaque lunar disc.
+    side: options.moonOcclusion ? FrontSide : BackSide,
     toneMapped: false,
   })
 }

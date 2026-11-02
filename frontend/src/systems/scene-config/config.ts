@@ -7,11 +7,30 @@ export type GalaxyPalette = 'vasilisa' | 'spore' | 'ember' | 'emerald' | 'ice' |
 export type SeedQuality = 'low' | 'standard' | 'high'
 export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy' | 'preset'
 
+export interface GalleryCloudLayerSettings {
+  count: number
+  density: number
+  scale: number
+  opacity: number
+  brightness: number
+  driftSpeed: number
+  height: number
+  distance: number
+  softness: number
+}
+
+export interface GalleryCloudLayers {
+  far: Readonly<GalleryCloudLayerSettings>
+  mid: Readonly<GalleryCloudLayerSettings>
+  nearLow: Readonly<GalleryCloudLayerSettings>
+  waterline: Readonly<GalleryCloudLayerSettings>
+}
+
 type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T[Key]> : T[Key] }
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 13
+  readonly schemaVersion: 14
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -138,16 +157,8 @@ export interface SceneComposerConfig {
       particleCount: number
       moonBrightness: number
       moonSize: number
-      cloudDensity: number
-      cloudOpacity: number
-      cloudIntensity: number
-      cloudScale: number
-      cloudLayerCount: number
-      cloudDriftSpeed: number
       cloudDriftVariation: number
-      cloudForegroundAmount: number
-      cloudBackgroundAmount: number
-      cloudNearFloorAmount: number
+      cloudLayers: GalleryCloudLayers
       cloudCoolTint: number
       cloudWhiteHighlight: number
       hazeDensity: number
@@ -259,7 +270,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 13,
+  schemaVersion: 14,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
@@ -301,8 +312,13 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
     },
     gallery: {
       frameIntensity: 1, particleCount: 220, moonBrightness: 0.8, moonSize: 1,
-      cloudDensity: 1.12, cloudOpacity: 0.88, cloudIntensity: 1, cloudScale: 1, cloudLayerCount: 18, cloudDriftSpeed: 0.82,
-      cloudDriftVariation: 0.65, cloudForegroundAmount: 1, cloudBackgroundAmount: 0.78, cloudNearFloorAmount: 1,
+      cloudDriftVariation: 0.65,
+      cloudLayers: {
+        far: { count: 5, density: 0.84, scale: 1.12, opacity: 0.72, brightness: 0.84, driftSpeed: 0.26, height: 0, distance: 0, softness: 0.82 },
+        mid: { count: 8, density: 0.92, scale: 1.16, opacity: 0.78, brightness: 0.92, driftSpeed: 0.4, height: 0, distance: 0, softness: 0.7 },
+        nearLow: { count: 10, density: 1.12, scale: 1, opacity: 0.94, brightness: 1.08, driftSpeed: 0.34, height: 0, distance: 0, softness: 0.55 },
+        waterline: { count: 13, density: 0.96, scale: 1.05, opacity: 0.92, brightness: 0.96, driftSpeed: 0.22, height: 0, distance: 0, softness: 0.58 },
+      },
       cloudCoolTint: 1.35, cloudWhiteHighlight: 0.24,
       hazeDensity: 0.22, hazeHeight: 0, hazeMotionSpeed: 0.2, reflectionStrength: 0.5,
       reflectionBlur: 0.52, reflectionFalloff: 1.25, waterBaseBrightness: 0.72,
@@ -372,7 +388,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 13) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 14) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -385,7 +401,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   // Schema v9 allowed at most 12 cloud banks; expand that old default while
   // preserving deliberate lower values, including zero.
   const galleryInput = inputVersion === 9 && rawGalleryInput?.cloudLayerCount === 12
-    ? { ...rawGalleryInput, cloudLayerCount: DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.cloudLayerCount }
+    ? { ...rawGalleryInput, cloudLayerCount: 18 }
     : rawGalleryInput
   const galaxyInput = asRecord(scenesInput?.galaxy)
   const galaxySettingsInput = migrateGalaxySettings(galaxyInput, inputVersion)
@@ -544,7 +560,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 13, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 14, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
@@ -567,21 +583,14 @@ function migrateGalaxySettings(input: Record<string, unknown> | undefined, versi
 
 function normalizeGallery(input: Record<string, unknown> | undefined): SceneComposerConfig['scenes']['gallery'] {
   const d = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery
+  const cloudLayers = normalizeGalleryCloudLayers(input)
   return {
     frameIntensity: numberValue(input?.frameIntensity, d.frameIntensity, 0, 2),
     particleCount: numberValue(input?.particleCount, d.particleCount, 0, 600, true),
     moonBrightness: numberValue(input?.moonBrightness, d.moonBrightness, 0, 2),
     moonSize: numberValue(input?.moonSize, d.moonSize, 0.4, 1.8),
-    cloudDensity: numberValue(input?.cloudDensity, d.cloudDensity, 0, 1.8),
-    cloudOpacity: numberValue(input?.cloudOpacity, d.cloudOpacity, 0, 1.8),
-    cloudIntensity: numberValue(input?.cloudIntensity, d.cloudIntensity, 0, 2),
-    cloudScale: numberValue(input?.cloudScale, d.cloudScale, 0.55, 2),
-    cloudLayerCount: numberValue(input?.cloudLayerCount, d.cloudLayerCount, 0, 18, true),
-    cloudDriftSpeed: numberValue(input?.cloudDriftSpeed, d.cloudDriftSpeed, 0, 2),
     cloudDriftVariation: numberValue(input?.cloudDriftVariation, d.cloudDriftVariation, 0, 1),
-    cloudForegroundAmount: numberValue(input?.cloudForegroundAmount, d.cloudForegroundAmount, 0, 1.6),
-    cloudBackgroundAmount: numberValue(input?.cloudBackgroundAmount, d.cloudBackgroundAmount, 0, 1.6),
-    cloudNearFloorAmount: numberValue(input?.cloudNearFloorAmount, d.cloudNearFloorAmount, 0, 1.6),
+    cloudLayers,
     cloudCoolTint: numberValue(input?.cloudCoolTint, d.cloudCoolTint, 0, 1.5),
     cloudWhiteHighlight: numberValue(input?.cloudWhiteHighlight, d.cloudWhiteHighlight, 0, 1.5),
     hazeDensity: numberValue(input?.hazeDensity, d.hazeDensity, 0, 1.8),
@@ -615,6 +624,63 @@ function normalizeGallery(input: Record<string, unknown> | undefined): SceneComp
     moonHaloRadius: numberValue(input?.moonHaloRadius, d.moonHaloRadius, 0, 2.5),
     moonGodRaysIntensity: numberValue(input?.moonGodRaysIntensity, d.moonGodRaysIntensity, 0, 0.8),
   }
+}
+
+function normalizeGalleryCloudLayers(input: Record<string, unknown> | undefined): GalleryCloudLayers {
+  const defaults = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.cloudLayers
+  const source = asRecord(input?.cloudLayers)
+  const layers = ['far', 'mid', 'nearLow', 'waterline'] as const
+  const legacyLayerCount = !source && typeof input?.cloudLayerCount === 'number'
+    ? numberValue(input.cloudLayerCount, 18, 0, 18, true)
+    : undefined
+  const legacyDensity = numberValue(input?.cloudDensity, 1.12, 0, 1.8)
+  const legacyOpacity = numberValue(input?.cloudOpacity, 0.88, 0, 1.8)
+  const legacyBrightness = numberValue(input?.cloudIntensity, 1, 0, 2)
+  const legacyScale = numberValue(input?.cloudScale, 1, 0.55, 2)
+  const legacyDrift = numberValue(input?.cloudDriftSpeed, 0.82, 0, 2)
+  const legacyAmounts = {
+    far: numberValue(input?.cloudBackgroundAmount, 0.78, 0, 1.6),
+    mid: 1,
+    nearLow: numberValue(input?.cloudForegroundAmount, 1, 0, 1.6),
+    waterline: numberValue(input?.cloudNearFloorAmount, 1, 0, 1.6),
+  }
+  const counts = distributeLegacyCloudCount(legacyLayerCount, layers.map((layer) => defaults[layer].count))
+  const next = Object.fromEntries(layers.map((layer, index) => {
+    const value = asRecord(source?.[layer])
+    const d = defaults[layer]
+    const maxCount = layer === 'waterline' ? 32 : 24
+    return [layer, {
+      count: numberValue(value?.count, legacyLayerCount === undefined ? d.count : counts[index]!, 0, maxCount, true),
+      density: numberValue(value?.density, input?.cloudDensity === undefined ? d.density : legacyDensity, 0, 1.8),
+      scale: numberValue(value?.scale, input?.cloudScale === undefined ? d.scale : legacyScale, 0.55, 2),
+      opacity: numberValue(value?.opacity,
+        input?.cloudOpacity === undefined && input?.cloudBackgroundAmount === undefined && input?.cloudForegroundAmount === undefined && input?.cloudNearFloorAmount === undefined
+          ? d.opacity
+          : legacyOpacity * legacyAmounts[layer], 0, 1.8),
+      brightness: numberValue(value?.brightness, input?.cloudIntensity === undefined ? d.brightness : legacyBrightness, 0, 2),
+      driftSpeed: numberValue(value?.driftSpeed, input?.cloudDriftSpeed === undefined ? d.driftSpeed : legacyDrift, 0, 2),
+      height: numberValue(value?.height, d.height, -8, 12),
+      distance: numberValue(value?.distance, d.distance, 0, 24),
+      softness: numberValue(value?.softness, d.softness, 0, 1),
+    }]
+  })) as unknown as GalleryCloudLayers
+  return next
+}
+
+function distributeLegacyCloudCount(count: number | undefined, weights: readonly number[]): number[] {
+  if (count === undefined) return weights.map(() => 0)
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0)
+  const exact = weights.map((weight) => count * weight / totalWeight)
+  const counts = exact.map(Math.floor)
+  let remaining = count - counts.reduce((sum, value) => sum + value, 0)
+  const order = exact.map((value, index) => ({ index, remainder: value - counts[index]! }))
+    .sort((a, b) => b.remainder - a.remainder)
+  for (const { index } of order) {
+    if (remaining <= 0) break
+    counts[index]! += 1
+    remaining -= 1
+  }
+  return counts
 }
 
 function normalizeGalaxy(input: Record<string, unknown> | undefined): SceneComposerConfig['scenes']['galaxy'] {

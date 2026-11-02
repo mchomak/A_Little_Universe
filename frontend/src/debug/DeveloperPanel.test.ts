@@ -123,9 +123,12 @@ it('exposes all bounded moonlit gallery settings in the existing Scene Inspector
   }))
 
   expect(markup).toContain('Лунная галерея')
-  expect(markup).toContain('Контраст облачной формы')
-  expect(markup).toContain('Количество облачных масс')
-  expect(markup).toContain('Скорость дрейфа облаков')
+  expect(markup).toContain('Far Clouds · дальний слой')
+  expect(markup).toContain('Mid Clouds · боковые массы')
+  expect(markup).toContain('Near Low Clouds · за фотографиями')
+  expect(markup).toContain('Waterline Clouds · дымка над водой')
+  expect(markup).toContain('Мягкость края')
+  expect(markup).toContain('Скорость дрейфа')
   expect(markup).toContain('Высота дымки')
   expect(markup).toContain('Лунный свет на облаках')
   expect(markup).toContain('Общий лунный свет')
@@ -141,16 +144,16 @@ it('exposes all bounded moonlit gallery settings in the existing Scene Inspector
   expect(markup).toMatch(/id="composer-scenes-gallery-particleCount"[^>]*min="0" max="600" step="1" value="220"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-moonBrightness"[^>]*min="0" max="2" step="0.05" value="0.8"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-moonSize"[^>]*min="0.4" max="1.8" step="0.05" value="1"/)
-  expect(markup).toMatch(/id="composer-scenes-gallery-cloudIntensity"[^>]*min="0" max="2" step="0.05" value="1"/)
-  expect(markup).toMatch(/id="composer-scenes-gallery-cloudDensity"[^>]*min="0" max="1.8" step="0.05" value="1.12"/)
-  expect(markup).toMatch(/id="composer-scenes-gallery-cloudOpacity"[^>]*min="0" max="1.8" step="0.05" value="0.88"/)
-  expect(markup).toMatch(/id="composer-scenes-gallery-cloudScale"[^>]*min="0.55" max="2" step="0.05" value="1"/)
-  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayerCount"[^>]*min="0" max="18" step="1" value="18"/)
-  expect(markup).toMatch(/id="composer-scenes-gallery-cloudDriftSpeed"[^>]*min="0" max="2" step="0.05" value="0.82"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayers-far-count"[^>]*min="0" max="14" step="1" value="5"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayers-far-density"[^>]*min="0" max="1.8" step="0.05" value="0.84"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayers-mid-scale"[^>]*min="0.55" max="2" step="0.05" value="1.16"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayers-nearLow-count"[^>]*min="0" max="24" step="1" value="10"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayers-nearLow-brightness"[^>]*min="0" max="2" step="0.05" value="1.08"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayers-waterline-count"[^>]*min="0" max="32" step="1" value="13"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayers-waterline-softness"[^>]*min="0" max="1" step="0.025" value="0.58"/)
+  expect(markup).not.toContain('composer-scenes-gallery-cloudDensity')
+  expect(markup).not.toContain('composer-scenes-gallery-cloudLayerCount')
   expect(markup).toMatch(/id="composer-scenes-gallery-cloudDriftVariation"[^>]*min="0" max="1" step="0.05" value="0.65"/)
-  expect(markup).toMatch(/id="composer-scenes-gallery-cloudForegroundAmount"[^>]*min="0" max="1.6" step="0.05" value="1"/)
-  expect(markup).toMatch(/id="composer-scenes-gallery-cloudBackgroundAmount"[^>]*min="0" max="1.6" step="0.05" value="0.78"/)
-  expect(markup).toMatch(/id="composer-scenes-gallery-cloudNearFloorAmount"[^>]*min="0" max="1.6" step="0.05" value="1"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-cloudCoolTint"[^>]*min="0" max="1.5" step="0.025" value="1.35"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-cloudWhiteHighlight"[^>]*min="0" max="1.5" step="0.025" value="0.24"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-hazeDensity"[^>]*min="0" max="1.8" step="0.05" value="0.22"/)
@@ -178,7 +181,7 @@ it('exposes all bounded moonlit gallery settings in the existing Scene Inspector
   expect(markup).not.toContain('Показать A')
 })
 
-it('caps the cloud count control to the low-quality raymarch render limit', () => {
+it('keeps independent cloud count controls while respecting the shared low-quality render limit', () => {
   const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
     state: { ...initialFilmState, scene: 'gallery', quality: 'low' },
     dispatch: () => undefined,
@@ -188,7 +191,7 @@ it('caps the cloud count control to the low-quality raymarch render limit', () =
     route: 'film',
   }))
 
-  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayerCount"[^>]*min="0" max="14" step="1" value="14"/)
-  expect(markup).toContain('В сцене 24 объёмные формы; рендер ограничен 18 массами в обычном качестве и 14 в низком.')
+  expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayers-waterline-count"[^>]*min="0" max="32" step="1" value="13"/)
+  expect(markup).toContain('не более 36 объёмных масс (20 в низком профиле)')
 })
 

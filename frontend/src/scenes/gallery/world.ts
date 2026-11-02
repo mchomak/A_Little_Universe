@@ -1,10 +1,11 @@
 import { GALLERY } from './content'
+import type { GalleryCloudLayerSettings, GalleryCloudLayers } from '../../systems/scene-config/config'
 
 export type GalleryQuality = 'low' | 'standard'
-export type GalleryCloudRegion = 'foreground' | 'midground' | 'background' | 'near-floor'
+export type GalleryCloudLayerId = keyof GalleryCloudLayers
 
 /** Per-frame raymarch draw-call ceilings; the registry can stay denser than the rendered subset. */
-export const GALLERY_CLOUD_RENDER_LIMIT: Readonly<Record<GalleryQuality, number>> = { low: 14, standard: 18 }
+export const GALLERY_CLOUD_RENDER_LIMIT: Readonly<Record<GalleryQuality, number>> = { low: 20, standard: 36 }
 
 export interface GalleryAtmosphereMass {
   id: string
@@ -13,7 +14,20 @@ export interface GalleryAtmosphereMass {
   opacity: number
   seed: number
   lowQuality: boolean
-  region?: GalleryCloudRegion
+}
+
+export interface GalleryCloudMass extends GalleryAtmosphereMass {
+  layer: GalleryCloudLayerId
+  moonInteraction?: boolean
+}
+
+/**
+ * Keep near clouds in front of the transparent floor's color pass so their
+ * waterline volumes remain visible; depth testing still lets photos occlude them.
+ */
+export function getGalleryCloudRenderOrder(mass: Pick<GalleryCloudMass, 'layer' | 'moonInteraction'>): number {
+  if (mass.moonInteraction) return 1
+  return mass.layer === 'nearLow' || mass.layer === 'waterline' ? -0.5 : -3
 }
 
 export interface GalleryMoonScatteringLayer {
@@ -22,6 +36,58 @@ export interface GalleryMoonScatteringLayer {
   intensity: number
   seed: number
 }
+
+function createRouteCloudLayer({
+  id,
+  layer,
+  count,
+  x,
+  y,
+  radii,
+  opacity,
+  seed,
+  yJitter = 0,
+  xJitter = 0,
+}: {
+  id: string
+  layer: GalleryCloudLayerId
+  count: number
+  x: number
+  y: number
+  radii: readonly [number, number, number]
+  opacity: number
+  seed: number
+  yJitter?: number
+  xJitter?: number
+}): readonly GalleryCloudMass[] {
+  const routeStart = GALLERY.startZ + 9
+  const routeEnd = GALLERY.startZ - GALLERY.travel - 13
+  return Array.from({ length: count }, (_, index) => {
+    const progress = index / Math.max(1, count - 1)
+    const side = index % 2 === 0 ? -1 : 1
+    const variation = Math.sin(index * 2.17 + seed)
+    return {
+      id: `${id}-${String(index + 1).padStart(2, '0')}`,
+      layer,
+      position: [
+        side * (x + variation * xJitter),
+        y + Math.cos(index * 1.63 + seed) * yJitter,
+        routeStart + (routeEnd - routeStart) * progress,
+      ] as const,
+      radii,
+      opacity,
+      seed: seed + index * 13,
+      // The reduced profile keeps both corridor edges represented.
+      lowQuality: index % 4 < 2,
+    }
+  })
+}
+
+const routeClouds = [
+  ...createRouteCloudLayer({ id: 'mid-bank', layer: 'mid', count: 20, x: 17.6, y: 10, radii: [10.5, 6.8, 20], opacity: 0.64, seed: 61, yJitter: 2.2, xJitter: 1.4 }),
+  ...createRouteCloudLayer({ id: 'near-low-bank', layer: 'nearLow', count: 24, x: 10.1, y: 1.85, radii: [4.35, 4, 10.5], opacity: 0.8, seed: 211, yJitter: 0.75, xJitter: 0.3 }),
+  ...createRouteCloudLayer({ id: 'waterline-bank', layer: 'waterline', count: 32, x: 12.2, y: 0.55, radii: [6.2, 3.5, 8.5], opacity: 0.82, seed: 421, yJitter: 0.45, xJitter: 0.3 }),
+]
 
 /** Fixed world-space bounds shared by the gallery environment and its tests. */
 export const GALLERY_WORLD = {
@@ -35,34 +101,24 @@ export const GALLERY_WORLD = {
   // Keep the moon on the gallery axis, but lift it clearly above the cloud horizon.
   moon: { position: [0.2, 16, -126] as const, radius: 2.15, haloRadius: 6.5 },
   clouds: [
-    // Foreground shapes enter from both edges, while their inner edges stay clear of the photo line.
-    { id: 'side-west-near', region: 'foreground', position: [-14.5, 7.5, -9] as const, radii: [9.1, 6.3, 12] as const, opacity: 0.39, seed: 13, lowQuality: true },
-    { id: 'side-east-near', region: 'foreground', position: [14.8, 8.6, -22] as const, radii: [9.2, 6.6, 13] as const, opacity: 0.37, seed: 37, lowQuality: true },
-    { id: 'upper-west-near', region: 'foreground', position: [-14.8, 17.8, -19] as const, radii: [9.2, 5.4, 12] as const, opacity: 0.34, seed: 47, lowQuality: true },
-    { id: 'upper-east-near', region: 'foreground', position: [15.1, 18.5, -34] as const, radii: [9.6, 5.8, 13] as const, opacity: 0.32, seed: 53, lowQuality: true },
-    { id: 'edge-west-late', region: 'foreground', position: [-15.1, 8.2, -47] as const, radii: [9.4, 6.4, 14] as const, opacity: 0.34, seed: 59, lowQuality: true },
-    { id: 'edge-east-end', region: 'foreground', position: [15.2, 9.1, -62] as const, radii: [9.6, 6.5, 14] as const, opacity: 0.33, seed: 67, lowQuality: true },
-    { id: 'side-west-mid', region: 'midground', position: [-18, 11.8, -51] as const, radii: [10.8, 7.8, 19] as const, opacity: 0.35, seed: 61, lowQuality: true },
-    { id: 'side-east-mid', region: 'midground', position: [18.5, 13, -73] as const, radii: [11, 8, 19] as const, opacity: 0.34, seed: 83, lowQuality: true },
-    { id: 'mid-west-entry', region: 'midground', position: [-13.6, 9.5, 2] as const, radii: [7.4, 6.3, 18] as const, opacity: 0.37, seed: 71, lowQuality: true },
-    { id: 'mid-east-early', region: 'midground', position: [13.6, 10, -15] as const, radii: [7.4, 6.4, 17] as const, opacity: 0.36, seed: 79, lowQuality: true },
-    { id: 'mid-west-middle', region: 'midground', position: [-13.6, 11, -35] as const, radii: [7.5, 6.5, 18] as const, opacity: 0.35, seed: 87, lowQuality: true },
-    { id: 'mid-east-late', region: 'midground', position: [13.8, 12.2, -46] as const, radii: [7.6, 6.8, 18] as const, opacity: 0.34, seed: 93, lowQuality: true },
-    // Low banks reach the reflective floor and overlap down the entire walk.
-    { id: 'floor-west-near', region: 'near-floor', position: [-16.5, 1.95, -5] as const, radii: [9.5, 4.35, 14] as const, opacity: 0.76, seed: 89, lowQuality: true },
-    { id: 'floor-east-mid', region: 'near-floor', position: [16, 1.99, -19] as const, radii: [9.5, 4.35, 14] as const, opacity: 0.74, seed: 97, lowQuality: true },
-    { id: 'floor-west-middle', region: 'near-floor', position: [-16.8, 1.9, -34] as const, radii: [9.8, 4.3, 15] as const, opacity: 0.73, seed: 101, lowQuality: true },
-    { id: 'floor-east-late', region: 'near-floor', position: [16.5, 2, -49] as const, radii: [9.5, 4.4, 15] as const, opacity: 0.72, seed: 103, lowQuality: true },
-    { id: 'floor-west-end', region: 'near-floor', position: [-16.2, 1.9, -65] as const, radii: [9.8, 4.35, 15] as const, opacity: 0.71, seed: 105, lowQuality: true },
-    // Far clouds are softer and sparser around the moon and distant horizon.
-    { id: 'sky-west-entry', region: 'background', position: [-26, 25, -6] as const, radii: [16, 7.5, 22] as const, opacity: 0.26, seed: 109, lowQuality: true },
-    { id: 'sky-east-middle', region: 'background', position: [27, 27, -35] as const, radii: [17, 8, 24] as const, opacity: 0.25, seed: 113, lowQuality: true },
-    { id: 'sky-west-late', region: 'background', position: [-28, 28, -64] as const, radii: [18, 8.5, 26] as const, opacity: 0.23, seed: 127, lowQuality: true },
-    { id: 'side-west-far', region: 'background', position: [-30, 16, -106] as const, radii: [17, 10.5, 25] as const, opacity: 0.28, seed: 107, lowQuality: false },
-    { id: 'side-east-far', region: 'background', position: [32, 18, -136] as const, radii: [18, 11, 27] as const, opacity: 0.27, seed: 131, lowQuality: false },
-    { id: 'upper-west-far', region: 'background', position: [-27, 28, -119] as const, radii: [19, 8.5, 27] as const, opacity: 0.24, seed: 149, lowQuality: false },
-    { id: 'upper-east-far', region: 'background', position: [30, 30, -149] as const, radii: [20, 9.5, 29] as const, opacity: 0.23, seed: 173, lowQuality: false },
-  ] satisfies readonly GalleryAtmosphereMass[],
+    ...Array.from({ length: 12 }, (_, index) => {
+      const side = index % 2 === 0 ? -1 : 1
+      const progress = index / 11
+      return {
+        id: `far-cloud-${String(index + 1).padStart(2, '0')}`,
+        layer: 'far' as const,
+        position: [side * (28 + Math.sin(index * 1.7) * 3), 20 + Math.cos(index * 0.9) * 7, 13 + (-162 - 13) * progress] as const,
+        radii: [17 + (index % 3), 8 + (index % 2), 22 + (index % 4)] as const,
+        opacity: 0.31 - (index % 3) * 0.015,
+        seed: 109 + index * 17,
+        lowQuality: index % 4 < 2,
+      }
+    }),
+    // Place two thin, layered wisps across opposite lunar edges; their translucency keeps the disc and halo legible.
+    { id: 'moon-wisp-east', layer: 'far', position: [0.9, 17.35, -123.2], radii: [6.5, 2, 8.2], opacity: 0.42, seed: 601, lowQuality: true, moonInteraction: true },
+    { id: 'moon-wisp-west', layer: 'far', position: [-3.7, 15.25, -123.5], radii: [6.2, 1.6, 8.5], opacity: 0.3, seed: 619, lowQuality: true, moonInteraction: true },
+    ...routeClouds,
+  ] satisfies readonly GalleryCloudMass[],
 } as const
 
 /** A few fixed, soft atmospheric pools trace the moon-to-gallery light path. */
@@ -87,95 +143,119 @@ export function getGalleryMoonScatteringLayers(
   })
 }
 
-export function getGalleryCloudMasses(quality: GalleryQuality): readonly GalleryAtmosphereMass[] {
+export function getGalleryCloudMasses(quality: GalleryQuality): readonly GalleryCloudMass[] {
   return quality === 'low' ? GALLERY_WORLD.clouds.filter((mass) => mass.lowQuality) : GALLERY_WORLD.clouds
 }
 
-/** Selects a balanced set so a lower Inspector count still keeps near, middle, and far planes. */
-export function getGalleryCloudMassesForCount(
+export function getGalleryCloudMassesForLayerCounts(
   quality: GalleryQuality,
-  count: number,
-): readonly GalleryAtmosphereMass[] {
-  const masses = getGalleryCloudMasses(quality)
-  const safeCount = Number.isFinite(count)
-    ? Math.max(0, Math.min(masses.length, GALLERY_CLOUD_RENDER_LIMIT[quality], Math.floor(count)))
-    : Math.min(masses.length, GALLERY_CLOUD_RENDER_LIMIT[quality])
-  if (safeCount === 0) return []
-  const regions: readonly GalleryCloudRegion[] = ['foreground', 'background', 'midground', 'near-floor']
-  const grouped = new Map(regions.map((region) => [region, masses.filter((mass) => mass.region === region)]))
-  const sampleEvenly = (group: readonly GalleryAtmosphereMass[], target: number) => {
-    const ordered = [...group].sort((a, b) => b.position[2] - a.position[2])
-    if (target >= ordered.length) return ordered
-    if (target === 1) return [ordered[Math.floor((ordered.length - 1) / 2)]!]
-    return Array.from({ length: target }, (_, index) => {
-      const sampleIndex = target === 3 && index === 1
-        ? Math.floor((ordered.length - 1) / 2)
-        : Math.round(index * (ordered.length - 1) / (target - 1))
-      return ordered[sampleIndex]!
-    })
-  }
-  // Keep every depth plane represented at small counts. Once there is room,
-  // preserve all five floor banks first so the route retains floor-level cover.
-  if (safeCount < 5) {
-    const selected: GalleryAtmosphereMass[] = []
-    let round = 0
-    while (selected.length < safeCount) {
-      for (const region of regions) {
-        const group = grouped.get(region) ?? []
-        const mass = sampleEvenly(group, Math.min(group.length, round + 1))[round]
-        if (mass && !selected.includes(mass)) selected.push(mass)
-        if (selected.length === safeCount) break
+  settings: GalleryCloudLayers,
+): readonly GalleryCloudMass[] {
+  const layers: readonly GalleryCloudLayerId[] = ['far', 'mid', 'nearLow', 'waterline']
+  const candidates = new Map(layers.map((layer) => [layer, getGalleryCloudMasses(quality).filter((mass) => mass.layer === layer)]))
+  const requested = new Map(layers.map((layer) => [layer, Math.max(0, Math.min(candidates.get(layer)!.length, Math.floor(settings[layer].count)))]))
+  const requestedTotal = [...requested.values()].reduce((sum, count) => sum + count, 0)
+  const limit = GALLERY_CLOUD_RENDER_LIMIT[quality]
+  const quotas = requestedTotal <= limit
+    ? requested
+    : scaleLayerQuotas(layers, requested, limit)
+  if (quality === 'low' && requestedTotal > limit) {
+    const moveTo = (target: GalleryCloudLayerId, count: number, donors: readonly { layer: GalleryCloudLayerId; minimum: number }[]) => {
+      while (quotas.get(target)! < count) {
+        const donor = donors.find(({ layer, minimum }) => quotas.get(layer)! > minimum)
+        if (!donor) break
+        quotas.set(donor.layer, quotas.get(donor.layer)! - 1)
+        quotas.set(target, quotas.get(target)! + 1)
       }
-      round += 1
     }
-    return selected
+    moveTo('far', Math.min(3, requested.get('far')!), [
+      { layer: 'mid', minimum: Math.min(2, requested.get('mid')!) },
+      { layer: 'waterline', minimum: Math.min(1, requested.get('waterline')!) },
+    ])
+    moveTo('nearLow', Math.min(8, requested.get('nearLow')!), [
+      { layer: 'mid', minimum: Math.min(2, requested.get('mid')!) },
+      { layer: 'waterline', minimum: Math.min(1, requested.get('waterline')!) },
+      { layer: 'far', minimum: Math.min(3, requested.get('far')!) },
+    ])
+    moveTo('waterline', Math.min(7, requested.get('waterline')!), [
+      { layer: 'mid', minimum: Math.min(2, requested.get('mid')!) },
+      { layer: 'far', minimum: Math.min(3, requested.get('far')!) },
+    ])
+    moveTo('mid', Math.min(2, requested.get('mid')!), [
+      { layer: 'waterline', minimum: Math.min(2, requested.get('waterline')!) },
+      { layer: 'far', minimum: Math.min(3, requested.get('far')!) },
+    ])
   }
 
-  const floorGroup = grouped.get('near-floor') ?? []
-  const floorCount = Math.min(floorGroup.length, safeCount - 3)
-  const quotas = new Map<GalleryCloudRegion, number>(regions.map((region) => [region, region === 'near-floor' ? floorCount : 0]))
-  let remaining = safeCount - floorCount
-  // Start each side/background plane before filling the remaining slots evenly.
-  for (const region of ['foreground', 'background', 'midground'] as const) {
-    if (remaining === 0) break
-    if ((grouped.get(region)?.length ?? 0) > 0) {
-      quotas.set(region, 1)
-      remaining -= 1
-    }
-  }
-  while (remaining > 0) {
-    let filled = false
-    for (const region of ['foreground', 'background', 'midground'] as const) {
-      const quota = quotas.get(region) ?? 0
-      if (quota >= (grouped.get(region)?.length ?? 0)) continue
-      quotas.set(region, quota + 1)
-      remaining -= 1
-      filled = true
-      if (remaining === 0) break
-    }
-    if (!filled) break
-  }
-
-  // Background route shelves precede the four far moon-horizon volumes, so a
-  // capped subset keeps clouds along the gallery instead of spending draws past it.
-  return regions.flatMap((region) => {
-    const group = grouped.get(region) ?? []
-    const routeEnd = GALLERY.startZ - GALLERY.travel
-    const ordered = region === 'background'
-      ? [...group.filter((mass) => mass.position[2] >= routeEnd - 12), ...group.filter((mass) => mass.position[2] < routeEnd - 12)]
-      : group
-    return sampleEvenly(ordered, Math.min(ordered.length, quotas.get(region) ?? 0))
-  })
+  return layers.flatMap((layer) => sampleLayer(candidates.get(layer)!, quotas.get(layer)!, layer))
 }
 
-export function getGalleryCloudRegionAmount(
-  region: GalleryCloudRegion | undefined,
-  amounts: { foreground: number; background: number; nearFloor: number },
-): number {
-  if (region === 'foreground') return Math.max(0, Math.min(1.6, amounts.foreground))
-  if (region === 'background') return Math.max(0, Math.min(1.6, amounts.background))
-  if (region === 'near-floor') return Math.max(0, Math.min(1.6, amounts.nearFloor))
-  return 1
+export function getGalleryCloudPosition(mass: GalleryAtmosphereMass, settings: GalleryCloudLayerSettings): readonly [number, number, number] {
+  return [
+    mass.position[0] + Math.sign(mass.position[0]) * settings.distance,
+    mass.position[1] + settings.height,
+    mass.position[2],
+  ]
+}
+
+export function getGalleryCloudRadii(mass: GalleryCloudMass, settings: GalleryCloudLayerSettings, quality: GalleryQuality = 'standard'): readonly [number, number, number] {
+  const qualityDepthScale = quality === 'low'
+    ? mass.layer === 'nearLow' ? 1.65 : mass.layer === 'waterline' ? 2.15 : 1
+    : 1
+  return [mass.radii[0] * settings.scale, mass.radii[1] * settings.scale, mass.radii[2] * settings.scale * qualityDepthScale]
+}
+
+function scaleLayerQuotas(
+  layers: readonly GalleryCloudLayerId[],
+  requested: ReadonlyMap<GalleryCloudLayerId, number>,
+  limit: number,
+): Map<GalleryCloudLayerId, number> {
+  const total = [...requested.values()].reduce((sum, count) => sum + count, 0)
+  const exact = new Map(layers.map((layer) => [layer, (requested.get(layer)! * limit) / total]))
+  const quotas = new Map(layers.map((layer) => [layer, Math.floor(exact.get(layer)!)]))
+  let remaining = limit - [...quotas.values()].reduce((sum, count) => sum + count, 0)
+  const order = [...layers].sort((a, b) => (exact.get(b)! - quotas.get(b)!) - (exact.get(a)! - quotas.get(a)!))
+  for (const layer of order) {
+    if (remaining === 0) break
+    if (requested.get(layer)! > 0) {
+      quotas.set(layer, quotas.get(layer)! + 1)
+      remaining -= 1
+    }
+  }
+  return quotas
+}
+
+function sampleLayer(
+  masses: readonly GalleryCloudMass[],
+  count: number,
+  layer: GalleryCloudLayerId,
+): GalleryCloudMass[] {
+  const ordered = [...masses].sort((a, b) => b.position[2] - a.position[2])
+  const sample = (group: readonly GalleryCloudMass[], target: number): GalleryCloudMass[] => {
+    if (target <= 0) return []
+    if (target >= group.length) return [...group]
+    if (target === 1) return [group[Math.floor((group.length - 1) / 2)]!]
+    return Array.from({ length: target }, (_, index) => group[Math.round(index * (group.length - 1) / (target - 1))]!)
+  }
+  if (count === 0 || ordered.length === 0) return []
+  if (layer === 'far') {
+    const selected = sample(ordered, count)
+    const moonWisps = ordered.filter((mass) => mass.moonInteraction).slice(0, 2)
+    let replacementIndex = selected.length - 1
+    for (const wisp of moonWisps) {
+      if (selected.includes(wisp) || selected.length < 3) continue
+      while (replacementIndex >= 0 && selected[replacementIndex]!.moonInteraction) replacementIndex -= 1
+      if (replacementIndex < 0) break
+      selected[replacementIndex] = wisp
+      replacementIndex -= 1
+    }
+    return [...new Set(selected)].sort((a, b) => b.position[2] - a.position[2])
+  }
+  const west = ordered.filter((mass) => mass.position[0] < 0)
+  const east = ordered.filter((mass) => mass.position[0] > 0)
+  const westCount = Math.ceil(count / 2)
+  const eastCount = Math.floor(count / 2)
+  return [...sample(west, westCount), ...sample(east, eastCount)].sort((a, b) => b.position[2] - a.position[2])
 }
 
 /** Slow, seeded world-space drift keeps the cloud field calm while making parallax legible. */

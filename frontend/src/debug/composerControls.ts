@@ -20,6 +20,7 @@ export type ComposerFieldPath =
   | `scenes.bloom.${keyof SceneComposerConfig['scenes']['bloom'] & string}`
   | `scenes.identity.${keyof SceneComposerConfig['scenes']['identity'] & string}`
   | `scenes.gallery.${keyof SceneComposerConfig['scenes']['gallery'] & string}`
+  | `scenes.gallery.cloudLayers.${keyof SceneComposerConfig['scenes']['gallery']['cloudLayers'] & string}.${keyof SceneComposerConfig['scenes']['gallery']['cloudLayers']['far'] & string}`
   | `scenes.galaxy.${keyof SceneComposerConfig['scenes']['galaxy'] & string}`
 
 export type ComposerImportResult =
@@ -52,7 +53,7 @@ export async function importComposerJson(source: string): Promise<ComposerImport
     return { ok: false, reason: 'json' }
   }
   if (document === null || typeof document !== 'object' || Array.isArray(document)) return { ok: false, reason: 'document' }
-  if (!('schemaVersion' in document) || !Number.isInteger(document.schemaVersion) || Number(document.schemaVersion) < 1 || Number(document.schemaVersion) > 13) return { ok: false, reason: 'version' }
+  if (!('schemaVersion' in document) || !Number.isInteger(document.schemaVersion) || Number(document.schemaVersion) < 1 || Number(document.schemaVersion) > 14) return { ok: false, reason: 'version' }
   const root = document as Record<string, unknown>
   if ('global' in root && !isRecord(root.global)) return { ok: false, reason: 'document' }
   if ('scenes' in root && !isRecord(root.scenes)) return { ok: false, reason: 'document' }
@@ -62,12 +63,82 @@ export async function importComposerJson(source: string): Promise<ComposerImport
   }
   const preparation = scenes.preparation as Record<string, unknown> | undefined
   const prologue = scenes.prologue as Record<string, unknown> | undefined
-  const config = await updateConfig(document as SceneComposerConfigPatch)
+  const config = await updateConfig(createCloudCompatibleImportPatch(document, getConfig().scenes.gallery.cloudLayers))
   if (
     (preparation && 'fontFamily' in preparation && config.scenes.preparation.fontFamily !== normalizeConfigFont(preparation.fontFamily, 'preparation')) ||
     (prologue && 'fontFamily' in prologue && config.scenes.prologue.fontFamily !== normalizeConfigFont(prologue.fontFamily, 'prologue'))
   ) return { ok: false, reason: 'font' }
   return { ok: true, config }
+}
+
+function createCloudCompatibleImportPatch(
+  document: unknown,
+  activeCloudLayers: SceneComposerConfig['scenes']['gallery']['cloudLayers'],
+): SceneComposerConfigPatch {
+  const root = isRecord(document) ? document : {}
+  const version = typeof root.schemaVersion === 'number' ? root.schemaVersion : 1
+  const scenes = isRecord(root.scenes) ? root.scenes : undefined
+  const gallery = scenes && isRecord(scenes.gallery) ? scenes.gallery : undefined
+  if (!gallery || version >= 14) return document as SceneComposerConfigPatch
+
+  const legacyKeys = ['cloudDensity', 'cloudOpacity', 'cloudIntensity', 'cloudScale', 'cloudLayerCount', 'cloudDriftSpeed', 'cloudForegroundAmount', 'cloudBackgroundAmount', 'cloudNearFloorAmount']
+  if (!legacyKeys.some((key) => key in gallery)) return document as SceneComposerConfigPatch
+
+  const normalizedLayers = normalizeConfig(document).scenes.gallery.cloudLayers
+  const importedLayerSettings = isRecord(gallery.cloudLayers) ? gallery.cloudLayers : {}
+  const hasCompleteLegacyOpacity = 'cloudOpacity' in gallery
+    && 'cloudBackgroundAmount' in gallery
+    && 'cloudForegroundAmount' in gallery
+    && 'cloudNearFloorAmount' in gallery
+  const legacyOpacity = finiteNumber(gallery.cloudOpacity, 0.88, 0, 1.8)
+  const legacyRegionAmounts = {
+    far: { key: 'cloudBackgroundAmount', fallback: 0.78 },
+    mid: undefined,
+    nearLow: { key: 'cloudForegroundAmount', fallback: 1 },
+    waterline: { key: 'cloudNearFloorAmount', fallback: 1 },
+  } as const
+  const migratedLayers: Record<string, Record<string, unknown>> = {}
+  for (const layer of ['far', 'mid', 'nearLow', 'waterline'] as const) {
+    const migrated = normalizedLayers[layer]
+    const importedLayer = isRecord(importedLayerSettings[layer]) ? importedLayerSettings[layer] : {}
+    const fields: Record<string, unknown> = { ...importedLayer }
+    if ('cloudLayerCount' in gallery) fields.count = migrated.count
+    if ('cloudDensity' in gallery) fields.density = migrated.density
+    if ('cloudScale' in gallery) fields.scale = migrated.scale
+    if ('cloudIntensity' in gallery) fields.brightness = migrated.brightness
+    if ('cloudDriftSpeed' in gallery) fields.driftSpeed = migrated.driftSpeed
+    const hasLegacyOpacityInput = 'cloudOpacity' in gallery
+      || 'cloudForegroundAmount' in gallery
+      || 'cloudBackgroundAmount' in gallery
+      || 'cloudNearFloorAmount' in gallery
+    if (hasLegacyOpacityInput && !('opacity' in importedLayer)) {
+      if (hasCompleteLegacyOpacity) {
+        fields.opacity = migrated.opacity
+      } else {
+        const baseMultiplier = 'cloudOpacity' in gallery ? legacyOpacity / 0.88 : 1
+        const regional = legacyRegionAmounts[layer]
+        const regionalMultiplier = regional && regional.key in gallery
+          ? finiteNumber(gallery[regional.key], regional.fallback, 0, 1.6) / regional.fallback
+          : 1
+        fields.opacity = activeCloudLayers[layer].opacity * baseMultiplier * regionalMultiplier
+      }
+    }
+    migratedLayers[layer] = fields
+  }
+
+  return {
+    ...root,
+    scenes: {
+      ...scenes,
+      gallery: { ...gallery, cloudLayers: { ...importedLayerSettings, ...migratedLayers } },
+    },
+  } as SceneComposerConfigPatch
+}
+
+function finiteNumber(value: unknown, fallback: number, min: number, max: number) {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(min, Math.min(max, value))
+    : fallback
 }
 
 export function exportComposerJson() {
