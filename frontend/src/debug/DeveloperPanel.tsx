@@ -205,6 +205,41 @@ const LILY_GROWTH_PULSE_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.growth.vfxPulseBudBoost', label: 'Bud Boost', unit: 'x', min: 0, max: 1.5, step: 0.05 },
 ]
 
+const LILY_BUD_GLOW_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.growth.lilyBudGlow.intensity', label: 'Glow Intensity', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.growth.lilyBudGlow.rimStrength', label: 'Rim Strength', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.growth.lilyBudGlow.bloomBoost', label: 'Bloom Boost', unit: '×', min: 0, max: 2, step: 0.05 },
+]
+
+const LILY_LEAF_MATERIAL_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.growth.lilyLeafMaterial.translucencyStrength', label: 'Translucency Strength', unit: '×', min: 0, max: 1, step: 0.01 },
+  { path: 'scenes.growth.lilyLeafMaterial.edgeLightIntensity', label: 'Edge Light Intensity', unit: '×', min: 0, max: 1, step: 0.01 },
+  { path: 'scenes.growth.lilyLeafMaterial.colorVariation', label: 'Color Variation', unit: '×', min: 0, max: 1, step: 0.01 },
+]
+
+const LILY_GROWTH_VORTEX_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.growth.growthVortex.particleCount', label: 'Particle Count', unit: 'pcs', min: 0, max: 1600, step: 10 },
+  { path: 'scenes.growth.growthVortex.particleSize', label: 'Particle Size', unit: 'px', min: 0.2, max: 8, step: 0.1 },
+  { path: 'scenes.growth.growthVortex.sizeVariation', label: 'Size Variation', unit: '×', min: 0, max: 1, step: 0.01 },
+  { path: 'scenes.growth.growthVortex.brightness', label: 'Brightness / Glow', unit: '×', min: 0, max: 3, step: 0.05 },
+  { path: 'scenes.growth.growthVortex.orbitRadius', label: 'Orbit Radius', unit: 'm', min: 0.02, max: 1.5, step: 0.01 },
+  { path: 'scenes.growth.growthVortex.rotationSpeed', label: 'Rotation Speed', unit: '×', min: 0, max: 4, step: 0.05 },
+  { path: 'scenes.growth.growthVortex.verticalSpread', label: 'Vertical Spread', unit: 'm', min: 0.02, max: 2, step: 0.01 },
+  { path: 'scenes.growth.growthVortex.spiralTightness', label: 'Spiral Tightness', unit: '×', min: 0.1, max: 6, step: 0.05 },
+  { path: 'scenes.growth.growthVortex.dissipationDuration', label: 'Dissipation Duration', unit: 's', min: 0.2, max: 12, step: 0.1 },
+  { path: 'scenes.growth.growthVortex.dissipationSpread', label: 'Dissipation Spread', unit: 'm', min: 0, max: 3, step: 0.05 },
+]
+
+const LILY_BLOOM_POLLEN_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.bloom.lilyBloomPollen.particleCount', label: 'Particle Count', unit: 'pcs', min: 0, max: 600, step: 4 },
+  { path: 'scenes.bloom.lilyBloomPollen.particleSize', label: 'Particle Size', unit: 'px', min: 0.2, max: 6, step: 0.1 },
+  { path: 'scenes.bloom.lilyBloomPollen.glowIntensity', label: 'Glow Intensity', unit: '×', min: 0, max: 3, step: 0.05 },
+  { path: 'scenes.bloom.lilyBloomPollen.riseSpeed', label: 'Rise Speed', unit: 'm/s', min: 0, max: 0.5, step: 0.005 },
+  { path: 'scenes.bloom.lilyBloomPollen.spreadRadius', label: 'Spread Radius', unit: 'm', min: 0.01, max: 0.8, step: 0.01 },
+  { path: 'scenes.bloom.lilyBloomPollen.lifetime', label: 'Lifetime', unit: 's', min: 0.5, max: 12, step: 0.1 },
+  { path: 'scenes.bloom.lilyBloomPollen.innerCupGlow', label: 'Inner Cup Glow', unit: '×', min: 0, max: 2, step: 0.05 },
+]
+
 const BLOOM_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.bloom.flowerBloomDuration', label: 'Длительность раскрытия Bloom', unit: 'с', min: 6, max: 24, step: 0.25 },
   { path: 'scenes.bloom.cameraFinalDistance', label: 'Финальная дистанция камеры', unit: '', min: 1.5, max: 5, step: 0.05 },
@@ -637,7 +672,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–20. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–21. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -802,6 +837,17 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             {LILY_GROWTH_PULSE_CONTROLS.map(range)}
             {color('scenes.growth.vfxPulseColor', 'Pulse Color / Tint')}
           </details>
+          <details><summary>Lily Bud Glow</summary>
+            <label className="composer-control"><input id="composer-scenes-growth-lilyBudGlow-enabled" type="checkbox" checked={config.scenes.growth.lilyBudGlow.enabled} onChange={event => { void changeField('scenes.growth.lilyBudGlow.enabled', event.target.checked) }} /> Enable</label>
+            {LILY_BUD_GLOW_CONTROLS.map(range)}
+            {color('scenes.growth.lilyBudGlow.color', 'Glow Color')}
+          </details>
+          <details><summary>Lily Leaf Material</summary>{LILY_LEAF_MATERIAL_CONTROLS.map(range)}</details>
+          <details><summary>Lily Growth Vortex</summary>
+            <label className="composer-control"><input id="composer-scenes-growth-growthVortex-enabled" type="checkbox" checked={config.scenes.growth.growthVortex.enabled} onChange={event => { void changeField('scenes.growth.growthVortex.enabled', event.target.checked) }} /> Enable</label>
+            {LILY_GROWTH_VORTEX_CONTROLS.map(range)}
+            {color('scenes.growth.growthVortex.color', 'Particle Color')}
+          </details>
           <p>Обе длительности анимации цветка настраиваются здесь и в сцене раскрытия.</p>
           <details><summary>Палитра частиц</summary>
             {color('scenes.growth.pearlColor', 'Жемчужный')}
@@ -813,6 +859,10 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           <details open><summary>Камера · CameraDirector</summary>{BLOOM_CONTROLS.slice(0, 7).map(range)}</details>
           <details open><summary>Текст ожидания</summary>{BLOOM_CONTROLS.slice(7).map(range)}{color('scenes.bloom.textColor', 'Цвет текста')}</details>
           <p>IdleClosed ждёт завершения письма и жеста. Камера доезжает до крупного плана на заданной доле раскрытия.</p>
+        </details>}
+        {selected === 'bloom' && <details><summary>Lily Bloom Pollen</summary>
+          <label className="composer-control"><input id="composer-scenes-bloom-lilyBloomPollen-enabled" type="checkbox" checked={config.scenes.bloom.lilyBloomPollen.enabled} onChange={event => { void changeField('scenes.bloom.lilyBloomPollen.enabled', event.target.checked) }} /> Enable</label>
+          {LILY_BLOOM_POLLEN_CONTROLS.map(range)}
         </details>}
         {selected === 'identity' && <>
           <details open><summary>Растворение лилии и вихрь</summary>{DISSOLVE_CONTROLS.map(range)}</details>

@@ -1,6 +1,6 @@
 import { expect, it, vi } from 'vitest'
 
-const pointerHandler = vi.hoisted(() => vi.fn())
+const bloomPointerHooks = vi.hoisted(() => ({ pointerHandler: vi.fn(), getElapsed: vi.fn(() => 0) }))
 
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>()
@@ -16,7 +16,10 @@ vi.mock('react', async (importOriginal) => {
 vi.mock('@react-three/drei', () => ({ useGLTF: () => ({ scene: {}, animations: [] }) }))
 vi.mock('@react-three/fiber', () => ({ useThree: (select: (state: unknown) => unknown) => select({ invalidate: vi.fn(), viewport: { dpr: 1 } }) }))
 vi.mock('three/addons/utils/SkeletonUtils.js', () => ({ clone: () => ({}) }))
-vi.mock('./BloomPointerContext', () => ({ useBloomPointerHandler: () => pointerHandler }))
+vi.mock('./BloomPointerContext', () => ({
+  useBloomPointerHandler: () => bloomPointerHooks.pointerHandler,
+  useBloomElapsedTime: () => bloomPointerHooks.getElapsed,
+}))
 
 import { initialFilmState } from '../../engine/film'
 import { createFilmRuntime } from '../../engine/runtime'
@@ -40,6 +43,6 @@ it('connects the full flower and floating island hit targets to the shared bloom
     opacity: { current: 1 },
   })
 
-  expect(lily.props.onPointerDown).toBe(pointerHandler)
-  expect(island.props.onPointerDown).toBe(pointerHandler)
+  expect(lily.props.onPointerDown).toBe(bloomPointerHooks.pointerHandler)
+  expect(island.props.onPointerDown).toBe(bloomPointerHooks.pointerHandler)
 })

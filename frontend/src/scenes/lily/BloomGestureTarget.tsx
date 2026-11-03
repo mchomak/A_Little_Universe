@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react'
 import type { ThreeEvent } from '@react-three/fiber'
 import type { SceneProps } from '../../engine/sceneTypes'
 import { getConfig, subscribeConfig } from '../../systems/scene-config/config'
@@ -42,5 +42,13 @@ export function BloomGestureTarget({ state, dispatch, runtime, writingDuration, 
     }, dispatch)
   }, [dispatch])
 
-  return <BloomPointerContext.Provider value={activate}>{children}</BloomPointerContext.Provider>
+  const getElapsed = useCallback(() => {
+    // Read through the gate clock so Lily sees the same continuous phase in the
+    // presentation-only wait and in the active scene-local timeline.
+    clockRef.current.update(runtime.presentationTime, runtime.time)
+    return clockRef.current.time()
+  }, [runtime])
+  const contextValue = useMemo(() => ({ onPointerDown: activate, getElapsed }), [activate, getElapsed])
+
+  return <BloomPointerContext.Provider value={contextValue}>{children}</BloomPointerContext.Provider>
 }

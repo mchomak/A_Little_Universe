@@ -15,7 +15,7 @@ Worktree: C:/Users/McHomak/.codex/worktrees/lily-magical-growth-bloom/A_Little_U
 React/TypeScript/Vite/Three/R3F/GSAP; новых зависимостей не добавлять. npm ci уже запущен координатором. Команды из frontend: npm run check, npm test -- src/systems/scene-config/config.test.ts. Проверить npm scripts перед выбором точной single-file команды.
 Не менять GLB, animation clips, камеру, глобальный свет, scene04–09. dissolve.ts read-only reference; compose существующий onBeforeCompile hook в отдельном material helper.
 SceneDirector держит один AnimatedLily без scene key. FilmRuntime и subscribeLilyAnimationClock — владельцы времени; callbacks должны работать paused/seek/DEV config edits/replay. Все новые shader/callback refs требуют cleanup. Все GPU/shared useGLTF ресурсы имеют существующего владельца; dispose только собственные клоны.
-Actual fetched main имеет config v14; новые поля должны корректно импортировать v1–v14, bump schema v15. Запись об открывающем фоне v15 из исходного AGENTS не относится к этому checkout. В main нет отдельной системы leaf particles/stem pulse: сохранить actual GrowthScene без её переписывания.
+Актуальный origin/main ddeff58 имеет config v20; новые поля должны импортировать существующие версии, bump schema v21. В main присутствуют эффекты частиц роста и импульса стебля: сохранить их независимо и без переписывания.
 При отсутствии зависимости верни BLOCKED, не устанавливай новую сам.
 
 ## Обнаружено в GLB и runtime

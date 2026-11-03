@@ -4,10 +4,9 @@ export function subscribeLilyAnimationClock(
   runtime: FilmRuntime,
   update: (time: number) => void,
   idleClosedWaiting: boolean,
-  reducedMotion: boolean,
 ): () => void {
   const unsubscribeFrame = runtime.subscribeFrame(update)
-  const unsubscribePresentation = idleClosedWaiting && !reducedMotion
+  const unsubscribePresentation = idleClosedWaiting
     ? runtime.subscribePresentation(update)
     : () => undefined
   return () => {

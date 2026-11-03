@@ -4,7 +4,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useSyncExternalStore } f
 import { LoopOnce, Material, Mesh, type Group } from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import type { SceneProps } from '../../engine/sceneTypes'
-import { useBloomPointerHandler } from './BloomPointerContext'
+import { useBloomElapsedTime, useBloomPointerHandler } from './BloomPointerContext'
 import { getBloomSceneFrames, getGrowthSceneFrames } from '../../engine/filmConfig'
 import { getConfig, subscribeConfig } from '../../systems/scene-config/config'
 import { LILY_MODEL_URL } from '../../assets/lily/lilyAsset'
@@ -13,6 +13,7 @@ import { attachLilyAnimationPlayer, LilyAnimationPlayer } from './animationPlaye
 import { subscribeLilyAnimationClock } from './animationClock'
 import { createLilyGeometryParticleSource, lilyDissolvePart, type LilySurfaceSource } from './particleSource'
 import { patchLilyMaterial, setLilySurfaceBounds, updateLilyDissolve, updateLilyParticleSettings, type LilyDissolveUniforms } from './dissolve'
+import { createLilyAppearanceUniforms, lilyAppearancePart, patchLilyAppearanceMaterial, updateLilyAppearance, type LilyAppearanceUniforms } from './lilyAppearance'
 import { createLilyGrowthVfx, type LilyGrowthVfx } from './lilyGrowthVfx'
 
 const MODEL_POSITION: [number, number, number] = [0, -1.45, 0]
@@ -25,20 +26,24 @@ interface LilyMaterialState {
   depthWrite: boolean
 }
 
-function cloneLilyMaterials(root: Group, uniforms: LilyDissolveUniforms): LilyMaterialState[] {
-  const clones = new Map<Material, Map<number, Material>>()
+function cloneLilyMaterials(root: Group, uniforms: LilyDissolveUniforms, appearanceUniforms: LilyAppearanceUniforms): LilyMaterialState[] {
+  const clones = new Map<Material, Map<string, Material>>()
   root.traverse((object) => {
     if (!(object instanceof Mesh)) return
     const materials = Array.isArray(object.material) ? object.material : [object.material]
-    const part = lilyDissolvePart(object.name, materials.map((material) => material.name))
+    const materialNames = materials.map((material) => material.name)
+    const part = lilyDissolvePart(object.name, materialNames)
+    const appearancePart = lilyAppearancePart(object.name, materialNames, part)
+    const variantKey = `${part}:${appearancePart}`
     const replace = (material: Material) => {
       let variants = clones.get(material)
       if (!variants) { variants = new Map(); clones.set(material, variants) }
-      let clone = variants.get(part)
+      let clone = variants.get(variantKey)
       if (!clone) {
         clone = material.clone()
         patchLilyMaterial(clone, part, uniforms)
-        variants.set(part, clone)
+        patchLilyAppearanceMaterial(clone, appearancePart, appearanceUniforms)
+        variants.set(variantKey, clone)
       }
       return clone
     }
@@ -69,7 +74,9 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
   const pixelRatio = useThree(({ viewport }) => viewport.dpr)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const onBloomPointerDown = useBloomPointerHandler()
+  const getBloomElapsed = useBloomElapsedTime()
   const model = useMemo(() => clone(gltf.scene) as Group, [gltf.scene])
+  const appearanceUniforms = useMemo(() => createLilyAppearanceUniforms(), [])
   const stateRef = useRef(state)
   const playerRef = useRef<LilyAnimationPlayer | null>(null)
   const modelRef = useRef<Group | null>(null)
@@ -79,13 +86,13 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
   const particleSourceRef = useRef<LilySurfaceSource | null>(null)
   useLayoutEffect(() => { stateRef.current = state }, [state])
   useLayoutEffect(() => {
-    const materials = cloneLilyMaterials(model, dissolveUniforms)
+    const materials = cloneLilyMaterials(model, dissolveUniforms, appearanceUniforms)
     materialsRef.current = materials
     return () => {
       for (const { material } of materials) material.dispose()
       if (materialsRef.current === materials) materialsRef.current = []
     }
-  }, [model, dissolveUniforms])
+  }, [model, dissolveUniforms, appearanceUniforms])
   useLayoutEffect(() => attachLilyAnimationPlayer(playerRef, model, gltf.animations), [gltf.animations, model])
   useLayoutEffect(() => {
     const wrapper = wrapperRef.current
@@ -120,8 +127,11 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
     if (!modelObject || !player) return
     const scene = currentState.scene
     const growthFrames = getGrowthSceneFrames(config.scenes.growth)
+    const bloomFrames = getBloomSceneFrames(config.scenes.bloom)
     const growthClip = gltf.animations.find((animation) => animation.name === 'Growth')
+    const bloomClip = gltf.animations.find((animation) => animation.name === 'Bloom')
     let growthClipTime = 0
+    let bloomClipTime = 0
     updateLilyDissolve(dissolveUniforms, scene === 'identity', time, config.scenes.identity.dissolveDuration, config.scenes.identity.edgeWidth)
     updateLilyParticleSettings(dissolveUniforms, config.scenes.identity)
     if (scene === 'growth') {
@@ -147,14 +157,15 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
           player.seek(getGrowthClipTime(growthFrames.duration, growthFrames, clip.duration))
         }
       } else {
-        const clip = gltf.animations.find((animation) => animation.name === 'Bloom')
+        const clip = bloomClip
         if (clip) {
-          const frames = getBloomSceneFrames(config.scenes.bloom)
+          const frames = bloomFrames
           player.play('Bloom', LoopOnce, 1)
-          player.seek(getSyncedBloomClipTime(
+          bloomClipTime = getSyncedBloomClipTime(
             time, frames.opening, clip.duration, reducedMotion,
             config.scenes.bloom.cameraApproachDuration, config.scenes.bloom.cameraBloomSync,
-          ))
+          )
+          player.seek(bloomClipTime)
         }
       }
     } else if (scene === 'identity') {
@@ -172,17 +183,27 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
       setLilyOpacity(materialsRef.current, 1)
       player.stop()
     }
+    const growthProgress = scene === 'growth' ? growthClipTime / Math.max(0.001, growthClip?.duration ?? 9)
+      : scene === 'bloom' || scene === 'identity' ? 1 : 0
+    const bloomProgress = scene === 'identity' ? 1 : bloomClipTime / Math.max(0.001, bloomClip?.duration ?? 9)
+    const flowerCenter = modelObject.getObjectByName('Flower_Interior')
+    if (flowerCenter) flowerCenter.getWorldPosition(appearanceUniforms.uLilyCupCenter.value)
+    updateLilyAppearance(appearanceUniforms, config.scenes.growth.lilyBudGlow, config.scenes.growth.lilyLeafMaterial,
+      growthProgress, bloomProgress, config.scenes.bloom.lilyBloomPollen)
     growthVfxRef.current?.update({
       scene, time, clipTime: growthClipTime, clipDuration: growthClip?.duration ?? 9,
-      frames: growthFrames, pixelRatio, reducedMotion, quality: currentState.quality,
-    }, config.scenes.growth)
+      frames: growthFrames, bloomFrames, bloomClipTime, bloomClipDuration: bloomClip?.duration ?? 9,
+      bloomOpen: scene === 'bloom' && currentState.mode !== 'waiting',
+      bloomElapsed: scene === 'bloom' ? getBloomElapsed() : 0,
+      pixelRatio, reducedMotion, quality: currentState.quality,
+    }, config.scenes.growth, config.scenes.bloom.lilyBloomPollen)
     invalidate()
-  }, [config.scenes.bloom, config.scenes.growth, config.scenes.identity, dissolveUniforms, gltf.animations, invalidate, pixelRatio, reducedMotion])
+  }, [appearanceUniforms, config.scenes.bloom, config.scenes.growth, config.scenes.identity, dissolveUniforms, getBloomElapsed, gltf.animations, invalidate, pixelRatio, reducedMotion])
 
   useLayoutEffect(() => {
     const sync = () => draw(runtime.time)
     sync()
-    return subscribeLilyAnimationClock(runtime, sync, false, reducedMotion)
+    return subscribeLilyAnimationClock(runtime, sync, state.scene === 'bloom' && state.mode === 'waiting')
   }, [draw, model, runtime, state.scene, state.mode, reducedMotion])
 
   return <group ref={wrapperRef} position={MODEL_POSITION} scale={MODEL_SCALE} onPointerDown={onBloomPointerDown}>

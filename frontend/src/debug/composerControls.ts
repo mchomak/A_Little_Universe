@@ -17,7 +17,11 @@ export type ComposerFieldPath =
   | `scenes.preload.${keyof SceneComposerConfig['scenes']['preload'] & string}`
   | `scenes.prologue.${keyof SceneComposerConfig['scenes']['prologue'] & string}`
   | `scenes.growth.${keyof SceneComposerConfig['scenes']['growth'] & string}`
+  | `scenes.growth.lilyBudGlow.${keyof SceneComposerConfig['scenes']['growth']['lilyBudGlow'] & string}`
+  | `scenes.growth.lilyLeafMaterial.${keyof SceneComposerConfig['scenes']['growth']['lilyLeafMaterial'] & string}`
+  | `scenes.growth.growthVortex.${keyof SceneComposerConfig['scenes']['growth']['growthVortex'] & string}`
   | `scenes.bloom.${keyof SceneComposerConfig['scenes']['bloom'] & string}`
+  | `scenes.bloom.lilyBloomPollen.${keyof SceneComposerConfig['scenes']['bloom']['lilyBloomPollen'] & string}`
   | `scenes.identity.${keyof SceneComposerConfig['scenes']['identity'] & string}`
   | `scenes.gallery.${keyof SceneComposerConfig['scenes']['gallery'] & string}`
   | `scenes.gallery.cloudLayers.${keyof SceneComposerConfig['scenes']['gallery']['cloudLayers'] & string}.${keyof SceneComposerConfig['scenes']['gallery']['cloudLayers']['far'] & string}`
@@ -53,7 +57,7 @@ export async function importComposerJson(source: string): Promise<ComposerImport
     return { ok: false, reason: 'json' }
   }
   if (document === null || typeof document !== 'object' || Array.isArray(document)) return { ok: false, reason: 'document' }
-  if (!('schemaVersion' in document) || !Number.isInteger(document.schemaVersion) || Number(document.schemaVersion) < 1 || Number(document.schemaVersion) > 20) return { ok: false, reason: 'version' }
+  if (!('schemaVersion' in document) || !Number.isInteger(document.schemaVersion) || Number(document.schemaVersion) < 1 || Number(document.schemaVersion) > 21) return { ok: false, reason: 'version' }
   const root = document as Record<string, unknown>
   if ('global' in root && !isRecord(root.global)) return { ok: false, reason: 'document' }
   if ('scenes' in root && !isRecord(root.scenes)) return { ok: false, reason: 'document' }
