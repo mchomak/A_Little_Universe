@@ -15,7 +15,7 @@ import type { SceneProps } from '../engine/sceneTypes'
 import { useSyncExternalStore } from 'react'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
-import { GALLERY, GALLERY_MEMORIES, galleryColumnPositions, galleryPhotoYaw, memoryPosition, type GalleryMemory } from './gallery/content'
+import { GALLERY, GALLERY_MEMORIES, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, memoryPosition, type GalleryMemory } from './gallery/content'
 import { GalleryColumn } from './gallery/GalleryColumn'
 import { GalleryArch } from './gallery/GalleryArch'
 import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, resetGallery } from './gallery/controller'
@@ -255,7 +255,10 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     const first = memory.order === 0
     group.current.position.set(first ? x * e : x, y, first ? z * e : z)
     group.current.scale.setScalar(first ? 1 + 0.35 * e : 1)
-    group.current.rotation.set(0, first && settings.galleryLayoutVariant === 'on-columns' ? (reducedMotion ? 0 : 0.065 * (1 - e)) + photoYaw * e : photoYaw, 0)
+    const photoOffsetZ = camera.position.z - (first ? z * e : z)
+    const photoFocusMix = m.focusIndex === memory.order ? m.focusMix : 0
+    const approachYaw = galleryPhotoApproachYaw(memory, settings.galleryLayoutVariant, photoOffsetZ, settings.galleryPhotoFacingMaxDegrees, photoFocusMix)
+    group.current.rotation.set(0, first && settings.galleryLayoutVariant === 'on-columns' ? (reducedMotion ? 0 : 0.065 * (1 - e)) + photoYaw * e : approachYaw, 0)
     const [columnX, columnY, columnZ] = settings.galleryLayoutVariant === 'between-columns'
       ? [x, y, z]
       : supportPositions[0]!
@@ -271,6 +274,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     const focusTarget = m.focusMix > 0.001 && m.focusIndex === memory.order
     const focusAmount = m.focusIndex === memory.order ? Math.max(0, Math.min(1, m.focusMix)) : 0
     const photoPosition = visualGroup.current.getWorldPosition(worldPosition)
+    const photoDistance = camera.position.distanceTo(photoPosition)
     moonPosition.set(settings.moonPositionX, settings.moonPositionY, settings.moonPositionZ)
     moonDirection.subVectors(moonPosition, photoPosition)
     visualGroup.current.getWorldDirection(photoNormal)
@@ -291,7 +295,6 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     for (const material of frameHaloMaterials.current) {
       material?.color.copy(FRAME_HALO_BASE_COLOR).lerp(configuredMoonColor, tintStrength)
     }
-    const photoDistance = camera.position.distanceTo(photoPosition)
     const distanceAlpha = galleryDistanceOpacity(photoDistance)
     const focusAlpha = galleryFocusOpacity(m.focusMix, selected)
     const alpha = visible * (1 - m.exit / GALLERY.exit) * focusAlpha * distanceAlpha
@@ -325,7 +328,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
           visible={settings.columnVisible}
           scale={settings.columnScale}
           depth={settings.columnDepth}
-          offsetX={settings.columnOffsetX}
+          offsetX={gallerySupportColumnOffsetX(supportX, settings.galleryLayoutVariant, settings.columnOffsetX)}
           offsetY={settings.columnOffsetY}
           opacity={columnOpacity}
         />

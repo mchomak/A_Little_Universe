@@ -135,6 +135,7 @@ it('exposes the gallery layout switch and independently editable active layout',
   expect(markup).toContain('composer-scenes-gallery-galleryLayoutA-offsetY')
   expect(markup).toContain('composer-scenes-gallery-galleryLayoutA-offsetZ')
   expect(markup).not.toContain('composer-scenes-gallery-galleryLayoutB-laneWidth')
+  expect(markup).not.toContain('composer-scenes-gallery-galleryPhotoFacingMaxDegrees')
   expect(markup).toContain('Колонны и геометрия галереи')
   expect(markup).toMatch(/id="composer-scenes-gallery-columnVisible"[^>]*type="checkbox"[^>]*checked/)
   expect(markup).toMatch(/id="composer-scenes-gallery-galleryWidth"[^>]*min="6" max="12" step="0.1" value="7"/)
@@ -243,6 +244,8 @@ it('shows the B profile values when the between-columns layout is active', async
     expect(markup).toMatch(/id="composer-scenes-gallery-galleryLayoutB-offsetX"[^>]*min="-2\.5" max="3" step="0\.05" value="-0\.4"/)
     expect(markup).toMatch(/id="composer-scenes-gallery-galleryLayoutB-offsetY"[^>]*value="0\.5"/)
     expect(markup).toMatch(/id="composer-scenes-gallery-galleryLayoutB-offsetZ"[^>]*value="-2\.1"/)
+    expect(markup).toMatch(/id="composer-scenes-gallery-galleryPhotoFacingMaxDegrees"[^>]*min="0" max="45" step="1" value="45"/)
+    expect(markup).toContain('Максимальный разворот картин к зрителю')
     expect(markup).not.toContain('composer-scenes-gallery-galleryLayoutA-laneWidth')
   } finally {
     await updateConfig(DEFAULT_SCENE_COMPOSER_CONFIG)

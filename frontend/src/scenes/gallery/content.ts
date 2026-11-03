@@ -18,6 +18,8 @@ const palettes: [string, string][] = [['#765c68','#c59e8c'],['#7b5267','#e1ad91'
 export const GALLERY_MEMORIES: GalleryMemory[] = captions.map((caption, order) => ({ id: `memory-${order + 1}`, image: order === 0 ? photo : images[order - 1], caption, order, side: order % 2 === 0 ? -1 : 1, aspect: [1, .72, 1.36, 1.4, .75, 1.3, 1, 1.4, .76, 1.25, 1, 1.4][order] ?? 1, palette: palettes[order % palettes.length]! }))
 export const GALLERY = { spacing: 5.4, width: 7, firstZ: -4.5, startZ: 6.15, travel: 6.15 + 4.5 + (GALLERY_MEMORIES.length - 1) * 5.4 + 4, intro: 4.4, exit: 3.2, sensitivity: .045 } as const
 export const GALLERY_B_MIN_PHOTO_X = 0.5
+export const GALLERY_PHOTO_FACING_NEAR_DISTANCE = 0
+export const GALLERY_PHOTO_FACING_FAR_DISTANCE = GALLERY.spacing * 4
 export type GalleryLayoutVariant = 'on-columns' | 'between-columns'
 
 /** Photos stay on their columns in A; B pairs opposite sides halfway between each side's supports. */
@@ -68,8 +70,39 @@ export function galleryColumnPositions(
   return columns
 }
 
+/** B's shared column offset is radial so opposite supports stay mirrored. */
+export function gallerySupportColumnOffsetX(supportX: number, variant: GalleryLayoutVariant, offsetX: number): number {
+  const safeOffset = Number.isFinite(offsetX) ? offsetX : 0
+  return variant === 'between-columns' ? Math.sign(supportX || 1) * safeOffset : safeOffset
+}
+
 /** Side-facing cardinal yaw makes B exhibits face each other across the walkway. */
 export function galleryPhotoYaw(memory: GalleryMemory, variant: GalleryLayoutVariant = 'on-columns'): number {
   const sideYaw = variant === 'between-columns' ? Math.PI / 2 : 1.15
   return -memory.side * sideYaw
+}
+
+/** Turns opposing B photos toward the viewer along the aisle, then settles them nearby. */
+export function galleryPhotoApproachYaw(
+  memory: GalleryMemory,
+  variant: GalleryLayoutVariant,
+  cameraOffsetZ: number,
+  maxFacingDegrees = 45,
+  focusMix = 0,
+): number {
+  const baseYaw = galleryPhotoYaw(memory, variant)
+  if (variant !== 'between-columns') return baseYaw
+  const safeOffsetZ = Number.isFinite(cameraOffsetZ) ? cameraOffsetZ : 0
+  const distance = Math.abs(safeOffsetZ)
+  const amount = Math.max(0, Math.min(1,
+    (distance - GALLERY_PHOTO_FACING_NEAR_DISTANCE)
+      / (GALLERY_PHOTO_FACING_FAR_DISTANCE - GALLERY_PHOTO_FACING_NEAR_DISTANCE),
+  ))
+  const eased = amount * amount * (3 - 2 * amount)
+  const safeFocus = Math.max(0, Math.min(1, Number.isFinite(focusMix) ? focusMix : 0))
+  const angle = Math.max(0, Math.min(45, Number.isFinite(maxFacingDegrees) ? maxFacingDegrees : 45))
+    * Math.PI / 180
+    * eased
+    * (1 - safeFocus)
+  return baseYaw + memory.side * Math.sign(safeOffsetZ) * angle
 }

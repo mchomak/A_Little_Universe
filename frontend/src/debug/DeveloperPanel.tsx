@@ -591,7 +591,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–17. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–18. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -779,6 +779,10 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
               </select>
             </div>
             {config.scenes.gallery.galleryLayoutVariant === 'between-columns' && <p>Настройки ниже относятся к B и сохраняются отдельно. Для X минус приближает обе стороны к центру, плюс отдаляет.</p>}
+            {config.scenes.gallery.galleryLayoutVariant === 'between-columns' && <>
+              {range({ path: 'scenes.gallery.galleryPhotoFacingMaxDegrees', label: 'Максимальный разворот картин к зрителю', unit: '°', min: 0, max: 45, step: 1 })}
+              <p>Разворот плавно уменьшается по мере приближения и уходит в ноль при фокусе на фотографии.</p>
+            </>}
             {config.scenes.gallery.galleryLayoutVariant === 'on-columns' && <p>Настройки ниже относятся к A и сохраняются отдельно от B.</p>}
             {galleryPhotoLayoutControls(config.scenes.gallery.galleryLayoutVariant === 'on-columns' ? 'A' : 'B').map(range)}
           </details>

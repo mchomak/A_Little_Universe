@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Mesh, MeshBasicMaterial, PlaneGeometry, Raycaster, Vector3 } from 'three'
-import { galleryColumnPosition, galleryColumnPositions, galleryPhotoYaw, GALLERY, GALLERY_MEMORIES, memoryPosition } from './content'
+import { galleryColumnPosition, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, GALLERY, GALLERY_MEMORIES, memoryPosition } from './content'
 import { advanceGallery, galleryCanRaycastPhoto, galleryExit, galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, galleryStart, resetGallery, resetGalleryInstruction, travel } from './controller'
 import { galleryFocusOpacity } from './visibility'
 
@@ -196,5 +196,28 @@ describe('gallery travel', () => {
       expect(rowCenters[row - 1]! - rowCenters[row]!).toBeCloseTo(GALLERY.spacing * 2, 8)
     }
     expect(rowCenters.at(-1)).toBeCloseTo(GALLERY.startZ - (GALLERY.travel - 4), 8)
+  })
+  it('keeps B column adjustments mirrored and photo yaw eases toward the viewer with distance', () => {
+    const left = GALLERY_MEMORIES[0]!
+    const right = GALLERY_MEMORIES[1]!
+    expect(gallerySupportColumnOffsetX(-3.5, 'between-columns', 1.25)).toBe(-1.25)
+    expect(gallerySupportColumnOffsetX(3.5, 'between-columns', 1.25)).toBe(1.25)
+    expect(gallerySupportColumnOffsetX(-3.5, 'on-columns', 1.25)).toBe(1.25)
+
+    const near = galleryPhotoYaw(left, 'between-columns')
+    const half = galleryPhotoApproachYaw(left, 'between-columns', GALLERY.spacing * 2)
+    const farLeft = galleryPhotoApproachYaw(left, 'between-columns', GALLERY.spacing * 4)
+    const farRight = galleryPhotoApproachYaw(right, 'between-columns', GALLERY.spacing * 4)
+    const passedLeft = galleryPhotoApproachYaw(left, 'between-columns', -GALLERY.spacing * 4)
+    const passedRight = galleryPhotoApproachYaw(right, 'between-columns', -GALLERY.spacing * 4)
+    expect(galleryPhotoApproachYaw(left, 'between-columns', 0)).toBe(near)
+    expect(half).toBeCloseTo(near - Math.PI / 8, 8)
+    expect(farLeft).toBeCloseTo(Math.PI / 4, 8)
+    expect(farRight).toBeCloseTo(-Math.PI / 4, 8)
+    expect(passedLeft).toBeCloseTo(3 * Math.PI / 4, 8)
+    expect(passedRight).toBeCloseTo(-3 * Math.PI / 4, 8)
+    expect(galleryPhotoApproachYaw(left, 'between-columns', GALLERY.spacing * 4, 80)).toBeCloseTo(Math.PI / 4, 8)
+    expect(galleryPhotoApproachYaw(left, 'between-columns', GALLERY.spacing * 4, 45, 1)).toBe(near)
+    expect(galleryPhotoApproachYaw(left, 'on-columns', GALLERY.spacing * 4, 45)).toBe(galleryPhotoYaw(left, 'on-columns'))
   })
 
