@@ -11,7 +11,7 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-11-03T14:28:26+03:00",
-  "updatedAt": "2026-11-03T17:19:50+03:00",
+  "updatedAt": "2026-11-03T19:40:34+03:00",
   "finishedAt": null,
   "stages": [
     {
@@ -59,9 +59,9 @@ window.STATE =
     }
   ],
   "requirements": {
-    "total": 8,
+    "total": 14,
     "done": 0,
-    "inTicket": 8,
+    "inTicket": 14,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
@@ -115,10 +115,51 @@ window.STATE =
       "repairFindings": [
         "Partial ray segment midpoint must stay inside volume."
       ]
+    },
+    {
+      "id": "03",
+      "title": "Колонны и непрерывность света",
+      "requirements": [
+        "G01",
+        "G02",
+        "G06"
+      ],
+      "blockedBy": [],
+      "wave": 2,
+      "zone": [
+        "columns",
+        "lighting",
+        "water"
+      ],
+      "status": "review",
+      "startedAt": "2026-11-03T17:37:55+03:00",
+      "retries": 0,
+      "repairs": 0,
+      "handoffs": 0
+    },
+    {
+      "id": "04",
+      "title": "Облака и горизонт",
+      "requirements": [
+        "G03",
+        "G04",
+        "G05",
+        "G06"
+      ],
+      "blockedBy": [],
+      "wave": 2,
+      "zone": [
+        "clouds"
+      ],
+      "status": "review",
+      "startedAt": "2026-11-03T17:37:55+03:00",
+      "retries": 0,
+      "repairs": 0,
+      "handoffs": 0
     }
   ],
   "singlePass": null,
-  "tests": "npm run check: 92 files, 452 tests passed; lint, typecheck and build passed",
+  "tests": "npm run check: 93 files, 458 tests passed; lint, typecheck and production build passed.",
   "debt": {
     "placeholders": [],
     "assumptions": [
@@ -129,18 +170,19 @@ window.STATE =
   },
   "additions": [],
   "coverage": {
-    "found": 2,
-    "fixed": 2,
-    "deferred": 0
+    "status": "passed",
+    "detail": "Независимая сверка брифа и спецификации: пропусков нет"
   },
   "concerns": [
     "Расчётный sample budget снижен, page rAF замер до/после не показал достоверного изменения FPS.",
     "Numeric cloud shader test mirrors GLSL in TypeScript; shader-only regression may pass.",
-    "Visual acceptance remains unverified: browser access unavailable; GPU temperature and FPS not measured."
+    "Visual acceptance remains unverified: browser reports WebGL2 unavailable; GPU temperature and FPS not measured.",
+    "Camera-proximity haze fade and analytic horizon coverage tested. Visual acceptance of architecture, horizon and perceived darkening still requires a WebGL2 render; GPU temperature and FPS not measured.",
+    "WebGL2 visual check: visible column bases appear solid and side water transitions fade into haze in the inspected view. Bright transverse stripe is moonlight reflection, confirmed by toggling its strength. Full camera route and GPU performance on M2 remain unverified."
   ],
   "reviewers": {
     "manifestSpec": "/root/water_spec_check",
     "craft": "/root/water_review"
   },
-  "blind": null
+  "blind": "Partial visual acceptance: initial and near views inspected with WebGL2; full route, all cloud drift speeds and GPU performance not measured."
 }
