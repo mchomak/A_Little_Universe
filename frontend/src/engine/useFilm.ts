@@ -4,8 +4,9 @@ import { createFilmClock, createFilmRuntime, type FilmRuntime } from './runtime'
 import { getConfig } from '../systems/scene-config/config'
 import { subscribeFilmTimingConfig } from './filmTimingConfig'
 import { subscribeFilmGlobals } from './filmGlobals'
+import { isDeveloperMode } from '../debug/developerMode'
 
-const reducer = (state: FilmState, action: FilmAction) => filmReducer(state, action, import.meta.env.DEV)
+const reducer = (state: FilmState, action: FilmAction) => filmReducer(state, action, isDeveloperMode())
 
 export function useFilm(): { state: FilmState; dispatch: Dispatch<FilmAction>; runtime: FilmRuntime } {
   const [initialGlobals] = useState(() => getConfig().global)
@@ -21,7 +22,7 @@ export function useFilm(): { state: FilmState; dispatch: Dispatch<FilmAction>; r
     getState: () => currentState.current,
     getRuntimeTime: () => runtime.time,
     dispatch,
-    enabled: import.meta.env.DEV,
+    enabled: isDeveloperMode(),
   }), [dispatch, runtime])
 
   // Seek/replay/scene changes discard old callbacks at the revision boundary.

@@ -1,5 +1,6 @@
 import '../../styles/fonts.css'
 import { type ArtFontId, isArtFontId } from './fontIds'
+import { isDeveloperMode } from '../../debug/developerMode'
 
 export type QualityProfile = 'standard' | 'low'
 export type ScenePresetId = 'moonlit-letter' | 'stardust' | 'vasilisa-cinematic'
@@ -1046,14 +1047,14 @@ function deepFreeze<T>(value: T): T {
 }
 
 function persistLilyGrowthVfx(config: SceneComposerConfig) {
-  if (!import.meta.env.DEV || typeof window === 'undefined') return
+  if (!isDeveloperMode() || typeof window === 'undefined') return
   const settings = Object.fromEntries(LILY_GROWTH_VFX_FIELDS.map((field) => [field, config.scenes.growth[field]]))
   try { window.localStorage.setItem(LILY_GROWTH_VFX_STORAGE_KEY, JSON.stringify(settings)) }
   catch { /* Browser storage may be disabled; the live config remains usable. */ }
 }
 
 function restoreLilyGrowthVfx() {
-  if (!import.meta.env.DEV || typeof window === 'undefined') return
+  if (!isDeveloperMode() || typeof window === 'undefined') return
   try {
     const serialized = window.localStorage.getItem(LILY_GROWTH_VFX_STORAGE_KEY)
     if (!serialized) return

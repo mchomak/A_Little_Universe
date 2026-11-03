@@ -17,6 +17,7 @@ import { Preloader } from '../bootstrap/Preloader'
 import { PhoneBackground } from '../components/PhoneBackground'
 import { getImplementationStatus } from './filmStatus'
 import { LILY_MODEL_RUNTIME_ASSET, preloadLilyModel } from '../assets/lily/lilyAsset'
+import { isDeveloperMode } from '../debug/developerMode'
 
 // Application-lifetime ownership survives scene changes and StrictMode effect replay.
 const media = new MediaSession()
@@ -27,14 +28,15 @@ let disposal: ReturnType<typeof setTimeout> | undefined
 const devManager = new AssetManager({ development: import.meta.env.DEV,
   ...(import.meta.env.DEV ? { manifest: { version: 'development-lily', assets: [LILY_MODEL_RUNTIME_ASSET] } } : {}),
   loadModules: async () => FilmCanvas })
-const DeveloperPanel = import.meta.env.DEV ? lazy(() => import('../debug/DeveloperPanel')) : null
-const SceneTimeline = import.meta.env.DEV ? lazy(() => import('../debug/SceneTimeline')) : null
+const DeveloperPanel = lazy(() => import('../debug/DeveloperPanel'))
+const SceneTimeline = lazy(() => import('../debug/SceneTimeline'))
 
 export function App() {
   const { state, dispatch, runtime } = useFilm()
+  const developerMode = isDeveloperMode()
   const reducedMotion = useReducedMotion()
   const [route, setRoute] = useState<'film' | 'loading'>('film')
-  const [debug, setDebug] = useState(() => import.meta.env.DEV && new URLSearchParams(window.location.search).has('debug'))
+  const [debug, setDebug] = useState(developerMode)
   const operation = useRef(0)
   useAudioDirector(audio, state, runtime)
   useEffect(() => { dispatch({ type: 'start' }) }, [dispatch])
@@ -86,7 +88,7 @@ export function App() {
   const showOpeningBackground = route === 'film'
     && (state.scene === 'prologue' || state.scene === 'growth' || state.scene === 'bloom' || state.scene === 'identity')
 
-  return <main className={`universe${cinematic ? ' cinematic' : ''}`} data-route={route} data-scene={state.scene} data-mode={state.mode} data-reading={state.reading} data-paused={state.paused} data-debug={import.meta.env.DEV && debug ? 'true' : undefined}>
+  return <main className={`universe${cinematic ? ' cinematic' : ''}`} data-route={route} data-scene={state.scene} data-mode={state.mode} data-reading={state.reading} data-paused={state.paused} data-debug={developerMode && debug ? 'true' : undefined}>
     <div className="film-presentation" hidden={route !== 'film'}>
       <div className="film-surface">
         <PhoneBackground active={showOpeningBackground} scene={state.scene} runtime={runtime} reducedMotion={reducedMotion} />
@@ -102,8 +104,8 @@ export function App() {
     <RecordingControls session={media} />
     <RecoveryPanel session={media} />
     {state.reading && route === 'film' && <ReadingPanel dispatch={dispatch} />}
-    {import.meta.env.DEV && <button className="debug-toggle" type="button" aria-expanded={debug} aria-controls="developer-panel" onClick={() => setDebug((value) => !value)}>DEV</button>}
-    {import.meta.env.DEV && debug && DeveloperPanel && SceneTimeline && <Suspense fallback={<p className="debug-loading">Загрузка Developer Mode…</p>}><DeveloperPanel state={state} dispatch={devDispatch} runtime={runtime} route={route} reducedMotion={reducedMotion} onPreload={devPrepare} /><SceneTimeline state={state} dispatch={devDispatch} runtime={runtime} route={route} onPreload={devPrepare} /></Suspense>}
+    {developerMode && <button className="debug-toggle" type="button" aria-expanded={debug} aria-controls="developer-panel" onClick={() => setDebug((value) => !value)}>DEV</button>}
+    {developerMode && debug && <Suspense fallback={<p className="debug-loading">Загрузка Developer Mode…</p>}><DeveloperPanel state={state} dispatch={devDispatch} runtime={runtime} route={route} reducedMotion={reducedMotion} onPreload={devPrepare} /><SceneTimeline state={state} dispatch={devDispatch} runtime={runtime} route={route} onPreload={devPrepare} /></Suspense>}
   </main>
 }
 

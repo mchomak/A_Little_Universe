@@ -70,8 +70,11 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       distance, angle, galaxySettings.cameraFocusX, galaxySettings.cameraFocusY,
     )
     const previousPose = { ...p }
+    // Cleaning up the finished Growth timeline rewinds its cursor and restores the seed-entry pose.
+    // flowerSide is the same authored endpoint, so this keeps the camera continuous across the handoff.
+    const bloomEntry = previousScene === 'growth' ? flowerSide : getBloomEntryCameraPose(previousScene, previousPose, flowerSide)
     const initial = scene === 'growth' ? getGrowthCameraPose(0, reducedMotion, growthSettings, growthViewportHeight)
-      : scene === 'bloom' ? getBloomEntryCameraPose(previousScene, previousPose, flowerSide) : scene === 'identity' ? flowerCloseup
+      : scene === 'bloom' ? bloomEntry : scene === 'identity' ? flowerCloseup
       : scene === 'eye' ? { ...front, z: 4.8 }
       : scene === 'cosmos' ? galaxyPose(galaxySettings.cameraStartDistance, galaxySettings.cameraStartAngle)
         : scene === 'greeting' || scene === 'ending' ? galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle) : front
