@@ -5,7 +5,7 @@ import { getBloomCameraApproachDuration } from '../scenes/lily/animationTiming'
 type BloomCameraSettings = SceneComposerConfig['scenes']['bloom']
 
 /** World-space close-up centered on the GLB flower cup. CameraDirector owns its motion. */
-export function getBloomCloseupPose(settings: BloomCameraSettings): CameraPose {
+export function getBloomCloseupPose(settings: Pick<BloomCameraSettings, 'cameraTargetX' | 'cameraTargetY' | 'cameraFinalDistance' | 'cameraFinalHeight'>): CameraPose {
   return {
     x: settings.cameraTargetX,
     y: settings.cameraFinalHeight,

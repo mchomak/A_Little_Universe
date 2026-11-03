@@ -10,7 +10,7 @@ import { LILY_MODEL_URL } from '../../assets/lily/lilyAsset'
 import { getGrowthClipTime, getIdleClosedClipTime, getSyncedBloomClipTime } from './animationTiming'
 import { attachLilyAnimationPlayer, LilyAnimationPlayer } from './animationPlayer'
 import { subscribeLilyAnimationClock } from './animationClock'
-import { createLilyGeometryParticleSource, lilyDissolvePart, type LilySurfaceSource } from './particleSource'
+import { createLilyGeometryParticleSourceAsync, lilyDissolvePart, type LilySurfaceSource } from './particleSource'
 import { patchLilyMaterial, setLilySurfaceBounds, updateLilyDissolve, updateLilyParticleSettings, type LilyDissolveUniforms } from './dissolve'
 import { createLilyGrowthVfx, type LilyGrowthVfx } from './lilyGrowthVfx'
 
@@ -62,7 +62,12 @@ function setLilyOpacity(states: LilyMaterialState[], opacity: number) {
 }
 
 /** A single GLB instance spans scene 02's growth and scene 03's touch gate. */
-export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, dissolveUniforms }: SceneProps & { onParticleSource?: (source: LilySurfaceSource) => void; dissolveUniforms: LilyDissolveUniforms }) {
+export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, onParticleSourceError, sourceAttempt = 0, dissolveUniforms }: SceneProps & {
+  onParticleSource?: (source: LilySurfaceSource) => void
+  onParticleSourceError?: (error: unknown) => void
+  sourceAttempt?: number
+  dissolveUniforms: LilyDissolveUniforms
+}) {
   const gltf = useGLTF(LILY_MODEL_URL)
   const invalidate = useThree(({ invalidate }) => invalidate)
   const pixelRatio = useThree(({ viewport }) => viewport.dpr)
@@ -106,11 +111,19 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
     // waits for this one-time capture instead of briefly using mock positions.
     player.play('Bloom', LoopOnce, 1)
     player.seek(clip.duration)
-    const source = createLilyGeometryParticleSource(model)
-    setLilySurfaceBounds(dissolveUniforms, source)
-    particleSourceRef.current = source
-    onParticleSource(source)
-  }, [dissolveUniforms, gltf.animations, model, onParticleSource, state.scene])
+    let cancelled = false
+    void createLilyGeometryParticleSourceAsync(model, { isCancelled: () => cancelled }).then((source) => {
+      if (cancelled) return
+      setLilySurfaceBounds(dissolveUniforms, source)
+      particleSourceRef.current = source
+      onParticleSource(source)
+    }).catch((reason: unknown) => {
+      if (cancelled || (reason instanceof Error && reason.name === 'AbortError')) return
+      console.error('Scene 04 lily surface capture failed.', reason)
+      onParticleSourceError?.(reason)
+    })
+    return () => { cancelled = true }
+  }, [dissolveUniforms, gltf.animations, model, onParticleSource, onParticleSourceError, sourceAttempt, state.scene])
 
   const draw = useCallback((time: number, presentationTime: number) => {
     const currentState = stateRef.current
