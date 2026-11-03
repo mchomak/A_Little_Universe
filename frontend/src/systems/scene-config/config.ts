@@ -11,7 +11,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 13
+  readonly schemaVersion: 14
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -87,6 +87,12 @@ export interface SceneComposerConfig {
       vfxCoreIntensity: number
       vfxPulseBrightness: number
       vfxPulseWidth: number
+      vfxPulseEnabled: boolean
+      vfxPulseSpeed: number
+      vfxPulseTrailFade: number
+      vfxPulseColor: string
+      vfxPulseLeafBoost: number
+      vfxPulseBudBoost: number
       vfxParticleCount: number
       vfxParticleSize: number
       vfxParticleSizeVariation: number
@@ -262,7 +268,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 13,
+  schemaVersion: 14,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
@@ -285,7 +291,9 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       attractionRampDuration: 2.8, morphDamping: 7.2, formationDuration: 3.2,
       freeParticleFraction: 0.08, pearlColor: '#FFF4E8', roseColor: '#F4CCDA',
       lavenderColor: '#D7CCF1', coreGlow: 0.55,
-      vfxCoreIntensity: 0.65, vfxPulseBrightness: 0.8, vfxPulseWidth: 0.14,
+      vfxCoreIntensity: 0.65, vfxPulseBrightness: 1.45, vfxPulseWidth: 0.2,
+      vfxPulseEnabled: true, vfxPulseSpeed: 1, vfxPulseTrailFade: 1.4,
+      vfxPulseColor: '#F4DFB8', vfxPulseLeafBoost: 0.6, vfxPulseBudBoost: 0.55,
       vfxParticleCount: 440, vfxParticleSize: 3.4, vfxParticleSizeVariation: 0.65,
       vfxParticleSpeed: 0.95, vfxParticleBrightness: 1.15, vfxParticleGlow: 1.35,
       vfxParticleLifetime: 2.3, vfxParticleSpread: 0.65, vfxParticleTint: '#FFF4E8',
@@ -376,13 +384,15 @@ const LILY_GROWTH_PARTICLE_STORAGE_KEY = 'a-little-universe:dev:lily-growth-part
 const LILY_GROWTH_PARTICLE_FIELDS = [
   'vfxParticleCount', 'vfxParticleSize', 'vfxParticleSizeVariation', 'vfxParticleBrightness',
   'vfxParticleGlow', 'vfxParticleSpeed', 'vfxParticleLifetime', 'vfxParticleSpread', 'vfxParticleTint',
+  'vfxPulseEnabled', 'vfxPulseBrightness', 'vfxPulseWidth', 'vfxPulseSpeed', 'vfxPulseTrailFade',
+  'vfxPulseColor', 'vfxPulseLeafBoost', 'vfxPulseBudBoost',
 ] as const
 
 export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 13) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 14) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -502,8 +512,14 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       lavenderColor: colorValue(growthInput?.lavenderColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lavenderColor),
       coreGlow: numberValue(growthInput?.coreGlow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.coreGlow, 0, 1.5),
       vfxCoreIntensity: numberValue(growthInput?.vfxCoreIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxCoreIntensity, 0, 1.5),
-      vfxPulseBrightness: numberValue(growthInput?.vfxPulseBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseBrightness, 0, 2),
+      vfxPulseBrightness: numberValue(growthInput?.vfxPulseBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseBrightness, 0, 2.5),
       vfxPulseWidth: numberValue(growthInput?.vfxPulseWidth, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseWidth, 0.025, 0.3),
+      vfxPulseEnabled: typeof growthInput?.vfxPulseEnabled === 'boolean' ? growthInput.vfxPulseEnabled : DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseEnabled,
+      vfxPulseSpeed: numberValue(growthInput?.vfxPulseSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseSpeed, 0.4, 2),
+      vfxPulseTrailFade: numberValue(growthInput?.vfxPulseTrailFade, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseTrailFade, 0.35, 3),
+      vfxPulseColor: colorValue(growthInput?.vfxPulseColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseColor),
+      vfxPulseLeafBoost: numberValue(growthInput?.vfxPulseLeafBoost, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseLeafBoost, 0, 1.5),
+      vfxPulseBudBoost: numberValue(growthInput?.vfxPulseBudBoost, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseBudBoost, 0, 1.5),
       vfxParticleCount: migrateOldLilyParticleDefaults ? DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleCount
         : numberValue(growthInput?.vfxParticleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleCount, 0, 528, true),
       vfxParticleSize: migrateOldLilyParticleDefaults ? DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleSize
@@ -577,7 +593,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 13, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 14, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
@@ -835,7 +851,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   try {
     const serialized = window.localStorage.getItem(LILY_GROWTH_PARTICLE_STORAGE_KEY)
     if (serialized) {
-      activeConfig = normalizeConfig({ schemaVersion: 13, scenes: { growth: JSON.parse(serialized) } })
+      activeConfig = normalizeConfig({ schemaVersion: 14, scenes: { growth: JSON.parse(serialized) } })
     }
   } catch {
     // A corrupt or unavailable local draft should leave the expressive defaults active.

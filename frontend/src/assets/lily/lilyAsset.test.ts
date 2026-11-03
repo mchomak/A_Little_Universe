@@ -170,10 +170,9 @@ it('samples actual Growth geometry deterministically after forward and backward 
       stemMinY = Math.min(stemMinY, stemPoint.y); stemMaxY = Math.max(stemMaxY, stemPoint.y)
     }
     const visibleStemY: number[] = [], visibleLeafY: number[] = [], visibleBudY: number[] = []
-    let particleOrdinal = 0
-    for (let index = 0; index < glow.length; index++) {
+    for (let index = 30; index < glow.length; index++) {
       if (glow[index]! <= 0) continue
-      const source = effect.particleSources[particleOrdinal++]
+      const source = effect.particleSources[index - 30]
       if (opacity[index]! <= 0.1) continue
       const y = points[index * 3 + 1] ?? 0
       if (source === 'stem') visibleStemY.push(y)
@@ -183,11 +182,16 @@ it('samples actual Growth geometry deterministically after forward and backward 
     return {
       positions: points,
       opacity,
+      particlePositions: points.slice(30 * 3),
+      particleOpacity: opacity.slice(30),
+      pulsePositions: points.slice(0, 28 * 3),
+      pulseOpacity: opacity.slice(0, 28),
+      pulseColors: Array.from(effect.geometry.getAttribute('color').array).slice(0, 28 * 3),
       sizes: Array.from(effect.geometry.getAttribute('aSize').array),
       colors: Array.from(effect.geometry.getAttribute('color').array),
       glowStrength: effect.material.uniforms.uGlowStrength!.value as number,
-      visibleParticles: opacity
-        .reduce((total, value, index) => total + (value > 0.1 && effect.geometry.getAttribute('aGlow').getX(index) > 0 ? 1 : 0), 0),
+      visibleParticles: opacity.slice(30)
+        .reduce((total, value, index) => total + (value > 0.1 && effect.geometry.getAttribute('aGlow').getX(index + 30) > 0 ? 1 : 0), 0),
       visibleHeight: visibleStemY.length > 1 ? Math.max(...visibleStemY) - Math.min(...visibleStemY) : 0,
       stemHeight: stemMaxY - stemMinY,
       lowerStemParticles: visibleStemY.filter(y => y < (stemMinY + stemMaxY) * 0.5).length,
@@ -212,6 +216,24 @@ it('samples actual Growth geometry deterministically after forward and backward 
   const budStage = sample(12.5)
   expect(budStage.visibleParticles).toBeGreaterThan(5)
   expect(budStage.visibleBudParticles).toBeGreaterThan(5)
+  const speedChanged = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseSpeed: 1.6 })
+  const leafBoosted = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseLeafBoost: 1.5 })
+  const budBoosted = sample(12.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseBudBoost: 1.5 })
+  const pulseDisabled = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseEnabled: false })
+  const pulseBrighter = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseBrightness: 2.5 })
+  const pulseNarrower = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseWidth: 0.05 })
+  const pulseFade = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseTrailFade: 2.8 })
+  const pulseTinted = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseColor: '#D8C994' })
+  expect(speedChanged.pulsePositions).not.toEqual(sample(9.5).pulsePositions)
+  expect(speedChanged.particlePositions).toEqual(sample(9.5).particlePositions)
+  expect(speedChanged.particleOpacity).toEqual(sample(9.5).particleOpacity)
+  expect(leafBoosted.pulseOpacity).not.toEqual(sample(9.5).pulseOpacity)
+  expect(budBoosted.pulseOpacity).not.toEqual(budStage.pulseOpacity)
+  expect(pulseDisabled.pulseOpacity.every(value => value === 0)).toBe(true)
+  expect(pulseBrighter.pulseOpacity).not.toEqual(sample(9.5).pulseOpacity)
+  expect(pulseNarrower.pulsePositions).not.toEqual(sample(9.5).pulsePositions)
+  expect(pulseFade.pulseOpacity).not.toEqual(sample(9.5).pulseOpacity)
+  expect(pulseTinted.pulseColors).not.toEqual(sample(9.5).pulseColors)
   const middle = sample(frames.handoff[1] + 1.2)
   const held = sample(frames.handoff[1] + 1.2)
   expect(held).toEqual(middle)

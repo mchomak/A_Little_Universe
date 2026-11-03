@@ -123,8 +123,6 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
   { name: 'Свет и размер', controls: [
     { path: 'scenes.growth.coreGlow', label: 'Свечение ядра', unit: '×', min: 0, max: 1.5, step: 0.05 },
     { path: 'scenes.growth.vfxCoreIntensity', label: 'Интенсивность ядра лилии', unit: '×', min: 0, max: 1.5, step: 0.05 },
-    { path: 'scenes.growth.vfxPulseBrightness', label: 'Яркость импульса роста', unit: '×', min: 0, max: 2, step: 0.05 },
-    { path: 'scenes.growth.vfxPulseWidth', label: 'Ширина светового следа', unit: '', min: 0.025, max: 0.3, step: 0.005 },
     { path: 'scenes.growth.seedScale', label: 'Масштаб семечка', unit: '×', min: 0.65, max: 1.4, step: 0.05 },
   ] },
   { name: 'Анимация лилии', controls: [
@@ -142,6 +140,15 @@ const LILY_GROWTH_PARTICLE_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.growth.vfxParticleSpeed', label: 'Particle Speed', unit: '×', min: 0.2, max: 2, step: 0.05 },
   { path: 'scenes.growth.vfxParticleLifetime', label: 'Lifetime', unit: 'с', min: 0.3, max: 3, step: 0.05 },
   { path: 'scenes.growth.vfxParticleSpread', label: 'Spread / Radius', unit: '×', min: 0, max: 1.5, step: 0.05 },
+]
+
+const LILY_GROWTH_PULSE_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.growth.vfxPulseBrightness', label: 'Pulse Intensity', unit: '×', min: 0, max: 2.5, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseWidth', label: 'Pulse Width', unit: '', min: 0.025, max: 0.3, step: 0.005 },
+  { path: 'scenes.growth.vfxPulseSpeed', label: 'Pulse Speed', unit: '×', min: 0.4, max: 2, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseTrailFade', label: 'Trail Length / Fade', unit: '×', min: 0.35, max: 3, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseLeafBoost', label: 'Leaf Boost', unit: '×', min: 0, max: 1.5, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseBudBoost', label: 'Bud Boost', unit: '×', min: 0, max: 1.5, step: 0.05 },
 ]
 
 const BLOOM_CONTROLS: readonly NumericControl[] = [
@@ -561,7 +568,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–13. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–14. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -717,6 +724,11 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           <details open><summary>Lily Growth Particles</summary>
             {LILY_GROWTH_PARTICLE_CONTROLS.map(range)}
             {color('scenes.growth.vfxParticleTint', 'Color / Tint')}
+          </details>
+          <details open><summary>Lily Growth Pulse</summary>
+            <label className="composer-control"><input id="composer-scenes-growth-vfxPulseEnabled" type="checkbox" checked={config.scenes.growth.vfxPulseEnabled} onChange={event => { void changeField('scenes.growth.vfxPulseEnabled', event.target.checked) }} /> Enable Pulse</label>
+            {LILY_GROWTH_PULSE_CONTROLS.map(range)}
+            {color('scenes.growth.vfxPulseColor', 'Pulse Color / Tint')}
           </details>
           <p>Обе длительности анимации цветка настраиваются здесь и в сцене раскрытия.</p>
           <details><summary>Палитра частиц</summary>

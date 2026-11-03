@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest'
 import { getGrowthSceneFrames } from '../../engine/filmConfig'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
-import { getBudGrowthActivation, getGrowthVfxParticleLimit, getGrowthZoneBurst, getGrowthZonePulse, getLeafGrowthActivation, getLilyGrowthVfxEnvelope } from './lilyGrowthVfx'
+import { getBudGrowthActivation, getGrowthVfxParticleLimit, getGrowthZoneBurst, getGrowthZonePulse, getLeafGrowthActivation, getLilyGrowthVfxEnvelope, getLilyGrowthPulseProgress, getLilyGrowthPulseReveal, getLilyGrowthPulseTrailProgress, getLilyGrowthPulseTrailWeight } from './lilyGrowthVfx'
 
 const frames = getGrowthSceneFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth)
 
@@ -44,4 +44,29 @@ it('concentrates the local glow only as the pulse reaches a forming zone', () =>
   expect(getGrowthZonePulse(0.42, 0.42, 0.08, 0.5)).toBeCloseTo(1)
   expect(getGrowthZonePulse(0.1, 0.42, 0.08, 0.5)).toBeLessThan(0.001)
   expect(getGrowthZonePulse(0.42, 0.42, 0.08, 1)).toBe(0)
+})
+
+it('keeps pulse speed phase-locked to the clip with stable endpoints for scrubbing and replay', () => {
+  expect(getLilyGrowthPulseProgress(0, 1)).toBe(0)
+  expect(getLilyGrowthPulseProgress(1, 1)).toBe(1)
+  expect(getLilyGrowthPulseProgress(0.5, 1)).toBe(0.5)
+  expect(getLilyGrowthPulseProgress(0.5, 1.5)).toBeGreaterThan(0.5)
+  expect(getLilyGrowthPulseProgress(0.5, 0.5)).toBeLessThan(0.5)
+  expect(getLilyGrowthPulseProgress(1, 0.5)).toBe(1)
+})
+
+it('grows a smooth pulse trail from the stem base without stacking early samples at zero', () => {
+  const earlyProgress = [0, 0.25, 0.5, 0.75, 1].map(trail => getLilyGrowthPulseTrailProgress(0.06, 0.2, trail))
+  expect(earlyProgress[0]).toBeCloseTo(0.06)
+  expect(earlyProgress[1]).toBeCloseTo(0.045)
+  expect(earlyProgress[2]).toBeCloseTo(0.03)
+  expect(earlyProgress[3]).toBeCloseTo(0.015)
+  expect(earlyProgress[4]).toBe(0)
+  expect(new Set(earlyProgress).size).toBe(5)
+  expect(getLilyGrowthPulseReveal(0, 0.2)).toBe(0)
+  expect(getLilyGrowthPulseReveal(0.06, 0.2)).toBeGreaterThan(0)
+  expect(getLilyGrowthPulseTrailWeight(0, 1.4)).toBe(1)
+  expect(getLilyGrowthPulseTrailWeight(0.5, 1.4)).toBeGreaterThan(getLilyGrowthPulseTrailWeight(0.75, 1.4))
+  expect(getLilyGrowthPulseTrailWeight(1, 1.4)).toBe(0)
+  expect(getLilyGrowthPulseTrailWeight(0.5, 3)).toBeLessThan(getLilyGrowthPulseTrailWeight(0.5, 0.35))
 })

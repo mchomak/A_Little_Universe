@@ -31,7 +31,7 @@ it('leaves defaults active when the optional startup file is missing or malforme
   }
 })
 
-it('persists only Lily growth particle settings in DEV storage and restores them after reload', async () => {
+it('persists Lily growth particle and pulse controls in DEV storage and restores them after reload', async () => {
   vi.resetModules()
   const values = new Map<string, string>()
   const storage = {
@@ -42,17 +42,29 @@ it('persists only Lily growth particle settings in DEV storage and restores them
   try {
     const { DEFAULT_SCENE_COMPOSER_CONFIG, updateConfig } = await import('./config')
     await updateConfig({ scenes: {
-      growth: { vfxParticleCount: 496, vfxParticleSize: 4.2, vfxParticleGlow: 0.8, vfxParticleTint: '#D9C6FF' },
+      growth: {
+        vfxParticleCount: 496, vfxParticleSize: 4.2, vfxParticleGlow: 0.8, vfxParticleTint: '#D9C6FF',
+        vfxPulseEnabled: false, vfxPulseBrightness: 1.8, vfxPulseWidth: 0.24, vfxPulseSpeed: 1.5,
+        vfxPulseTrailFade: 1.9, vfxPulseColor: '#F8DCB5', vfxPulseLeafBoost: 0.75, vfxPulseBudBoost: 0.9,
+      },
       prologue: { fontSize: 66 },
     } })
 
     const key = 'a-little-universe:dev:lily-growth-particles:v3'
     const saved = JSON.parse(values.get(key) ?? 'null')
-    expect(saved).toMatchObject({ vfxParticleCount: 496, vfxParticleSize: 4.2, vfxParticleGlow: 0.8, vfxParticleTint: '#D9C6FF' })
+    expect(saved).toMatchObject({
+      vfxParticleCount: 496, vfxParticleSize: 4.2, vfxParticleGlow: 0.8, vfxParticleTint: '#D9C6FF',
+      vfxPulseEnabled: false, vfxPulseBrightness: 1.8, vfxPulseWidth: 0.24, vfxPulseSpeed: 1.5,
+      vfxPulseTrailFade: 1.9, vfxPulseColor: '#F8DCB5', vfxPulseLeafBoost: 0.75, vfxPulseBudBoost: 0.9,
+    })
     expect(Object.keys(saved).sort()).toEqual([
       'vfxParticleBrightness', 'vfxParticleCount', 'vfxParticleGlow', 'vfxParticleLifetime',
       'vfxParticleSize', 'vfxParticleSizeVariation', 'vfxParticleSpeed', 'vfxParticleSpread', 'vfxParticleTint',
+      'vfxPulseBrightness', 'vfxPulseBudBoost', 'vfxPulseColor', 'vfxPulseEnabled', 'vfxPulseLeafBoost',
+      'vfxPulseSpeed', 'vfxPulseTrailFade', 'vfxPulseWidth',
     ])
+    expect(saved).not.toHaveProperty('schemaVersion')
+    expect(saved).not.toHaveProperty('vfxCoreIntensity')
 
     vi.resetModules()
     const reloaded = await import('./config')

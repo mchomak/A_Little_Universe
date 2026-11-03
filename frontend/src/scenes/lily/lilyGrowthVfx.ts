@@ -8,7 +8,7 @@ import type { SceneId } from '../../engine/film'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
 import type { Quality } from '../../engine/film'
 
-const IMPULSE_POINTS = 14
+const IMPULSE_POINTS = 28
 const PARTICLE_CAPACITY = 528
 const CORE_POINTS = 2
 const TOTAL_POINTS = IMPULSE_POINTS + CORE_POINTS + PARTICLE_CAPACITY
@@ -54,6 +54,32 @@ export function getGrowthZoneBurst(activation: number): number {
 export function getGrowthZonePulse(progress: number, zoneProgress: number, width: number, activation: number): number {
   const distance = (clamp(progress) - clamp(zoneProgress)) / Math.max(0.015, width)
   return Math.exp(-distance * distance * 4) * getGrowthZoneBurst(activation)
+}
+
+/** Re-times the pulse inside the clip while keeping both endpoints phase-locked for replay and scrubbing. */
+export function getLilyGrowthPulseProgress(progress: number, speed: number): number {
+  const normalizedProgress = clamp(progress)
+  const normalizedSpeed = clamp(speed, 0.4, 2)
+  return normalizedProgress ** (1 / normalizedSpeed)
+}
+
+/** Starts the glow softly and prevents early trail samples from stacking at the stem base. */
+export function getLilyGrowthPulseReveal(progress: number, width: number): number {
+  return smooth(clamp(progress) / clamp(width, 0.025, 0.3))
+}
+
+/** Keeps every live pulse sample on the stem segment that has already grown. */
+export function getLilyGrowthPulseTrailProgress(progress: number, width: number, trail: number): number {
+  const head = clamp(progress)
+  const span = Math.min(head, clamp(width, 0.025, 0.3))
+  return Math.max(0, head - span * clamp(trail))
+}
+
+/** A rounded exponential falloff keeps the end of the trail from reading as a row of lit dots. */
+export function getLilyGrowthPulseTrailWeight(trail: number, fade: number): number {
+  const amount = clamp(trail)
+  const falloff = Math.exp(-amount * (1 + clamp(fade, 0.35, 3) * 0.55))
+  return falloff * (1 - smooth(amount))
 }
 
 export function getGrowthVfxParticleLimit(count: number, quality: Quality): number {
@@ -255,14 +281,14 @@ function sampleMeshSurface(mesh: Mesh | null | undefined, sample: number, parent
 }
 
 function getStemCurve(mesh: Mesh | null, parent: Group, positions: Vector3[], binsData: {
-  sumX: Float64Array; sumY: Float64Array; sumZ: Float64Array; count: Uint16Array; point: Vector3
+  sumX: Float64Array; sumY: Float64Array; sumZ: Float64Array; count: Uint16Array; radius: Float32Array; point: Vector3
   posed: Float32Array; parentInverse: Matrix4; meshToLocal: Matrix4
 }): number {
   if (!mesh) return 0
   const attribute = mesh.geometry.getAttribute('position')
   if (!attribute) return 0
   const bins = positions.length
-  const { sumX, sumY, sumZ, count, point, posed, parentInverse, meshToLocal } = binsData
+  const { sumX, sumY, sumZ, count, radius, point, posed, parentInverse, meshToLocal } = binsData
   sumX.fill(0); sumY.fill(0); sumZ.fill(0); count.fill(0)
   mesh.updateWorldMatrix(true, false)
   parent.updateWorldMatrix(true, false)
@@ -296,25 +322,65 @@ function getStemCurve(mesh: Mesh | null, parent: Group, positions: Vector3[], bi
       filled++
     }
   }
+  // Keep the posed tube radius with the centerline so the light can sit on the
+  // camera-facing stem surface instead of disappearing inside the GLB mesh.
+  radius.fill(0)
+  for (let index = 0; index < attribute.count; index++) {
+    const offset = index * 3
+    point.set(posed[offset]!, posed[offset + 1]!, posed[offset + 2]!)
+    const normalized = clamp((point.y - minY) / height)
+    const bin = Math.min(bins - 1, Math.floor(normalized * bins))
+    const center = positions[bin]!
+    radius[bin] = Math.max(radius[bin]!, Math.hypot(point.x - center.x, point.z - center.z))
+  }
   let first = 0
   while (first < bins && !count[first]) first++
   if (first === bins) return 0
-  for (let bin = 0; bin < first; bin++) positions[bin]!.copy(positions[first]!)
+  for (let bin = 0; bin < first; bin++) { positions[bin]!.copy(positions[first]!); radius[bin] = radius[first]! }
   let previous = first
   for (let bin = first + 1; bin < bins; bin++) {
     if (count[bin]) { previous = bin; continue }
     let next = bin + 1
     while (next < bins && !count[next]) next++
-    if (next < bins) positions[bin]!.lerpVectors(positions[previous]!, positions[next]!, (bin - previous) / (next - previous))
-    else positions[bin]!.copy(positions[previous]!)
+    if (next < bins) {
+      const ratio = (bin - previous) / (next - previous)
+      positions[bin]!.lerpVectors(positions[previous]!, positions[next]!, ratio)
+      radius[bin] = radius[previous]! + (radius[next]! - radius[previous]!) * ratio
+    } else { positions[bin]!.copy(positions[previous]!); radius[bin] = radius[previous]! }
   }
   return filled > 2 ? bins : 0
+}
+
+function sampleRadius(radius: Float32Array, progress: number): number {
+  const scaled = clamp(progress) * (radius.length - 1)
+  const index = Math.min(radius.length - 2, Math.floor(scaled))
+  return radius[index]! + (radius[index + 1]! - radius[index]!) * (scaled - index)
 }
 
 function sampleCurve(curve: Vector3[], progress: number, out: Vector3) {
   const scaled = clamp(progress) * (curve.length - 1)
   const index = Math.min(curve.length - 2, Math.floor(scaled))
   return out.lerpVectors(curve[index]!, curve[index + 1]!, scaled - index)
+}
+
+function sampleCurveSmooth(curve: Vector3[], progress: number, out: Vector3) {
+  const scaled = clamp(progress) * (curve.length - 1)
+  const index = Math.min(curve.length - 2, Math.floor(scaled))
+  const t = scaled - index
+  const t2 = t * t
+  const t3 = t2 * t
+  const p0 = curve[Math.max(0, index - 1)]!
+  const p1 = curve[index]!
+  const p2 = curve[index + 1]!
+  const p3 = curve[Math.min(curve.length - 1, index + 2)]!
+  const interpolate = (a: number, b: number, c: number, d: number) => 0.5 * (
+    2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3
+  )
+  return out.set(
+    interpolate(p0.x, p1.x, p2.x, p3.x),
+    interpolate(p0.y, p1.y, p2.y, p3.y),
+    interpolate(p0.z, p1.z, p2.z, p3.z),
+  )
 }
 
 function findCurveProgress(point: Vector3, curve: Vector3[]): number {
@@ -369,7 +435,7 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
   const stemVertexCount = stem?.geometry.getAttribute('position')?.count ?? 0
   const binsData = {
     sumX: new Float64Array(curve.length), sumY: new Float64Array(curve.length), sumZ: new Float64Array(curve.length),
-    count: new Uint16Array(curve.length), point: new Vector3(), posed: new Float32Array(stemVertexCount * 3),
+    count: new Uint16Array(curve.length), radius: new Float32Array(curve.length), point: new Vector3(), posed: new Float32Array(stemVertexCount * 3),
     parentInverse: new Matrix4(), meshToLocal: new Matrix4(),
   }
   const seeds = createParticleSeeds(growthClip)
@@ -382,7 +448,6 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
   const particleColor = new Color()
   const anchor = new Vector3()
   const pathPoint = new Vector3()
-  const pathAhead = new Vector3()
   const particleCenter = new Vector3()
   const particleSurface = new Vector3()
   const localAxisPoint = new Vector3()
@@ -413,7 +478,8 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
 
     const curveCount = frame.scene === 'growth' ? getStemCurve(stem, parent, curve, binsData) : 0
     const active = frame.scene === 'growth' && !frame.reducedMotion ? envelope.activity : 0
-    const pulseProgress = envelope.progress
+    const growthProgress = envelope.progress
+    const pulseProgress = getLilyGrowthPulseProgress(growthProgress, settings.vfxPulseSpeed)
     for (let index = 0; index < leaves.length; index++) {
       const pivot = leafPivots[index]
       const leaf = leaves[index]
@@ -459,25 +525,32 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
       }
     }
     const pulseWidth = clamp(settings.vfxPulseWidth, 0.025, 0.3)
+    const pulseReveal = getLilyGrowthPulseReveal(pulseProgress, pulseWidth)
+    pulseColor.set(settings.vfxPulseColor)
     for (let index = 0; index < IMPULSE_POINTS; index++) {
       const trail = index / (IMPULSE_POINTS - 1)
-      const along = Math.max(0, pulseProgress - pulseWidth * trail)
-      const opacity = active * settings.vfxPulseBrightness * (1 - trail) ** 1.45
+      const along = getLilyGrowthPulseTrailProgress(pulseProgress, pulseWidth, trail)
+      let zoneBoost = 0
+      for (let leafIndex = 0; leafIndex < leafZoneProgress.length; leafIndex++) {
+        zoneBoost += settings.vfxPulseLeafBoost * getGrowthZonePulse(along, leafZoneProgress[leafIndex]!, pulseWidth * 0.8, leafActivation[leafIndex]!)
+      }
+      zoneBoost += settings.vfxPulseBudBoost * getGrowthZonePulse(along, budZoneProgress, pulseWidth * 0.8, getBudGrowthActivation(head?.scale.x ?? 0))
+      const opacity = active * Number(settings.vfxPulseEnabled) * settings.vfxPulseBrightness
+        * pulseReveal * getLilyGrowthPulseTrailWeight(trail, settings.vfxPulseTrailFade)
+        * 0.18 * (1 + zoneBoost * 0.45)
       if (curveCount && opacity > 0.001) {
-        sampleCurve(curve, along, pathPoint)
-        sampleCurve(curve, Math.min(1, along + 0.02), pathAhead)
-        const fringe = Math.sin(index * 1.72 + frame.clipTime * 2.3) * 0.004
-        pathPoint.x += fringe; pathPoint.z -= fringe * 0.7
+        sampleCurveSmooth(curve, along, pathPoint)
+        pathPoint.z += sampleRadius(binsData.radius, along) * 1.08
       } else pathPoint.set(0, -1000, 0)
-      writePoint(positions, sizes, opacities, colors, glows, index, pathPoint, 3.6 + (1 - trail) * 3.2, opacity, pulseColor)
+      writePoint(positions, sizes, opacities, colors, glows, index, pathPoint, 6 + (1 - trail) * 3.2, opacity, pulseColor, 0.72)
     }
 
     const particleLimit = getGrowthVfxParticleLimit(settings.vfxParticleCount, frame.quality)
     tintColor.set(settings.vfxParticleTint)
-    const earlyStemFlow = 1 - smooth(pulseProgress / 0.45)
+    const earlyStemFlow = 1 - smooth(growthProgress / 0.45)
     const earlyStemDensity = 0.16 + 0.84 * (1 - earlyStemFlow) ** 2
     const stemActivation = stem?.morphTargetInfluences?.[0] === undefined
-      ? pulseProgress : clamp(1 - stem.morphTargetInfluences[0])
+      ? growthProgress : clamp(1 - stem.morphTargetInfluences[0])
     for (let index = 0; index < PARTICLE_CAPACITY; index++) {
       const seed = seeds[index]!
       const slot = IMPULSE_POINTS + CORE_POINTS + index
@@ -523,7 +596,7 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
             const radius = 0.008 + settings.vfxParticleSpread * 0.032
             surface.addScaledVector(perpendicular, Math.cos(angle) * radius)
             surface.addScaledVector(secondPerpendicular, Math.sin(angle) * radius)
-            const arrival = getGrowthZonePulse(pulseProgress, leafZoneProgress[leafIndex]!, pulseWidth * 0.55, leafActivation[leafIndex]!)
+            const arrival = getGrowthZonePulse(growthProgress, leafZoneProgress[leafIndex]!, pulseWidth * 0.55, leafActivation[leafIndex]!)
             opacity *= 1 + arrival * 1.2
           }
         } else {
@@ -535,7 +608,7 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
             surface.addScaledVector(budDirection, age * 0.025)
             surface.addScaledVector(budPerpendicular, Math.cos(angle) * radius)
             surface.addScaledVector(secondPerpendicular, Math.sin(angle) * radius)
-            const arrival = getGrowthZonePulse(pulseProgress, budZoneProgress, pulseWidth * 0.55, getBudGrowthActivation(head?.scale.x ?? 0))
+            const arrival = getGrowthZonePulse(growthProgress, budZoneProgress, pulseWidth * 0.55, getBudGrowthActivation(head?.scale.x ?? 0))
             opacity *= 1 + arrival * 1.2
           }
         }
