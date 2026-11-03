@@ -209,15 +209,15 @@ const GALLERY_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.moonBrightness', label: 'Яркость лунной сферы', unit: '×', min: 0, max: 2, step: 0.05 },
   { path: 'scenes.gallery.moonSize', label: 'Размер луны', unit: '×', min: 0.4, max: 1.8, step: 0.05 },
   { path: 'scenes.gallery.waterBaseBrightness', label: 'Базовая яркость воды', unit: '×', min: 0, max: 1.5, step: 0.01 },
-  { path: 'scenes.gallery.reflectionStrength', label: 'Сила отражений', unit: '×', min: 0, max: 0.6, step: 0.01 },
-  { path: 'scenes.gallery.reflectionBlur', label: 'Размытие отражений', unit: '×', min: 0.3, max: 1, step: 0.01 },
+  { path: 'scenes.gallery.reflectionStrength', label: 'Сила отражений', unit: '×', min: 0, max: 0.9, step: 0.01 },
+  { path: 'scenes.gallery.reflectionBlur', label: 'Размытие отражений', unit: '×', min: 0.3, max: 1.5, step: 0.01 },
   { path: 'scenes.gallery.reflectionFalloff', label: 'Затухание отражений', unit: '×', min: 0.25, max: 2.5, step: 0.01 },
-  { path: 'scenes.gallery.waterDistortion', label: 'Искажение воды', unit: '×', min: 0, max: 0.05, step: 0.001 },
-  { path: 'scenes.gallery.waterDistortionScale', label: 'Масштаб микронормалей', unit: '×', min: 0.25, max: 3, step: 0.01 },
-  { path: 'scenes.gallery.waterRippleSpeed', label: 'Скорость ряби', unit: '×', min: 0, max: 1, step: 0.01 },
-  { path: 'scenes.gallery.waterNormalStrength', label: 'Сила нормалей воды', unit: '×', min: 0, max: 1, step: 0.01 },
+  { path: 'scenes.gallery.waterDistortion', label: 'Искажение воды', unit: '×', min: 0, max: 0.14, step: 0.001 },
+  { path: 'scenes.gallery.waterDistortionScale', label: 'Масштаб микронормалей', unit: '×', min: 0.25, max: 4.5, step: 0.01 },
+  { path: 'scenes.gallery.waterRippleSpeed', label: 'Скорость ряби', unit: '×', min: 0, max: 3, step: 0.01 },
+  { path: 'scenes.gallery.waterNormalStrength', label: 'Сила нормалей воды', unit: '×', min: 0, max: 3, step: 0.01 },
   { path: 'scenes.gallery.moonHighlightStrength', label: 'Сила лунного блика', unit: '×', min: 0, max: 2, step: 0.01 },
-  { path: 'scenes.gallery.moonReflectionSpread', label: 'Ширина лунной дорожки', unit: '×', min: 0.25, max: 2.5, step: 0.01 },
+  { path: 'scenes.gallery.moonReflectionSpread', label: 'Ширина лунной дорожки', unit: '×', min: 0.25, max: 4, step: 0.01 },
   { path: 'scenes.gallery.waterOpacity', label: 'Непрозрачность воды', unit: '×', min: 0, max: 1, step: 0.01 },
   { path: 'scenes.gallery.threadOpacity', label: 'Прозрачность световых нитей', unit: '×', min: 0, max: 0.8, step: 0.01 },
   { path: 'scenes.gallery.coldLightIntensity', label: 'Интенсивность холодного света', unit: '×', min: 0, max: 1.8, step: 0.05 },
@@ -581,7 +581,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–13. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–16. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -766,7 +766,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           </details>
           {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.name.startsWith('Near Low') || group.name.startsWith('Waterline')}><summary>{group.name}</summary>
             {group.controls.map(range)}
-            {group.name.startsWith('Waterline') && <p>Для устойчивого времени кадра сцена отображает не более 36 объёмных масс (20 в низком профиле); все четыре слоя сохраняют отдельные квоты.</p>}
+            {group.name.startsWith('Waterline') && <p>Для устойчивого времени кадра сцена отображает не более 29 объёмных масс (17 в низком профиле); все четыре слоя сохраняют отдельные квоты.</p>}
           </details>)}
           {GALLERY_CONTROLS.map(range)}
         </details>}

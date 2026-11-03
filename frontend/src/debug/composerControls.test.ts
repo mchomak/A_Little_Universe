@@ -152,12 +152,12 @@ describe('Scene Composer controls', () => {
     expect(getConfig().scenes.gallery).toMatchObject({ ...waterSettings, waterDistortion: 0.02 })
 
     await resetComposerField('scenes.gallery.waterDistortion')
-    expect(getConfig().scenes.gallery.waterDistortion).toBe(0.008)
+    expect(getConfig().scenes.gallery.waterDistortion).toBe(0.04)
     await resetComposerScope('gallery')
     expect(getConfig().scenes.gallery).toMatchObject({
-      reflectionStrength: 0.5, reflectionBlur: 0.52, reflectionFalloff: 1.25, waterBaseBrightness: 0.72,
-      waterDistortion: 0.008, waterDistortionScale: 1, waterRippleSpeed: 0.12,
-      waterNormalStrength: 0.22, moonHighlightStrength: 0.92, moonReflectionSpread: 1.15, waterOpacity: 1,
+      reflectionStrength: 0.64, reflectionBlur: 0.62, reflectionFalloff: 1.25, waterBaseBrightness: 0.72,
+      waterDistortion: 0.04, waterDistortionScale: 1.25, waterRippleSpeed: 1.35,
+      waterNormalStrength: 0.95, moonHighlightStrength: 0.92, moonReflectionSpread: 1.6, waterOpacity: 1,
     })
   })
 

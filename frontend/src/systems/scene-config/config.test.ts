@@ -12,7 +12,7 @@ it('migrates saved schema v12 water controls and fills the independent polish co
   expect(saved.scenes.gallery).toMatchObject({
     reflectionStrength: 0.36, reflectionBlur: 0.48, waterDistortion: 0.01,
     waterRippleSpeed: 0.2, waterNormalStrength: 0.25, moonHighlightStrength: 0.8, waterOpacity: 0.94,
-    waterBaseBrightness: 0.72, reflectionFalloff: 1.25, waterDistortionScale: 1, moonReflectionSpread: 1.15,
+    waterBaseBrightness: 0.72, reflectionFalloff: 1.25, waterDistortionScale: 1.25, moonReflectionSpread: 1.6,
   })
 })
 
@@ -104,10 +104,10 @@ it('defaults the gallery to a restrained deep blue moonlit palette', () => {
     cloudCoolTint: 1.35, cloudWhiteHighlight: 0.24,
     coldLightIntensity: 0.58, moonLightIntensity: 1.25, moonFillIntensity: 0.22,
     moonCloudLightIntensity: 0.72, moonScatteringIntensity: 0.62,
-    waterBaseBrightness: 0.72, reflectionStrength: 0.5, reflectionBlur: 0.52,
-    reflectionFalloff: 1.25, waterDistortion: 0.008, waterDistortionScale: 1,
-    waterRippleSpeed: 0.12, waterNormalStrength: 0.22, moonHighlightStrength: 0.92,
-    moonReflectionSpread: 1.15, waterOpacity: 1,
+    waterBaseBrightness: 0.72, reflectionStrength: 0.64, reflectionBlur: 0.62,
+    reflectionFalloff: 1.25, waterDistortion: 0.04, waterDistortionScale: 1.25,
+    waterRippleSpeed: 1.35, waterNormalStrength: 0.95, moonHighlightStrength: 0.92,
+    moonReflectionSpread: 1.6, waterOpacity: 1,
   })
 })
 
@@ -140,32 +140,32 @@ it('migrates gallery water controls into schema v15, retaining saved reflections
     expect(migrated.schemaVersion).toBe(16)
     expect(migrated.scenes.gallery).toMatchObject({
       moonBrightness: 1.1, reflectionStrength: 0.24, reflectionBlur: 0.8,
-      waterDistortion: 0.008, waterDistortionScale: 1, waterRippleSpeed: 0.12, waterNormalStrength: 0.22,
-      moonHighlightStrength: 0.92, moonReflectionSpread: 1.15, waterOpacity: 1,
+      waterDistortion: 0.04, waterDistortionScale: 1.25, waterRippleSpeed: 1.35, waterNormalStrength: 0.95,
+      moonHighlightStrength: 0.92, moonReflectionSpread: 1.6, waterOpacity: 1,
       waterBaseBrightness: 0.72, reflectionFalloff: 1.25,
     })
   }
 
   const bounds = normalizeConfig({ schemaVersion: 12, scenes: { gallery: {
-    reflectionStrength: 0, reflectionBlur: 0.3, reflectionFalloff: 0.25, waterBaseBrightness: 0,
-    waterDistortion: 0, waterDistortionScale: 0.25, waterRippleSpeed: 1, waterNormalStrength: 0,
-    moonHighlightStrength: 2, moonReflectionSpread: 2.5, waterOpacity: 1,
+    reflectionStrength: 0.9, reflectionBlur: 1.5, reflectionFalloff: 0.25, waterBaseBrightness: 0,
+    waterDistortion: 0.14, waterDistortionScale: 4.5, waterRippleSpeed: 3, waterNormalStrength: 3,
+    moonHighlightStrength: 2, moonReflectionSpread: 4, waterOpacity: 1,
   } } })
   expect(bounds.scenes.gallery).toMatchObject({
-    reflectionStrength: 0, reflectionBlur: 0.3, reflectionFalloff: 0.25, waterBaseBrightness: 0,
-    waterDistortion: 0, waterDistortionScale: 0.25, waterRippleSpeed: 1, waterNormalStrength: 0,
-    moonHighlightStrength: 2, moonReflectionSpread: 2.5, waterOpacity: 1,
+    reflectionStrength: 0.9, reflectionBlur: 1.5, reflectionFalloff: 0.25, waterBaseBrightness: 0,
+    waterDistortion: 0.14, waterDistortionScale: 4.5, waterRippleSpeed: 3, waterNormalStrength: 3,
+    moonHighlightStrength: 2, moonReflectionSpread: 4, waterOpacity: 1,
   })
 
   const invalid = normalizeConfig({ schemaVersion: 12, scenes: { gallery: {
-    reflectionStrength: -0.01, reflectionBlur: 1.01, reflectionFalloff: 2.51, waterBaseBrightness: -0.01,
-    waterDistortion: 0.051, waterDistortionScale: 3.01, waterRippleSpeed: -0.01,
-    waterNormalStrength: 1.01, moonHighlightStrength: 2.01, moonReflectionSpread: 2.51, waterOpacity: -0.01,
+    reflectionStrength: -0.01, reflectionBlur: 1.51, reflectionFalloff: 2.51, waterBaseBrightness: -0.01,
+    waterDistortion: 0.161, waterDistortionScale: 4.51, waterRippleSpeed: 3.01,
+    waterNormalStrength: 3.01, moonHighlightStrength: 2.01, moonReflectionSpread: 4.01, waterOpacity: -0.01,
   } } })
   expect(invalid.scenes.gallery).toMatchObject({
-    reflectionStrength: 0.5, reflectionBlur: 0.52, reflectionFalloff: 1.25, waterBaseBrightness: 0.72,
-    waterDistortion: 0.008, waterDistortionScale: 1, waterRippleSpeed: 0.12, waterNormalStrength: 0.22,
-    moonHighlightStrength: 0.92, moonReflectionSpread: 1.15, waterOpacity: 1,
+    reflectionStrength: 0.64, reflectionBlur: 0.62, reflectionFalloff: 1.25, waterBaseBrightness: 0.72,
+    waterDistortion: 0.04, waterDistortionScale: 1.25, waterRippleSpeed: 1.35, waterNormalStrength: 0.95,
+    moonHighlightStrength: 0.92, moonReflectionSpread: 1.6, waterOpacity: 1,
   })
 })
 
