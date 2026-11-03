@@ -5,3 +5,5 @@
 
 ## Контракт 01
 `scenes.gallery.galleryLayoutVariant`: on-columns | between-columns; `galleryLayoutA/B`: { laneWidth, offsetX, offsetY, offsetZ }. Ширина опор galleryWidth и настройки колонн общие. Старый v16 переносит galleryWidth в оба laneWidth. `memoryPosition` и camera используют активный профиль; camera retarget при paused focus.
+
+Уточнение B: геометрия и ориентация ровные по направлению прохода; подписи закреплены под картинами. Вариант A сохраняется. Визуальная проверка исключена пользователем.

@@ -11,8 +11,8 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-11-03T19:44:29+03:00",
-  "updatedAt": "2026-11-03T20:27:45+03:00",
-  "finishedAt": "2026-11-03T20:27:45+03:00",
+  "updatedAt": "2026-11-03T20:47:22+03:00",
+  "finishedAt": "2026-11-03T20:47:22+03:00",
   "stages": [
     {
       "id": "preflight",
@@ -44,25 +44,25 @@ window.STATE =
     {
       "id": "build",
       "status": "done",
-      "startedAt": "2026-11-03T19:47:08+03:00",
-      "finishedAt": "2026-11-03T20:27:45+03:00"
+      "startedAt": "2026-11-03T20:40:21+03:00",
+      "finishedAt": "2026-11-03T20:47:22+03:00"
     },
     {
       "id": "review",
       "status": "done",
-      "finishedAt": "2026-11-03T20:27:45+03:00",
+      "finishedAt": "2026-11-03T20:47:22+03:00",
       "startedAt": "2026-11-03T20:27:45+03:00"
     },
     {
       "id": "final",
       "status": "done",
-      "finishedAt": "2026-11-03T20:27:45+03:00",
+      "finishedAt": "2026-11-03T20:47:22+03:00",
       "startedAt": "2026-11-03T20:27:45+03:00"
     }
   ],
   "requirements": {
-    "total": 4,
-    "done": 4,
+    "total": 7,
+    "done": 7,
     "inTicket": 0,
     "inSpec": 0,
     "placeholder": 0,
@@ -116,10 +116,32 @@ window.STATE =
       "finishedAt": "2026-11-03T20:27:45+03:00",
       "commit": "7272a56",
       "tests": "465 tests; check passed"
+    },
+    {
+      "id": "03",
+      "title": "Выровнять вариант B",
+      "requirements": [
+        "G01",
+        "G02",
+        "G03"
+      ],
+      "blockedBy": [],
+      "wave": 3,
+      "zone": [
+        "gallery"
+      ],
+      "status": "done",
+      "startedAt": "2026-11-03T20:40:21+03:00",
+      "retries": 0,
+      "repairs": 0,
+      "handoffs": 0,
+      "finishedAt": "2026-11-03T20:47:22+03:00",
+      "commit": "5f8be32",
+      "tests": "465 tests, full check passed"
     }
   ],
   "singlePass": null,
-  "tests": "npm run check: 94 files, 465 tests; lint, typecheck, build passed",
+  "tests": "npm run check: 94 files, 465 tests; lint, typecheck and build passed",
   "debt": {
     "placeholders": [],
     "assumptions": [
@@ -137,5 +159,5 @@ window.STATE =
     "manifestSpec": null,
     "craft": null
   },
-  "blind": "Chrome WebGL2: A/B switch and independent settings verified; focus visible. Overall B view inspected by coordinator; import/export covered by tests, not manually checked."
+  "blind": "Code review confirms straight B and shared supports; visual testing omitted per user request."
 }
