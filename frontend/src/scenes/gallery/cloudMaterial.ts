@@ -295,9 +295,10 @@ export function setGalleryAtmosphereView(
   cameraDistance: number,
   reflection = false,
   moonInteraction = false,
+  additionalFade = 1,
 ) {
   material.uniforms.uStepCount!.value = getGalleryAtmosphereStepCount(quality, layer, cameraDistance, reflection)
-  const visibilityFade = getGalleryAtmosphereVisibilityFade(cameraDistance, layer, moonInteraction)
+  const visibilityFade = getGalleryAtmosphereVisibilityFade(cameraDistance, layer, moonInteraction) * Math.max(0, Math.min(1, additionalFade))
   material.uniforms.uVisibilityFade!.value = visibilityFade
   return visibilityFade
 }

@@ -171,6 +171,13 @@ describe('gallery volumetric atmosphere material', () => {
     expect(material.uniforms.uStepCount!.value).toBeLessThan(12)
     expect(material.uniforms.uVisibilityFade!.value).toBe(visibility)
     expect(visibility).toBe(1)
+
+    setGalleryAtmosphereView(material, 'standard', 'haze', 50, false, false, 0.25)
+    expect(material.uniforms.uVisibilityFade!.value).toBe(0.25)
+    setGalleryAtmosphereView(material, 'standard', 'haze', 50, true, false, 0.25)
+    expect(material.uniforms.uVisibilityFade!.value).toBe(0.25)
+    setGalleryAtmosphereView(material, 'standard', 'haze', 50)
+    expect(material.uniforms.uVisibilityFade!.value).toBe(1)
     material.dispose()
   })
 })

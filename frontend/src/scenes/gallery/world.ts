@@ -1,4 +1,5 @@
 import { GALLERY } from './content'
+import type { Vector3 } from 'three'
 import type { GalleryCloudLayerSettings, GalleryCloudLayers } from '../../systems/scene-config/config'
 
 export type GalleryQuality = 'low' | 'standard'
@@ -70,6 +71,38 @@ export function getGalleryAtmosphereVisibilityFade(
   if (!Number.isFinite(cameraDistance)) return 0
   const [start, end] = CLOUD_VISIBILITY_RANGES[layer]
   return 1 - smoothstep(start, end, Math.max(0, cameraDistance))
+}
+
+/** Fades a haze mass when the camera nears or enters its ellipsoid, avoiding an enveloping screen layer. */
+export function getGalleryHazeCameraFade(
+  camera: Pick<Vector3, 'x' | 'y' | 'z'> | readonly [number, number, number],
+  center: Pick<Vector3, 'x' | 'y' | 'z'> | readonly [number, number, number],
+  radii: readonly [number, number, number],
+  fadeDistance = 8,
+) {
+  const cx = 'x' in center ? center.x : center[0]
+  const cy = 'y' in center ? center.y : center[1]
+  const cz = 'z' in center ? center.z : center[2]
+  const rx = Math.max(0.001, Math.abs(radii[0]))
+  const ry = Math.max(0.001, Math.abs(radii[1]))
+  const rz = Math.max(0.001, Math.abs(radii[2]))
+  const cameraX = 'x' in camera ? camera.x : camera[0]
+  const cameraY = 'y' in camera ? camera.y : camera[1]
+  const cameraZ = 'z' in camera ? camera.z : camera[2]
+  const dx = cameraX - cx
+  const dy = cameraY - cy
+  const dz = cameraZ - cz
+  const normalizedDistance = Math.hypot(dx / rx, dy / ry, dz / rz)
+  if (!Number.isFinite(normalizedDistance)) return 0
+  if (normalizedDistance <= 1) return 0
+
+  // First-order signed distance to an ellipsoid surface in world units.
+  const gradient = Math.hypot(dx / (rx * rx), dy / (ry * ry), dz / (rz * rz)) / normalizedDistance
+  if (!Number.isFinite(gradient) || gradient <= 0) return 1
+  const distanceToSurface = (normalizedDistance - 1) / gradient
+  const width = Number.isFinite(fadeDistance) ? Math.max(0.001, fadeDistance) : 8
+  const t = Math.max(0, Math.min(1, distanceToSurface / width))
+  return t * t * (3 - 2 * t)
 }
 
 export interface GalleryAtmosphereMass {

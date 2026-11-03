@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { GALLERY } from './content'
-import { GALLERY_CLOUD_RENDER_LIMIT, GALLERY_WORLD, getGalleryAtmosphereStepCount, getGalleryAtmosphereVisibilityFade, getGalleryCloudDrift, getGalleryCloudMasses, getGalleryCloudMassesForLayerCounts, getGalleryCloudPosition, getGalleryCloudRadii, getGalleryCloudRenderOrder, getGalleryHazeMasses, getGalleryMoonScatteringLayers } from './world'
+import { GALLERY_CLOUD_RENDER_LIMIT, GALLERY_WORLD, getGalleryAtmosphereStepCount, getGalleryAtmosphereVisibilityFade, getGalleryCloudDrift, getGalleryCloudMasses, getGalleryCloudMassesForLayerCounts, getGalleryCloudPosition, getGalleryCloudRadii, getGalleryCloudRenderOrder, getGalleryHazeCameraFade, getGalleryHazeMasses, getGalleryMoonScatteringLayers } from './world'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 
 const cloudLayers = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.cloudLayers
@@ -173,6 +173,84 @@ describe('moonlit gallery world layout', () => {
     expect(haze[0]!.position[1] - haze[0]!.radii[1]).toBeLessThan(floorY)
     expect(haze.every(({ position, radii, opacity }) => position[1] + radii[1] > 2 && opacity < 0.25)).toBe(true)
     expect(haze[0]!.radii[2]).toBeGreaterThan(17)
+  })
+
+  it('smoothly clears the camera from haze volumes across travel, focus, exit, and maximum drift', () => {
+    const start = GALLERY.startZ
+    const routeEnd = start - GALLERY.travel - 2
+    const haze = GALLERY_WORLD.haze
+    const routePositions = Array.from({ length: 48 }, (_, index) => [0, 0, start + (routeEnd - start) * index / 47] as const)
+    const focusPositions = Array.from({ length: 12 }, (_, order) => {
+      const z = GALLERY.firstZ - order * GALLERY.spacing
+      return [0, 0.12, z + Math.cos(1.15) * 4.8] as const
+    })
+
+    let cameraEntersHaze = false
+    for (let time = 0; time <= 48; time += 2) {
+      for (const camera of [...routePositions, ...focusPositions]) {
+        for (const mass of haze) {
+          const drift = getGalleryCloudDrift(mass, time, 3 * 2.5, 0.35)
+          const center = [mass.position[0] + drift[0], mass.position[1] + drift[1], mass.position[2] + drift[2]] as const
+          const fade = getGalleryHazeCameraFade(camera, center, mass.radii)
+          const normalizedDistance = Math.hypot((camera[0] - center[0]) / mass.radii[0], (camera[1] - center[1]) / mass.radii[1], (camera[2] - center[2]) / mass.radii[2])
+          if (normalizedDistance <= 1) {
+            cameraEntersHaze = true
+            expect(fade, `${mass.id} contains camera at ${camera.join(',')} time=${time}`).toBe(0)
+          }
+          expect(fade).toBeGreaterThanOrEqual(0)
+          expect(fade).toBeLessThanOrEqual(1)
+        }
+      }
+    }
+    expect(cameraEntersHaze).toBe(true)
+
+    const sample = haze[0]!
+    const center = sample.position
+    const justOutside = [center[0], center[1], center[2] + sample.radii[2] + 4] as const
+    expect(getGalleryHazeCameraFade(justOutside, center, sample.radii)).toBeGreaterThan(0)
+    expect(getGalleryHazeCameraFade(justOutside, center, sample.radii)).toBeLessThan(1)
+    expect(getGalleryHazeCameraFade([center[0], center[1], center[2] + sample.radii[2] + 12], center, sample.radii)).toBe(1)
+  })
+
+  it('keeps a continuous haze contribution on the water horizon after camera-proximity fades', () => {
+    const start = GALLERY.startZ
+    const routeEnd = start - GALLERY.travel - 2
+    const routePositions = Array.from({ length: 48 }, (_, index) => [0, 0, start + (routeEnd - start) * index / 47] as const)
+    const focusPositions = Array.from({ length: 12 }, (_, order) => [0, 0.12, GALLERY.firstZ - order * GALLERY.spacing + Math.cos(1.15) * 4.8] as const)
+    const horizonSamples = Array.from({ length: 21 }, (_, index) => -108 - index * 2)
+    const hazeDensity = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.hazeDensity
+    let minimumCoverage = Number.POSITIVE_INFINITY
+
+    for (const quality of ['low', 'standard'] as const) {
+      const haze = getGalleryHazeMasses(quality)
+      for (let time = 0; time <= 48; time += 2) {
+        for (const camera of [...routePositions, ...focusPositions]) {
+          const centers = haze.map((mass) => {
+            const drift = getGalleryCloudDrift(mass, time, 3 * 2.5, 0.35)
+            return {
+              mass,
+              center: [mass.position[0] + drift[0], mass.position[1] + drift[1], mass.position[2] + drift[2]] as const,
+            }
+          })
+
+          for (const z of horizonSamples) {
+            const horizonPoint = [0, GALLERY_WORLD.floor.y, z] as const
+            const coverage = centers.reduce((sum, { mass, center }) => {
+              const cameraFade = getGalleryHazeCameraFade(camera, center, mass.radii)
+              const cameraDistance = Math.hypot(camera[0] - center[0], camera[1] - center[1], camera[2] - center[2])
+              const distanceFade = getGalleryAtmosphereVisibilityFade(cameraDistance, 'haze')
+              const localRadius = Math.hypot((horizonPoint[0] - center[0]) / mass.radii[0], (horizonPoint[1] - center[1]) / mass.radii[1], (horizonPoint[2] - center[2]) / mass.radii[2])
+              const edgeT = Math.max(0, Math.min(1, (localRadius - 0.5) / 0.5))
+              const edgeFade = 1 - edgeT * edgeT * (3 - 2 * edgeT)
+              return sum + mass.opacity * hazeDensity * cameraFade * distanceFade * edgeFade
+            }, 0)
+            minimumCoverage = Math.min(minimumCoverage, coverage)
+          }
+        }
+      }
+    }
+
+    expect(minimumCoverage).toBeGreaterThan(0.003)
   })
 
   it('supports faster drift while preserving zero as a deliberate stop', () => {

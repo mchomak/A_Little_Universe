@@ -7,7 +7,7 @@ import moonHeightUrl from '../../assets/gallery-moonlit/ldem-3-8bit.jpg'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
 import { createGalleryCloudVolumeMaterial, setGalleryAtmosphereTime, setGalleryAtmosphereView } from './cloudMaterial'
 import { createMoonHaloTexture } from './worldTextures'
-import { GALLERY_WORLD, getGalleryAtmosphereStepCount, getGalleryCloudDrift, getGalleryCloudMassesForLayerCounts, getGalleryCloudPosition, getGalleryCloudRadii, getGalleryCloudRenderOrder, getGalleryHazeMasses, getGalleryMoonScatteringLayers, type GalleryQuality } from './world'
+import { GALLERY_WORLD, getGalleryAtmosphereStepCount, getGalleryCloudDrift, getGalleryCloudMassesForLayerCounts, getGalleryCloudPosition, getGalleryCloudRadii, getGalleryCloudRenderOrder, getGalleryHazeCameraFade, getGalleryHazeMasses, getGalleryMoonScatteringLayers, type GalleryQuality } from './world'
 import { WetFloor } from './WetFloor'
 import { galleryMotion } from './controller'
 
@@ -233,7 +233,8 @@ export function MoonlitWorld({
       center?.set(x, y, z)
       const cameraDistance = cameraPositionScratch.distanceTo(massPositionScratch.set(x, y, z))
       const material = hazeMaterials[index]
-      const fade = material ? setGalleryAtmosphereView(material, quality, 'haze', cameraDistance) : 0
+      const cameraFade = getGalleryHazeCameraFade(cameraPositionScratch, massPositionScratch, mass.radii)
+      const fade = material ? setGalleryAtmosphereView(material, quality, 'haze', cameraDistance, false, false, cameraFade) : 0
       if (mesh) mesh.visible = settings.hazeDensity > 0 && fade > 0
     })
   })
@@ -285,7 +286,8 @@ export function MoonlitWorld({
         camera.getWorldPosition(cameraPositionScratch)
         mesh.getWorldPosition(massPositionScratch)
         const cameraDistance = cameraPositionScratch.distanceTo(massPositionScratch)
-        setGalleryAtmosphereView(hazeMaterials[index]!, quality, 'haze', cameraDistance, reflection)
+        const cameraFade = getGalleryHazeCameraFade(cameraPositionScratch, massPositionScratch, mass.radii)
+        setGalleryAtmosphereView(hazeMaterials[index]!, quality, 'haze', cameraDistance, reflection, false, cameraFade)
       }}
     >
       <primitive object={atmosphereGeometry} attach="geometry" />
