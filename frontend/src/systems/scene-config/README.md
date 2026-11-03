@@ -11,7 +11,7 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v15.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v19. Scene 02 branch schemas v12?v18 are also accepted, including island, wind, moonlight, seed, trail and cloud controls. Old Scene 02 default fall duration and height migrate to current defaults; custom values remain within the supported range.
 
 Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its 0.1–20 second travel-window meaning, with the cinematic default now 2.2 seconds; `particleFadeDuration` controls individual dust fade and defaults to 1.2 seconds. `particleReturnFraction` is ignored. The light, atmosphere, typography and interaction fields are additive schema-v2 fields: missing fields in both v1 and v2 files receive current defaults.
 
@@ -19,7 +19,7 @@ An optional production override can contain only values that differ from the def
 
 ```json
 {
-  "schemaVersion": 15,
+  "schemaVersion": 19,
   "global": { "quality": "low" },
   "scenes": {
     "openingBackground": {
@@ -93,6 +93,17 @@ An optional production override can contain only values that differ from the def
 | Dissolve | Particle size min / max; particle glow | 0.25–2.5 / 0.5–4 CSS px (0.6 / 1.8), min ≤ max; 0–2 (0.95) |
 | Interaction | Touch intensity / duration | 0–1.5 (0.55) / 0.7–1 s (0.85) |
 | Interaction | Wave strength / radius | 0–0.5 (0.14) / 30–120 CSS px (70) |
+| Scene 02 island | Radius / grass blades / wind speed | 0.55–1.05 (0.82) / 80–720 integer (360) / 0–2.5 (0.8) |
+| Scene 02 moonlight | Direct light intensity / color | 0–2 (1.2) / `#AFC9F5` |
+| Scene 02 moon beam | Diameter / island-radius ratio / softness / volumetric intensity | 0.4–4 (2× island radius) / 0.05–1 (0.6) / 0–1.5 (0.55) |
+| Scene 02 moon source | Y position control; legacy X/Z values retained | 1–10 (5.5); X/Z each −4–4 (−0.65 / 1) |
+| Scene 02 seed orbit | Count / radius / tilt / speed | 1–5 integer (3) / 0.24–0.62 m (0.4) / 0.15–1.2 rad (0.62) / 0–2 (0.85) |
+| Scene 02 seed fall | Duration / height multiplier / acceleration / camera lag / follow speed | 1.8–20 s (8) / 2–6.4 (3.2) / 1–5 (3.2; path uses `u^a`) / 0.1–0.8 s (0.3) / 0.1–8 s⁻¹ (3; higher follows faster) |
+| Scene 02 seed motion | Spin / tumble speed / wobble tilt amplitude | 0–4 / 0–3 rad/s (1 / 0.7) / 0–0.35 rad (0.08) |
+| Scene 02 island reveal | Legacy `islandRevealDuration` | 0.4–3 s (1.5; retained for compatibility, no longer exposed or used to fade the island) |
+| Scene 02 seed trail and impact | Trail intensity / spread / lifetime / lift speed / count; impact strength / radius / particles / lifetime | 0–2 (1.2) / 0–0.5 m (0.36) / 0.15–2 s (1) / 0.1–2 m/s (0.8) / 12–128 (60); 0–1 (0.6) / 0.1–1.2 m (0.72) / 0–180 (64) / 0.2–1.6 s (0.85) |
+| Scene 02 moon scattering | Intensity | 0–1.5 (0.35) |
+| Scene 02 clouds | Count / density / scale / drift / opacity / light; size / light / path / shape / depth variation | 0–24 integer (18) / 0–2 (0.8) / 0.4–2 (1) / 0–2 (0.3) / 0–1 (0.42) / 0–2 (0.7); each variation 0–1 (0.72 / 0.55 / 0.65 / 0.65 / 0.65) |
 | Galaxy Geometry | Star count, arms, radius, spin | 8000–90000 integer (32000), 2–8 integer (5), 4–14 (8.2), 0.2–18 (4.6 radians) |
 | Galaxy Geometry | Seed | String, 1–64 characters (default `andromeda`) |
 | Galaxy Geometry | Arm width / randomness / randomness power | 0–0.5 (0.16) / 0–0.3 (0.065) / 0.1–8 (3.6) |

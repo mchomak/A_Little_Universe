@@ -38,7 +38,7 @@ export function SceneDirector(props: SceneProps) {
   const publishLilyParticleSource = useCallback((source: LilySurfaceSource) => {
     setLilyParticleSource((current) => current ?? source)
   }, [])
-  // Keep the same world and its floor, rings, mound and moonlight through the
+  // Keep the same world and its island, mound and moonlight through the
   // touch scene and the first seconds of the 04 handoff.
   const keepGrowthWorld = shouldKeepGrowthWorld(scene, elapsed, config.scenes.identity.dissolveDuration)
   return <>

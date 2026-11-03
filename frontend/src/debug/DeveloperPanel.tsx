@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type Dispatch } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type Dispatch } from 'react'
 import type { FilmAction, FilmState } from '../engine/film'
 import type { FilmRuntime } from '../engine/runtime'
 import { getSceneDuration, SCENES, type SceneId } from '../engine/filmConfig'
@@ -112,7 +112,7 @@ const PROLOGUE_GROUPS: readonly { name: string; controls: readonly NumericContro
   ] },
 ]
 
-const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
+const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[]; color?: { path: ComposerFieldPath; label: string } }[] = [
   { name: 'Частицы и формирование', controls: [
     { path: 'scenes.growth.particleSize', label: 'Размер точки', unit: 'px', min: 0.5, max: 3, step: 0.1 },
     { path: 'scenes.growth.particleOpacity', label: 'Непрозрачность', unit: '×', min: 0, max: 1.5, step: 0.05 },
@@ -129,6 +129,62 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
   { name: 'Свет и размер', controls: [
     { path: 'scenes.growth.coreGlow', label: 'Свечение ядра', unit: '×', min: 0, max: 1.5, step: 0.05 },
     { path: 'scenes.growth.seedScale', label: 'Масштаб семечка', unit: '×', min: 0.65, max: 1.4, step: 0.05 },
+  ] },
+  { name: 'Орбита и падение семечка', controls: [
+    { path: 'scenes.growth.seedOrbitCount', label: 'Число витков орбиты', unit: 'витков', min: 1, max: 5, step: 1 },
+    { path: 'scenes.growth.seedOrbitRadius', label: 'Радиус орбиты', unit: 'м', min: 0.24, max: 0.62, step: 0.01 },
+    { path: 'scenes.growth.seedOrbitTilt', label: 'Наклон орбиты', unit: 'рад', min: 0.15, max: 1.2, step: 0.01 },
+    { path: 'scenes.growth.seedOrbitSpeed', label: 'Скорость орбиты', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.seedFallDuration', label: 'Длительность падения', unit: 'с', min: 1.8, max: 20, step: 0.1 },
+    { path: 'scenes.growth.seedFallAcceleration', label: 'Ускорение падения', unit: '×', min: 1, max: 5, step: 0.05 },
+    { path: 'scenes.growth.seedFallHeight', label: 'Высота начала падения', unit: '× высоты кадра', min: 2, max: 6.4, step: 0.01 },
+    { path: 'scenes.growth.seedCameraLag', label: 'Запаздывание камеры', unit: 'с', min: 0.1, max: 0.8, step: 0.01 },
+    { path: 'scenes.growth.seedCameraFollowSpeed', label: 'Скорость сглаженного слежения камеры', unit: 'с⁻¹', min: 0.1, max: 8, step: 0.1 },
+    { path: 'scenes.growth.seedSpinSpeed', label: 'Скорость вращения семечка', unit: 'рад/с', min: 0, max: 4, step: 0.05 },
+    { path: 'scenes.growth.seedTumbleSpeed', label: 'Вращение по поперечной оси', unit: 'рад/с', min: 0, max: 3, step: 0.05 },
+    { path: 'scenes.growth.seedWobbleAmplitude', label: 'Амплитуда покачивания семечка', unit: 'рад', min: 0, max: 0.35, step: 0.005 },
+  ] },
+  { name: 'Парящий остров', controls: [
+    { path: 'scenes.growth.islandRadius', label: 'Размер острова', unit: '', min: 0.55, max: 1.05, step: 0.01 },
+    { path: 'scenes.growth.islandThickness', label: 'Толщина острова', unit: 'м', min: 0.1, max: 0.55, step: 0.01 },
+    { path: 'scenes.growth.islandDepth', label: 'Глубина нижней части', unit: 'м', min: 0.25, max: 1.4, step: 0.01 },
+    { path: 'scenes.growth.islandRoughness', label: 'Неровность краёв', unit: '×', min: 0, max: 1, step: 0.05 },
+    { path: 'scenes.growth.grassDensity', label: 'Плотность травы', unit: 'шт.', min: 80, max: 720, step: 40 },
+    { path: 'scenes.growth.grassHeight', label: 'Высота травы', unit: 'м', min: 0.06, max: 0.28, step: 0.01 },
+    { path: 'scenes.growth.windStrength', label: 'Сила ветра', unit: '×', min: 0, max: 2.5, step: 0.05 },
+    { path: 'scenes.growth.windSpeed', label: 'Скорость ветра', unit: '×', min: 0, max: 2.5, step: 0.05 },
+  ] },
+  { name: 'След и удар семечка', controls: [
+    { path: 'scenes.growth.seedTrailIntensity', label: 'Интенсивность следа', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.seedTrailSpread', label: 'Разлёт осколков следа', unit: 'м', min: 0, max: 0.5, step: 0.01 },
+    { path: 'scenes.growth.seedTrailLifetime', label: 'Время жизни осколков следа', unit: 'с', min: 0.15, max: 2, step: 0.05 },
+    { path: 'scenes.growth.seedTrailLiftSpeed', label: 'Скорость отлёта вверх', unit: 'м/с', min: 0.1, max: 2, step: 0.05 },
+    { path: 'scenes.growth.seedTrailParticleCount', label: 'Количество осколков', unit: 'шт.', min: 12, max: 128, step: 1 },
+    { path: 'scenes.growth.seedImpactStrength', label: 'Сила удара', unit: '×', min: 0, max: 1, step: 0.01 },
+    { path: 'scenes.growth.seedImpactRadius', label: 'Радиус удара', unit: 'м', min: 0.1, max: 1.2, step: 0.01 },
+    { path: 'scenes.growth.seedImpactParticles', label: 'Частицы удара', unit: 'шт.', min: 0, max: 180, step: 1 },
+    { path: 'scenes.growth.seedImpactLifetime', label: 'Время жизни частиц удара', unit: 'с', min: 0.2, max: 1.6, step: 0.05 },
+  ] },
+  { name: 'Облака', controls: [
+    { path: 'scenes.growth.cloudCount', label: 'Количество облаков', unit: 'шт.', min: 0, max: 24, step: 1 },
+    { path: 'scenes.growth.cloudDensity', label: 'Плотность облаков', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.cloudScale', label: 'Масштаб облаков', unit: '×', min: 0.4, max: 2, step: 0.05 },
+    { path: 'scenes.growth.cloudDriftSpeed', label: 'Скорость облаков', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.cloudOpacity', label: 'Непрозрачность облаков', unit: '×', min: 0, max: 1, step: 0.01 },
+    { path: 'scenes.growth.cloudLightIntensity', label: 'Освещение облаков', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.cloudSizeVariation', label: 'Разнообразие размеров облаков', unit: '×', min: 0, max: 1, step: 0.01 },
+    { path: 'scenes.growth.cloudLightVariation', label: 'Разнообразие подсветки облаков', unit: '×', min: 0, max: 1, step: 0.01 },
+    { path: 'scenes.growth.cloudPathDensity', label: 'Облака вдоль траектории', unit: '×', min: 0, max: 1, step: 0.01 },
+    { path: 'scenes.growth.cloudShapeVariation', label: 'Разнообразие формы облаков', unit: '×', min: 0, max: 1, step: 0.01 },
+    { path: 'scenes.growth.cloudDepthVariation', label: 'Разброс облаков по глубине', unit: '×', min: 0, max: 1, step: 0.01 },
+  ] },
+  { name: 'Лунное освещение', color: { path: 'scenes.growth.moonLightColor', label: 'Цвет лунного света' }, controls: [
+    { path: 'scenes.growth.moonLightIntensity', label: 'Интенсивность лунного света', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.moonBeamRadius', label: 'Диаметр луча', unit: '× радиуса острова', min: 0.4, max: 4, step: 0.05 },
+    { path: 'scenes.growth.moonBeamSoftness', label: 'Мягкость краёв луча', unit: '×', min: 0.05, max: 1, step: 0.01 },
+    { path: 'scenes.growth.moonBeamIntensity', label: 'Интенсивность объёмного луча', unit: '×', min: 0, max: 1.5, step: 0.025 },
+    { path: 'scenes.growth.moonScatteringIntensity', label: 'Интенсивность рассеянного света', unit: '×', min: 0, max: 1.5, step: 0.025 },
+    { path: 'scenes.growth.moonPositionY', label: 'Положение источника · Y', unit: 'м', min: 1, max: 10, step: 0.05 },
   ] },
   { name: 'Анимация лилии', controls: [
     { path: 'scenes.growth.flowerGrowthDuration', label: 'Длительность Growth', unit: 'с', min: 4, max: 14, step: 0.25 },
@@ -570,7 +626,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–15. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–19. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -728,7 +784,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-growth-particleQuality">Качество семечка</label>{config.scenes.growth.particleQuality !== defaultAtPath('scenes.growth.particleQuality') && <button type="button" className="inspector-reset" aria-label="Сбросить качество семечка" onClick={() => { void resetField('scenes.growth.particleQuality') }}>↺</button>}</div>
               <select id="composer-scenes-growth-particleQuality" value={config.scenes.growth.particleQuality} onChange={(event) => { void changeField('scenes.growth.particleQuality', event.target.value) }}><option value="low">Низкое · 2304</option><option value="standard">Обычное · 4096</option><option value="high">Высокое · 9216</option></select>
             </div>
-            {GROWTH_GROUPS.map(group => <details key={group.name} open={group.name === 'Частицы и формирование'}><summary>{group.name}</summary>{group.controls.map(range)}</details>)}
+            {GROWTH_GROUPS.map(group => <details key={group.name} open={group.name === 'Частицы и формирование'}><summary>{group.name}</summary>{group.controls.map(range)}{group.color && color(group.color.path, group.color.label)}</details>)}
           </details>
           <p>Обе длительности анимации цветка настраиваются здесь и в сцене раскрытия.</p>
           <details><summary>Палитра частиц</summary>
@@ -787,5 +843,3 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
     </aside>
   )
 }
-
-

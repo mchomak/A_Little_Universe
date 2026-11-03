@@ -30,7 +30,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 15
+  readonly schemaVersion: 19
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -106,6 +106,56 @@ export interface SceneComposerConfig {
       coreGlow: number
       seedScale: number
       flowerGrowthDuration: number
+      islandRadius: number
+      islandThickness: number
+      islandDepth: number
+      islandRoughness: number
+      grassDensity: number
+      grassHeight: number
+      windStrength: number
+      windSpeed: number
+      seedOrbitCount: number
+      seedOrbitRadius: number
+      seedOrbitTilt: number
+      seedOrbitSpeed: number
+      seedFallDuration: number
+      seedFallAcceleration: number
+      seedFallHeight: number
+      seedCameraLag: number
+      seedCameraFollowSpeed: number
+      seedSpinSpeed: number
+      seedTumbleSpeed: number
+      seedWobbleAmplitude: number
+      islandRevealDuration: number
+      seedTrailIntensity: number
+      seedTrailSpread: number
+      seedTrailLifetime: number
+      seedTrailLiftSpeed: number
+      seedTrailParticleCount: number
+      seedImpactStrength: number
+      seedImpactRadius: number
+      seedImpactParticles: number
+      seedImpactLifetime: number
+      moonLightIntensity: number
+      moonLightColor: string
+      moonBeamRadius: number
+      moonBeamSoftness: number
+      moonBeamIntensity: number
+      moonScatteringIntensity: number
+      moonPositionX: number
+      moonPositionY: number
+      moonPositionZ: number
+      cloudCount: number
+      cloudDensity: number
+      cloudScale: number
+      cloudDriftSpeed: number
+      cloudOpacity: number
+      cloudLightIntensity: number
+      cloudSizeVariation: number
+      cloudLightVariation: number
+      cloudPathDensity: number
+      cloudShapeVariation: number
+      cloudDepthVariation: number
     }>
     bloom: Readonly<{
       flowerBloomDuration: number
@@ -271,7 +321,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 15,
+  schemaVersion: 19,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     openingBackground: { zoom: 1, offsetX: 0, offsetY: 0 },
@@ -295,6 +345,24 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       attractionRampDuration: 2.8, morphDamping: 7.2, formationDuration: 3.2,
       freeParticleFraction: 0.08, pearlColor: '#FFF4E8', roseColor: '#F4CCDA',
       lavenderColor: '#D7CCF1', coreGlow: 0.55, seedScale: 1, flowerGrowthDuration: 9,
+      islandRadius: 0.82, islandThickness: 0.24, islandDepth: 0.58, islandRoughness: 0.5,
+      grassDensity: 360, grassHeight: 0.14, windStrength: 1, windSpeed: 0.8,
+      seedOrbitCount: 3, seedOrbitRadius: 0.4, seedOrbitTilt: 0.62, seedOrbitSpeed: 0.85,
+      seedFallDuration: 8, seedFallAcceleration: 3.2, seedFallHeight: 3.2,
+      seedCameraLag: 0.3, seedCameraFollowSpeed: 3, seedSpinSpeed: 1,
+      seedTumbleSpeed: 0.7, seedWobbleAmplitude: 0.08,
+      islandRevealDuration: 1.5,
+      seedTrailIntensity: 1.2, seedTrailSpread: 0.36, seedTrailLifetime: 1,
+      seedTrailLiftSpeed: 0.8, seedTrailParticleCount: 60,
+      seedImpactStrength: 0.6, seedImpactRadius: 0.72,
+      seedImpactParticles: 64, seedImpactLifetime: 0.85,
+      moonLightIntensity: 1.2, moonLightColor: '#AFC9F5', moonBeamRadius: 2,
+      moonBeamSoftness: 0.6, moonBeamIntensity: 0.55, moonScatteringIntensity: 0.35,
+      moonPositionX: -0.65, moonPositionY: 5.5, moonPositionZ: 1,
+      cloudCount: 18, cloudDensity: 0.8, cloudScale: 1, cloudDriftSpeed: 0.3,
+      cloudOpacity: 0.42, cloudLightIntensity: 0.7,
+      cloudSizeVariation: 0.72, cloudLightVariation: 0.55, cloudPathDensity: 0.65,
+      cloudShapeVariation: 0.65, cloudDepthVariation: 0.65,
     },
     bloom: {
       flowerBloomDuration: 16, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,
@@ -390,7 +458,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 15) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 19) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -398,7 +466,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const preloadInput = asRecord(scenesInput?.preload)
   const preparationInput = asRecord(scenesInput?.preparation)
   const prologueInput = asRecord(scenesInput?.prologue)
-  const growthInput = asRecord(scenesInput?.growth)
+  const rawGrowthInput = asRecord(scenesInput?.growth)
   const identityInput = asRecord(scenesInput?.identity)
   const rawGalleryInput = asRecord(scenesInput?.gallery)
   // Schema v9 allowed at most 12 cloud banks; expand that old default while
@@ -406,6 +474,21 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const galleryInput = inputVersion === 9 && rawGalleryInput?.cloudLayerCount === 12
     ? { ...rawGalleryInput, cloudLayerCount: 18 }
     : rawGalleryInput
+  const growthV17Input = Number(inputVersion) < 17 && rawGrowthInput
+    ? {
+        ...rawGrowthInput,
+        ...(rawGrowthInput.seedFallDuration === 3.6 ? { seedFallDuration: 4.8 } : {}),
+        ...(rawGrowthInput.cloudCount === 3 ? { cloudCount: 18 } : {}),
+      }
+    : rawGrowthInput
+  const growthInput = Number(inputVersion) < 18 && growthV17Input
+    ? {
+        ...growthV17Input,
+        ...(rawGrowthInput?.seedFallHeight === 1.6 ? { seedFallHeight: 3.2 } : {}),
+        ...(Number(inputVersion) === 17 && rawGrowthInput?.seedFallDuration === 4.8 ? { seedFallDuration: 8 } : {}),
+        ...(Number(inputVersion) < 17 && rawGrowthInput?.seedFallDuration === 3.6 ? { seedFallDuration: 8 } : {}),
+      }
+    : growthV17Input
   const galaxyInput = asRecord(scenesInput?.galaxy)
   const galaxySettingsInput = migrateGalaxySettings(galaxyInput, inputVersion)
   const legacyParticleSpeed = numberValue(prologueInput?.particleSpeed, 1, 0.1, 10)
@@ -510,6 +593,56 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       coreGlow: numberValue(growthInput?.coreGlow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.coreGlow, 0, 1.5),
       seedScale: numberValue(growthInput?.seedScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedScale, 0.65, 1.4),
       flowerGrowthDuration: numberValue(growthInput?.flowerGrowthDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.flowerGrowthDuration, 4, 14),
+      islandRadius: numberValue(growthInput?.islandRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandRadius, 0.55, 1.05),
+      islandThickness: numberValue(growthInput?.islandThickness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandThickness, 0.1, 0.55),
+      islandDepth: numberValue(growthInput?.islandDepth, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandDepth, 0.25, 1.4),
+      islandRoughness: numberValue(growthInput?.islandRoughness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandRoughness, 0, 1),
+      grassDensity: numberValue(growthInput?.grassDensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.grassDensity, 80, 720, true),
+      grassHeight: numberValue(growthInput?.grassHeight, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.grassHeight, 0.06, 0.28),
+      windStrength: numberValue(growthInput?.windStrength, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.windStrength, 0, 2.5),
+      windSpeed: numberValue(growthInput?.windSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.windSpeed, 0, 2.5),
+      seedOrbitCount: numberValue(growthInput?.seedOrbitCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedOrbitCount, 1, 5, true),
+      seedOrbitRadius: numberValue(growthInput?.seedOrbitRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedOrbitRadius, 0.24, 0.62),
+      seedOrbitTilt: numberValue(growthInput?.seedOrbitTilt, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedOrbitTilt, 0.15, 1.2),
+      seedOrbitSpeed: numberValue(growthInput?.seedOrbitSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedOrbitSpeed, 0, 2),
+      seedFallDuration: numberValue(growthInput?.seedFallDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedFallDuration, 1.8, 20),
+      seedFallAcceleration: numberValue(growthInput?.seedFallAcceleration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedFallAcceleration, 1, 5),
+      seedFallHeight: numberValue(growthInput?.seedFallHeight, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedFallHeight, 2, 6.4),
+      seedCameraLag: numberValue(growthInput?.seedCameraLag, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedCameraLag, 0.1, 0.8),
+      seedCameraFollowSpeed: numberValue(growthInput?.seedCameraFollowSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedCameraFollowSpeed, 0.1, 8),
+      seedSpinSpeed: numberValue(growthInput?.seedSpinSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedSpinSpeed, 0, 4),
+      seedTumbleSpeed: numberValue(growthInput?.seedTumbleSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedTumbleSpeed, 0, 3),
+      seedWobbleAmplitude: numberValue(growthInput?.seedWobbleAmplitude, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedWobbleAmplitude, 0, 0.35),
+      islandRevealDuration: numberValue(growthInput?.islandRevealDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandRevealDuration, 0.4, 3),
+      seedTrailIntensity: numberValue(growthInput?.seedTrailIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedTrailIntensity, 0, 2),
+      seedTrailSpread: numberValue(growthInput?.seedTrailSpread, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedTrailSpread, 0, 0.5),
+      seedTrailLifetime: numberValue(growthInput?.seedTrailLifetime, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedTrailLifetime, 0.15, 2),
+      seedTrailLiftSpeed: numberValue(growthInput?.seedTrailLiftSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedTrailLiftSpeed, 0.1, 2),
+      seedTrailParticleCount: numberValue(growthInput?.seedTrailParticleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedTrailParticleCount, 12, 128, true),
+      seedImpactStrength: numberValue(growthInput?.seedImpactStrength, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedImpactStrength, 0, 1),
+      seedImpactRadius: numberValue(growthInput?.seedImpactRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedImpactRadius, 0.1, 1.2),
+      seedImpactParticles: numberValue(growthInput?.seedImpactParticles, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedImpactParticles, 0, 180, true),
+      seedImpactLifetime: numberValue(growthInput?.seedImpactLifetime, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedImpactLifetime, 0.2, 1.6),
+      moonLightIntensity: numberValue(growthInput?.moonLightIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.moonLightIntensity, 0, 2),
+      moonLightColor: colorValue(growthInput?.moonLightColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.moonLightColor),
+      moonBeamRadius: numberValue(growthInput?.moonBeamRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.moonBeamRadius, 0.4, 4),
+      moonBeamSoftness: numberValue(growthInput?.moonBeamSoftness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.moonBeamSoftness, 0.05, 1),
+      moonBeamIntensity: numberValue(growthInput?.moonBeamIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.moonBeamIntensity, 0, 1.5),
+      moonScatteringIntensity: numberValue(growthInput?.moonScatteringIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.moonScatteringIntensity, 0, 1.5),
+      moonPositionX: numberValue(growthInput?.moonPositionX, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.moonPositionX, -4, 4),
+      moonPositionY: numberValue(growthInput?.moonPositionY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.moonPositionY, 1, 10),
+      moonPositionZ: numberValue(growthInput?.moonPositionZ, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.moonPositionZ, -4, 4),
+      cloudCount: numberValue(growthInput?.cloudCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudCount, 0, 24, true),
+      cloudDensity: numberValue(growthInput?.cloudDensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudDensity, 0, 2),
+      cloudScale: numberValue(growthInput?.cloudScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudScale, 0.4, 2),
+      cloudDriftSpeed: numberValue(growthInput?.cloudDriftSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudDriftSpeed, 0, 2),
+      cloudOpacity: numberValue(growthInput?.cloudOpacity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudOpacity, 0, 1),
+      cloudLightIntensity: numberValue(growthInput?.cloudLightIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudLightIntensity, 0, 2),
+      cloudSizeVariation: numberValue(growthInput?.cloudSizeVariation, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudSizeVariation, 0, 1),
+      cloudLightVariation: numberValue(growthInput?.cloudLightVariation, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudLightVariation, 0, 1),
+      cloudPathDensity: numberValue(growthInput?.cloudPathDensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudPathDensity, 0, 1),
+      cloudShapeVariation: numberValue(growthInput?.cloudShapeVariation, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudShapeVariation, 0, 1),
+      cloudDepthVariation: numberValue(growthInput?.cloudDepthVariation, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudDepthVariation, 0, 1),
     },
     bloom: {
       flowerBloomDuration: numberValue(asRecord(scenesInput?.bloom)?.flowerBloomDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.flowerBloomDuration, 6, 24),
@@ -568,7 +701,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 15, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 19, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {

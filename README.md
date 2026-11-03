@@ -50,7 +50,7 @@ Preview будет доступен на <http://127.0.0.1:4173>. Offline-под
 - Прикосновение или клавиатурная активация проходят интерактивные gates; галерея управляется кнопками и жестами.
 - DEV Scene Editor доступен только в development: нажмите DEV или откройте `/?debug`. Он включает Timeline, Inspector, настройку качества и DPR, заметки и A/B-сравнение.
 - Iris Visual Lab доступен в development по адресу `/dev/iris-lab`; описание — в [документации лаборатории](docs/iris-visual-lab.md).
-- Конфигурация сцен использует schema v14, миграции версий 1–13 и безопасные значения по умолчанию. Подробности — в [справке Scene Composer](frontend/src/systems/scene-config/README.md).
+- Конфигурация сцен использует schema v19, миграции версий 1–18 и безопасные значения по умолчанию. Подробности — в [справке Scene Composer](frontend/src/systems/scene-config/README.md).
 - Общие правила архитектуры и добавления сцен описаны в [docs/architecture.md](docs/architecture.md).
 
 Проверки frontend запускаются из `frontend/`:

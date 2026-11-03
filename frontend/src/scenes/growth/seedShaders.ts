@@ -11,6 +11,48 @@ export const surfaceVertex = `
     gl_Position = projectionMatrix * p;
   }
 `
+/** Low-frequency vertex deformation keeps the seed from reading as a perfect lathe. */
+export const seedSurfaceVertex = `
+  uniform float time;
+  varying vec2 vUv;
+  varying vec3 vNormal;
+  varying vec3 vView;
+  void main() {
+    vUv = uv;
+    float angle = atan(position.z, position.x);
+    float mid = sin(clamp((position.y + 0.72) / 1.44, 0.0, 1.0) * 3.14159265);
+    float irregular = sin(angle * 3.0 + position.y * 2.3 + time * 0.16) * 0.055
+      + cos(angle * 5.0 - position.y * 3.1) * 0.021;
+    vec3 organic = position;
+    organic.x *= 1.0 + irregular;
+    organic.z *= 1.0 + irregular * 0.78;
+    organic.x += 0.024 * sin(angle * 2.0 + position.y * 3.0) * mid;
+    organic.z += 0.018 * cos(angle * 3.0 - position.y * 2.0) * mid;
+    organic.y += 0.014 * sin(angle * 2.0 + position.y * 4.0 + time * 0.18) * mid;
+    vec4 p = modelViewMatrix * vec4(organic, 1.0);
+    vNormal = normalize(normalMatrix * normal);
+    vView = normalize(-p.xyz);
+    gl_Position = projectionMatrix * p;
+  }
+`
+
+export const impactWaveFragment = `
+  uniform float uOpacity;
+  uniform float uImpactProgress;
+  uniform float uImpactStrength;
+  varying vec2 vUv;
+  void main() {
+    float radius = length((vUv - 0.5) * 2.0);
+    float waveRadius = mix(0.05, 0.98, uImpactProgress);
+    float width = mix(0.095, 0.025, uImpactProgress);
+    float wave = 1.0 - smoothstep(width, width * 1.75, abs(radius - waveRadius));
+    float envelope = smoothstep(0.0, 0.12, uImpactProgress) * (1.0 - smoothstep(0.7, 1.0, uImpactProgress));
+    float heart = exp(-radius * radius * 24.0) * (1.0 - uImpactProgress) * 0.18;
+    vec3 color = mix(vec3(1.0, 0.48, 0.3), vec3(1.0, 0.86, 0.68), uImpactProgress);
+    gl_FragColor = vec4(color, (wave * 0.6 + heart) * envelope * uOpacity * uImpactStrength);
+  }
+`
+
 export const seedFragment = `
   uniform float opacity;
   uniform float time;
@@ -54,30 +96,6 @@ export const coreFragment = `
     gl_FragColor = vec4(color, (heart * 0.55 + hot * 0.12) * opacity * intensity * breathe);
   }
 `
-export const groundFragment = `
-  uniform float opacity;
-  uniform float impact;
-  uniform float moonlight;
-  varying vec2 vUv;
-  float ring(float r, float target, float width) {
-    return exp(-pow((r - target) / max(width, fwidth(r) * 0.85), 2.0));
-  }
-  void main() {
-    vec2 p = vUv - 0.5;
-    float r = length(p);
-    float angle = atan(p.y, p.x);
-    float drift = sin(angle * 3.0 + 0.4) * 0.0015;
-    float lines = ring(r, 0.14, 0.0012) + ring(r + drift, 0.205, 0.0014)
-      + ring(r, 0.26, 0.0011) + ring(r - drift, 0.27, 0.0006) * 0.35;
-    float glow = ring(r, 0.14, 0.009) + ring(r, 0.205, 0.009) + ring(r, 0.26, 0.011);
-    float irregular = 0.72 + 0.28 * sin(angle * 4.0 + r * 90.0);
-    float flash = ring(r, 0.035 + impact * 0.35, 0.008) * sin(impact * 3.14159);
-    float pool = exp(-r * r * 35.0);
-    vec3 color = mix(vec3(1.0, 0.64, 0.27), vec3(0.7, 0.78, 1.0), pool * moonlight * 0.18);
-    float alpha = (lines * irregular * 0.65 + glow * 0.08 + flash * 0.4) * opacity + pool * moonlight * 0.025;
-    gl_FragColor = vec4(color, alpha);
-  }
-`
 export const moonFragment = `
   uniform float opacity;
   varying vec2 vUv;
@@ -99,48 +117,127 @@ export const particleVertex = `
   uniform float height;
   uniform float reduced;
   uniform vec2 fallRange;
+uniform float impactRadius;
+uniform float impactStrength;
+uniform float impactLifetime;
+uniform float orbitCount;
+uniform float orbitRadius;
+uniform float orbitTilt;
+uniform float orbitSpeed;
+uniform float formationDuration;
+uniform float orbitAbsorption;
+uniform float seedFallAcceleration;
+uniform float seedFallHeight;
+uniform float seedTrailSpread;
+uniform float seedTrailLifetime;
+uniform float seedTrailLiftSpeed;
+uniform float impactOriginY;
   varying float vAlpha;
   varying vec3 vColor;
+  varying float vTrailAge;
+  float seedFallProgress(float u, float acceleration) {
+    float t = clamp(u, 0.0, 1.0);
+    float a = clamp(acceleration, 1.0, 5.0);
+    return pow(t, a);
+  }
   void main() {
     float id = position.x;
     float r = position.y;
     float s = position.z;
     float angle = id * 2.399963;
+    float trailAgeProgress = 0.0;
+    float burstAgeProgress = 0.0;
     vec3 p = vec3(0.0);
     float alpha = opacity;
     if (mode < 0.5) {
-      float birth = 0.06 + s * 0.85;
-      float age = clamp((time - birth) / (1.2 + r * 0.7), 0.0, 1.0);
-      float eased = age * age * (3.0 - 2.0 * age);
-      float radius = mix((0.32 + r * 0.64) * height / 3.85, 0.025, eased);
-      angle += (time * 1.5 + age * 2.7) * (1.0 - reduced);
-      p = vec3(cos(angle) * radius, 1.45 + sin(angle * 0.83 + s * 6.28) * radius * 0.8, sin(angle) * radius * 0.55);
-      alpha *= smoothstep(0.0, 0.18, time - birth) * (1.0 - smoothstep(0.75, 1.0, age));
-      if (reduced > 0.5) p = vec3(cos(angle) * 0.28, 1.45 + sin(angle) * 0.28, 0.0);
+      float lanes = max(1.0, orbitCount);
+      float lane = mod(id, lanes);
+      float phase = id * 2.399963 + s * 6.28318;
+      float formation = clamp(time / max(0.1, formationDuration), 0.0, 1.0);
+      float absorption = orbitAbsorption;
+      float laneSpeed = orbitSpeed * (0.68 + r * 0.56 + mod(lane, 3.0) * 0.09);
+      angle = phase + time * laneSpeed * (1.0 - reduced);
+      float irregular = 1.0 + 0.12 * sin(angle * 2.0 + lane * 1.71) + 0.06 * cos(angle * 3.0 - s * 6.28);
+      float radius = orbitRadius * (0.68 + r * 0.35) * irregular * (1.0 - absorption) + 0.012 * absorption;
+      float x = cos(angle) * radius;
+      float y = sin(angle) * radius * (0.48 + mod(lane, 2.0) * 0.11) + 0.06 * radius * sin(angle * 3.0 + phase);
+      float z = sin(angle + phase * 0.31) * radius * (0.54 + mod(lane, 3.0) * 0.09);
+      float tiltX = orbitTilt * (0.68 + mod(lane, 3.0) * 0.13);
+      float tiltZ = orbitTilt * (0.24 + mod(lane, 2.0) * 0.16);
+      float tiltedY = y * cos(tiltX) - z * sin(tiltX);
+      float tiltedZ = y * sin(tiltX) + z * cos(tiltX);
+      p = vec3(x * cos(tiltZ) - tiltedY * sin(tiltZ), tiltedY * cos(tiltZ) + x * sin(tiltZ), tiltedZ);
+      float fallProgress = clamp((time - fallRange.x) / (fallRange.y - fallRange.x), 0.0, 1.0);
+      float fallEase = seedFallProgress(fallProgress, seedFallAcceleration);
+      p.y += max(1.45, height * 0.62) * seedFallHeight * (1.0 - fallEase);
+      alpha *= smoothstep(0.0, 0.16, time) * (1.0 - smoothstep(0.84, 1.0, formation));
     } else if (mode < 1.5) {
-      float delay = r * 0.48;
-      float past = clamp((time - delay - fallRange.x) / (fallRange.y - fallRange.x), 0.0, 1.0);
-      p = vec3(sin(angle) * 0.024 * r, 1.45 * (1.0 - past * past) + height * 0.065 * (0.84 * past * past + 0.56), cos(angle) * 0.025);
-      alpha *= (1.0 - r * 0.65) * smoothstep(fallRange.x, fallRange.x + 0.15, time - delay);
+      float fallDuration = max(0.1, fallRange.y - fallRange.x);
+      float emission = mix(0.04, 0.98, clamp(r, 0.0, 1.0));
+      float emissionTime = fallRange.x + emission * fallDuration;
+      float ageSeconds = time - emissionTime;
+      float age = max(0.0, ageSeconds);
+      float lifetime = max(0.12, seedTrailLifetime);
+      float ageProgress = clamp(age / lifetime, 0.0, 1.0);
+      trailAgeProgress = ageProgress;
+      float alive = step(0.0, ageSeconds) * (1.0 - smoothstep(0.76, 1.0, ageProgress));
+      float emissionFall = seedFallProgress(emission, seedFallAcceleration);
+      float fallDistance = max(1.45, height * 0.62) * seedFallHeight;
+      float emissionY = fallDistance * (1.0 - emissionFall);
+      float spread = seedTrailSpread * (0.18 + r * 1.15) * pow(ageProgress, 1.15);
+      float direction = angle + s * 6.28318;
+      float flicker = sin(age * (5.0 + s * 4.0) + id * 1.7) * seedTrailSpread * 0.08;
+      p = vec3(cos(direction) * spread + flicker,
+        emissionY + age * seedTrailLiftSpeed * (0.72 + s * 0.56),
+        sin(direction) * spread * 0.68 + cos(age * 3.5 + id) * flicker);
+      alpha *= alive * (1.0 - r * 0.45) * (1.0 - reduced) * 1.4
+        * smoothstep(fallRange.x, fallRange.x + 0.12, time);
     } else {
-      float age = max(0.0, time - fallRange.y);
-      float speed = 0.55 + r * 1.35;
-      p = vec3(cos(angle) * speed * age, 0.035 + (0.45 + s * 1.25) * age - 1.8 * age * age, sin(angle) * speed * age);
-      alpha *= (1.0 - smoothstep(0.2 + r * 0.25, 0.5 + r * 0.35, age)) * smoothstep(-0.06, 0.02, p.y);
+      float impactAge = time - fallRange.y;
+      float delay = r * 0.045;
+      float age = max(0.0, impactAge - delay);
+      float lifetime = max(0.15, impactLifetime);
+      float progress = clamp(age / lifetime, 0.0, 1.0);
+      burstAgeProgress = progress;
+      float expansion = 1.0 - pow(1.0 - progress, 3.0);
+      float travel = impactRadius * (0.2 + r * 0.8) * expansion;
+      float lift = impactStrength * (0.42 + s * 1.28) * expansion;
+      float gravity = age * age * (0.08 + r * 0.04);
+      p = vec3(cos(angle) * travel, impactOriginY + lift - gravity, sin(angle) * travel * 0.88);
+      alpha *= step(0.0, impactAge - delay) * (1.0 - smoothstep(lifetime * 0.35, lifetime, age)) * impactStrength
+        * (1.0 - reduced) * smoothstep(-0.06, 0.02, p.y);
     }
     vAlpha = alpha;
-    vColor = mix(vec3(1.0, 0.64, 0.30), vec3(1.0, 0.89, 0.80), s);
+    vTrailAge = mode >= 0.5 && mode < 1.5 ? trailAgeProgress : -1.0;
+    vColor = mode < 0.5
+      ? mix(vec3(1.0, 0.83, 0.86), vec3(0.78, 0.72, 0.98), s)
+      : mode < 1.5
+        ? mix(vec3(1.0, 0.42, 0.12), vec3(1.0, 0.86, 0.56), s)
+        : mix(vec3(1.0, 0.64, 0.30), vec3(1.0, 0.89, 0.80), s);
     vec4 view = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * view;
-    gl_PointSize = (3.0 + s * 5.5) * dpr * (5.6 / max(1.0, -view.z));
+    float pointScale = mode >= 0.5 && mode < 1.5
+      ? (6.0 + s * 9.0) * (1.0 - trailAgeProgress * 0.32)
+      : mode >= 1.5
+        ? (6.0 + s * 9.0) * (1.0 - burstAgeProgress * 0.24)
+        : 3.0 + s * 5.5;
+    gl_PointSize = pointScale * dpr * (5.6 / max(1.0, -view.z));
   }
 `
 export const particleFragment = `
   varying float vAlpha;
   varying vec3 vColor;
+  varying float vTrailAge;
   void main() {
     float r = length(gl_PointCoord - 0.5) * 2.0;
     float light = exp(-r * r * 5.0) * 0.48 + exp(-r * r * 40.0) * 0.65;
-    gl_FragColor = vec4(vColor, light * vAlpha * (1.0 - smoothstep(0.7, 1.0, r)));
+    float edge = 1.0 - smoothstep(0.7, 1.0, r);
+    float meteorHalo = 1.0;
+    if (vTrailAge >= 0.0) {
+      light = exp(-r * r * 4.0) * 0.52 + exp(-r * r * 24.0) * 0.7;
+      edge = 1.0 - smoothstep(0.72, 1.0, r);
+      meteorHalo = mix(1.0, 1.12, 1.0 - vTrailAge);
+    }
+    gl_FragColor = vec4(vColor, light * vAlpha * edge * meteorHalo);
   }
 `

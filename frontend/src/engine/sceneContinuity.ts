@@ -7,6 +7,11 @@ export function shouldKeepGrowthWorld(scene: SceneId, elapsed: number, duration:
   return scene === 'identity' && Number.isFinite(elapsed) && elapsed < duration
 }
 
+/** Clouds are transient scene 02 animation; the shared island world persists into scene 03. */
+export function shouldMountGrowthClouds(environmentOnly: boolean): boolean {
+  return !environmentOnly
+}
+
 /** Fade the carried scene 02 environment over the active scene 04 dissolve. */
 export function getIdentityEnvironmentOpacity(elapsed: number, duration: number): number {
   if (!Number.isFinite(elapsed)) return 1

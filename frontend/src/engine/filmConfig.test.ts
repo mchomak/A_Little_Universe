@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+﻿import { describe, expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../systems/scene-config/config'
 import { createHandwritingSchedule, getBloomSceneFrames, getCreditsScrollDuration, getCreditsScrollProgress, getGreetingFrames, getGrowthSceneFrames, getPrologueCopy, getPrologueFrames, getPrologueParticleOpacity, getSceneDuration, retimeSceneElapsed } from './filmConfig'
 
@@ -90,16 +90,37 @@ describe('greeting frames', () => {
 })
 
 describe('Lily scene timing', () => {
+  it('uses the v18 default fall duration when a saved value is not finite', () => {
+    const settings = { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, seedFallDuration: Number.NaN }
+    const growth = getGrowthSceneFrames(settings)
+    expect(growth.fall[1] - growth.fall[0]).toBeCloseTo(8, 5)
+  })
+
   it('fits full Growth and Bloom clips plus the existing handoff and contemplation beats', () => {
     const growth = getGrowthSceneFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth)
     const bloom = getBloomSceneFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom)
 
-    expect(growth.model).toEqual([5.1, 14.1])
-    expect(growth.duration).toBe(16)
-    expect(getSceneDuration('growth', DEFAULT_SCENE_COMPOSER_CONFIG)).toBe(16)
+    expect(growth.fall[1] - growth.fall[0]).toBeCloseTo(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedFallDuration, 5)
+    expect(growth.islandReveal[1]).toBe(growth.fall[1])
+    expect(growth.islandReveal[1] - growth.islandReveal[0]).toBe(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandRevealDuration)
+    expect(growth.model[0]).toBeCloseTo(growth.fall[1] + 0.7, 5)
+    expect(growth.model[1] - growth.model[0]).toBeCloseTo(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.flowerGrowthDuration, 5)
+    expect(growth.duration).toBeCloseTo(growth.model[1] + 1.9, 5)
+    expect(getSceneDuration('growth', DEFAULT_SCENE_COMPOSER_CONFIG)).toBe(growth.duration)
     expect(bloom.opening).toEqual([0, 16])
     expect(bloom.contemplate).toEqual([16, 22])
     expect(getSceneDuration('bloom', DEFAULT_SCENE_COMPOSER_CONFIG)).toBe(22)
+  })
+
+  it('keeps every downstream beat in range when the fall duration reaches its 20 second limit', () => {
+    const settings = { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, seedFallDuration: 20 }
+    const growth = getGrowthSceneFrames(settings)
+
+    expect(growth.fall[1] - growth.fall[0]).toBe(20)
+    expect(growth.landing[0]).toBe(growth.fall[1])
+    expect(growth.model[0]).toBe(growth.fall[1] + 0.7)
+    expect(growth.model[1] - growth.model[0]).toBe(settings.flowerGrowthDuration)
+    expect(growth.duration).toBe(growth.model[1] + 1.9)
   })
 
   it('updates seed handoff and total duration together when animation timing changes', () => {
@@ -111,9 +132,11 @@ describe('Lily scene timing', () => {
     const growth = getGrowthSceneFrames(config.scenes.growth)
     const bloom = getBloomSceneFrames(config.scenes.bloom)
 
-    expect(growth.model).toEqual([5.4, 12.4])
-    expect(growth.duration).toBe(14.3)
-    expect(getSceneDuration('growth', config)).toBe(14.3)
+    expect(growth.fall[1] - growth.fall[0]).toBeCloseTo(config.scenes.growth.seedFallDuration, 5)
+    expect(growth.model[0]).toBe(growth.fall[1] + 0.7)
+    expect(growth.model[1] - growth.model[0]).toBeCloseTo(7, 5)
+    expect(growth.duration).toBeCloseTo(growth.model[1] + 1.9, 5)
+    expect(getSceneDuration('growth', config)).toBe(growth.duration)
     expect(bloom.opening).toEqual([0, 12])
     expect(bloom.contemplate).toEqual([12, 18])
     expect(getSceneDuration('bloom', config)).toBe(18)
@@ -128,12 +151,13 @@ describe('Lily scene timing', () => {
     } }
 
     const elapsed = retimeSceneElapsed('growth', 6, previous, next, 'playing')
-    expect(elapsed).toBeCloseTo(6.2636363636)
     const beforeFrames = getGrowthSceneFrames(previous.scenes.growth)
     const afterFrames = getGrowthSceneFrames(next.scenes.growth)
-    expect((6 - beforeFrames.handoff[1]) / (beforeFrames.model[1] - beforeFrames.handoff[1]))
-      .toBeCloseTo((elapsed - afterFrames.handoff[1]) / (afterFrames.model[1] - afterFrames.handoff[1]))
-    expect(retimeSceneElapsed('growth', 15, previous, next, 'playing')).toBeCloseTo(13.3)
+    const fallToHandoffProgress = (6 - beforeFrames.fall[1]) / (beforeFrames.handoff[0] - beforeFrames.fall[1])
+    expect(elapsed).toBeCloseTo(afterFrames.fall[1] + fallToHandoffProgress * (afterFrames.handoff[0] - afterFrames.fall[1]))
+    const clipProgress = (15 - beforeFrames.handoff[1]) / (beforeFrames.model[1] - beforeFrames.handoff[1])
+    expect(retimeSceneElapsed('growth', 15, previous, next, 'playing'))
+      .toBeCloseTo(afterFrames.handoff[1] + clipProgress * (afterFrames.model[1] - afterFrames.handoff[1]))
     expect(2 / 3.2).toBeCloseTo(retimeSceneElapsed('growth', 2, previous, next, 'playing') / 3.5)
     expect(retimeSceneElapsed('bloom', 8, previous, next, 'playing')).toBe(6)
     expect(retimeSceneElapsed('bloom', 0, previous, next, 'waiting')).toBe(0)

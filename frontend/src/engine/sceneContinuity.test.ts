@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getIdentityEnvironmentOpacity, shouldKeepGrowthWorld } from './sceneContinuity'
+import { getIdentityEnvironmentOpacity, shouldKeepGrowthWorld, shouldMountGrowthClouds } from './sceneContinuity'
 
 describe('growth world continuity', () => {
   it('keeps the same environment through growth, bloom and the opening of identity', () => {
@@ -14,6 +14,11 @@ describe('growth world continuity', () => {
 })
 
 describe('growth environment handoff', () => {
+  it('mounts transient Scene 02 clouds only while the growth timeline is active', () => {
+    expect(shouldMountGrowthClouds(false)).toBe(true)
+    expect(shouldMountGrowthClouds(true)).toBe(false)
+  })
+
   it('keeps the scene 02 environment visible through the slower scene 04 dissolve', () => {
     expect(getIdentityEnvironmentOpacity(0, 12)).toBe(1)
     expect(getIdentityEnvironmentOpacity(4, 12)).toBeCloseTo(2 / 3)
