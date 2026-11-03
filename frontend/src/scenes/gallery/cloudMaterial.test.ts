@@ -93,7 +93,7 @@ describe('gallery volumetric atmosphere material', () => {
     })
     expect(material.defines?.CLOUD_STEPS).toBe(12)
     expect(material.uniforms.uStepCount!.value).toBe(12)
-    expect(material.uniforms.uDriftSpeed!.value).toBe(2)
+    expect(material.uniforms.uDriftSpeed!.value).toBe(3)
     expect(material.uniforms.uOpacity!.value).toBe(1.5)
     material.dispose()
   })

@@ -45,7 +45,7 @@ it('retains the full waterline count range exposed by the Scene 05 controls', ()
   const fullCapacity = normalizeConfig({ schemaVersion: 14, scenes: { gallery: { cloudLayers: { waterline: { count: 32 } } } } })
   const aboveCapacity = normalizeConfig({ schemaVersion: 14, scenes: { gallery: { cloudLayers: { waterline: { count: 33 } } } } })
   expect(fullCapacity.scenes.gallery.cloudLayers.waterline.count).toBe(32)
-  expect(aboveCapacity.scenes.gallery.cloudLayers.waterline.count).toBe(13)
+  expect(aboveCapacity.scenes.gallery.cloudLayers.waterline.count).toBe(10)
 })
 
 it('migrates and bounds the adjustable gallery aisle width in schema v15', () => {
@@ -233,11 +233,30 @@ it('persists bounded cloud volume settings while keeping old settings compatible
   const migrated = normalizeConfig({ schemaVersion: 7, scenes: { gallery: { cloudLayerCount: 6 } } })
   expect(migrated.schemaVersion).toBe(16)
   expect(Object.values(migrated.scenes.gallery.cloudLayers).reduce((sum, layer) => sum + layer.count, 0)).toBe(6)
-  expect(migrated.scenes.gallery.cloudLayers.far.driftSpeed).toBe(0.26)
+  expect(migrated.scenes.gallery.cloudLayers.far.driftSpeed).toBe(0.48)
 
   const bounded = normalizeConfig({ schemaVersion: 9, scenes: { gallery: { cloudScale: 99, cloudLayerCount: 99, cloudDriftSpeed: 99 } } })
   expect(Object.values(bounded.scenes.gallery.cloudLayers).reduce((sum, layer) => sum + layer.count, 0)).toBe(18)
   expect(bounded.scenes.gallery.cloudLayers.far).toMatchObject({ scale: 1, driftSpeed: 0.82 })
+})
+
+it('accepts faster per-layer cloud and haze motion while retaining an explicit stop', () => {
+  const config = normalizeConfig({ schemaVersion: 16, scenes: { gallery: {
+    hazeMotionSpeed: 3,
+    cloudLayers: {
+      far: { driftSpeed: 3 },
+      mid: { driftSpeed: 2.8 },
+      nearLow: { driftSpeed: 2.6 },
+      waterline: { driftSpeed: 0 },
+    },
+  } } })
+  expect(config.scenes.gallery.hazeMotionSpeed).toBe(3)
+  expect(config.scenes.gallery.cloudLayers).toMatchObject({
+    far: { driftSpeed: 3 }, mid: { driftSpeed: 2.8 }, nearLow: { driftSpeed: 2.6 }, waterline: { driftSpeed: 0 },
+  })
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.cloudLayers).toMatchObject({
+    far: { driftSpeed: 0.48 }, mid: { driftSpeed: 0.68 }, nearLow: { driftSpeed: 0.62 }, waterline: { driftSpeed: 0.52 },
+  })
 })
 
 it('migrates old configs to bounded scene 04 dissolve settings', () => {

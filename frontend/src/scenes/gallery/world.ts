@@ -5,13 +5,13 @@ export type GalleryQuality = 'low' | 'standard'
 export type GalleryCloudLayerId = keyof GalleryCloudLayers
 
 /** Per-frame raymarch draw-call ceilings; the registry can stay denser than the rendered subset. */
-export const GALLERY_CLOUD_RENDER_LIMIT: Readonly<Record<GalleryQuality, number>> = { low: 17, standard: 29 }
+export const GALLERY_CLOUD_RENDER_LIMIT: Readonly<Record<GalleryQuality, number>> = { low: 16, standard: 24 }
 
 export type GalleryAtmosphereLayer = GalleryCloudLayerId | 'haze'
 
 const cloudLayerMinimums: Readonly<Record<GalleryQuality, Readonly<Record<GalleryCloudLayerId, number>>>> = {
-  standard: { far: 0, mid: 0, nearLow: 10, waterline: 12 },
-  low: { far: 3, mid: 2, nearLow: 6, waterline: 6 },
+  standard: { far: 3, mid: 1, nearLow: 8, waterline: 10 },
+  low: { far: 3, mid: 1, nearLow: 6, waterline: 6 },
 }
 
 const cloudStepProfiles: Readonly<Record<GalleryQuality, Readonly<Record<GalleryAtmosphereLayer, { near: number; far: number; reflection: number }>>>> = {
@@ -150,8 +150,8 @@ function createRouteCloudLayer({
 
 const routeClouds = [
   ...createRouteCloudLayer({ id: 'mid-bank', layer: 'mid', count: 20, x: 17.6, y: 10, radii: [10.5, 6.8, 20], opacity: 0.64, seed: 61, yJitter: 2.2, xJitter: 1.4 }),
-  ...createRouteCloudLayer({ id: 'near-low-bank', layer: 'nearLow', count: 24, x: 10.1, y: 1.85, radii: [4.35, 4, 10.5], opacity: 0.8, seed: 211, yJitter: 0.75, xJitter: 0.3 }),
-  ...createRouteCloudLayer({ id: 'waterline-bank', layer: 'waterline', count: 32, x: 12.2, y: 0.55, radii: [6.2, 3.5, 8.5], opacity: 0.82, seed: 421, yJitter: 0.45, xJitter: 0.3 }),
+  ...createRouteCloudLayer({ id: 'near-low-bank', layer: 'nearLow', count: 24, x: 10.1, y: 1.85, radii: [4.35, 4, 14], opacity: 0.8, seed: 211, yJitter: 0.75, xJitter: 0.3 }),
+  ...createRouteCloudLayer({ id: 'waterline-bank', layer: 'waterline', count: 32, x: 12.2, y: 0.2, radii: [6.2, 4.1, 10.4], opacity: 0.82, seed: 421, yJitter: 0.45, xJitter: 0.3 }),
 ]
 
 /** Fixed world-space bounds shared by the gallery environment and its tests. */
@@ -159,9 +159,9 @@ export const GALLERY_WORLD = {
   floor: { y: -2.35, centerZ: -180, width: 140, depth: 470 },
   // Separate soft volumes soften the horizon without placing a screen-facing image in the scene.
   haze: [
-    { id: 'haze-near', position: [-1.5, -1.25, -67] as const, radii: [38, 3.8, 17] as const, opacity: 0.1, seed: 181, lowQuality: true },
-    { id: 'haze-middle', position: [2, -0.6, -98] as const, radii: [48, 4.5, 20] as const, opacity: 0.13, seed: 211, lowQuality: false },
-    { id: 'haze-far', position: [0, 0.3, -128] as const, radii: [54, 5.5, 23] as const, opacity: 0.16, seed: 227, lowQuality: true },
+    { id: 'haze-near', position: [-1.5, -1.5, -67] as const, radii: [38, 4.5, 19] as const, opacity: 0.14, seed: 181, lowQuality: true },
+    { id: 'haze-middle', position: [2, -0.75, -98] as const, radii: [48, 5, 22] as const, opacity: 0.17, seed: 211, lowQuality: false },
+    { id: 'haze-far', position: [0, 0, -128] as const, radii: [54, 5.9, 25] as const, opacity: 0.19, seed: 227, lowQuality: true },
   ] satisfies readonly GalleryAtmosphereMass[],
   // Keep the moon on the gallery axis, but lift it clearly above the cloud horizon.
   moon: { position: [0.2, 16, -126] as const, radius: 2.15, haloRadius: 6.5 },
@@ -314,7 +314,7 @@ export function getGalleryCloudDrift(
   variation = 0.5,
 ): readonly [number, number, number] {
   if (!Number.isFinite(time)) return [0, 0, 0]
-  const safeSpeed = Number.isFinite(speed) ? Math.max(0, Math.min(2, speed)) : 0
+  const safeSpeed = Number.isFinite(speed) ? Math.max(0, Math.min(3, speed)) : 0
   const safeVariation = Number.isFinite(variation) ? Math.max(0, Math.min(1, variation)) : 0
   if (safeSpeed === 0) return [0, 0, 0]
   const phase = mass.seed * 0.137

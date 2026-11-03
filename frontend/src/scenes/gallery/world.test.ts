@@ -28,13 +28,13 @@ describe('moonlit gallery world layout', () => {
       standard.filter((mass) => mass.layer === layer).length,
     ]))
 
-    expect(counts).toEqual({ far: 3, mid: 4, nearLow: 10, waterline: 12 })
+    expect(counts).toEqual({ far: 3, mid: 3, nearLow: 8, waterline: 10 })
     expect(standard).toHaveLength(GALLERY_CLOUD_RENDER_LIMIT.standard)
     expect(low).toHaveLength(GALLERY_CLOUD_RENDER_LIMIT.low)
     expect(new Set(low.map((mass) => mass.layer))).toEqual(new Set(['far', 'mid', 'nearLow', 'waterline']))
     expect(Object.fromEntries(['far', 'mid', 'nearLow', 'waterline'].map((layer) => [
       layer, low.filter((mass) => mass.layer === layer).length,
-    ]))).toEqual({ far: 3, mid: 2, nearLow: 6, waterline: 6 })
+    ]))).toEqual({ far: 3, mid: 1, nearLow: 6, waterline: 6 })
     expect(standard.filter((mass) => mass.moonInteraction)).toHaveLength(2)
     expect(standard.filter((mass) => mass.moonInteraction).every((mass) => mass.opacity < 0.5)).toBe(true)
     expect(low.filter((mass) => mass.moonInteraction)).toHaveLength(2)
@@ -63,10 +63,10 @@ describe('moonlit gallery world layout', () => {
       ].reduce((sum, steps) => sum + steps, 0)
     }
 
-    expect(sampleBudget('standard')).toBe(314)
-    expect(sampleBudget('standard', true)).toBe(108)
-    expect(sampleBudget('low')).toBe(69)
-    expect(sampleBudget('low', true)).toBe(50)
+    expect(sampleBudget('standard')).toBe(261)
+    expect(sampleBudget('standard', true)).toBe(90)
+    expect(sampleBudget('low')).toBe(66)
+    expect(sampleBudget('low', true)).toBe(48)
     expect(getGalleryAtmosphereStepCount('standard', 'nearLow', 18)).toBe(12)
     expect(getGalleryAtmosphereStepCount('standard', 'nearLow', 50)).toBeGreaterThan(5)
     expect(getGalleryAtmosphereStepCount('standard', 'nearLow', 50)).toBeLessThan(12)
@@ -165,5 +165,20 @@ describe('moonlit gallery world layout', () => {
     expect(getGalleryHazeMasses('standard').length).toBeGreaterThanOrEqual(3)
     expect(getGalleryHazeMasses('low').length).toBeLessThan(getGalleryHazeMasses('standard').length)
     expect(getGalleryHazeMasses('standard').every(({ position, radii }) => position[1] < 1 && radii[1] < 6)).toBe(true)
+  })
+
+  it('expands waterline haze across the horizon while keeping it soft and covering the full water plane', () => {
+    const haze = GALLERY_WORLD.haze
+    const floorY = GALLERY_WORLD.floor.y
+    expect(haze[0]!.position[1] - haze[0]!.radii[1]).toBeLessThan(floorY)
+    expect(haze.every(({ position, radii, opacity }) => position[1] + radii[1] > 2 && opacity < 0.25)).toBe(true)
+    expect(haze[0]!.radii[2]).toBeGreaterThan(17)
+  })
+
+  it('supports faster drift while preserving zero as a deliberate stop', () => {
+    const mass = getGalleryCloudMasses('standard')[0]!
+    expect(getGalleryCloudDrift(mass, 12, 0)).toEqual([0, 0, 0])
+    expect(getGalleryCloudDrift(mass, 12, 3)).not.toEqual(getGalleryCloudDrift(mass, 12, 2))
+    expect(Math.hypot(...getGalleryCloudDrift(mass, 12, 3))).toBeLessThan(2)
   })
 })

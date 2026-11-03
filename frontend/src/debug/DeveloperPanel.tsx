@@ -248,7 +248,7 @@ const GALLERY_CLOUD_GROUPS: readonly { name: string; controls: readonly NumericC
       { path: `scenes.gallery.cloudLayers.${id}.scale`, label: 'Масштаб', unit: '×', min: 0.55, max: 2, step: 0.05 },
       { path: `scenes.gallery.cloudLayers.${id}.opacity`, label: 'Непрозрачность', unit: '×', min: 0, max: 1.8, step: 0.05 },
       { path: `scenes.gallery.cloudLayers.${id}.brightness`, label: 'Яркость', unit: '×', min: 0, max: 2, step: 0.05 },
-      { path: `scenes.gallery.cloudLayers.${id}.driftSpeed`, label: 'Скорость дрейфа', unit: '×', min: 0, max: 2, step: 0.05 },
+      { path: `scenes.gallery.cloudLayers.${id}.driftSpeed`, label: 'Скорость дрейфа', unit: '×', min: 0, max: 3, step: 0.05 },
       { path: `scenes.gallery.cloudLayers.${id}.height`, label: 'Высота', unit: 'м', min: -8, max: 12, step: 0.1 },
       { path: `scenes.gallery.cloudLayers.${id}.distance`, label: 'Отступ от галереи', unit: 'м', min: 0, max: 24, step: 0.25 },
       { path: `scenes.gallery.cloudLayers.${id}.softness`, label: 'Мягкость края', unit: '×', min: 0, max: 1, step: 0.025 },
@@ -258,7 +258,7 @@ const GALLERY_CLOUD_GROUPS: readonly { name: string; controls: readonly NumericC
     { path: 'scenes.gallery.cloudDriftVariation', label: 'Разница дрейфа по глубине', unit: '×', min: 0, max: 1, step: 0.05 },
     { path: 'scenes.gallery.hazeDensity', label: 'Плотность дымки', unit: '×', min: 0, max: 1.8, step: 0.05 },
     { path: 'scenes.gallery.hazeHeight', label: 'Высота дымки', unit: 'м.', min: -3, max: 3, step: 0.1 },
-    { path: 'scenes.gallery.hazeMotionSpeed', label: 'Скорость движения дымки', unit: '×', min: 0, max: 1, step: 0.025 },
+    { path: 'scenes.gallery.hazeMotionSpeed', label: 'Скорость движения дымки', unit: '×', min: 0, max: 3, step: 0.025 },
   ] },
   { name: 'Лунный свет и цвет', controls: [
     { path: 'scenes.gallery.moonCloudLightIntensity', label: 'Лунный свет на облаках', unit: '×', min: 0, max: 2, step: 0.05 },
@@ -766,7 +766,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           </details>
           {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.name.startsWith('Near Low') || group.name.startsWith('Waterline')}><summary>{group.name}</summary>
             {group.controls.map(range)}
-            {group.name.startsWith('Waterline') && <p>Для устойчивого времени кадра сцена отображает не более 29 объёмных масс (17 в низком профиле); все четыре слоя сохраняют отдельные квоты.</p>}
+            {group.name.startsWith('Waterline') && <p>Для устойчивого времени кадра сцена отображает не более 24 объёмных масс (16 в низком профиле); все четыре слоя сохраняют отдельные квоты.</p>}
           </details>)}
           {GALLERY_CONTROLS.map(range)}
         </details>}

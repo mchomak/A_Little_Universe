@@ -219,7 +219,7 @@ export function createGalleryCloudVolumeMaterial(options: GalleryCloudVolumeMate
       // Haze samples one shared world-space field; per-mass seeds are only for clouds.
       uSeed: { value: options.kind === 'haze' ? 0 : options.seed },
       uTime: { value: 0 },
-      uDriftSpeed: { value: Math.max(0, Math.min(2, options.driftSpeed)) },
+      uDriftSpeed: { value: Math.max(0, Math.min(3, options.driftSpeed)) },
       uOpacity: { value: Math.max(0, Math.min(1.5, options.opacity)) },
       uCloudDensity: { value: Math.max(0, Math.min(1.8, options.density ?? 0.9)) },
       uCloudIntensity: { value: Math.max(0, Math.min(2, options.intensity)) },
