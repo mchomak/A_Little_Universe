@@ -11,8 +11,8 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-11-03T19:44:29+03:00",
-  "updatedAt": "2026-11-03T20:47:22+03:00",
-  "finishedAt": "2026-11-03T20:47:22+03:00",
+  "updatedAt": "2026-11-03T21:22:00+03:00",
+  "finishedAt": "2026-11-03T21:22:00+03:00",
   "stages": [
     {
       "id": "preflight",
@@ -44,25 +44,25 @@ window.STATE =
     {
       "id": "build",
       "status": "done",
-      "startedAt": "2026-11-03T20:40:21+03:00",
-      "finishedAt": "2026-11-03T20:47:22+03:00"
+      "startedAt": "2026-11-03T21:00:47+03:00",
+      "finishedAt": "2026-11-03T21:22:00+03:00"
     },
     {
       "id": "review",
       "status": "done",
-      "finishedAt": "2026-11-03T20:47:22+03:00",
+      "finishedAt": "2026-11-03T21:22:00+03:00",
       "startedAt": "2026-11-03T20:27:45+03:00"
     },
     {
       "id": "final",
       "status": "done",
-      "finishedAt": "2026-11-03T20:47:22+03:00",
+      "finishedAt": "2026-11-03T21:22:00+03:00",
       "startedAt": "2026-11-03T20:27:45+03:00"
     }
   ],
   "requirements": {
-    "total": 7,
-    "done": 7,
+    "total": 11,
+    "done": 11,
     "inTicket": 0,
     "inSpec": 0,
     "placeholder": 0,
@@ -138,10 +138,33 @@ window.STATE =
       "finishedAt": "2026-11-03T20:47:22+03:00",
       "commit": "5f8be32",
       "tests": "465 tests, full check passed"
+    },
+    {
+      "id": "04",
+      "title": "Равномерная экспозиция и зеркальные настройки",
+      "requirements": [
+        "G04",
+        "G05",
+        "G06",
+        "G07"
+      ],
+      "blockedBy": [],
+      "wave": 4,
+      "zone": [
+        "gallery"
+      ],
+      "status": "done",
+      "startedAt": "2026-11-03T21:00:47+03:00",
+      "retries": 0,
+      "repairs": 0,
+      "handoffs": 0,
+      "finishedAt": "2026-11-03T21:22:00+03:00",
+      "commit": "0e60352",
+      "tests": "467 tests, check passed"
     }
   ],
   "singlePass": null,
-  "tests": "npm run check: 94 files, 465 tests; lint, typecheck and build passed",
+  "tests": "npm run check: 94 files, 467 tests; lint, typecheck, build passed",
   "debt": {
     "placeholders": [],
     "assumptions": [
@@ -159,5 +182,5 @@ window.STATE =
     "manifestSpec": null,
     "craft": null
   },
-  "blind": "Code review confirms straight B and shared supports; visual testing omitted per user request."
+  "blind": "Code review: equal spacing and mirrored X; live B focus and caption inspected. Extreme geometry evaluated numerically."
 }
