@@ -11,12 +11,23 @@ describe('gallery travel', () => {
     expect(GALLERY_MEMORIES).toHaveLength(12)
     expect(new Set(GALLERY_MEMORIES.map(m => m.id)).size).toBe(12)
     GALLERY_MEMORIES.forEach((m, i) => {
-      const [x, , z] = memoryPosition(m)
+      const [x, , z] = memoryPosition(m, GALLERY.width)
       expect(m.side).toBe(i % 2 ? 1 : -1)
-      expect(x).toBe(m.side * GALLERY.side)
+      expect(x).toBe(m.side * GALLERY.width / 2)
       expect(Math.abs(x)).toBe(3.5)
       expect(z).toBe(GALLERY.firstZ - i * GALLERY.spacing)
     })
+  })
+  it('changes photo lane X symmetrically while preserving each exhibit depth and order', () => {
+    const width = 9.2
+    for (const memory of GALLERY_MEMORIES) {
+      const [defaultX, defaultY, defaultZ] = memoryPosition(memory, GALLERY.width)
+      const [wideX, wideY, wideZ] = memoryPosition(memory, width)
+      expect(defaultX).toBe(memory.side * 3.5)
+      expect(wideX).toBe(memory.side * width / 2)
+      expect(wideY).toBe(defaultY)
+      expect(wideZ).toBe(defaultZ)
+    }
   })
   it('moves forward for a spreading pinch, backward for a closing pinch and clamps both ends', () => {
     travel(5); advanceGallery(.2); expect(galleryMotion.progress).toBeGreaterThan(0)

@@ -123,6 +123,13 @@ it('exposes all bounded moonlit gallery settings in the existing Scene Inspector
   }))
 
   expect(markup).toContain('Лунная галерея')
+  expect(markup).toContain('Колонны и геометрия галереи')
+  expect(markup).toMatch(/id="composer-scenes-gallery-columnVisible"[^>]*type="checkbox"[^>]*checked/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-galleryWidth"[^>]*min="6" max="12" step="0.1" value="7"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-columnScale"[^>]*min="0.75" max="3" step="0.05" value="1"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-columnDepth"[^>]*min="0.02" max="2" step="0.01" value="0.15"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-columnOffsetX"[^>]*min="-2" max="2" step="0.05" value="0"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-columnOffsetY"[^>]*min="-2" max="2" step="0.05" value="0"/)
   expect(markup).toContain('Far Clouds · дальний слой')
   expect(markup).toContain('Mid Clouds · боковые массы')
   expect(markup).toContain('Near Low Clouds · за фотографиями')

@@ -15,6 +15,7 @@ import { useSyncExternalStore } from 'react'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
 import { GALLERY, GALLERY_MEMORIES, memoryPosition, type GalleryMemory } from './gallery/content'
+import { GalleryColumn } from './gallery/GalleryColumn'
 import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, resetGallery } from './gallery/controller'
 import { bindGalleryGestures } from './gallery/gestures'
 import { MoonlitWorld } from './gallery/MoonlitWorld'
@@ -155,6 +156,7 @@ function setFocusFog(material: Material, focus: boolean) { if (material instance
 function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: GalleryMemory; reducedMotion: boolean; halo: CanvasTexture; paused: boolean; settings: GalleryArtSettings }) {
   const materials = useRef<{ material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[]>([])
   const group = useRef<Group>(null)
+  const visualGroup = useRef<Group>(null)
   const glow = useRef<MeshBasicMaterial>(null)
   const captionMaterial = useRef<MeshBasicMaterial>(null)
   const contourMaterials = useRef<(MeshBasicMaterial | null)[]>([])
@@ -185,7 +187,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   useEffect(() => { setColorSpace(firstPhoto) }, [firstPhoto])
   useEffect(() => {
     const saved: { material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[] = []
-    group.current?.traverse((child) => {
+    visualGroup.current?.traverse((child) => {
       if (!(child instanceof Mesh) && !(child instanceof Points)) return
       const list = Array.isArray(child.material) ? child.material : [child.material]
       for (const material of list) saved.push({ material, opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite })
@@ -194,10 +196,10 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     return () => { materials.current = [] }
   }, [])
   useEffect(() => {
-    const root = group.current
-    if (!root) return
+    const photoRoot = visualGroup.current
+    if (!photoRoot) return
     const restore: (() => void)[] = []
-    root.traverse((object) => {
+    photoRoot.traverse((object) => {
       if (!(object instanceof Mesh) && !(object instanceof Points)) return
       const original = object.raycast
       const gated = galleryPhotoRaycast(memory.order, original, () => Boolean(group.current?.visible))
@@ -216,7 +218,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     [height, memory.order, settings.frameIntensity, width],
   )
   useEffect(() => () => frameParticles.dispose(), [frameParticles])
-  const [x, y, z] = memoryPosition(memory)
+  const [x, y, z] = memoryPosition(memory, settings.galleryWidth)
 
   const applyArtSettings = useCallback((alpha = visual.current.alpha, focusAmount = visual.current.focusAmount) => {
     const frameIntensity = Math.max(0, Math.min(2, settings.frameIntensity))
@@ -234,24 +236,26 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   useEffect(() => { applyArtSettings() }, [applyArtSettings])
 
   useFrame(({ camera }) => {
-    if (!group.current || paused || document.hidden) return
+    if (!group.current || !visualGroup.current || paused || document.hidden) return
     const m = galleryMotion
     const t = Math.min(1, m.intro / (reducedMotion ? 0.35 : GALLERY.intro))
     const e = t * t * (3 - 2 * t)
     const first = memory.order === 0
-    group.current.position.set(first ? x * e : x, y + (reducedMotion ? 0 : Math.sin(m.time * 0.3 + memory.order) * 0.025), first ? z * e : z)
-    if (first) group.current.scale.setScalar(1 + 0.35 * e)
-    if (first) group.current.rotation.set(reducedMotion ? 0 : -0.022 * (1 - e), (reducedMotion ? 0 : 0.065 * (1 - e)) - memory.side * GALLERY_ART.wallYaw * e, reducedMotion ? 0 : -0.009 * (1 - e))
-    else group.current.rotation.y = -memory.side * GALLERY_ART.wallYaw
+    group.current.position.set(first ? x * e : x, y, first ? z * e : z)
+    group.current.scale.setScalar(first ? 1 + 0.35 * e : 1)
+    group.current.rotation.set(0, first ? (reducedMotion ? 0 : 0.065 * (1 - e)) - memory.side * GALLERY_ART.wallYaw * e : -memory.side * GALLERY_ART.wallYaw, 0)
+    visualGroup.current.position.set(0, reducedMotion ? 0 : Math.sin(m.time * 0.3 + memory.order) * 0.025, 0)
+    visualGroup.current.scale.setScalar(1)
+    visualGroup.current.rotation.set(first && !reducedMotion ? -0.022 * (1 - e) : 0, 0, first && !reducedMotion ? -0.009 * (1 - e) : 0)
 
     const visible = first ? 1 : Math.max(0, Math.min(1, (m.intro - memory.order * 0.15) / 1.4))
     const selected = gallerySnapshot().focus === memory.order
     const focusTarget = m.focusMix > 0.001 && m.focusIndex === memory.order
     const focusAmount = m.focusIndex === memory.order ? Math.max(0, Math.min(1, m.focusMix)) : 0
-    const photoPosition = group.current.getWorldPosition(worldPosition)
+    const photoPosition = visualGroup.current.getWorldPosition(worldPosition)
     moonPosition.set(settings.moonPositionX, settings.moonPositionY, settings.moonPositionZ)
     moonDirection.subVectors(moonPosition, photoPosition)
-    group.current.getWorldDirection(photoNormal)
+    visualGroup.current.getWorldDirection(photoNormal)
     const moonIllumination = getMoonPhotoIllumination(
       photoNormal,
       moonDirection,
@@ -291,6 +295,14 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
 
   return <>
     <group ref={group} renderOrder={GALLERY_MEMORY_RENDER_ORDER} onClick={(event) => { event.stopPropagation(); if (!paused) galleryFocus(memory.order) }}>
+      <GalleryColumn
+        visible={settings.columnVisible}
+        scale={settings.columnScale}
+        depth={settings.columnDepth}
+        offsetX={settings.columnOffsetX}
+        offsetY={settings.columnOffsetY}
+      />
+      <group ref={visualGroup}>
       <mesh position={[0, 0, -0.04]}><boxGeometry args={[width + 0.08, height + 0.08, 0.07]} /><meshStandardMaterial color="#171b23" roughness={0.96} metalness={0.02} /></mesh>
       <mesh position={[0, 0, -0.07]}><planeGeometry args={[width + 0.36, height + 0.36]} /><meshBasicMaterial ref={glow} map={halo} color="#ffd7b0" transparent opacity={0.2} depthWrite={false} blending={AdditiveBlending} toneMapped={false} /></mesh>
       {memory.order === 0 ? <FirstMemoryCard photoMaterial={photoMaterial} frameTone="moonlight" /> : memory.image ? <Photo url={memory.image} width={width} height={height} fallback={image} onAspect={setAspect} material={photoMaterialRef} /> : <mesh><planeGeometry args={[width, height]} /><primitive object={photoMaterial} attach="material" /></mesh>}
@@ -314,6 +326,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
       </group>)}
       <points geometry={frameParticles}><primitive object={frameMaterial} attach="material" /></points>
       <mesh position={[0, -height / 2 - 0.34, 0.02]}><planeGeometry args={[3.4, 0.33]} /><meshBasicMaterial ref={captionMaterial} map={caption} transparent opacity={0.65} depthWrite={false} toneMapped={false} /></mesh>
+      </group>
     </group>
   </>
 }
@@ -365,7 +378,7 @@ function Dust({ low, reducedMotion, settings }: { low: boolean; reducedMotion: b
   </points>
 }
 function MemoryThreads({ settings, low, paused, halo }: { settings: GalleryArtSettings; low: boolean; paused: boolean; halo: CanvasTexture }) {
-  const paths = useMemo(() => createMemoryThreadPaths(GALLERY_MEMORIES), [])
+  const paths = useMemo(() => createMemoryThreadPaths(GALLERY_MEMORIES, settings.galleryWidth), [settings.galleryWidth])
   const geometries = useMemo(
     () => paths.map(path => createMemoryThreadGeometry(path, { segments: low ? 22 : 38, radius: 0.01, radialSegments: 4 })),
     [low, paths],

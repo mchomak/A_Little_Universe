@@ -1,5 +1,7 @@
 ﻿import { describe, expect, it } from 'vitest'
 import { configureCameraFarPlane, focusCamera } from './camera'
+import { GALLERY_MEMORIES, memoryPosition } from './content'
+import { GALLERY_ART } from './artDirection'
 describe('focus dolly', () => {
   it('approaches the exhibit with bounded movement and returns exactly to the corridor pose', () => {
     const start = [0, 0, 6] as const, exhibit = [-3, 0, -10] as const
@@ -18,6 +20,20 @@ describe('focus dolly', () => {
     expect(focused.z).toBeCloseTo(target[2] + Math.cos(yaw) * 4.8)
     expect(focused.distance).toBeCloseTo(Math.hypot(4.8, 0.12))
     expect(focusCamera([0, 0, 6], target, 0, yaw)).toEqual({ x: 0, y: 0, z: 6, distance: Math.hypot(3, 16) })
+  })
+
+  it('keeps focus framing attached to the same exhibit as aisle width changes', () => {
+    const memory = GALLERY_MEMORIES[0]!
+    const narrowTarget = memoryPosition(memory, 6)
+    const wideTarget = memoryPosition(memory, 10)
+    const yaw = -memory.side * GALLERY_ART.wallYaw
+    const narrow = focusCamera([0, 0, 6], narrowTarget, 1, yaw)
+    const wide = focusCamera([0, 0, 6], wideTarget, 1, yaw)
+
+    expect(wideTarget[0] - narrowTarget[0]).toBe(memory.side * 2)
+    expect(wide.x - narrow.x).toBeCloseTo(memory.side * 2)
+    expect(wide.z).toBeCloseTo(narrow.z)
+    expect(wide.distance).toBeCloseTo(narrow.distance)
   })
 
   it('extends the shared camera far plane only for gallery entry and restores it on exit', () => {

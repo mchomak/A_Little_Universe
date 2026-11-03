@@ -103,7 +103,7 @@ describe('Scene Composer controls', () => {
     await setComposerField('scenes.gallery.moonSize', 1.4)
     expect(getConfig().scenes.gallery.moonSize).toBe(1.4)
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(14)
+    expect(exported.schemaVersion).toBe(15)
     expect(exported.scenes.gallery).toMatchObject({ moonSize: 1.4, cloudDriftVariation: 0.85, cloudCoolTint: 1.2, reflectionStrength: 0.4 })
     expect(exported.scenes.gallery.cloudLayers).toMatchObject(getConfig().scenes.gallery.cloudLayers)
     expect((await importComposerJson(JSON.stringify(exported))).ok).toBe(true)
@@ -146,7 +146,7 @@ describe('Scene Composer controls', () => {
     await setComposerField('scenes.gallery.waterDistortion', 0.02)
     expect(getConfig().scenes.gallery.waterDistortion).toBe(0.02)
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(14)
+    expect(exported.schemaVersion).toBe(15)
     expect(exported.scenes.gallery).toMatchObject({ ...waterSettings, waterDistortion: 0.02 })
     expect((await importComposerJson(JSON.stringify(exported))).ok).toBe(true)
     expect(getConfig().scenes.gallery).toMatchObject({ ...waterSettings, waterDistortion: 0.02 })
@@ -161,7 +161,7 @@ describe('Scene Composer controls', () => {
     })
   })
 
-  it('imports, live-edits, and roundtrips v14 cloud layers together with every water control', async () => {
+  it('imports v14 settings and roundtrips cloud layers, water controls, and the new aisle width', async () => {
     const water = {
       reflectionStrength: 0.28, reflectionBlur: 0.63, reflectionFalloff: 1.72, waterBaseBrightness: 0.39,
       waterDistortion: 0.013, waterDistortionScale: 1.8, waterRippleSpeed: 0.23,
@@ -176,24 +176,39 @@ describe('Scene Composer controls', () => {
     const imported = await importComposerJson(JSON.stringify({ schemaVersion: 14, scenes: { gallery: { cloudLayers: clouds, ...water } } }))
     expect(imported.ok).toBe(true)
     expect(getConfig().scenes.gallery.cloudLayers).toEqual(clouds)
-    expect(getConfig().scenes.gallery).toMatchObject(water)
+    expect(getConfig().scenes.gallery).toMatchObject({ ...water, galleryWidth: 7 })
 
     await setComposerField('scenes.gallery.cloudLayers.nearLow.density', 1.18)
     await setComposerField('scenes.gallery.cloudLayers.waterline.count', 31)
+    await setComposerField('scenes.gallery.galleryWidth', 9.4)
+    await setComposerField('scenes.gallery.columnVisible', false)
+    await setComposerField('scenes.gallery.columnScale', 1.5)
+    await setComposerField('scenes.gallery.columnDepth', 0.4)
+    await setComposerField('scenes.gallery.columnOffsetX', 0.5)
+    await setComposerField('scenes.gallery.columnOffsetY', -0.25)
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: { cloudLayers: Record<string, unknown> } & Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(14)
+    expect(exported.schemaVersion).toBe(15)
     expect(exported.scenes.gallery.cloudLayers).toMatchObject({
       ...clouds,
       nearLow: { ...clouds.nearLow, density: 1.18 },
       waterline: { ...clouds.waterline, count: 31 },
     })
-    expect(exported.scenes.gallery).toMatchObject(water)
+    expect(exported.scenes.gallery).toMatchObject({
+      ...water, galleryWidth: 9.4, columnVisible: false, columnScale: 1.5, columnDepth: 0.4, columnOffsetX: 0.5, columnOffsetY: -0.25,
+    })
 
     const reimported = await importComposerJson(JSON.stringify(exported))
     expect(reimported.ok).toBe(true)
     expect(getConfig().scenes.gallery.cloudLayers.nearLow.density).toBe(1.18)
     expect(getConfig().scenes.gallery.cloudLayers.waterline.count).toBe(31)
-    expect(getConfig().scenes.gallery).toMatchObject(water)
+    expect(getConfig().scenes.gallery).toMatchObject({
+      ...water, galleryWidth: 9.4, columnVisible: false, columnScale: 1.5, columnDepth: 0.4, columnOffsetX: 0.5, columnOffsetY: -0.25,
+    })
+
+    await resetComposerField('scenes.gallery.galleryWidth')
+    expect(getConfig().scenes.gallery.galleryWidth).toBe(7)
+    await resetComposerField('scenes.gallery.columnVisible')
+    expect(getConfig().scenes.gallery.columnVisible).toBe(true)
   })
 
   it('exports the active config snapshot as JSON', async () => {
@@ -205,7 +220,7 @@ describe('Scene Composer controls', () => {
       scenes: { prologue: Record<string, unknown> }
     }
 
-    expect(exported.schemaVersion).toBe(14)
+    expect(exported.schemaVersion).toBe(15)
     expect(exported.global.quality).toBe('low')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpeed')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpread')
@@ -226,7 +241,7 @@ describe('Scene Composer controls', () => {
     expect(getConfig().scenes.gallery.cloudLayers.far).toMatchObject({ density: 1.2, brightness: 1.35 })
 
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(14)
+    expect(exported.schemaVersion).toBe(15)
     expect(exported.scenes.gallery).toMatchObject({ hazeHeight: -1.1, moonCloudLightIntensity: 1.4 })
     expect(exported.scenes.gallery.cloudLayers).toMatchObject(getConfig().scenes.gallery.cloudLayers)
 

@@ -186,6 +186,14 @@ const IDENTITY_CAMERA_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.identity.cameraMoveDuration', label: 'Длительность движения камеры', unit: 'с', min: 1, max: 18, step: 0.1 },
 ]
 
+const GALLERY_LAYOUT_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.gallery.galleryWidth', label: 'Ширина прохода', unit: 'м', min: 6, max: 12, step: 0.1 },
+  { path: 'scenes.gallery.columnScale', label: 'Масштаб колонн', unit: '×', min: 0.75, max: 3, step: 0.05 },
+  { path: 'scenes.gallery.columnDepth', label: 'Отступ колонны за фотографией', unit: 'м', min: 0.02, max: 2, step: 0.01 },
+  { path: 'scenes.gallery.columnOffsetX', label: 'Горизонтальное смещение колонны', unit: 'м', min: -2, max: 2, step: 0.05 },
+  { path: 'scenes.gallery.columnOffsetY', label: 'Вертикальное смещение колонны от пола', unit: 'м', min: -2, max: 2, step: 0.05 },
+]
+
 const GALLERY_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.frameIntensity', label: 'Интенсивность рамок', unit: '×', min: 0, max: 2, step: 0.05 },
   { path: 'scenes.gallery.particleCount', label: 'Количество частиц', unit: 'шт.', min: 0, max: 600, step: 1 },
@@ -739,6 +747,10 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         </>}
         {selected === 'gallery' && <details open><summary>Scene 05 — Лунная галерея</summary>
           {color('scenes.gallery.moonLightColor', 'Цвет лунного света')}
+          <details open><summary>Колонны и геометрия галереи</summary>
+            <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-gallery-columnVisible">Показывать колонны</label>{config.scenes.gallery.columnVisible !== defaultAtPath('scenes.gallery.columnVisible') && <button type="button" className="inspector-reset" aria-label="Сбросить видимость колонн" onClick={() => { void resetField('scenes.gallery.columnVisible') }}>↺</button>}</div><input id="composer-scenes-gallery-columnVisible" data-testid="composer-scenes-gallery-columnVisible" type="checkbox" checked={config.scenes.gallery.columnVisible} onChange={(event) => { void changeField('scenes.gallery.columnVisible', event.target.checked) }} /></div>
+            {GALLERY_LAYOUT_CONTROLS.map(range)}
+          </details>
           {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.name.startsWith('Near Low') || group.name.startsWith('Waterline')}><summary>{group.name}</summary>
             {group.controls.map(range)}
             {group.name.startsWith('Waterline') && <p>Для устойчивого времени кадра сцена отображает не более 36 объёмных масс (20 в низком профиле); все четыре слоя сохраняют отдельные квоты.</p>}

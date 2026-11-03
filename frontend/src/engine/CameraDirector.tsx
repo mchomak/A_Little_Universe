@@ -128,7 +128,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const exit = Math.min(1, m.exit / GALLERY.exit)
     const z = GALLERY.startZ - m.progress - exit * 2
     const memory = GALLERY_MEMORIES[m.focusIndex]!
-    const [x, y, mz] = memoryPosition(memory)
+    const [x, y, mz] = memoryPosition(memory, config.scenes.gallery.galleryWidth)
     const focal = m.focusMix
     const p = pose.current
     const initial = firstMemoryCamera(34, reducedMotion)

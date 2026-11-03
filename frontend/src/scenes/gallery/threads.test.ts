@@ -1,7 +1,7 @@
 import { MeshBasicMaterial, QuadraticBezierCurve3, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
-import { GALLERY_MEMORIES, memoryPosition } from './content'
+import { GALLERY, GALLERY_MEMORIES, memoryPosition } from './content'
 import { GALLERY_ART } from './artDirection'
 import {
   createMemoryThreadAccentGeometry,
@@ -59,6 +59,26 @@ describe('gallery memory thread paths', () => {
     first.dispose(); repeated.dispose()
   })
 
+  it('rebuilds world-space thread positions with the aisle while preserving depth and frame clearance', () => {
+    const defaultPaths = createMemoryThreadPaths(GALLERY_MEMORIES)
+    const wideWidth = 9
+    const widePaths = createMemoryThreadPaths(GALLERY_MEMORIES, wideWidth)
+    expect(widePaths).toHaveLength(defaultPaths.length)
+
+    for (let index = 0; index < defaultPaths.length; index++) {
+      const before = defaultPaths[index]!
+      const after = widePaths[index]!
+      const side = Math.sign(before.start[0])
+      expect(after.start[0] - before.start[0]).toBeCloseTo(side * (wideWidth - GALLERY.width) / 2)
+      expect(after.control[0] - before.control[0]).toBeCloseTo(side * (wideWidth - GALLERY.width) / 2)
+      expect(after.end[0] - before.end[0]).toBeCloseTo(side * (wideWidth - GALLERY.width) / 2)
+      expect(after.start[2]).toBe(before.start[2])
+      expect(after.control[2]).toBe(before.control[2])
+      expect(after.end[2]).toBe(before.end[2])
+      expect(Math.abs(after.start[0]) - wideWidth / 2).toBeCloseTo(1.35)
+    }
+  })
+
   it('keeps short elevated threads clear of every yawed photo surface for the full route', () => {
     const paths = createMemoryThreadPaths(GALLERY_MEMORIES)
     for (const path of paths) {
@@ -72,7 +92,7 @@ describe('gallery memory thread paths', () => {
       for (let sample = 0; sample <= 100; sample++) {
         const point = curve.getPoint(sample / 100)
         for (const memory of GALLERY_MEMORIES) {
-          const [centerX, centerY, centerZ] = memoryPosition(memory)
+          const [centerX, centerY, centerZ] = memoryPosition(memory, GALLERY.width)
           const yaw = -memory.side * GALLERY_ART.wallYaw
           const scale = memory.order === 0 ? 1.35 : 1
           const dx = point.x - centerX
