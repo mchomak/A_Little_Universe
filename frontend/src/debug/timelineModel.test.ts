@@ -60,7 +60,7 @@ describe('scene editor timeline', () => {
     expect(replayLetter.map(({ start }) => start)).toEqual([0, 30, 30])
     expect(replayLetter.map(({ label }) => label)).toEqual(['08.6 Повторное письмо', '08.7 Завершение титров', '09 Постоянный финал'])
   })
-  it('does not seek through waiting for a bud, gallery, preparation, transition or reading', () => {
+it('does not seek through waiting for a bud, gallery, preload, transition or reading', () => {
     const bloom = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'bloom' }, true)
     expect(canSeekTimeline(bloom, true)).toBe(false)
     expect(canSeekTimeline(filmReducer(bloom, { type: 'interact' }), true)).toBe(true)

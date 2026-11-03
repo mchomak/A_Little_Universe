@@ -1,4 +1,5 @@
 import type { CameraPose } from '../scenes/shared/galleryMotion'
+import type { SceneId } from './film'
 import type { SceneComposerConfig } from '../systems/scene-config/config'
 import { getBloomCameraApproachDuration } from '../scenes/lily/animationTiming'
 
@@ -18,4 +19,9 @@ export function getBloomCloseupPose(settings: BloomCameraSettings): CameraPose {
 
 export function getBloomCameraMoveDuration(settings: BloomCameraSettings, openingRange: readonly [number, number]): number {
   return getBloomCameraApproachDuration(settings.cameraApproachDuration, openingRange)
+}
+
+/** Keep the actual Growth frame on entry and the current frame when Bloom rebuilds; direct jumps use the authored pose. */
+export function getBloomEntryCameraPose(previousScene: SceneId | null, currentPose: CameraPose, authoredPose: CameraPose): CameraPose {
+  return previousScene === 'growth' || previousScene === 'bloom' ? currentPose : authoredPose
 }

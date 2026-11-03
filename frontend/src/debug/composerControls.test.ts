@@ -211,18 +211,11 @@ describe('Scene Composer controls', () => {
     expect(getConfig()).toBe(before)
   })
 
-  it('reports a font readiness failure during scene reset without changing the active config', async () => {
-    await setComposerField('scenes.preparation.fontFamily', 'caveat')
-    await setComposerField('scenes.prologue.fontFamily', 'caveat')
-    await setComposerField('scenes.preparation.spacing', 36)
-    const before = getConfig()
-    fontLoader.load.mockResolvedValue(false)
+  it('ignores retired preparation settings from older scene composer files', async () => {
+    const result = await importComposerJson('{"schemaVersion":1,"scenes":{"preparation":{"fontFamily":"caveat","spacing":36}}}')
 
-    const result = await resetComposerScope('preparation')
-
-    expect(fontLoader.load).toHaveBeenLastCalledWith('marck-script')
-    expect(result).toEqual({ ok: false, reason: 'font', config: before })
-    expect(getConfig()).toBe(before)
+    expect(result.ok).toBe(true)
+    expect(getConfig().scenes).not.toHaveProperty('preparation')
   })
 
   it('preserves the active config when the import has an invalid section shape', async () => {

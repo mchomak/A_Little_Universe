@@ -2,6 +2,8 @@
 
 `SceneComposerConfig` is an immutable schema version 20. `normalizeConfig(input)` accepts partial schema v1-v20 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the gallery and identity controls; schema v12 adds the first gallery water settings; schema v13 adds independent water base brightness, reflection falloff, micro-normal scale, and moon reflection spread. Schema v14 adds the `far`, `mid`, `nearLow`, and `waterline` cloud layer settings. Schema v15 adds the shared `scenes.openingBackground` crop profile (`zoom`, `offsetX`, `offsetY`) for the opening screens and scenes 01-04. Schema v20 adds the Lily growth VFX controls. Partial v14 JSON remains accepted and receives the new crop defaults. The dev-only Lily VFX draft keeps its existing localStorage key and is overlaid so restoring particle settings cannot reset island, seed, lighting, or crop settings. Legacy cloud density, scale, opacity, brightness, drift speed, and count values migrate into active layer settings; saved water controls remain unchanged. The store publishes font changes only after the selected local font is ready.
 
+The shared crop profile covers the preload and scenes 01–04; the retired preparation screen is omitted from normalized configurations. Older files containing its keys remain importable because unknown fields are discarded.
+
 The public store is:
 
 - `normalizeConfig(input: unknown): SceneComposerConfig`
@@ -26,11 +28,6 @@ An optional production override can contain only values that differ from the def
       "zoom": 1.4,
       "offsetX": -0.2,
       "offsetY": 0.15
-    },
-    "preparation": {
-      "typeScale": 1.05,
-      "lineHeight": 1.2,
-      "cardOpacity": 0.9
     },
     "prologue": {
       "fontFamily": "marck-script",
@@ -123,7 +120,5 @@ An optional production override can contain only values that differ from the def
 Default breathing uses amplitude `0.035` and frequency `0.22` Hz (about 4.5 seconds). The canonical prologue gate remains fixed at 18 seconds; configured reveal/hold/fracture windows are fitted inside it, with the dust gone by the invitation at 16 seconds. Touch duration is captured at activation, so editing it during a transition does not change that transition. The default uses the approved second phrase; `copyVariant: "awakening"` remains available as an explicit alternate wording.
 
 The existing `Moonlit Letter` and `Stardust` presets remain available; `Vasilisa Cinematic` presets Scene 07's palette, star density and lighting. The galaxy section stores seeded geometry, live shader values, background and foreground gas, reveal timing, camera staging, and an independent custom palette. Geometry controls rebuild after a 280 ms quiet interval; shader uniforms update live. Geometry and materials are disposed when replaced or unmounted. Scene 07, 08, and 09 share one persistent scene graph and one renderer. The ending uses the shared FilmClock presentation channel for slow motion while its film state remains ended. Global quality, DPR and playback settings remain global and are not changed by prologue-specific controls. The store owns neither a playback clock nor a canvas.
-
-The preparation defaults keep the existing composition: heading scale `1`, heading line height `1.08`, and card surface opacity `1`. These settings use `--preparation-type-scale`, `--preparation-line-height`, and `--preparation-card-opacity`; reset restores the defaults.
 
 The only accepted art font IDs are `great-vibes`, `marck-script`, `bad-script`, `caveat`, and `cormorant-garamond`. They are declared in `fontIds.ts`; `fontCatalog.ts` defines the corresponding local CSS family, readiness call, and checked Russian glyph set. Font files use SIL Open Font License 1.1; see `src/assets/typography/` for license texts and attribution.

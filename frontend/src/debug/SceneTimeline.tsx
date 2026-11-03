@@ -8,7 +8,7 @@ import { activeFrameIndex, canSeekTimeline, timelineFrames } from './timelineMod
 import { createLoopListener, validLoop } from './timelinePlayback'
 import './sceneTimeline.css'
 
-export default function SceneTimeline({ state, dispatch, runtime, route, onPreload, onPermissions }: { state: FilmState; dispatch: Dispatch<FilmAction>; runtime: FilmRuntime; route: string; onPreload: () => void; onPermissions: () => void }) {
+export default function SceneTimeline({ state, dispatch, runtime, route, onPreload }: { state: FilmState; dispatch: Dispatch<FilmAction>; runtime: FilmRuntime; route: string; onPreload: () => void }) {
   const review = useReviewNotes(state, dispatch, runtime, route)
   const filmVisible = route === 'film'
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
@@ -63,7 +63,7 @@ export default function SceneTimeline({ state, dispatch, runtime, route, onPrelo
     setLoop(previous => previous && (previous.scene !== state.scene || !filmVisible || state.mode !== 'playing' || (revisionChanged && !ownSeek)) ? null : previous)
   }, [state.scene, state.mode, state.revision, filmVisible])
   const waiting = state.mode === 'waiting' || state.mode === 'exploring' || state.mode === 'ended'
-  const status = !filmVisible ? route === 'loading' ? '00 Загрузка' : '00.1 Подготовка' : state.reading ? 'Чтение · ожидание' : state.mode === 'exploring' ? 'Свободный просмотр' : state.mode === 'waiting' ? 'Ожидание действия' : state.mode === 'ended' ? 'Финал' : state.paused ? 'Пауза' : 'Воспроизведение'
+  const status = !filmVisible ? '00 Загрузка' : state.reading ? 'Чтение · ожидание' : state.mode === 'exploring' ? 'Свободный просмотр' : state.mode === 'waiting' ? 'Ожидание действия' : state.mode === 'ended' ? 'Финал' : state.paused ? 'Пауза' : 'Воспроизведение'
   const available = (time: number) => seekable && !(state.scene === 'prologue' && time >= duration)
   const frameRange = (i: number) => {
     const frame = frames[i]
@@ -101,14 +101,13 @@ export default function SceneTimeline({ state, dispatch, runtime, route, onPrelo
   }
   const hoveredFrame = previewFrame === null ? undefined : frames[previewFrame]
   const hoveredNote = hoveredFrame && review.notes.find(note => note.sceneId === state.scene && note.frameId === hoveredFrame.label && note.screenshotPath)
-  const sceneIndex = !filmVisible ? route === 'loading' ? 0 : 1 : SCENE_ORDER.indexOf(state.scene) + 2
+  const sceneIndex = filmVisible ? SCENE_ORDER.indexOf(state.scene) + 1 : 0
   const step = (direction: -1 | 1) => {
     if (level === 'scenes') {
       const next = sceneIndex + direction
       if (next === 0) onPreload()
-      else if (next === 1) onPermissions()
       else {
-        const scene = SCENE_ORDER[next - 2]
+        const scene = SCENE_ORDER[next - 1]
         if (scene) dispatch({ type: 'dev-jump', scene })
       }
     } else {
@@ -152,7 +151,6 @@ export default function SceneTimeline({ state, dispatch, runtime, route, onPrelo
       </div>
       {level === 'scenes' ? <div className="timeline-segments" aria-label="Сцены фильма">
         <button type="button" className={route === 'loading' ? 'is-active' : ''} onClick={onPreload}><span>00</span> Загрузка</button>
-        <button type="button" className={!filmVisible && route !== 'loading' ? 'is-active' : ''} onClick={onPermissions}><span>00.1</span> Подготовка</button>
         {SCENE_ORDER.map((scene, i) => <button type="button" key={scene} className={scene === state.scene && filmVisible ? 'is-active' : ''} onClick={() => dispatch({ type: 'dev-jump', scene })}><span>{String(i + 1).padStart(2, '0')}</span> {SCENES[scene].label}</button>)}
       </div> : !filmVisible ? <div className="timeline-unavailable">{status} · отдельная временная шкала недоступна. Выберите сцену фильма.</div> : <div className="timeline-frame-track">
         <div className="timeline-segments" aria-label="Кадры сцены">

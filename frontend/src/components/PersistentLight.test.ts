@@ -24,7 +24,7 @@ it('exposes one native activation target only at the deliberate gate', () => {
   expect(playing).toContain('tabindex="-1"')
 })
 
-it('keeps the preparation light free of cinematic dust layout children', () => {
-  const ready = renderToStaticMarkup(createElement(PersistentLight, { phase: 'ready' }))
-  expect(ready).not.toContain('light-arrival-dust')
+it('keeps the hidden light free of cinematic dust layout children', () => {
+  const hidden = renderToStaticMarkup(createElement(PersistentLight, { phase: 'hidden' }))
+  expect(hidden).not.toContain('light-arrival-dust')
 })

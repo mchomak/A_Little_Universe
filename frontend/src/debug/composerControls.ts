@@ -15,7 +15,6 @@ export type ComposerFieldPath =
   | `global.${keyof SceneComposerConfig['global'] & string}`
   | `scenes.openingBackground.${keyof SceneComposerConfig['scenes']['openingBackground'] & string}`
   | `scenes.preload.${keyof SceneComposerConfig['scenes']['preload'] & string}`
-  | `scenes.preparation.${keyof SceneComposerConfig['scenes']['preparation'] & string}`
   | `scenes.prologue.${keyof SceneComposerConfig['scenes']['prologue'] & string}`
   | `scenes.growth.${keyof SceneComposerConfig['scenes']['growth'] & string}`
   | `scenes.bloom.${keyof SceneComposerConfig['scenes']['bloom'] & string}`
@@ -59,15 +58,13 @@ export async function importComposerJson(source: string): Promise<ComposerImport
   if ('global' in root && !isRecord(root.global)) return { ok: false, reason: 'document' }
   if ('scenes' in root && !isRecord(root.scenes)) return { ok: false, reason: 'document' }
   const scenes = isRecord(root.scenes) ? root.scenes : {}
-  for (const section of ['openingBackground', 'preload', 'preparation', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy']) {
+  for (const section of ['openingBackground', 'preload', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy']) {
     if (section in scenes && !isRecord(scenes[section])) return { ok: false, reason: 'document' }
   }
-  const preparation = scenes.preparation as Record<string, unknown> | undefined
   const prologue = scenes.prologue as Record<string, unknown> | undefined
   const config = await updateConfig(createCloudCompatibleImportPatch(document, getConfig().scenes.gallery.cloudLayers))
   if (
-    (preparation && 'fontFamily' in preparation && config.scenes.preparation.fontFamily !== normalizeConfigFont(preparation.fontFamily, 'preparation')) ||
-    (prologue && 'fontFamily' in prologue && config.scenes.prologue.fontFamily !== normalizeConfigFont(prologue.fontFamily, 'prologue'))
+    (prologue && 'fontFamily' in prologue && config.scenes.prologue.fontFamily !== normalizeConfigFont(prologue.fontFamily))
   ) return { ok: false, reason: 'font' }
   return { ok: true, config }
 }
@@ -165,16 +162,13 @@ export function applyComposerPreset(id: ScenePresetId) {
 
 export function resetComposerScope(scope: ConfigResetScope) {
   return resetConfig(scope).then((config): ComposerResetResult => {
-    const preparationFailed = (scope === 'all' || scope === 'preparation') && config.scenes.preparation.fontFamily !== DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.fontFamily
     const prologueFailed = (scope === 'all' || scope === 'prologue') && config.scenes.prologue.fontFamily !== DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily
-    return preparationFailed || prologueFailed ? { ok: false, reason: 'font', config } : { ok: true, config }
+    return prologueFailed ? { ok: false, reason: 'font', config } : { ok: true, config }
   })
 }
 
-function normalizeConfigFont(value: unknown, scene: 'preparation' | 'prologue') {
-  return scene === 'preparation'
-    ? normalizeConfig({ schemaVersion: 1, scenes: { preparation: { fontFamily: value } } }).scenes.preparation.fontFamily
-    : normalizeConfig({ schemaVersion: 1, scenes: { prologue: { fontFamily: value } } }).scenes.prologue.fontFamily
+function normalizeConfigFont(value: unknown) {
+  return normalizeConfig({ schemaVersion: 1, scenes: { prologue: { fontFamily: value } } }).scenes.prologue.fontFamily
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

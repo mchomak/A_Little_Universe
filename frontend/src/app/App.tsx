@@ -9,14 +9,12 @@ import { PersistentLight, type PersistentLightPhase } from '../components/Persis
 import { ReadingPanel } from '../components/ReadingPanel'
 import { RecordingControls } from '../components/RecordingControls'
 import { RecoveryPanel } from '../components/RecoveryPanel'
-import { MediaSession, type MediaOptions } from '../systems/media/MediaSession'
+import { MediaSession } from '../systems/media/MediaSession'
 import { AudioDirector } from '../systems/audio/AudioDirector'
 import { useAudioDirector } from '../systems/audio/useAudioDirector'
-import { AssetManager, type PreparationResult } from '../systems/assets/AssetManager'
+import { AssetManager } from '../systems/assets/AssetManager'
 import { Preloader } from '../bootstrap/Preloader'
-import { PreparationScreen, type PreparationStep } from './PreparationScreen'
 import { PhoneBackground } from '../components/PhoneBackground'
-import { openGift } from './openGift'
 import { getImplementationStatus } from './filmStatus'
 import { LILY_MODEL_RUNTIME_ASSET, preloadLilyModel } from '../assets/lily/lilyAsset'
 
@@ -32,18 +30,14 @@ const devManager = new AssetManager({ development: import.meta.env.DEV,
 const DeveloperPanel = import.meta.env.DEV ? lazy(() => import('../debug/DeveloperPanel')) : null
 const SceneTimeline = import.meta.env.DEV ? lazy(() => import('../debug/SceneTimeline')) : null
 
-export function App({ preparation }: { preparation: PreparationResult }) {
+export function App() {
   const { state, dispatch, runtime } = useFilm()
   const reducedMotion = useReducedMotion()
-  const [route, setRoute] = useState<PreparationStep | 'film' | 'loading'>('settings')
-  const [prepared, setPrepared] = useState(preparation)
-  const [checked, setChecked] = useState(false)
-  const [starting, setStarting] = useState(false)
-  const [mountedFilm, setMountedFilm] = useState(false)
+  const [route, setRoute] = useState<'film' | 'loading'>('film')
   const [debug, setDebug] = useState(() => import.meta.env.DEV && new URLSearchParams(window.location.search).has('debug'))
   const operation = useRef(0)
-  const opening = useRef(false)
   useAudioDirector(audio, state, runtime)
+  useEffect(() => { dispatch({ type: 'start' }) }, [dispatch])
   useEffect(() => { preloadLilyModel() }, [])
   useEffect(() => { if (state.scene === 'prologue') resetGalleryInstruction() }, [state.scene, state.revision])
 
@@ -65,68 +59,51 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     })
   }, [state.scene])
 
-  const changeOptions = (options: MediaOptions) => { operation.current++; media.setOptions(options); setChecked(false) }
-  const withoutMedia = () => { changeOptions({ gaze: false, recording: false, upload: false }); setRoute('ready') }
-  const edit = () => { changeOptions({ gaze: false, recording: false, upload: false }); setRoute('settings') }
-  const prepare = async () => {
-    const request = ++operation.current
-    setChecked(false)
-    if (!media.getSnapshot().options.gaze && !media.getSnapshot().options.recording) { setRoute('ready'); return }
-    setRoute('checking')
-    await media.prepare()
-    if (request === operation.current) setChecked(true)
-  }
-  const start = () => {
-    if (opening.current) return
-    opening.current = true
-    setStarting(true)
-    const request = ++operation.current
-    void openGift({ audio, media, onStart: () => {
-      if (request !== operation.current) return
-      resetGalleryInstruction(); setMountedFilm(true); setRoute('film'); dispatch({ type: state.mode === 'ready' ? 'start' : 'replay' })
-    } }).finally(() => { opening.current = false; setStarting(false) })
-  }
   const devDispatch: Dispatch<FilmAction> = (action) => {
     if (action.type === 'dev-jump' || action.type === 'dev-restart') {
       operation.current++
       media.setOptions({ gaze: false, recording: false, upload: false })
-      setMountedFilm(true); setRoute('film')
+      setRoute('film')
     }
     dispatch(action)
   }
-  const devPrepare = (next: 'loading' | 'settings') => {
+  const devPrepare = () => {
     operation.current++
     media.setOptions({ gaze: false, recording: false, upload: false })
     // Ready has no running clock; pausing it would carry into the first start.
     if (state.mode !== 'ready' && !state.paused) dispatch({ type: 'toggle-pause' })
-    setChecked(false); setRoute(next)
+    setRoute('loading')
   }
-  const onReloadReady = useCallback((result: PreparationResult) => { setPrepared(result); setRoute('settings') }, [])
+  const onReloadReady = useCallback(() => {
+    setRoute('film')
+    if (state.mode === 'ready') dispatch({ type: 'start' })
+    else if (state.paused) dispatch({ type: 'toggle-pause' })
+  }, [dispatch, state.mode, state.paused])
   const cinematic = state.scene === 'prologue'
-  const lightPhase: PersistentLightPhase = route === 'ready' ? 'ready' : route === 'film' && cinematic ? 'prologue' : route === 'film' && state.scene === 'growth' ? 'growth' : 'hidden'
+  const lightPhase: PersistentLightPhase = route === 'film' && cinematic ? 'prologue' : route === 'film' && state.scene === 'growth' ? 'growth' : 'hidden'
   const lightInteractive = lightPhase === 'prologue' && state.mode === 'waiting'
   const implementationStatus = getImplementationStatus(state.scene)
   const showOpeningBackground = route === 'film'
     && (state.scene === 'prologue' || state.scene === 'growth' || state.scene === 'bloom' || state.scene === 'identity')
 
   return <main className={`universe${cinematic ? ' cinematic' : ''}`} data-route={route} data-scene={state.scene} data-mode={state.mode} data-reading={state.reading} data-paused={state.paused} data-debug={import.meta.env.DEV && debug ? 'true' : undefined}>
-    {mountedFilm && <div className="film-presentation" hidden={route !== 'film'}>
+    <div className="film-presentation" hidden={route !== 'film'}>
       <div className="film-surface">
-        <PhoneBackground active={showOpeningBackground} />
+        <PhoneBackground active={showOpeningBackground} scene={state.scene} runtime={runtime} reducedMotion={reducedMotion} />
         <div className="viewport" role="region" aria-label="Интерактивный фильм"><FilmCanvas state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} /></div>
         {!cinematic && <header className="page-header"><span className="dedication">Для Василисы</span>{import.meta.env.DEV && <span className="build-label">{implementationStatus}</span>}</header>}
         <SceneOverlay key={`${state.scene}:${state.revision}`} state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} />
       </div>
       {cinematic ? <button className="cinematic-pause" type="button" data-testid="pause" aria-label={state.paused ? 'Продолжить фильм' : 'Пауза'} aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Ⅱ'}</button>
         : <footer className="page-footer" aria-label="Управление фильмом"><span className="film-status">{state.paused ? 'На паузе' : reducedMotion ? 'Уменьшенное движение' : import.meta.env.DEV ? implementationStatus : ''}</span><div className="playback-controls">{state.scene !== 'greeting' && state.mode !== 'ended' && <button type="button" data-testid="pause" aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Пауза'}</button>}<label className="quality-control">Качество<select aria-label="Качество графики" value={state.quality} onChange={(event) => dispatch({ type: 'set-quality', quality: event.target.value === 'low' ? 'low' : 'standard' })}><option value="standard">Обычное</option><option value="low">Низкое</option></select></label></div></footer>}
-    </div>}
-    {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} onOptions={changeOptions} onPrepare={() => { void prepare() }} onContinue={() => setRoute('ready')} onWithoutMedia={withoutMedia} onEdit={edit} onStart={start} />}
+    </div>
+    {route === 'loading' && <Preloader manager={devManager} onReady={onReloadReady} />}
     <PersistentLight phase={lightPhase} interactive={lightInteractive} reducedMotion={reducedMotion} runtime={runtime} state={state} onActivate={() => dispatch({ type: 'interact' })} />
     <RecordingControls session={media} />
     <RecoveryPanel session={media} />
     {state.reading && route === 'film' && <ReadingPanel dispatch={dispatch} />}
     {import.meta.env.DEV && <button className="debug-toggle" type="button" aria-expanded={debug} aria-controls="developer-panel" onClick={() => setDebug((value) => !value)}>DEV</button>}
-    {import.meta.env.DEV && debug && DeveloperPanel && SceneTimeline && <Suspense fallback={<p className="debug-loading">Загрузка Developer Mode…</p>}><DeveloperPanel state={state} dispatch={devDispatch} runtime={runtime} route={route} reducedMotion={reducedMotion} onPreload={() => devPrepare('loading')} onPermissions={() => devPrepare('settings')} /><SceneTimeline state={state} dispatch={devDispatch} runtime={runtime} route={route} onPreload={() => devPrepare('loading')} onPermissions={() => devPrepare('settings')} /></Suspense>}
+    {import.meta.env.DEV && debug && DeveloperPanel && SceneTimeline && <Suspense fallback={<p className="debug-loading">Загрузка Developer Mode…</p>}><DeveloperPanel state={state} dispatch={devDispatch} runtime={runtime} route={route} reducedMotion={reducedMotion} onPreload={devPrepare} /><SceneTimeline state={state} dispatch={devDispatch} runtime={runtime} route={route} onPreload={devPrepare} /></Suspense>}
   </main>
 }
 

@@ -1,43 +1,31 @@
-export interface PointerSample {
-  pointerId: number
-  clientX: number
-  clientY: number
+import type { FilmAction, FilmState } from '../../engine/film'
+
+/** The bloom gate accepts one ordinary primary-button click or touch activation. */
+export function isBloomPrimaryClick(button: number, isPrimary: boolean) {
+  return button === 0 && isPrimary
 }
 
-export interface BloomGestureOptions {
-  minimumDistance?: number
+export interface BloomPointerDown {
+  button: number
+  isPrimary: boolean
+  stopPropagation(): void
 }
 
-/** Recognizes a single primary pointer drag that starts inside the lily's broad hit area. */
-export function createBloomGesture({ minimumDistance = 18 }: BloomGestureOptions = {}) {
-  const threshold = Number.isFinite(minimumDistance) ? Math.max(1, minimumDistance) : 18
-  let start: PointerSample | null = null
-  let dragged = false
+/** Applies the bloom gate at the event boundary and dispatches only a ready, active click. */
+export function handleBloomPointerDown(
+  state: Pick<FilmState, 'scene' | 'mode' | 'paused' | 'reading'>,
+  ready: boolean,
+  event: BloomPointerDown,
+  dispatch: (action: FilmAction) => void,
+) {
+  if (!isBloomPrimaryClick(event.button, event.isPrimary)) return false
+  if (state.scene !== 'bloom' || state.mode !== 'waiting' || state.paused || state.reading) return false
 
-  return {
-    begin(point: PointerSample, enabled: boolean) {
-      start = enabled ? { ...point } : null
-      dragged = false
-      return start !== null
-    },
-    move(point: PointerSample) {
-      if (!start || start.pointerId !== point.pointerId) return false
-      dragged ||= Math.hypot(point.clientX - start.clientX, point.clientY - start.clientY) >= threshold
-      return dragged
-    },
-    end(point: PointerSample) {
-      if (!start || start.pointerId !== point.pointerId) return false
-      dragged ||= Math.hypot(point.clientX - start.clientX, point.clientY - start.clientY) >= threshold
-      const accepted = dragged
-      start = null
-      dragged = false
-      return accepted
-    },
-    cancel() {
-      start = null
-      dragged = false
-    },
-  }
+  event.stopPropagation()
+  if (!ready) return false
+
+  dispatch({ type: 'interact' })
+  return true
 }
 
 export function isBloomGestureReady(waitingElapsed: number, writingDuration: number) {

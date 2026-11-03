@@ -38,7 +38,7 @@ type NumericControl = {
   displayScale?: number
 }
 
-type InspectorScene = SceneId | 'preload' | 'preparation'
+type InspectorScene = SceneId | 'preload'
 type SelectControl = { path: ComposerFieldPath; label: string; options: readonly { value: string; label: string }[] }
 
 const PRELOAD_CONTROLS: readonly NumericControl[] = [
@@ -46,14 +46,6 @@ const PRELOAD_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.preload.particleCount', label: 'Частицы', unit: 'шт.', min: 40, max: 300, step: 1 },
   { path: 'scenes.preload.movementSpeed', label: 'Скорость движения', unit: '×', min: 0.1, max: 4, step: 0.1 },
   { path: 'scenes.preload.collapseDuration', label: 'Длительность схлопывания', unit: 'с', min: 0, max: 4, step: 0.1 },
-]
-
-const PREPARATION_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.preparation.spacing', label: 'Отступы карточек', unit: 'px', min: 0, max: 64, step: 1 },
-  { path: 'scenes.preparation.entranceDuration', label: 'Появление интерфейса', unit: 'с', min: 0, max: 5, step: 0.1 },
-  { path: 'scenes.preparation.typeScale', label: 'Масштаб заголовка', unit: '%', min: 90, max: 110, step: 5, displayScale: 100 },
-  { path: 'scenes.preparation.lineHeight', label: 'Межстрочный интервал заголовка', unit: '×', min: 0.9, max: 1.5, step: 0.01 },
-  { path: 'scenes.preparation.cardOpacity', label: 'Непрозрачность поверхности', unit: '%', min: 85, max: 100, step: 1, displayScale: 100 },
 ]
 
 const OPENING_BACKGROUND_CONTROLS: readonly NumericControl[] = [
@@ -509,16 +501,15 @@ function SelectConfigControl({ control, value, onChange, onReset }: {
   </div>
 }
 
-export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion, onPreload, onPermissions, route = 'film' }: {
+export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion, onPreload, route = 'film' }: {
   state: FilmState
   dispatch: Dispatch<FilmAction>
   runtime?: FilmRuntime
   reducedMotion: boolean
   onPreload(): void
-  onPermissions(): void
   route?: string
 }) {
-  const active: InspectorScene = route === 'loading' ? 'preload' : route === 'film' ? state.scene : 'preparation'
+  const active: InspectorScene = route === 'loading' ? 'preload' : state.scene
   const [pinned, setPinned] = useState<InspectorScene | null>(null)
   const selected = pinned ?? active
   const [selectedPreset, setSelectedPreset] = useState<ScenePresetId>(() => getConfig().preset)
@@ -573,7 +564,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const changeField = async (path: ComposerFieldPath, value: unknown) => {
     const scope = (path.startsWith('global.') ? 'global' : path.split('.')[1]) as InspectorScope
     const before = getConfig()
-    const isFont = path === 'scenes.preparation.fontFamily' || path === 'scenes.prologue.fontFamily'
+    const isFont = path === 'scenes.prologue.fontFamily'
     const requestId = isFont ? ++fontRequest.current : 0
     if (isFont) setFontLoading(true)
     setNotice('')
@@ -583,8 +574,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
       if (path === 'global.playbackSpeed') dispatch({ type: 'set-speed', speed: Number(value) })
       if (path === 'global.quality') dispatch({ type: 'set-quality', quality: value as QualityProfile })
       if (isFont) {
-        const fontPath = path.endsWith('preparation.fontFamily') ? next.scenes.preparation.fontFamily : next.scenes.prologue.fontFamily
-        if (fontPath !== value) setNotice('Шрифт не загрузился; сохранён прежний.')
+        if (next.scenes.prologue.fontFamily !== value) setNotice('Шрифт не загрузился; сохранён прежний.')
       }
     } catch {
       setNotice('Не удалось применить настройку. Текущее значение сохранено.')
@@ -605,7 +595,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
     await commitGalaxySettings(selectGalaxyPalette(getConfig().scenes.galaxy, palette))
   }
 
-  const resetScope = async (scope: 'global' | 'openingBackground' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy') => {
+  const resetScope = async (scope: 'global' | 'openingBackground' | 'preload' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy') => {
     const before = getConfig()
     const result = await resetComposerScope(scope)
     if (!result.ok) {
@@ -682,14 +672,14 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
       <input id={`composer-${path.replaceAll('.', '-')}`} type="color" value={value} onChange={(event) => { void applyColor(event.target.value) }} />
     </div>
   }
-  const font = (scene: 'preparation' | 'prologue', label: string) => <FontControl path={`scenes.${scene}.fontFamily`} label={label} value={config.scenes[scene].fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
-  const title = selected === 'preload' ? '00 · Загрузка' : selected === 'preparation' ? '00.1 · Подготовка' : SCENES[selected].label
-  const hasSceneControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue'
+  const font = (scene: 'prologue', label: string) => <FontControl path={`scenes.${scene}.fontFamily`} label={label} value={config.scenes[scene].fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
+  const title = selected === 'preload' ? '00 · Загрузка' : SCENES[selected].label
+  const hasSceneControls = selected === 'preload' || selected === 'prologue'
     || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'gallery' || selected === 'cosmos'
-  const hasOpeningBackgroundControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue'
+  const hasOpeningBackgroundControls = selected === 'preload' || selected === 'prologue'
     || selected === 'growth' || selected === 'bloom' || selected === 'identity'
   const currentScope: InspectorScope | undefined = selected === 'cosmos' ? 'galaxy'
-    : selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'gallery'
+    : selected === 'preload' || selected === 'prologue' || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'gallery'
       ? selected : undefined
   const currentSnapshots = currentScope ? snapshots[currentScope] : undefined
   const remember = (slot: 'A' | 'B') => {
@@ -700,7 +690,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   }
   const compare = async (slot: 'A' | 'B') => {
     if (!currentScope || selected !== active || compareBusy.current) return
-    if (route !== 'film') { setNotice('Сравнение недоступно: у загрузки и подготовки нет управляемого времени фильма.'); return }
+    if (route !== 'film') { setNotice('Сравнение недоступно во время загрузки.'); return }
     const snapshot = snapshots[currentScope]?.[slot]
     if (!snapshot) return
     let point = snapshots[currentScope]?.point
@@ -780,16 +770,12 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             <div className="inspector-history"><button type="button" onClick={() => remember('A')}>Сохранить A</button><button type="button" onClick={() => remember('B')}>Сохранить B</button></div>
             <div className="inspector-history"><button type="button" aria-pressed={currentSnapshots?.active === 'A' && !!currentSnapshots.A && matchesPatch(section(config, currentScope), currentSnapshots.A)} disabled={comparing || !currentSnapshots?.A || selected !== active || route !== 'film'} onClick={() => { void compare('A') }}>Показать A</button><button type="button" aria-pressed={currentSnapshots?.active === 'B' && !!currentSnapshots.B && matchesPatch(section(config, currentScope), currentSnapshots.B)} disabled={comparing || !currentSnapshots?.B || selected !== active || route !== 'film'} onClick={() => { void compare('B') }}>Показать B</button></div>
             {comparing && <p role="status">Применяем снимок…</p>}
-            {route !== 'film' && <p>Сравнение недоступно: у загрузки и подготовки нет управляемого времени фильма.</p>}
+            {route !== 'film' && <p>Сравнение недоступно во время загрузки.</p>}
             {route === 'film' && currentSnapshots?.point && <p>Точка: {currentSnapshots.point.time.toFixed(2)} с <button type="button" onClick={() => setSnapshots(previous => ({ ...previous, [currentScope]: { ...previous[currentScope], point: undefined, active: undefined } }))}>Новая точка</button></p>}
             {selected !== active && <p>Перейдите в эту сцену для сравнения.</p>}
           </>}
         </details>}
         {selected === 'preload' && <details open><summary>Свечение и движение</summary>{PRELOAD_CONTROLS.map(range)}</details>}
-        {selected === 'preparation' && <>
-          <details open><summary>Типографика</summary>{font('preparation', 'Художественный шрифт')}{PREPARATION_CONTROLS.filter((c) => ['typeScale', 'lineHeight'].some((field) => c.path.endsWith(field))).map(range)}</details>
-          <details><summary>Интерфейс</summary>{PREPARATION_CONTROLS.filter((c) => !['typeScale', 'lineHeight'].some((field) => c.path.endsWith(field))).map(range)}</details>
-        </>}
         {selected === 'prologue' && PROLOGUE_GROUPS.map(group => <details key={group.name} open={group.name === 'Typography'}>
           <summary>{group.name}</summary>
           {group.name === 'Typography' && <>
@@ -864,10 +850,10 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             <button type="button" onClick={() => { void resetScope('galaxy') }}>Сбросить Galaxy</button>
           </details>
         </>}
-        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
+        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
       </section>
       <details className="inspector-section"><summary>Диагностика</summary>
-        <div className="dev-actions"><button type="button" data-testid="dev-preload" onClick={onPreload}>Проверить загрузку</button><button type="button" data-testid="dev-permissions" onClick={onPermissions}>Настройки заново</button></div>
+        <div className="dev-actions"><button type="button" data-testid="dev-preload" onClick={onPreload}>Проверить загрузку</button></div>
         <dl><dt>Сцена / режим</dt><dd>{state.scene} / {state.mode}</dd><dt>Пауза / чтение</dt><dd>{String(state.paused)} / {String(state.reading)}</dd><dt>Revision / карточка</dt><dd>{state.revision} / {state.galleryIndex + 1}</dd><dt>Качество / движение</dt><dd>{state.quality} / {reducedMotion ? 'reduced' : 'normal'}</dd><dt>Примерный rAF FPS</dt><dd>{fps ?? 'измеряется…'}</dd></dl><p>rAF FPS — частота кадров браузера, не WebGL.</p>
       </details>
     </aside>

@@ -5,6 +5,7 @@ import {
   MeshStandardMaterial, PointLight, RepeatWrapping, RGBAFormat, SRGBColorSpace, UnsignedByteType,
 } from 'three'
 import type { FilmRuntime } from '../../engine/runtime'
+import { useBloomPointerHandler } from '../lily/BloomPointerContext'
 import { createGrassBladeData, createIslandSideGeometryData, createIslandTopGeometryData, type IslandGeometryData } from './floatingIslandGeometry'
 import { createSoilTextureData } from './soilTextureData'
 
@@ -139,6 +140,7 @@ export function FloatingIsland({ runtime, radius, thickness = 0.24, depth = 0.58
   opacity: { current: number }
 }) {
   const invalidate = useThree(({ invalidate }) => invalidate)
+  const onBloomPointerDown = useBloomPointerHandler()
   const top = useMemo(() => makeGeometry(createIslandTopGeometryData(radius, roughness, thickness)), [radius, roughness, thickness])
   const side = useMemo(() => makeGeometry(createIslandSideGeometryData(radius, thickness, depth, roughness)), [depth, radius, roughness, thickness])
   const grass = useMemo(() => makeGrassGeometry(grassDensity, radius, grassHeight, roughness, thickness), [grassDensity, grassHeight, radius, roughness, thickness])
@@ -194,7 +196,7 @@ export function FloatingIsland({ runtime, radius, thickness = 0.24, depth = 0.58
     soilTextures.roughness.dispose()
   }, [soilTextures])
 
-  return <group>
+  return <group onPointerDown={onBloomPointerDown}>
     <mesh geometry={side} receiveShadow>
       <meshStandardMaterial ref={sideMaterial} vertexColors map={soilTextures.color} bumpMap={soilTextures.height} bumpScale={0.012} roughnessMap={soilTextures.roughness} roughness={1} metalness={0} />
     </mesh>

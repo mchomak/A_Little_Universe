@@ -40,6 +40,11 @@ describe('Lily clip timing', () => {
     expect(getGrowthClipTime(oldTime, before, 9)).toBeCloseTo(getGrowthClipTime(newTime, after, 9))
   })
 
+  it('holds the terminal Growth keyframe through the bloom waiting scene', () => {
+    const frames = getGrowthSceneFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth)
+    expect(getGrowthClipTime(frames.duration, frames, 9)).toBe(9)
+  })
+
   it('keeps touch gating while reduced motion jumps directly to the open Bloom pose', () => {
     expect(getBloomClipTime(0, [0, 16], 16, false)).toBe(0)
     expect(getBloomClipTime(4, [0, 16], 16, false)).toBe(4)

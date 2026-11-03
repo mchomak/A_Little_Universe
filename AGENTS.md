@@ -4,7 +4,7 @@ Keep this file compact. Current project status, setup, and architecture are in [
 
 ## Durable project rules
 
-- The target is local presentation on a MacBook with Apple M2 at the highest practical display quality. Do not spend effort on dedicated iPad adaptation unless explicitly requested.
+- The target is local presentation on a roughly 15-inch MacBook with Apple M2 at the highest practical display quality and screen resolution.
 - Before scene work, read the relevant storyboard section and approved keyframes. Do not invent personal photos, facts, or story beats; label temporary assets as development placeholders.
 - Use the existing React, TypeScript, Vite, Three.js, React Three Fiber, and GSAP stack. Avoid unnecessary dependencies, speculative services, and unrelated refactors.
 - Preserve the persistent WebGL canvas and shared ownership of film state, camera, audio, and scene timing. Avoid per-frame React state updates; dispose GPU, audio, and media resources correctly.
@@ -21,7 +21,7 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 
 ## Фон и кадрирование
 
-`images/phone_1.png` — статичный DOM/CSS-слой на экранах загрузки 00 и подготовки 00.1, а также в сценах 01–04; при входе в галерею 05 он скрывается. `cover` заполняет экран без пустых краёв. DEV Scene Editor (`/?debug`) меняет общий профиль `scenes.openingBackground.{zoom, offsetX, offsetY}`; в секции «00–04 · Кадрирование фона» доступны живой предпросмотр и сброс. Масштаб: 1–3, смещения: −1…1, по умолчанию: 1/0/0.
+`images/phone_1.png` — DOM/CSS-фон загрузки 00 и сцен 01–04; при входе в галерею 05 он скрывается. Начальный кадр увеличен, во время падения семени видимая область плавно движется вниз и сохраняет положение в сценах 03–04. `cover` заполняет экран без пустых краёв. DEV Scene Editor (`/?debug`) меняет общий профиль `scenes.openingBackground.{zoom, offsetX, offsetY}`; в секции «00–04 · Кадрирование фона» доступны живой предпросмотр и сброс. Масштаб: 1–3, смещения: −1…1, по умолчанию: 1/0/0.
 
 Схема Scene Composer v15 принимает JSON v1–v15; отсутствующие поля кропа получают значения по умолчанию, экспортируется версия 15.
 

@@ -5,7 +5,7 @@ export type QualityProfile = 'standard' | 'low'
 export type ScenePresetId = 'moonlit-letter' | 'stardust' | 'vasilisa-cinematic'
 export type GalaxyPalette = 'vasilisa' | 'spore' | 'ember' | 'emerald' | 'ice' | 'rose' | 'custom'
 export type SeedQuality = 'low' | 'standard' | 'high'
-export type ConfigResetScope = 'all' | 'global' | 'openingBackground' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy' | 'preset'
+export type ConfigResetScope = 'all' | 'global' | 'openingBackground' | 'preload' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy' | 'preset'
 
 export interface GalleryCloudLayerSettings {
   count: number
@@ -40,14 +40,6 @@ export interface SceneComposerConfig {
   readonly scenes: Readonly<{
     openingBackground: Readonly<{ zoom: number; offsetX: number; offsetY: number }>
     preload: Readonly<{ glow: number; particleCount: number; movementSpeed: number; collapseDuration: number }>
-    preparation: Readonly<{
-      fontFamily: ArtFontId
-      spacing: number
-      entranceDuration: number
-      typeScale: number
-      lineHeight: number
-      cardOpacity: number
-    }>
     prologue: Readonly<{
       fontFamily: ArtFontId
       fontSize: number
@@ -344,7 +336,6 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
   scenes: {
     openingBackground: { zoom: 1, offsetX: 0, offsetY: 0 },
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
-    preparation: { fontFamily: 'marck-script', spacing: 24, entranceDuration: 0.8, typeScale: 1, lineHeight: 1.08, cardOpacity: 1 },
     prologue: {
       fontFamily: 'great-vibes', fontSize: 48, lineHeight: 1.3, positionY: 40,
       handwritingDuration: 3.5, handwritingRhythm: 0.82, interphraseInterval: 1.35, readableHold: 2,
@@ -498,7 +489,6 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const scenesInput = asRecord(root.scenes)
   const openingBackgroundInput = asRecord(scenesInput?.openingBackground)
   const preloadInput = asRecord(scenesInput?.preload)
-  const preparationInput = asRecord(scenesInput?.preparation)
   const prologueInput = asRecord(scenesInput?.prologue)
   const rawGrowthInput = asRecord(scenesInput?.growth)
   const identityInput = asRecord(scenesInput?.identity)
@@ -558,14 +548,6 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       particleCount: numberValue(preloadInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preload.particleCount, 40, 300, true),
       movementSpeed: numberValue(preloadInput?.movementSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preload.movementSpeed, 0.1, 4),
       collapseDuration: numberValue(preloadInput?.collapseDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preload.collapseDuration, 0, 4),
-    },
-    preparation: {
-      fontFamily: fontValue(preparationInput?.fontFamily, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.fontFamily),
-      spacing: numberValue(preparationInput?.spacing, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.spacing, 0, 64),
-      entranceDuration: numberValue(preparationInput?.entranceDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.entranceDuration, 0, 5),
-      typeScale: numberValue(preparationInput?.typeScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.typeScale, 0.9, 1.1),
-      lineHeight: numberValue(preparationInput?.lineHeight, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.lineHeight, 0.9, 1.5),
-      cardOpacity: numberValue(preparationInput?.cardOpacity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.cardOpacity, 0.85, 1),
     },
     prologue: {
       fontFamily: fontValue(prologueInput?.fontFamily, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily),
@@ -987,7 +969,6 @@ async function applyConfig(candidate: SceneComposerConfig, revision: number, fal
       ...candidate,
       scenes: {
         ...candidate.scenes,
-        preparation: { ...candidate.scenes.preparation, fontFamily: DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preparation.fontFamily },
         prologue: { ...candidate.scenes.prologue, fontFamily: DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily },
       },
     })
@@ -1005,8 +986,8 @@ async function applyConfig(candidate: SceneComposerConfig, revision: number, fal
 }
 
 function changedFontFaces(current: SceneComposerConfig, next: SceneComposerConfig): ArtFontId[] {
-  const candidate = [next.scenes.preparation.fontFamily, next.scenes.prologue.fontFamily]
-  const active = new Set([current.scenes.preparation.fontFamily, current.scenes.prologue.fontFamily])
+  const candidate = [next.scenes.prologue.fontFamily]
+  const active = new Set([current.scenes.prologue.fontFamily])
   return [...new Set(candidate.filter((id) => !active.has(id)))]
 }
 

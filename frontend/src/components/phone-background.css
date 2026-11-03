@@ -12,4 +12,5 @@
   background-repeat: no-repeat;
   background-size: cover;
   transform-origin: center;
+  will-change: transform;
 }

@@ -15,5 +15,5 @@ export function Bootstrap() {
   const [prepared, setPrepared] = useState<PreparationResult | null>(null)
   const onReady = useCallback((result: PreparationResult) => setPrepared(result), [])
   const App = filmModule?.App
-  return prepared && App ? <App preparation={prepared} /> : <Preloader manager={manager} onReady={onReady} />
+  return prepared && App ? <App /> : <Preloader manager={manager} onReady={onReady} />
 }

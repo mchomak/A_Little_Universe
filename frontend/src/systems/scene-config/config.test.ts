@@ -668,11 +668,10 @@ it('maps schema v1 renderer aliases without exposing them in the v2 model', () =
   expect(prologue).not.toHaveProperty('particleReturnFraction')
 })
 
-it('keeps preparation typography and card style defaults when JSON provides a partial override', () => {
+it('ignores the retired preparation screen settings in older configuration files', () => {
   const config = normalizeConfig({ schemaVersion: 1, scenes: { preparation: { typeScale: 1.05 } } })
 
-  expect(config.scenes.preparation).toMatchObject({ typeScale: 1.05, lineHeight: 1.08, cardOpacity: 1 })
-  expect(config.scenes.preparation.fontFamily).toBe('marck-script')
+  expect(config.scenes).not.toHaveProperty('preparation')
 })
 
 it('falls back per field, drops unknown keys, and rejects unsupported versions', () => {

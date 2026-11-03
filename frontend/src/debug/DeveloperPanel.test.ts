@@ -10,7 +10,6 @@ it('shows bounded ash-motion controls and does not expose the removed return set
     dispatch: () => undefined,
     reducedMotion: false,
     onPreload: () => undefined,
-    onPermissions: () => undefined,
   }))
 
   expect(markup).toContain('Ветер · 1,15 ×')
@@ -26,24 +25,8 @@ it('shows bounded ash-motion controls and does not expose the removed return set
   expect(markup).toMatch(/id="composer-scenes-prologue-particleFadeDuration"[^>]*min="0.5" max="4" step="0.1" value="1.2"/)
   expect(markup).toContain('Рукописное появление подсказки · 0,65 с')
   expect(markup).not.toContain('particleReturnFraction')
-})
-
-it('renders bounded typography and surface controls for preparation', () => {
-  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
-    state: initialFilmState,
-    dispatch: () => undefined,
-    reducedMotion: false,
-    onPreload: () => undefined,
-    onPermissions: () => undefined,
-    route: 'settings',
-  }))
-
-  expect(markup).toContain('Масштаб заголовка · 100 %')
-  expect(markup).toMatch(/id="composer-scenes-preparation-typeScale"[^>]*min="90" max="110" step="5" value="100"/)
-  expect(markup).toContain('Межстрочный интервал заголовка · 1,08 ×')
-  expect(markup).toMatch(/id="composer-scenes-preparation-lineHeight"[^>]*min="0\.9" max="1\.5" step="0\.01" value="1\.08"/)
-  expect(markup).toContain('Непрозрачность поверхности · 100 %')
-  expect(markup).toMatch(/id="composer-scenes-preparation-cardOpacity"[^>]*min="85" max="100" step="1" value="100"/)
+  expect(markup).not.toContain('00.1')
+  expect(markup).not.toContain('Настройки заново')
 })
 
 it('shows shared opening background crop controls through Scene 04 and hides them in the gallery', () => {
@@ -52,7 +35,6 @@ it('shows shared opening background crop controls through Scene 04 and hides the
     dispatch: () => undefined,
     reducedMotion: false,
     onPreload: () => undefined,
-    onPermissions: () => undefined,
     route: 'film',
   }))
 
@@ -66,7 +48,6 @@ it('shows shared opening background crop controls through Scene 04 and hides the
     dispatch: () => undefined,
     reducedMotion: false,
     onPreload: () => undefined,
-    onPermissions: () => undefined,
     route: 'film',
   }))
   expect(galleryMarkup).not.toContain('composer-scenes-openingBackground-zoom')
@@ -78,7 +59,6 @@ it('shows only the active scene controls and keeps playback in the timeline', ()
     dispatch: () => undefined,
     reducedMotion: false,
     onPreload: () => undefined,
-    onPermissions: () => undefined,
     route: 'film',
   }))
   expect(markup).toContain('Качество семечка')
@@ -162,7 +142,6 @@ it('shows only the active scene controls and keeps playback in the timeline', ()
     expect(markup.match(new RegExp(`(?:^|\\s)id="composer-scenes-growth-${control}"`, 'g'))).toHaveLength(1)
   }
   expect(markup).not.toContain('composer-scenes-prologue-windStrength')
-  expect(markup).not.toContain('composer-scenes-preparation-typeScale')
   expect(markup).not.toContain('dev-seek')
   expect(markup).toContain('Auto')
 })
@@ -173,7 +152,6 @@ it('exposes bounded portrait assembly controls in the Scene 04 Inspector', () =>
     dispatch: () => undefined,
     reducedMotion: false,
     onPreload: () => undefined,
-    onPermissions: () => undefined,
     route: 'film',
   }))
 
@@ -201,7 +179,6 @@ it('exposes the imported galaxy seed and optional black center in Scene 07 Inspe
     dispatch: () => undefined,
     reducedMotion: false,
     onPreload: () => undefined,
-    onPermissions: () => undefined,
   }))
 
   expect(markup).toContain('Seed генерации')
@@ -220,7 +197,6 @@ it('exposes all bounded moonlit gallery settings in the existing Scene Inspector
     dispatch: () => undefined,
     reducedMotion: false,
     onPreload: () => undefined,
-    onPermissions: () => undefined,
     route: 'film',
   }))
 
@@ -289,7 +265,6 @@ it('keeps independent cloud count controls while respecting the shared low-quali
     dispatch: () => undefined,
     reducedMotion: false,
     onPreload: () => undefined,
-    onPermissions: () => undefined,
     route: 'film',
   }))
 

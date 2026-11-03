@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../systems/scene-config/config'
-import { getBloomCameraMoveDuration, getBloomCloseupPose } from './bloomCamera'
+import { getBloomCameraMoveDuration, getBloomCloseupPose, getBloomEntryCameraPose } from './bloomCamera'
 
 it('aims the bloom close-up at the flower cup using configured distance and height', () => {
   expect(getBloomCloseupPose(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom)).toEqual({
@@ -12,4 +12,12 @@ it('finishes camera movement before the opening completes, including short durat
   const bloom = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom
   expect(getBloomCameraMoveDuration(bloom, [0, 16])).toBe(10.7)
   expect(getBloomCameraMoveDuration(bloom, [0, 6])).toBeCloseTo(5.7)
+})
+
+it('preserves the actual camera pose at the 02-to-03 handoff and on Bloom timeline rebuilds', () => {
+  const growthExit = { x: 0.02, y: -0.04, z: 7.8, tx: 0.01, ty: -0.12, tz: 0 }
+  const authoredEntry = { x: 0, y: -0.02, z: 7.8, tx: 0, ty: -0.12, tz: 0 }
+  expect(getBloomEntryCameraPose('growth', growthExit, authoredEntry)).toBe(growthExit)
+  expect(getBloomEntryCameraPose('bloom', growthExit, authoredEntry)).toBe(growthExit)
+  expect(getBloomEntryCameraPose('prologue', growthExit, authoredEntry)).toBe(authoredEntry)
 })

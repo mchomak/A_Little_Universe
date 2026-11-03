@@ -1,34 +1,68 @@
 import { expect, it } from 'vitest'
-import { createBloomGesture, createBloomTextClock, isBloomGestureReady } from './bloomGesture'
+import { createBloomTextClock, handleBloomPointerDown, isBloomGestureReady, isBloomPrimaryClick } from './bloomGesture'
+import { initialFilmState } from '../../engine/film'
+import { vi } from 'vitest'
 
-const point = (pointerId: number, clientX: number, clientY: number) => ({ pointerId, clientX, clientY })
-
-it('accepts one deliberate drag that starts inside the bud target', () => {
-  const gesture = createBloomGesture()
-  expect(gesture.begin(point(4, 120, 90), true)).toBe(true)
-  expect(gesture.move(point(4, 128, 100))).toBe(false)
-  expect(gesture.move(point(4, 140, 100))).toBe(true)
-  expect(gesture.end(point(4, 140, 100))).toBe(true)
-  expect(gesture.end(point(4, 140, 100))).toBe(false)
-
-  gesture.begin(point(5, 0, 0), true)
-  expect(gesture.end(point(5, 0, 22))).toBe(true)
-})
-
-it('rejects taps, unrelated pointers, canceled drags, and gestures before the invitation is ready', () => {
-  const gesture = createBloomGesture()
-  expect(gesture.begin(point(1, 0, 0), false)).toBe(false)
-  expect(gesture.begin(point(1, 0, 0), true)).toBe(true)
-  expect(gesture.move(point(2, 50, 50))).toBe(false)
-  expect(gesture.end(point(2, 50, 50))).toBe(false)
-  expect(gesture.end(point(1, 0, 0))).toBe(false)
-
-  gesture.begin(point(3, 0, 0), true)
-  gesture.move(point(3, 25, 0))
-  gesture.cancel()
-  expect(gesture.end(point(3, 25, 0))).toBe(false)
+it('accepts a single primary left click across the shared island and flower target', () => {
+  expect(isBloomPrimaryClick(0, true)).toBe(true)
+  expect(isBloomPrimaryClick(2, true)).toBe(false)
+  expect(isBloomPrimaryClick(0, false)).toBe(false)
   expect(isBloomGestureReady(2.99, 3)).toBe(false)
   expect(isBloomGestureReady(3, 3)).toBe(true)
+})
+
+it('dispatches interact once for a ready left click while bloom is waiting', () => {
+  const dispatch = vi.fn()
+  const stopPropagation = vi.fn()
+  const handled = handleBloomPointerDown(
+    { ...initialFilmState, scene: 'bloom', mode: 'waiting' },
+    true,
+    { button: 0, isPrimary: true, stopPropagation },
+    dispatch,
+  )
+
+  expect(handled).toBe(true)
+  expect(stopPropagation).toHaveBeenCalledOnce()
+  expect(dispatch).toHaveBeenCalledOnce()
+  expect(dispatch).toHaveBeenCalledWith({ type: 'interact' })
+})
+
+it.each([
+  ['while paused', { paused: true }],
+  ['while reading', { reading: true }],
+  ['outside bloom', { scene: 'growth' }],
+  ['after waiting', { mode: 'playing' }],
+] as const)('does not dispatch interact %s', (_condition, stateOverride) => {
+  const dispatch = vi.fn()
+  const stopPropagation = vi.fn()
+  const state = { ...initialFilmState, scene: 'bloom' as const, mode: 'waiting' as const, ...stateOverride }
+
+  expect(handleBloomPointerDown(state, true, { button: 0, isPrimary: true, stopPropagation }, dispatch)).toBe(false)
+  expect(stopPropagation).not.toHaveBeenCalled()
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
+it('does not dispatch before the invitation text is ready', () => {
+  const dispatch = vi.fn()
+  const stopPropagation = vi.fn()
+  const state = { ...initialFilmState, scene: 'bloom' as const, mode: 'waiting' as const }
+
+  expect(handleBloomPointerDown(state, false, { button: 0, isPrimary: true, stopPropagation }, dispatch)).toBe(false)
+  expect(stopPropagation).toHaveBeenCalledOnce()
+  expect(dispatch).not.toHaveBeenCalled()
+})
+
+it.each([
+  ['right click', 2, true],
+  ['non-primary click', 0, false],
+] as const)('ignores a %s', (_condition, button, isPrimary) => {
+  const dispatch = vi.fn()
+  const stopPropagation = vi.fn()
+  const state = { ...initialFilmState, scene: 'bloom' as const, mode: 'waiting' as const }
+
+  expect(handleBloomPointerDown(state, true, { button, isPrimary, stopPropagation }, dispatch)).toBe(false)
+  expect(stopPropagation).not.toHaveBeenCalled()
+  expect(dispatch).not.toHaveBeenCalled()
 })
 
 it('keeps waiting time continuous through the touch and preserves local seeks', () => {

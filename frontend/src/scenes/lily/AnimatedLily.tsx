@@ -1,13 +1,14 @@
 import { useGLTF } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react'
-import { LoopOnce, LoopRepeat, Material, Mesh, type Group } from 'three'
+import { LoopOnce, Material, Mesh, type Group } from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import type { SceneProps } from '../../engine/sceneTypes'
+import { useBloomPointerHandler } from './BloomPointerContext'
 import { getBloomSceneFrames, getGrowthSceneFrames } from '../../engine/filmConfig'
 import { getConfig, subscribeConfig } from '../../systems/scene-config/config'
 import { LILY_MODEL_URL } from '../../assets/lily/lilyAsset'
-import { getGrowthClipTime, getIdleClosedClipTime, getSyncedBloomClipTime } from './animationTiming'
+import { getGrowthClipTime, getSyncedBloomClipTime } from './animationTiming'
 import { attachLilyAnimationPlayer, LilyAnimationPlayer } from './animationPlayer'
 import { subscribeLilyAnimationClock } from './animationClock'
 import { createLilyGeometryParticleSource, lilyDissolvePart, type LilySurfaceSource } from './particleSource'
@@ -67,6 +68,7 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
   const invalidate = useThree(({ invalidate }) => invalidate)
   const pixelRatio = useThree(({ viewport }) => viewport.dpr)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
+  const onBloomPointerDown = useBloomPointerHandler()
   const model = useMemo(() => clone(gltf.scene) as Group, [gltf.scene])
   const stateRef = useRef(state)
   const playerRef = useRef<LilyAnimationPlayer | null>(null)
@@ -75,7 +77,6 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
   const growthVfxRef = useRef<LilyGrowthVfx | null>(null)
   const materialsRef = useRef<LilyMaterialState[]>([])
   const particleSourceRef = useRef<LilySurfaceSource | null>(null)
-  const waitingForTouch = state.scene === 'bloom' && state.mode === 'waiting'
   useLayoutEffect(() => { stateRef.current = state }, [state])
   useLayoutEffect(() => {
     const materials = cloneLilyMaterials(model, dissolveUniforms)
@@ -112,7 +113,7 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
     onParticleSource(source)
   }, [dissolveUniforms, gltf.animations, model, onParticleSource, state.scene])
 
-  const draw = useCallback((time: number, presentationTime: number) => {
+  const draw = useCallback((time: number) => {
     const currentState = stateRef.current
     const modelObject = modelRef.current
     const player = playerRef.current
@@ -138,10 +139,12 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
       modelObject.visible = true
       setLilyOpacity(materialsRef.current, 1)
       if (currentState.mode === 'waiting') {
-        const clip = gltf.animations.find((animation) => animation.name === 'IdleClosed')
+        // Hold the exact terminal Growth pose until the touch. A global-clock
+        // idle phase used to start at an arbitrary frame and visibly pop here.
+        const clip = growthClip
         if (clip) {
-          player.play('IdleClosed', LoopRepeat, Infinity)
-          player.seek(getIdleClosedClipTime(presentationTime, clip.duration, reducedMotion))
+          player.play('Growth', LoopOnce, 1)
+          player.seek(getGrowthClipTime(growthFrames.duration, growthFrames, clip.duration))
         }
       } else {
         const clip = gltf.animations.find((animation) => animation.name === 'Bloom')
@@ -177,12 +180,12 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
   }, [config.scenes.bloom, config.scenes.growth, config.scenes.identity, dissolveUniforms, gltf.animations, invalidate, pixelRatio, reducedMotion])
 
   useLayoutEffect(() => {
-    const sync = () => draw(runtime.time, runtime.presentationTime)
+    const sync = () => draw(runtime.time)
     sync()
-    return subscribeLilyAnimationClock(runtime, sync, waitingForTouch, reducedMotion)
-  }, [draw, model, runtime, waitingForTouch, reducedMotion])
+    return subscribeLilyAnimationClock(runtime, sync, false, reducedMotion)
+  }, [draw, model, runtime, state.scene, state.mode, reducedMotion])
 
-  return <group ref={wrapperRef} position={MODEL_POSITION} scale={MODEL_SCALE}>
+  return <group ref={wrapperRef} position={MODEL_POSITION} scale={MODEL_SCALE} onPointerDown={onBloomPointerDown}>
     <primitive ref={modelRef} object={model} dispose={null} />
   </group>
 }

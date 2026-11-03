@@ -5,12 +5,12 @@ describe('inspector history', () => {
   it('keeps independent scene histories and includes resets', () => {
     const h = createInspectorHistory()
     h.record('prologue', { size: 48 }, { size: 61 })
-    h.record('preparation', { spacing: 24 }, { spacing: 32 })
+    h.record('growth', { spacing: 24 }, { spacing: 32 })
     h.record('prologue', { size: 61 }, { size: 48 })
     expect(h.undo('prologue')).toEqual({ size: 61 })
     expect(h.undo('prologue')).toEqual({ size: 48 })
     expect(h.redo('prologue')).toEqual({ size: 61 })
-    expect(h.undo('preparation')).toEqual({ spacing: 24 })
+    expect(h.undo('growth')).toEqual({ spacing: 24 })
   })
   it('clears redo after a new edit and establishes a boundary on import', () => {
     const h = createInspectorHistory()

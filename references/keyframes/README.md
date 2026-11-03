@@ -1,13 +1,13 @@
 # Ключевые кадры
 
-Это материалы художественной разработки, **не runtime-ассеты**. Исходники текущего брифа находятся в `key_frames/`; они не перемещены, не изменены и не включены в production bundle. Ниже индекс восьми утверждённых направляющих кадров сцен 00–01. При последующей организации originals/approved сохранять существующие исходники.
+Это материалы художественной разработки, **не runtime-ассеты**. Исходники текущего брифа находятся в `key_frames/`; они не перемещены, не изменены и не включены в production bundle. Индекс ниже сохраняет исходники кадров сцен 00–01; два прежних кадра 00.1 явно отмечены как архивные, остальные остаются активными художественными ориентирами. При последующей организации originals/approved сохранять существующие исходники.
 
 | Кадр | Оригинал | Статус и применение |
 |---|---|---|
 | 00.2 | [S00_0_F02_ResourceLoading.png](../../key_frames/S00_0_F02_ResourceLoading.png) | approved reference: мягкое жемчужно-лавандовое облако, глубокий фон, фактический progress |
 | 00.3 | [S00_0_F03_LoadingComplete.png](../../key_frames/S00_0_F03_LoadingComplete.png) | approved reference: сборка облака в точку после готовности |
-| 00.1.1 | [S00_1_F01_PreparationScreen.png](../../key_frames/S00_1_F01_PreparationScreen.png) | approved reference: serif заголовок, три независимые опции, pearl button |
-| 00.1.2 | [S00_1_F02_CameraCheck.png](../../key_frames/S00_1_F02_CameraCheck.png) | approved reference: диагностика; статусы только фактические, трекер честно не подключён |
+| 00.1.1 | [S00_1_F01_PreparationScreen.png](../../key_frames/S00_1_F01_PreparationScreen.png) | archived reference; scene 00.1 is removed from the presentation and this frame is not used |
+| 00.1.2 | [S00_1_F02_CameraCheck.png](../../key_frames/S00_1_F02_CameraCheck.png) | archived reference; scene 00.1 is removed from the presentation and this frame is not used |
 | 01.1 | [S01_F01_FirstLight.png](../../key_frames/S01_F01_FirstLight.png) | approved reference: одна тёплая точка без звёзд |
 | 01.2 | [S01_F02_FirstMessage.png](../../key_frames/S01_F02_FirstMessage.png) | approved reference: первая serif фраза, неподвижная камера |
 | 01.3 | [S01_F03_SecondMessage.png](../../key_frames/S01_F03_SecondMessage.png) | approved reference: вторая фраза, спокойная пауза |
@@ -29,13 +29,13 @@ references/keyframes/
     index.md         связь файлов с кадрами сценария и статусом
 ```
 
-Папки сцен создавать по мере появления изображений: `S01_prologue`, `S02_lily_growth`, `S03_lily_open`, `S04_name_portrait`, `S05_memories`, `S06_eye`, `S07_galaxy_bouquet`, `S08_greeting`, `S09_ending`. Для технических стадий — `S00_preload`, `S00_1_permissions`.
+Папки сцен создавать по мере появления изображений: `S01_prologue`, `S02_lily_growth`, `S03_lily_open`, `S04_name_portrait`, `S05_memories`, `S06_eye`, `S07_galaxy_bouquet`, `S08_greeting`, `S09_ending`. Для технической загрузки — `S00_preload`. Материалы бывшей сцены 00.1 остаются только архивными.
 
 ## Нейминг
 
 `S03_SH04_lily_open_v01.png` — сцена 03, кадр 03.4, краткое описание, версия 01. Для альтернатив: `S03_SH04_lily_open_variant-b_v02.png`. Состояние задаётся папкой `draft/approved`, не словом «final» в имени. Использовать латиницу, подчёркивания, ведущие нули и расширение реального формата.
 
-Дробный технический номер 00.1 кодировать как `S00_1_SH01_permissions_v01.png` и явно сопоставлять в index. Если понадобится несколько изображений одного кадра — добавить `a/b` после SH (`SH04a`), сохранив связь с 03.4.
+Если понадобится несколько изображений одного кадра — добавить `a/b` после SH (`SH04a`), сохранив связь с точным номером сцены.
 
 ## Правила сохранности и утверждения
 
