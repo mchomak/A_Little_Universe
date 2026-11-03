@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { GALLERY } from './content'
-import { GALLERY_CLOUD_RENDER_LIMIT, GALLERY_WORLD, getGalleryCloudDrift, getGalleryCloudMasses, getGalleryCloudMassesForLayerCounts, getGalleryCloudPosition, getGalleryCloudRadii, getGalleryCloudRenderOrder, getGalleryHazeMasses, getGalleryMoonScatteringLayers } from './world'
+import { GALLERY_CLOUD_RENDER_LIMIT, GALLERY_WORLD, getGalleryAtmosphereStepCount, getGalleryAtmosphereVisibilityFade, getGalleryCloudDrift, getGalleryCloudMasses, getGalleryCloudMassesForLayerCounts, getGalleryCloudPosition, getGalleryCloudRadii, getGalleryCloudRenderOrder, getGalleryHazeMasses, getGalleryMoonScatteringLayers } from './world'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 
 const cloudLayers = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.cloudLayers
@@ -28,15 +28,16 @@ describe('moonlit gallery world layout', () => {
       standard.filter((mass) => mass.layer === layer).length,
     ]))
 
-    expect(counts).toEqual({ far: 5, mid: 8, nearLow: 10, waterline: 13 })
+    expect(counts).toEqual({ far: 3, mid: 4, nearLow: 10, waterline: 12 })
     expect(standard).toHaveLength(GALLERY_CLOUD_RENDER_LIMIT.standard)
     expect(low).toHaveLength(GALLERY_CLOUD_RENDER_LIMIT.low)
     expect(new Set(low.map((mass) => mass.layer))).toEqual(new Set(['far', 'mid', 'nearLow', 'waterline']))
     expect(Object.fromEntries(['far', 'mid', 'nearLow', 'waterline'].map((layer) => [
       layer, low.filter((mass) => mass.layer === layer).length,
-    ]))).toEqual({ far: 3, mid: 2, nearLow: 8, waterline: 7 })
+    ]))).toEqual({ far: 3, mid: 2, nearLow: 6, waterline: 6 })
     expect(standard.filter((mass) => mass.moonInteraction)).toHaveLength(2)
     expect(standard.filter((mass) => mass.moonInteraction).every((mass) => mass.opacity < 0.5)).toBe(true)
+    expect(low.filter((mass) => mass.moonInteraction)).toHaveLength(2)
     const moonWisps = standard.filter((mass) => mass.moonInteraction)
     expect(moonWisps).toHaveLength(2)
     expect(moonWisps.every((mass) => mass.position[2] > GALLERY_WORLD.moon.position[2])).toBe(true)
@@ -50,6 +51,35 @@ describe('moonlit gallery world layout', () => {
     const oversized = Object.fromEntries(Object.entries(cloudLayers).map(([layer, settings]) => [layer, { ...settings, count: 24 }])) as typeof cloudLayers
     expect(getGalleryCloudMassesForLayerCounts('standard', oversized)).toHaveLength(GALLERY_CLOUD_RENDER_LIMIT.standard)
     expect(getGalleryCloudMassesForLayerCounts('low', oversized)).toHaveLength(GALLERY_CLOUD_RENDER_LIMIT.low)
+  })
+
+  it('spends more ray samples on close corridor clouds and fewer in the water reflection', () => {
+    const sampleBudget = (quality: 'low' | 'standard', reflection = false) => {
+      const clouds = getGalleryCloudMassesForLayerCounts(quality, cloudLayers)
+      const haze = getGalleryHazeMasses(quality)
+      return [
+        ...clouds.map((mass) => getGalleryAtmosphereStepCount(quality, mass.layer, 0, reflection)),
+        ...haze.map(() => getGalleryAtmosphereStepCount(quality, 'haze', 0, reflection)),
+      ].reduce((sum, steps) => sum + steps, 0)
+    }
+
+    expect(sampleBudget('standard')).toBe(314)
+    expect(sampleBudget('standard', true)).toBe(108)
+    expect(sampleBudget('low')).toBe(69)
+    expect(sampleBudget('low', true)).toBe(50)
+    expect(getGalleryAtmosphereStepCount('standard', 'nearLow', 18)).toBe(12)
+    expect(getGalleryAtmosphereStepCount('standard', 'nearLow', 50)).toBeGreaterThan(5)
+    expect(getGalleryAtmosphereStepCount('standard', 'nearLow', 50)).toBeLessThan(12)
+    expect(getGalleryAtmosphereStepCount('standard', 'nearLow', 90)).toBe(5)
+  })
+
+  it('fades distant clouds continuously before removing fully transparent masses', () => {
+    expect(getGalleryAtmosphereVisibilityFade(92, 'far')).toBe(1)
+    expect(getGalleryAtmosphereVisibilityFade(114, 'far')).toBeCloseTo(0.5)
+    expect(getGalleryAtmosphereVisibilityFade(136, 'far')).toBe(0)
+    expect(getGalleryAtmosphereVisibilityFade(154, 'nearLow')).toBeCloseTo(0.5)
+    expect(getGalleryAtmosphereVisibilityFade(1000, 'far', true)).toBe(1)
+    expect(getGalleryAtmosphereVisibilityFade(Number.NaN, 'nearLow')).toBe(0)
   })
 
   it('places near-low and waterline masses on both sides along the whole route, outside the photo corridor', () => {

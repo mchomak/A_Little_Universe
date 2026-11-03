@@ -5,7 +5,72 @@ export type GalleryQuality = 'low' | 'standard'
 export type GalleryCloudLayerId = keyof GalleryCloudLayers
 
 /** Per-frame raymarch draw-call ceilings; the registry can stay denser than the rendered subset. */
-export const GALLERY_CLOUD_RENDER_LIMIT: Readonly<Record<GalleryQuality, number>> = { low: 20, standard: 36 }
+export const GALLERY_CLOUD_RENDER_LIMIT: Readonly<Record<GalleryQuality, number>> = { low: 17, standard: 29 }
+
+export type GalleryAtmosphereLayer = GalleryCloudLayerId | 'haze'
+
+const cloudLayerMinimums: Readonly<Record<GalleryQuality, Readonly<Record<GalleryCloudLayerId, number>>>> = {
+  standard: { far: 0, mid: 0, nearLow: 10, waterline: 12 },
+  low: { far: 3, mid: 2, nearLow: 6, waterline: 6 },
+}
+
+const cloudStepProfiles: Readonly<Record<GalleryQuality, Readonly<Record<GalleryAtmosphereLayer, { near: number; far: number; reflection: number }>>>> = {
+  standard: {
+    far: { near: 4, far: 2, reflection: 2 },
+    mid: { near: 5, far: 2, reflection: 2 },
+    nearLow: { near: 12, far: 5, reflection: 4 },
+    waterline: { near: 12, far: 5, reflection: 4 },
+    haze: { near: 6, far: 3, reflection: 2 },
+  },
+  low: {
+    far: { near: 3, far: 3, reflection: 2 },
+    mid: { near: 3, far: 3, reflection: 2 },
+    nearLow: { near: 4, far: 3, reflection: 3 },
+    waterline: { near: 4, far: 3, reflection: 3 },
+    haze: { near: 3, far: 3, reflection: 2 },
+  },
+}
+
+const CLOUD_DETAIL_NEAR_DISTANCE = 22
+const CLOUD_DETAIL_FAR_DISTANCE = 82
+const CLOUD_VISIBILITY_RANGES: Readonly<Record<GalleryAtmosphereLayer, readonly [number, number]>> = {
+  far: [92, 136],
+  mid: [100, 148],
+  nearLow: [132, 176],
+  waterline: [132, 176],
+  haze: [140, 184],
+}
+
+function smoothstep(edge0: number, edge1: number, value: number) {
+  const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)))
+  return t * t * (3 - 2 * t)
+}
+
+/** Near corridor masses use more ray samples, with a smooth distance LOD toward the horizon. */
+export function getGalleryAtmosphereStepCount(
+  quality: GalleryQuality,
+  layer: GalleryAtmosphereLayer,
+  cameraDistance: number,
+  reflection = false,
+) {
+  const profile = cloudStepProfiles[quality][layer]
+  if (reflection) return profile.reflection
+  const distance = Number.isFinite(cameraDistance) ? Math.max(0, cameraDistance) : CLOUD_DETAIL_FAR_DISTANCE
+  const detail = 1 - smoothstep(CLOUD_DETAIL_NEAR_DISTANCE, CLOUD_DETAIL_FAR_DISTANCE, distance)
+  return profile.far + (profile.near - profile.far) * detail
+}
+
+/** Fully faded masses leave the scene only after their shader opacity reaches zero. */
+export function getGalleryAtmosphereVisibilityFade(
+  cameraDistance: number,
+  layer: GalleryAtmosphereLayer,
+  moonInteraction = false,
+) {
+  if (moonInteraction) return 1
+  if (!Number.isFinite(cameraDistance)) return 0
+  const [start, end] = CLOUD_VISIBILITY_RANGES[layer]
+  return 1 - smoothstep(start, end, Math.max(0, cameraDistance))
+}
 
 export interface GalleryAtmosphereMass {
   id: string
@@ -158,34 +223,7 @@ export function getGalleryCloudMassesForLayerCounts(
   const limit = GALLERY_CLOUD_RENDER_LIMIT[quality]
   const quotas = requestedTotal <= limit
     ? requested
-    : scaleLayerQuotas(layers, requested, limit)
-  if (quality === 'low' && requestedTotal > limit) {
-    const moveTo = (target: GalleryCloudLayerId, count: number, donors: readonly { layer: GalleryCloudLayerId; minimum: number }[]) => {
-      while (quotas.get(target)! < count) {
-        const donor = donors.find(({ layer, minimum }) => quotas.get(layer)! > minimum)
-        if (!donor) break
-        quotas.set(donor.layer, quotas.get(donor.layer)! - 1)
-        quotas.set(target, quotas.get(target)! + 1)
-      }
-    }
-    moveTo('far', Math.min(3, requested.get('far')!), [
-      { layer: 'mid', minimum: Math.min(2, requested.get('mid')!) },
-      { layer: 'waterline', minimum: Math.min(1, requested.get('waterline')!) },
-    ])
-    moveTo('nearLow', Math.min(8, requested.get('nearLow')!), [
-      { layer: 'mid', minimum: Math.min(2, requested.get('mid')!) },
-      { layer: 'waterline', minimum: Math.min(1, requested.get('waterline')!) },
-      { layer: 'far', minimum: Math.min(3, requested.get('far')!) },
-    ])
-    moveTo('waterline', Math.min(7, requested.get('waterline')!), [
-      { layer: 'mid', minimum: Math.min(2, requested.get('mid')!) },
-      { layer: 'far', minimum: Math.min(3, requested.get('far')!) },
-    ])
-    moveTo('mid', Math.min(2, requested.get('mid')!), [
-      { layer: 'waterline', minimum: Math.min(2, requested.get('waterline')!) },
-      { layer: 'far', minimum: Math.min(3, requested.get('far')!) },
-    ])
-  }
+    : scaleLayerQuotas(layers, requested, limit, cloudLayerMinimums[quality])
 
   return layers.flatMap((layer) => sampleLayer(candidates.get(layer)!, quotas.get(layer)!, layer))
 }
@@ -209,15 +247,25 @@ function scaleLayerQuotas(
   layers: readonly GalleryCloudLayerId[],
   requested: ReadonlyMap<GalleryCloudLayerId, number>,
   limit: number,
+  minimums: Readonly<Record<GalleryCloudLayerId, number>>,
 ): Map<GalleryCloudLayerId, number> {
-  const total = [...requested.values()].reduce((sum, count) => sum + count, 0)
-  const exact = new Map(layers.map((layer) => [layer, (requested.get(layer)! * limit) / total]))
-  const quotas = new Map(layers.map((layer) => [layer, Math.floor(exact.get(layer)!)]))
-  let remaining = limit - [...quotas.values()].reduce((sum, count) => sum + count, 0)
-  const order = [...layers].sort((a, b) => (exact.get(b)! - quotas.get(b)!) - (exact.get(a)! - quotas.get(a)!))
+  const quotas = new Map(layers.map((layer) => [layer, Math.min(requested.get(layer)!, minimums[layer])]))
+  const remainingCapacity = limit - [...quotas.values()].reduce((sum, count) => sum + count, 0)
+  const remainingRequests = new Map(layers.map((layer) => [layer, requested.get(layer)! - quotas.get(layer)!]))
+  const totalRemainingRequests = [...remainingRequests.values()].reduce((sum, count) => sum + count, 0)
+  if (remainingCapacity <= 0 || totalRemainingRequests <= 0) return quotas
+
+  const exact = new Map(layers.map((layer) => [layer, (remainingRequests.get(layer)! * remainingCapacity) / totalRemainingRequests]))
+  let remaining = remainingCapacity
+  for (const layer of layers) {
+    const whole = Math.floor(exact.get(layer)!)
+    quotas.set(layer, quotas.get(layer)! + whole)
+    remaining -= whole
+  }
+  const order = [...layers].sort((a, b) => (exact.get(b)! - Math.floor(exact.get(b)!)) - (exact.get(a)! - Math.floor(exact.get(a)!)))
   for (const layer of order) {
     if (remaining === 0) break
-    if (requested.get(layer)! > 0) {
+    if (quotas.get(layer)! < requested.get(layer)!) {
       quotas.set(layer, quotas.get(layer)! + 1)
       remaining -= 1
     }
