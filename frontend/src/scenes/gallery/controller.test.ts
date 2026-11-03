@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Mesh, MeshBasicMaterial, PlaneGeometry, Raycaster, Vector3 } from 'three'
-import { galleryColumnPosition, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, GALLERY, GALLERY_MEMORIES, memoryPosition } from './content'
+import { galleryColumnPhotoCenterOffsetZ, galleryColumnPosition, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, GALLERY, GALLERY_MEMORIES, memoryPosition } from './content'
 import { advanceGallery, galleryCanRaycastPhoto, galleryExit, galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, galleryStart, resetGallery, resetGalleryInstruction, travel } from './controller'
 import { galleryFocusOpacity } from './visibility'
 
@@ -62,8 +62,42 @@ describe('gallery travel', () => {
     expect(rightX).toBeCloseTo(4.3)
     expect(leftSupports[0]![0]).toBeCloseTo(leftX)
     expect(rightSupports[0]![0]).toBeCloseTo(rightX)
-    expect(leftZ).toBeCloseTo((leftSupports[0]![2] + leftSupports[1]![2]) / 2)
+    expect(leftZ).toBeCloseTo((leftSupports[0]![2] + leftSupports[1]![2]) / 2 + galleryColumnPhotoCenterOffsetZ())
     expect(rightZ).toBe(leftZ)
+  })
+  it('centers B photos between the visible shaft centers along Z with the configured layout', () => {
+    const layout = { laneWidth: 7, offsetX: 1.95, offsetY: 0.45, offsetZ: 0 }
+    const columnDepth = 0.15
+    const columnScale = 1
+    const columnSettings = { columnDepth, columnScale }
+    const visibleCenterOffsetZ = galleryColumnPhotoCenterOffsetZ(columnSettings)
+    const anchorsBySide = [-1, 1].map(side => [...new Set(GALLERY_MEMORIES
+      .flatMap(memory => galleryColumnPositions(memory, GALLERY.width, 'between-columns', layout))
+      .filter(([x]) => Math.sign(x) === side)
+      .map(([, , z]) => z))].sort((a, b) => b - a))
+    for (let row = 0; row < GALLERY_MEMORIES.length / 2; row += 1) {
+      const left = GALLERY_MEMORIES[row * 2]!
+      const right = GALLERY_MEMORIES[row * 2 + 1]!
+      for (const [sideIndex, memory] of [[0, left], [1, right]] as const) {
+        const anchors = anchorsBySide[sideIndex]!
+        const columnCenters = [anchors[row]!, anchors[row + 1]!].map(z => z + visibleCenterOffsetZ)
+        const photoZ = memoryPosition(memory, GALLERY.width, 'between-columns', layout, columnSettings)[2]
+        expect(photoZ).toBeCloseTo((columnCenters[0]! + columnCenters[1]!) / 2, 8)
+      }
+    }
+
+    const widerSupports = [-1, 1].map(side => [...new Set(GALLERY_MEMORIES
+      .flatMap(memory => galleryColumnPositions(memory, GALLERY.width, 'between-columns', layout))
+      .filter(([x]) => Math.sign(x) === side)
+      .map(([, , z]) => z))].sort((a, b) => b - a))
+    const scaledColumns = { columnScale: 1.8, columnDepth: 0.63 }
+    const scaledOffset = galleryColumnPhotoCenterOffsetZ(scaledColumns)
+    for (let row = 0; row < GALLERY_MEMORIES.length / 2; row += 1) {
+      const memory = GALLERY_MEMORIES[row * 2]!
+      const photoZ = memoryPosition(memory, GALLERY.width, 'between-columns', layout, scaledColumns)[2]
+      const anchors = widerSupports[0]!
+      expect(photoZ).toBeCloseTo((anchors[row]! + anchors[row + 1]!) / 2 + scaledOffset, 8)
+    }
   })
   it('keeps a nonzero gap between opposing B photos at the tightest valid layout', () => {
     const left = memoryPosition(GALLERY_MEMORIES[0]!, GALLERY.width, 'between-columns', { laneWidth: 6, offsetX: -2.5, offsetY: 0, offsetZ: 0 })
@@ -174,12 +208,12 @@ describe('gallery travel', () => {
     const left = GALLERY_MEMORIES[0]!
     const right = GALLERY_MEMORIES[1]!
     const nextLeft = GALLERY_MEMORIES[2]!
-    expect(memoryPosition(left, GALLERY.width, 'between-columns')).toEqual([-3.5, 0, -9.9])
-    expect(memoryPosition(right, GALLERY.width, 'between-columns')).toEqual([3.5, 0, -9.9])
+    expect(memoryPosition(left, GALLERY.width, 'between-columns')).toEqual([-3.5, 0, -11.01])
+    expect(memoryPosition(right, GALLERY.width, 'between-columns')).toEqual([3.5, 0, -11.01])
     const nextLeftPosition = memoryPosition(nextLeft, GALLERY.width, 'between-columns')
     expect(nextLeftPosition[0]).toBe(-3.5)
-    expect(nextLeftPosition[2]).toBeCloseTo(-20.7, 8)
-    expect(memoryPosition(left, GALLERY.width, 'between-columns', { laneWidth: GALLERY.width, offsetX: 0.4, offsetY: 0.2, offsetZ: 1 })).toEqual([-3.9, 0.2, -8.9])
+    expect(nextLeftPosition[2]).toBeCloseTo(-21.81, 8)
+    expect(memoryPosition(left, GALLERY.width, 'between-columns', { laneWidth: GALLERY.width, offsetX: 0.4, offsetY: 0.2, offsetZ: 1 })).toEqual([-3.9, 0.2, -10.01])
     expect(galleryColumnPositions(left, GALLERY.width, 'between-columns')).toEqual([[-3.5, 0, -4.5], [3.5, 0, -4.5], [-3.5, 0, -15.3], [3.5, 0, -15.3]])
     expect(galleryColumnPositions(right, GALLERY.width, 'between-columns')).toEqual([])
     expect(galleryColumnPositions(nextLeft, GALLERY.width, 'between-columns')).toEqual([[-3.5, 0, -26.1], [3.5, 0, -26.1]])
@@ -205,14 +239,14 @@ describe('gallery travel', () => {
       const rightPhoto = memoryPosition(GALLERY_MEMORIES[row * 2 + 1]!, GALLERY.width, 'between-columns')
       rowCenters.push(leftPhoto[2])
       for (const supports of supportsBySide) {
-        expect(leftPhoto[2]).toBeCloseTo((supports[row]! + supports[row + 1]!) / 2, 8)
+        expect(leftPhoto[2]).toBeCloseTo((supports[row]! + supports[row + 1]!) / 2 + galleryColumnPhotoCenterOffsetZ(), 8)
         expect(rightPhoto[2]).toBeCloseTo(leftPhoto[2], 8)
       }
     }
     for (let row = 1; row < rowCenters.length; row++) {
       expect(rowCenters[row - 1]! - rowCenters[row]!).toBeCloseTo(GALLERY.spacing * 2, 8)
     }
-    expect(rowCenters.at(-1)).toBeCloseTo(GALLERY.startZ - (GALLERY.travel - 4), 8)
+    expect(rowCenters.at(-1)).toBeCloseTo(GALLERY.startZ - (GALLERY.travel - 4) + galleryColumnPhotoCenterOffsetZ(), 8)
   })
   it('keeps B column adjustments mirrored and photo yaw eases toward the viewer with distance', () => {
     const left = GALLERY_MEMORIES[0]!

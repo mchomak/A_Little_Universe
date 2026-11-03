@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs'
-import { Mesh, MeshStandardMaterial, type Object3D } from 'three'
+import { Mesh, MeshStandardMaterial, PerspectiveCamera, Vector3, type Object3D } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import { describe, expect, it, vi } from 'vitest'
+import { focusCamera } from './camera'
+import { GALLERY, GALLERY_COLUMN_SHAFT_CENTER_Z, GALLERY_COLUMN_SHAFT_FRONT_Z, GALLERY_MEMORIES, galleryColumnPositions, galleryPhotoApproachYaw, memoryPosition } from './content'
 import {
   acquireGalleryColumnMaterials,
   acquireGalleryColumnShaftGeometry,
@@ -161,6 +163,8 @@ describe('the supplied ionic column GLB', () => {
     expect(bounds?.shaftTop).toBeCloseTo(11.7, 1)
     expect(bounds?.capitalBottom).toBeCloseTo(11.62, 1)
     expect(bounds?.shaftFrontZ).toBeCloseTo(0.96, 2)
+    expect(bounds?.shaftBackZ).toBeCloseTo(-0.96, 2)
+    expect(bounds?.shaftCenterZ).toBeCloseTo(0, 4)
     expect(bounds?.baseFrontZ).toBeCloseTo(1.2, 2)
     expect(bounds?.frontmostZ).toBeCloseTo(1.2, 2)
 
@@ -287,6 +291,73 @@ describe('the supplied ionic column GLB', () => {
     }
     release()
     expect(repeatedMeshes.map((mesh) => mesh.geometry.uuid)).toEqual(originalGeometryIds)
+  })
+
+  it('centers B photo frames and camera projection between real shaft faces for both sides and all pairs', async () => {
+    const scene = await loadAssetScene()
+    const extended = extendGalleryColumnShaft(scene)
+    expect(extended).not.toBeNull()
+    const bounds = extended!.bounds
+    expect(bounds.shaftFrontZ).toBeCloseTo(GALLERY_COLUMN_SHAFT_FRONT_Z, 4)
+    expect(bounds.shaftCenterZ).toBeCloseTo(GALLERY_COLUMN_SHAFT_CENTER_Z, 4)
+
+    const layout = { laneWidth: 7, offsetX: 1.95, offsetY: 0.45, offsetZ: 0 }
+    const anchorsBySide = [-1, 1].map(side => [...new Set(GALLERY_MEMORIES
+      .flatMap(memory => galleryColumnPositions(memory, GALLERY.width, 'between-columns', layout))
+      .filter(([x]) => Math.sign(x) === side)
+      .map(([, , z]) => z))].sort((a, b) => b - a))
+    const columnSettings = [
+      { columnScale: 1, columnDepth: 0.15 },
+      { columnScale: 1.8, columnDepth: 0.63 },
+      { columnScale: 2.4, columnDepth: 1.25 },
+    ] as const
+
+    for (const columns of columnSettings) {
+      const placement = getGalleryColumnPlacement(
+        { scale: columns.columnScale, depth: columns.columnDepth, offsetX: 0, offsetY: 0 },
+        { x: 1, y: 1, z: 1 },
+        -2.35,
+        bounds.shaftFrontZ,
+        bounds.baseBottom,
+      )
+      const worldShaft = (anchorZ: number) => ({
+        backZ: anchorZ + placement.position[2] + bounds.shaftBackZ * placement.scale[2],
+        frontZ: anchorZ + placement.position[2] + bounds.shaftFrontZ * placement.scale[2],
+        centerZ: anchorZ + placement.position[2] + bounds.shaftCenterZ * placement.scale[2],
+      })
+
+      for (let row = 0; row < GALLERY_MEMORIES.length / 2; row += 1) {
+        for (const [sideIndex, memory] of [[0, GALLERY_MEMORIES[row * 2]!], [1, GALLERY_MEMORIES[row * 2 + 1]!] ] as const) {
+          const anchors = anchorsBySide[sideIndex]!
+          const nearColumn = worldShaft(anchors[row]!)
+          const farColumn = worldShaft(anchors[row + 1]!)
+          const [photoX, photoY, photoZ] = memoryPosition(memory, GALLERY.width, 'between-columns', layout, columns)
+          const size = memory.order === 0 ? 2.15 : 3.3
+          const photoWidth = memory.aspect >= 1 ? size : size * memory.aspect
+          const photoGroupScale = memory.order === 0 ? 1.35 : 1
+          const frameWidth = (photoWidth + 0.07) * photoGroupScale
+          const focusYaw = galleryPhotoApproachYaw(memory, 'between-columns', 0, 45, 1)
+          const frameHalfExtentZ = frameWidth * Math.abs(Math.sin(focusYaw)) / 2
+          const photoBackEdgeZ = photoZ - frameHalfExtentZ
+          const photoFrontEdgeZ = photoZ + frameHalfExtentZ
+          const frontGap = nearColumn.backZ - photoFrontEdgeZ
+          const rearGap = photoBackEdgeZ - farColumn.frontZ
+
+          expect(photoZ).toBeCloseTo((nearColumn.centerZ + farColumn.centerZ) / 2, 5)
+          expect(frontGap).toBeCloseTo(rearGap, 5)
+
+          const focus = focusCamera([0, 0, 6], [photoX, photoY, photoZ], 1, focusYaw)
+          const camera = new PerspectiveCamera(36, 2, 0.1, 100)
+          camera.position.set(focus.x, focus.y, focus.z)
+          camera.lookAt(photoX, photoY, photoZ)
+          camera.updateMatrixWorld()
+          const projectX = (z: number) => new Vector3(photoX, photoY, z).project(camera).x
+          const projectedFrontGap = Math.abs(projectX(photoFrontEdgeZ) - projectX(nearColumn.backZ))
+          const projectedRearGap = Math.abs(projectX(photoBackEdgeZ) - projectX(farColumn.frontZ))
+          expect(projectedFrontGap).toBeCloseTo(projectedRearGap, 5)
+        }
+      }
+    }
   })
 
   it('shares repeated shaft geometry across instances and disposes it after the final release', async () => {

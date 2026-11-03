@@ -20,6 +20,25 @@ export const GALLERY = { spacing: 5.4, width: 7, firstZ: -4.5, startZ: 6.15, tra
 export const GALLERY_B_MIN_PHOTO_X = 0.5
 export const GALLERY_PHOTO_FACING_NEAR_DISTANCE = 0
 export const GALLERY_PHOTO_FACING_FAR_DISTANCE = GALLERY.spacing * 4
+// Calibrated from the real gallery-ionic-column/column.glb shaft bounds.
+// columnModel.test.ts checks these against the loaded, extended GLB geometry.
+export const GALLERY_COLUMN_SHAFT_FRONT_Z = 0.96
+export const GALLERY_COLUMN_SHAFT_CENTER_Z = 0
+export interface GalleryColumnCenteringSettings {
+  columnScale?: number
+  columnDepth?: number
+}
+
+/** Offset a B photo from the support anchors to the midpoint of their visible shafts. */
+export function galleryColumnPhotoCenterOffsetZ(settings: Readonly<GalleryColumnCenteringSettings> = {}): number {
+  const columnScale = Number.isFinite(settings.columnScale) && (settings.columnScale ?? 0) > 0
+    ? settings.columnScale!
+    : 1
+  const columnDepth = Number.isFinite(settings.columnDepth)
+    ? Math.max(0, settings.columnDepth!)
+    : 0.15
+  return -columnDepth + (GALLERY_COLUMN_SHAFT_CENTER_Z - GALLERY_COLUMN_SHAFT_FRONT_Z) * columnScale
+}
 export type GalleryLayoutVariant = 'on-columns' | 'between-columns'
 
 /** Photos stay on their columns in A; B pairs opposite sides halfway between each side's supports. */
@@ -28,6 +47,7 @@ export function memoryPosition(
   galleryWidth: number,
   variant: GalleryLayoutVariant = 'on-columns',
   layout?: Readonly<GalleryPhotoLayout>,
+  columns?: Readonly<GalleryColumnCenteringSettings>,
 ): [number, number, number] {
   const configuredWidth = layout?.laneWidth ?? galleryWidth
   const halfWidth = Number.isFinite(configuredWidth) ? Math.max(0, configuredWidth) / 2 : GALLERY.width / 2
@@ -39,7 +59,8 @@ export function memoryPosition(
   const x = variant === 'between-columns'
     ? memory.side * Math.max(GALLERY_B_MIN_PHOTO_X, halfWidth + offsetX)
     : memory.side * halfWidth + offsetX
-  return [x, layout?.offsetY ?? 0, z + (layout?.offsetZ ?? 0)]
+  const columnCenterOffsetZ = variant === 'between-columns' ? galleryColumnPhotoCenterOffsetZ(columns) : 0
+  return [x, layout?.offsetY ?? 0, z + (layout?.offsetZ ?? 0) + columnCenterOffsetZ]
 }
 
 /** Support columns keep their original alternating positions in both compositions. */

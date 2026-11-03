@@ -1,7 +1,7 @@
 import { MeshBasicMaterial, QuadraticBezierCurve3, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
-import { GALLERY, GALLERY_MEMORIES, memoryPosition } from './content'
+import { galleryColumnPhotoCenterOffsetZ, GALLERY, GALLERY_MEMORIES, memoryPosition } from './content'
 import { GALLERY_ART } from './artDirection'
 import {
   createMemoryThreadAccentGeometry,
@@ -52,6 +52,19 @@ describe('gallery memory thread paths', () => {
     expect(paths[0]!.end[0]).toBeCloseTo(-6.05)
     expect(paths[0]!.start[2]).not.toBe(paths[0]!.end[2])
     expect(paths.every(path => [...path.start, ...path.control, ...path.end].every(Number.isFinite))).toBe(true)
+  })
+
+  it('keeps B thread paths aligned with photos when column depth and scale change', () => {
+    const defaults = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery
+    const layout = { laneWidth: 7, offsetX: 1.95, offsetY: 0.45, offsetZ: 0 }
+    const customColumns = { ...defaults, columnDepth: 0.63, columnScale: 1.8 }
+    const defaultPath = createMemoryThreadPaths(GALLERY_MEMORIES, GALLERY.width, 'between-columns', layout, defaults)[0]!
+    const customPath = createMemoryThreadPaths(GALLERY_MEMORIES, GALLERY.width, 'between-columns', layout, customColumns)[0]!
+    const expectedOffset = galleryColumnPhotoCenterOffsetZ(customColumns) - galleryColumnPhotoCenterOffsetZ(defaults)
+
+    expect(customPath.start[2] - defaultPath.start[2]).toBeCloseTo(expectedOffset, 8)
+    expect(customPath.control[2] - defaultPath.control[2]).toBeCloseTo(expectedOffset, 8)
+    expect(customPath.end[2] - defaultPath.end[2]).toBeCloseTo(expectedOffset, 8)
   })
 
   it('creates a deterministic thin spatial tube from a public thread path', () => {

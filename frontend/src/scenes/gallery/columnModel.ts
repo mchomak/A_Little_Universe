@@ -26,7 +26,9 @@ export interface GalleryColumnAssetBounds {
   baseBackZ: number
   shaftBottom: number
   shaftTop: number
+  shaftBackZ: number
   shaftFrontZ: number
+  shaftCenterZ: number
   capitalBottom: number
   capitalFrontZ: number
   frontmostZ: number
@@ -96,7 +98,9 @@ export function getGalleryColumnAssetBounds(modelRoot: Object3D): GalleryColumnA
     baseBackZ: baseBounds.min.z,
     shaftBottom: shaftBounds.min.y,
     shaftTop: shaftBounds.max.y,
+    shaftBackZ: shaftBounds.min.z,
     shaftFrontZ: shaftBounds.max.z,
+    shaftCenterZ: (shaftBounds.min.z + shaftBounds.max.z) / 2,
     capitalBottom: capitalBounds.min.y,
     capitalFrontZ: capitalBounds.max.z,
     frontmostZ,

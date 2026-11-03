@@ -27,7 +27,7 @@ export function updateGalleryCameraPose(
   const aisleZ = GALLERY.startZ - motion.progress - exit * 2
   const memory = GALLERY_MEMORIES[motion.focusIndex]!
   const layout = settings.galleryLayoutVariant === 'between-columns' ? settings.galleryLayoutB : settings.galleryLayoutA
-  const [x, y, z] = memoryPosition(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
+  const [x, y, z] = memoryPosition(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout, settings)
   const focal = motion.focusMix
   const initial = firstMemoryCamera(34, reducedMotion)
   const initialFit = aspect < 1 ? Math.min(2.5, 1 / Math.max(0.3, aspect)) : 1

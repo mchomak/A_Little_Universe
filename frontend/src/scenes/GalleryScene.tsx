@@ -228,7 +228,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   )
   useEffect(() => () => frameParticles.dispose(), [frameParticles])
   const layout = settings.galleryLayoutVariant === 'between-columns' ? settings.galleryLayoutB : settings.galleryLayoutA
-  const [x, y, z] = memoryPosition(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
+  const [x, y, z] = memoryPosition(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout, settings)
   const supportPositions = galleryColumnPositions(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
   const photoYaw = galleryPhotoYaw(memory, settings.galleryLayoutVariant)
   const supportLocalPositions = useMemo(
@@ -422,7 +422,14 @@ function Dust({ low, reducedMotion, settings }: { low: boolean; reducedMotion: b
 }
 function MemoryThreads({ settings, low, paused, halo }: { settings: GalleryArtSettings; low: boolean; paused: boolean; halo: CanvasTexture }) {
   const layout = settings.galleryLayoutVariant === 'between-columns' ? settings.galleryLayoutB : settings.galleryLayoutA
-  const paths = useMemo(() => createMemoryThreadPaths(GALLERY_MEMORIES, settings.galleryWidth, settings.galleryLayoutVariant, layout), [layout, settings.galleryLayoutVariant, settings.galleryWidth])
+  const { columnDepth, columnScale, galleryLayoutVariant, galleryWidth } = settings
+  const paths = useMemo(() => createMemoryThreadPaths(
+    GALLERY_MEMORIES,
+    galleryWidth,
+    galleryLayoutVariant,
+    layout,
+    { columnDepth, columnScale },
+  ), [columnDepth, columnScale, galleryLayoutVariant, galleryWidth, layout])
   const geometries = useMemo(
     () => paths.map(path => createMemoryThreadGeometry(path, { segments: low ? 22 : 38, radius: 0.01, radialSegments: 4 })),
     [low, paths],
