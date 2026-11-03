@@ -50,7 +50,10 @@ export function acquireGalleryArchMaterials(root: Object3D): () => void {
         material.metalness = Math.min(0.08, material.metalness)
         material.transparent = true
         material.opacity = 0.7
-        material.depthWrite = false
+        // Preserve the smooth distance fade, while making the nearest stone
+        // surface occlude other parts of this multi-mesh GLB. Without depth
+        // writes its overlapping shells alpha-blend into a dark screen.
+        material.depthWrite = true
         material.needsUpdate = true
         sourceVariants.set(source, material)
         materials.add(material)
@@ -79,6 +82,11 @@ export function setGalleryArchOpacity(root: Object3D, opacity: number) {
   root.traverse((object) => {
     if (!(object instanceof Mesh)) return
     const values = Array.isArray(object.material) ? object.material : [object.material]
-    values.forEach((material) => { if (material instanceof MeshStandardMaterial) material.opacity = alpha })
+    values.forEach((material) => {
+      if (!(material instanceof MeshStandardMaterial)) return
+      material.opacity = alpha
+      // A zero-alpha fragment must not leave an invisible depth occluder.
+      material.depthWrite = alpha > 0.001
+    })
   })
 }

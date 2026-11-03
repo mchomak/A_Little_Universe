@@ -103,7 +103,7 @@ export function getGalleryColumnAssetBounds(modelRoot: Object3D): GalleryColumnA
   }
 }
 
-/** Each column owns its translucent material copies so distance fades never affect neighboring exhibits. */
+/** Each column owns its materials so distance fades never affect neighboring exhibits. */
 export function acquireGalleryColumnMaterials(root: Object3D): () => void {
   const originals = new Map<Mesh, Material | Material[]>()
   const instances = new Map<MeshStandardMaterial, MeshStandardMaterial>()
@@ -119,9 +119,12 @@ export function acquireGalleryColumnMaterials(root: Object3D): () => void {
         material.color.multiply(COLUMN_MARBLE_TINT)
         material.roughness = Math.max(material.roughness, 0.9)
         material.metalness = Math.min(material.metalness, 0.04)
+        // Keep the smooth distance fade, but let the foremost GLB surface own
+        // depth. Without depth writes, the plinth, repeated shaft and capital
+        // blend through one another and read as hollow at their joins.
         material.transparent = true
         material.opacity = 1
-        material.depthWrite = false
+        material.depthWrite = true
         material.needsUpdate = true
         instances.set(source, material)
       }
@@ -147,7 +150,12 @@ export function setGalleryColumnOpacity(root: Object3D, opacity: number) {
   root.traverse((object) => {
     if (!(object instanceof Mesh)) return
     const materials = Array.isArray(object.material) ? object.material : [object.material]
-    materials.forEach((material) => { if (material instanceof MeshStandardMaterial) material.opacity = safeOpacity })
+    materials.forEach((material) => {
+      if (!(material instanceof MeshStandardMaterial)) return
+      material.opacity = safeOpacity
+      // A fully faded fragment must not leave an invisible depth occluder.
+      material.depthWrite = safeOpacity > 0.001
+    })
   })
 }
 
