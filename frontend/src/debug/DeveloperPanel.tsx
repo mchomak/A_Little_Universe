@@ -192,6 +192,27 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
   ] },
 ]
 
+const LILY_GROWTH_PARTICLE_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.growth.vfxParticleCount', label: 'Particle Count / Density', unit: 'pcs', min: 0, max: 528, step: 8 },
+  { path: 'scenes.growth.vfxParticleSize', label: 'Particle Size', unit: 'px', min: 0.75, max: 8, step: 0.1 },
+  { path: 'scenes.growth.vfxParticleSizeVariation', label: 'Size Variation', unit: 'x', min: 0, max: 1.5, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleBrightness', label: 'Brightness / Intensity', unit: 'x', min: 0, max: 2.5, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleGlow', label: 'Glow Strength', unit: 'x', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleSpeed', label: 'Particle Speed', unit: 'x', min: 0.2, max: 2, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleLifetime', label: 'Lifetime', unit: 'x', min: 0.3, max: 3, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleSpread', label: 'Spread / Radius', unit: 'x', min: 0, max: 1.5, step: 0.05 },
+]
+
+const LILY_GROWTH_PULSE_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.growth.vfxCoreIntensity', label: 'Core Intensity', unit: 'x', min: 0, max: 1.5, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseBrightness', label: 'Pulse Intensity', unit: 'x', min: 0, max: 2.5, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseWidth', label: 'Pulse Width', unit: '', min: 0.025, max: 0.3, step: 0.005 },
+  { path: 'scenes.growth.vfxPulseSpeed', label: 'Pulse Speed', unit: 'x', min: 0.4, max: 2, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseTrailFade', label: 'Trail Length / Fade', unit: 'x', min: 0.35, max: 3, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseLeafBoost', label: 'Leaf Boost', unit: 'x', min: 0, max: 1.5, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseBudBoost', label: 'Bud Boost', unit: 'x', min: 0, max: 1.5, step: 0.05 },
+]
+
 const BLOOM_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.bloom.flowerBloomDuration', label: 'Длительность раскрытия Bloom', unit: 'с', min: 6, max: 24, step: 0.25 },
   { path: 'scenes.bloom.cameraFinalDistance', label: 'Финальная дистанция камеры', unit: '', min: 1.5, max: 5, step: 0.05 },
@@ -626,7 +647,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–19. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–20. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -785,6 +806,15 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
               <select id="composer-scenes-growth-particleQuality" value={config.scenes.growth.particleQuality} onChange={(event) => { void changeField('scenes.growth.particleQuality', event.target.value) }}><option value="low">Низкое · 2304</option><option value="standard">Обычное · 4096</option><option value="high">Высокое · 9216</option></select>
             </div>
             {GROWTH_GROUPS.map(group => <details key={group.name} open={group.name === 'Частицы и формирование'}><summary>{group.name}</summary>{group.controls.map(range)}{group.color && color(group.color.path, group.color.label)}</details>)}
+          </details>
+          <details open><summary>Lily Growth Particles</summary>
+            {LILY_GROWTH_PARTICLE_CONTROLS.map(range)}
+            {color('scenes.growth.vfxParticleTint', 'Color / Tint')}
+          </details>
+          <details open><summary>Lily Growth Pulse</summary>
+            <label className="composer-control"><input id="composer-scenes-growth-vfxPulseEnabled" type="checkbox" checked={config.scenes.growth.vfxPulseEnabled} onChange={event => { void changeField('scenes.growth.vfxPulseEnabled', event.target.checked) }} /> Enable Pulse</label>
+            {LILY_GROWTH_PULSE_CONTROLS.map(range)}
+            {color('scenes.growth.vfxPulseColor', 'Pulse Color / Tint')}
           </details>
           <p>Обе длительности анимации цветка настраиваются здесь и в сцене раскрытия.</p>
           <details><summary>Палитра частиц</summary>

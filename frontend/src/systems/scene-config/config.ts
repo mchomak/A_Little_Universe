@@ -30,7 +30,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 19
+  readonly schemaVersion: 20
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -104,6 +104,24 @@ export interface SceneComposerConfig {
       roseColor: string
       lavenderColor: string
       coreGlow: number
+      vfxCoreIntensity: number
+      vfxPulseBrightness: number
+      vfxPulseWidth: number
+      vfxPulseEnabled: boolean
+      vfxPulseSpeed: number
+      vfxPulseTrailFade: number
+      vfxPulseColor: string
+      vfxPulseLeafBoost: number
+      vfxPulseBudBoost: number
+      vfxParticleCount: number
+      vfxParticleSize: number
+      vfxParticleSizeVariation: number
+      vfxParticleSpeed: number
+      vfxParticleBrightness: number
+      vfxParticleGlow: number
+      vfxParticleLifetime: number
+      vfxParticleSpread: number
+      vfxParticleTint: string
       seedScale: number
       flowerGrowthDuration: number
       islandRadius: number
@@ -321,7 +339,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 19,
+  schemaVersion: 20,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     openingBackground: { zoom: 1, offsetX: 0, offsetY: 0 },
@@ -344,7 +362,14 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       cloudRadius: 0.6, noiseStrength: 0.55, attractionStrength: 11.5,
       attractionRampDuration: 2.8, morphDamping: 7.2, formationDuration: 3.2,
       freeParticleFraction: 0.08, pearlColor: '#FFF4E8', roseColor: '#F4CCDA',
-      lavenderColor: '#D7CCF1', coreGlow: 0.55, seedScale: 1, flowerGrowthDuration: 9,
+      lavenderColor: '#D7CCF1', coreGlow: 0.55,
+      vfxCoreIntensity: 0.65, vfxPulseBrightness: 1.45, vfxPulseWidth: 0.2,
+      vfxPulseEnabled: true, vfxPulseSpeed: 1, vfxPulseTrailFade: 1.4,
+      vfxPulseColor: '#F4DFB8', vfxPulseLeafBoost: 0.6, vfxPulseBudBoost: 0.55,
+      vfxParticleCount: 440, vfxParticleSize: 3.4, vfxParticleSizeVariation: 0.65,
+      vfxParticleSpeed: 0.95, vfxParticleBrightness: 1.15, vfxParticleGlow: 1.35,
+      vfxParticleLifetime: 2.3, vfxParticleSpread: 0.65, vfxParticleTint: '#FFF4E8',
+      seedScale: 1, flowerGrowthDuration: 9,
       islandRadius: 0.82, islandThickness: 0.24, islandDepth: 0.58, islandRoughness: 0.5,
       grassDensity: 360, grassHeight: 0.14, windStrength: 1, windSpeed: 0.8,
       seedOrbitCount: 3, seedOrbitRadius: 0.4, seedOrbitTilt: 0.62, seedOrbitSpeed: 0.85,
@@ -453,12 +478,21 @@ let activeConfig = DEFAULT_SCENE_COMPOSER_CONFIG
 let updateRevision = 0
 let startupConfigRequest: Promise<void> | undefined
 const configListeners = new Set<(config: SceneComposerConfig) => void>()
+const LILY_GROWTH_VFX_STORAGE_KEY = 'a-little-universe:dev:lily-growth-particles:v3'
+const LILY_GROWTH_VFX_FIELDS = [
+  'vfxCoreIntensity', 'vfxPulseEnabled', 'vfxPulseBrightness', 'vfxPulseWidth', 'vfxPulseSpeed',
+  'vfxPulseTrailFade', 'vfxPulseColor', 'vfxPulseLeafBoost', 'vfxPulseBudBoost',
+  'vfxParticleCount', 'vfxParticleSize', 'vfxParticleSizeVariation', 'vfxParticleBrightness',
+  'vfxParticleGlow', 'vfxParticleSpeed', 'vfxParticleLifetime', 'vfxParticleSpread', 'vfxParticleTint',
+] as const
+
+restoreLilyGrowthVfx()
 
 export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 19) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 20) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -591,6 +625,24 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       roseColor: colorValue(growthInput?.roseColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.roseColor),
       lavenderColor: colorValue(growthInput?.lavenderColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lavenderColor),
       coreGlow: numberValue(growthInput?.coreGlow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.coreGlow, 0, 1.5),
+      vfxCoreIntensity: numberValue(growthInput?.vfxCoreIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxCoreIntensity, 0, 1.5),
+      vfxPulseBrightness: numberValue(growthInput?.vfxPulseBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseBrightness, 0, 2.5),
+      vfxPulseWidth: numberValue(growthInput?.vfxPulseWidth, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseWidth, 0.025, 0.3),
+      vfxPulseEnabled: typeof growthInput?.vfxPulseEnabled === 'boolean' ? growthInput.vfxPulseEnabled : DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseEnabled,
+      vfxPulseSpeed: numberValue(growthInput?.vfxPulseSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseSpeed, 0.4, 2),
+      vfxPulseTrailFade: numberValue(growthInput?.vfxPulseTrailFade, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseTrailFade, 0.35, 3),
+      vfxPulseColor: colorValue(growthInput?.vfxPulseColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseColor),
+      vfxPulseLeafBoost: numberValue(growthInput?.vfxPulseLeafBoost, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseLeafBoost, 0, 1.5),
+      vfxPulseBudBoost: numberValue(growthInput?.vfxPulseBudBoost, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxPulseBudBoost, 0, 1.5),
+      vfxParticleCount: numberValue(growthInput?.vfxParticleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleCount, 0, 528, true),
+      vfxParticleSize: numberValue(growthInput?.vfxParticleSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleSize, 0.75, 8),
+      vfxParticleSizeVariation: numberValue(growthInput?.vfxParticleSizeVariation, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleSizeVariation, 0, 1.5),
+      vfxParticleSpeed: numberValue(growthInput?.vfxParticleSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleSpeed, 0.2, 2),
+      vfxParticleBrightness: numberValue(growthInput?.vfxParticleBrightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleBrightness, 0, 2.5),
+      vfxParticleGlow: numberValue(growthInput?.vfxParticleGlow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleGlow, 0, 2),
+      vfxParticleLifetime: numberValue(growthInput?.vfxParticleLifetime, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleLifetime, 0.3, 3),
+      vfxParticleSpread: numberValue(growthInput?.vfxParticleSpread, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleSpread, 0, 1.5),
+      vfxParticleTint: colorValue(growthInput?.vfxParticleTint, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleTint),
       seedScale: numberValue(growthInput?.seedScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedScale, 0.65, 1.4),
       flowerGrowthDuration: numberValue(growthInput?.flowerGrowthDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.flowerGrowthDuration, 4, 14),
       islandRadius: numberValue(growthInput?.islandRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandRadius, 0.55, 1.05),
@@ -701,7 +753,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 19, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 20, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
@@ -883,7 +935,9 @@ export function subscribeConfig(listener: (config: SceneComposerConfig) => void)
 
 export async function updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig> {
   const revision = ++updateRevision
-  return applyConfig(normalizeConfig(mergePartial(activeConfig, patch)), revision, false)
+  const updated = await applyConfig(normalizeConfig(mergePartial(activeConfig, patch)), revision, false)
+  persistLilyGrowthVfx(updated)
+  return updated
 }
 
 export async function resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig> {
@@ -1008,4 +1062,26 @@ function deepFreeze<T>(value: T): T {
     for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child)
   }
   return value
+}
+
+function persistLilyGrowthVfx(config: SceneComposerConfig) {
+  if (!import.meta.env.DEV || typeof window === 'undefined') return
+  const settings = Object.fromEntries(LILY_GROWTH_VFX_FIELDS.map((field) => [field, config.scenes.growth[field]]))
+  try { window.localStorage.setItem(LILY_GROWTH_VFX_STORAGE_KEY, JSON.stringify(settings)) }
+  catch { /* Browser storage may be disabled; the live config remains usable. */ }
+}
+
+function restoreLilyGrowthVfx() {
+  if (!import.meta.env.DEV || typeof window === 'undefined') return
+  try {
+    const serialized = window.localStorage.getItem(LILY_GROWTH_VFX_STORAGE_KEY)
+    if (!serialized) return
+    const storedGrowth = asRecord(JSON.parse(serialized))
+    if (!storedGrowth) return
+    // Overlay the Lily-only draft on the complete mainline config so restoring
+    // effect controls never resets island, seed, lighting, or background values.
+    activeConfig = normalizeConfig(mergePartial(activeConfig, { scenes: { growth: storedGrowth } }))
+  } catch {
+    // A corrupt or unavailable local draft should leave the expressive defaults active.
+  }
 }

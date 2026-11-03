@@ -1,6 +1,6 @@
 # Scene Composer configuration
 
-`SceneComposerConfig` is an immutable schema version 15. `normalizeConfig(input)` accepts partial schema v1–v15 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the gallery and identity controls; schema v12 adds the first gallery water settings; schema v13 adds independent water base brightness, reflection falloff, micro-normal scale, and moon reflection spread. Schema v14 adds the `far`, `mid`, `nearLow`, and `waterline` cloud layer settings. Schema v15 adds the shared `scenes.openingBackground` crop profile (`zoom`, `offsetX`, `offsetY`) for the opening screens and scenes 01–04. Partial v14 JSON remains accepted and receives the new crop defaults. Legacy cloud density, scale, opacity, brightness, drift speed, and count values migrate into active layer settings; saved water controls remain unchanged. The store publishes font changes only after the selected local font is ready.
+`SceneComposerConfig` is an immutable schema version 20. `normalizeConfig(input)` accepts partial schema v1-v20 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the gallery and identity controls; schema v12 adds the first gallery water settings; schema v13 adds independent water base brightness, reflection falloff, micro-normal scale, and moon reflection spread. Schema v14 adds the `far`, `mid`, `nearLow`, and `waterline` cloud layer settings. Schema v15 adds the shared `scenes.openingBackground` crop profile (`zoom`, `offsetX`, `offsetY`) for the opening screens and scenes 01-04. Schema v20 adds the Lily growth VFX controls. Partial v14 JSON remains accepted and receives the new crop defaults. The dev-only Lily VFX draft keeps its existing localStorage key and is overlaid so restoring particle settings cannot reset island, seed, lighting, or crop settings. Legacy cloud density, scale, opacity, brightness, drift speed, and count values migrate into active layer settings; saved water controls remain unchanged. The store publishes font changes only after the selected local font is ready.
 
 The public store is:
 
@@ -11,7 +11,7 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v19. Scene 02 branch schemas v12?v18 are also accepted, including island, wind, moonlight, seed, trail and cloud controls. Old Scene 02 default fall duration and height migrate to current defaults; custom values remain within the supported range.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v20. Scene 02 schemas v12-v19 are also accepted, including island, wind, moonlight, seed, trail and cloud controls. Old Scene 02 default fall duration and height migrate to current defaults; custom values remain within the supported range.
 
 Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its 0.1–20 second travel-window meaning, with the cinematic default now 2.2 seconds; `particleFadeDuration` controls individual dust fade and defaults to 1.2 seconds. `particleReturnFraction` is ignored. The light, atmosphere, typography and interaction fields are additive schema-v2 fields: missing fields in both v1 and v2 files receive current defaults.
 
@@ -19,7 +19,7 @@ An optional production override can contain only values that differ from the def
 
 ```json
 {
-  "schemaVersion": 19,
+  "schemaVersion": 20,
   "global": { "quality": "low" },
   "scenes": {
     "openingBackground": {

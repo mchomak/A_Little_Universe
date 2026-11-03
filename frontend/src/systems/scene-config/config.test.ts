@@ -3,7 +3,7 @@ import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, normalizeConfig, SCENE_CONFIG
 
 it('normalizes the shared opening background crop in partial schema v14 configs', () => {
   const partial = normalizeConfig({ schemaVersion: 14, scenes: { openingBackground: { zoom: 2.18, offsetX: -4, offsetY: 0.35 } } })
-  expect(partial.schemaVersion).toBe(19)
+  expect(partial.schemaVersion).toBe(20)
   expect(partial.scenes.openingBackground).toEqual({ zoom: 2.18, offsetX: -1, offsetY: 0.35 })
 
   const missing = normalizeConfig({ schemaVersion: 14, scenes: { prologue: { fontSize: 72 } } })
@@ -11,13 +11,97 @@ it('normalizes the shared opening background crop in partial schema v14 configs'
 })
 import * as configApi from './config'
 
+it('retains main schema v19 fields while adding bounded Lily growth VFX defaults in schema v20', () => {
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(20)
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth).toMatchObject({
+    vfxCoreIntensity: 0.65, vfxPulseEnabled: true, vfxPulseBrightness: 1.45,
+    vfxPulseWidth: 0.2, vfxPulseSpeed: 1, vfxPulseTrailFade: 1.4,
+    vfxPulseColor: '#F4DFB8', vfxPulseLeafBoost: 0.6, vfxPulseBudBoost: 0.55,
+    vfxParticleCount: 440, vfxParticleSize: 3.4, vfxParticleSizeVariation: 0.65,
+    vfxParticleSpeed: 0.95, vfxParticleBrightness: 1.15, vfxParticleGlow: 1.35,
+    vfxParticleLifetime: 2.3, vfxParticleSpread: 0.65, vfxParticleTint: '#FFF4E8',
+    seedFallDuration: 8, seedFallHeight: 3.2, islandRadius: 0.82, moonLightIntensity: 1.2,
+  })
+
+  const imported = normalizeConfig({ schemaVersion: 19, scenes: {
+    openingBackground: { zoom: 2.1, offsetX: 0.3, offsetY: -0.2 },
+    growth: { seedFallDuration: 11, seedFallHeight: 4.2, islandRadius: 0.95,
+      vfxParticleCount: 500, vfxPulseEnabled: false, vfxPulseColor: '#d8c994' },
+  } })
+  expect(imported.schemaVersion).toBe(20)
+  expect(imported.scenes.openingBackground).toEqual({ zoom: 2.1, offsetX: 0.3, offsetY: -0.2 })
+  expect(imported.scenes.growth).toMatchObject({ seedFallDuration: 11, seedFallHeight: 4.2, islandRadius: 0.95,
+    vfxParticleCount: 500, vfxPulseEnabled: false, vfxPulseColor: '#D8C994' })
+
+  const oldParticleSettings = normalizeConfig({ schemaVersion: 12, scenes: { growth: {
+    vfxParticleCount: 88, vfxParticleSize: 2, vfxParticleSpeed: 0.75, vfxParticleBrightness: 0.7,
+  } } })
+  expect(oldParticleSettings.scenes.growth).toMatchObject({
+    vfxParticleCount: 88, vfxParticleSize: 2, vfxParticleSpeed: 0.75, vfxParticleBrightness: 0.7,
+  })
+})
+
+it('persists Lily growth VFX controls and restores them without schema downgrade', async () => {
+  const saved = new Map<string, string>()
+  vi.stubGlobal('window', { localStorage: {
+    setItem: (key: string, value: string) => saved.set(key, value),
+    getItem: (key: string) => saved.get(key) ?? null,
+  } })
+  await configApi.resetConfig('all')
+  await configApi.updateConfig({ scenes: { growth: {
+    vfxPulseEnabled: false, vfxPulseSpeed: 1.4, vfxPulseColor: '#D8C994', vfxParticleCount: 224,
+  } } })
+  expect(JSON.parse(saved.get('a-little-universe:dev:lily-growth-particles:v3') ?? '{}')).toMatchObject({
+    vfxPulseEnabled: false, vfxPulseSpeed: 1.4, vfxPulseColor: '#D8C994', vfxParticleCount: 224,
+  })
+
+  vi.resetModules()
+  const reloaded = await import('./config')
+  expect(reloaded.getConfig().schemaVersion).toBe(20)
+  expect(reloaded.getConfig().scenes.growth).toMatchObject({
+    vfxPulseEnabled: false, vfxPulseSpeed: 1.4, vfxPulseColor: '#D8C994', vfxParticleCount: 224,
+    seedFallDuration: 8, seedFallHeight: 3.2, islandRadius: 0.82,
+  })
+  await reloaded.resetConfig('all')
+  await configApi.resetConfig('all')
+  vi.unstubAllGlobals()
+  vi.resetModules()
+})
+
+it('preserves old Lily localStorage particle values without replacing current growth settings', async () => {
+  const saved = new Map<string, string>([['a-little-universe:dev:lily-growth-particles:v3', JSON.stringify({
+    vfxParticleCount: 88, vfxParticleSize: 2, vfxParticleSpeed: 0.75, vfxParticleBrightness: 0.7,
+    vfxPulseEnabled: false, vfxPulseColor: '#D8C994',
+  })]])
+  vi.stubGlobal('window', { localStorage: {
+    setItem: (key: string, value: string) => saved.set(key, value),
+    getItem: (key: string) => saved.get(key) ?? null,
+  } })
+
+  vi.resetModules()
+  const restored = await import('./config')
+  expect(restored.getConfig().schemaVersion).toBe(20)
+  expect(restored.getConfig().scenes.growth).toMatchObject({
+    vfxParticleCount: 88, vfxParticleSize: 2, vfxParticleSpeed: 0.75, vfxParticleBrightness: 0.7,
+    vfxPulseEnabled: false, vfxPulseColor: '#D8C994',
+    seedFallDuration: 8, seedFallHeight: 3.2, islandRadius: 0.82,
+    moonLightIntensity: 1.2, moonPositionY: 5.5,
+  })
+  expect(restored.getConfig().scenes.openingBackground).toEqual({ zoom: 1, offsetX: 0, offsetY: 0 })
+
+  await restored.resetConfig('all')
+  await configApi.resetConfig('all')
+  vi.unstubAllGlobals()
+  vi.resetModules()
+})
+
 it('migrates saved schema v12 water controls and fills the independent polish controls', () => {
   const saved = normalizeConfig({ schemaVersion: 12, scenes: { gallery: {
     reflectionStrength: 0.36, reflectionBlur: 0.48, waterDistortion: 0.01,
     waterRippleSpeed: 0.2, waterNormalStrength: 0.25, moonHighlightStrength: 0.8, waterOpacity: 0.94,
   } } })
 
-  expect(saved.schemaVersion).toBe(19)
+  expect(saved.schemaVersion).toBe(20)
   expect(saved.scenes.gallery).toMatchObject({
     reflectionStrength: 0.36, reflectionBlur: 0.48, waterDistortion: 0.01,
     waterRippleSpeed: 0.2, waterNormalStrength: 0.25, moonHighlightStrength: 0.8, waterOpacity: 0.94,
@@ -35,7 +119,7 @@ it('migrates schema v13 cloud masters into four independently editable cloud lay
     waterNormalStrength: 0.31, moonHighlightStrength: 1.1, moonReflectionSpread: 1.42, waterOpacity: 0.82,
   } } })
 
-  expect(migrated.schemaVersion).toBe(19)
+  expect(migrated.schemaVersion).toBe(20)
   expect(migrated.scenes.gallery.cloudLayers).toMatchObject({
     far: { density: 1.4, scale: 1.2, brightness: 1.3, driftSpeed: 0.6 },
     mid: { density: 1.4, scale: 1.2, brightness: 1.3, driftSpeed: 0.6 },
@@ -72,7 +156,7 @@ it('defaults the gallery to a restrained deep blue moonlit palette', () => {
 it('loads moonlit gallery settings from legacy schemas and preserves schema v10 data in v14', () => {
   for (const schemaVersion of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) {
     const imported = normalizeConfig({ schemaVersion, scenes: { gallery: { moonBrightness: 1.1, cloudLayerCount: 7 } } })
-    expect(imported.schemaVersion).toBe(19)
+    expect(imported.schemaVersion).toBe(20)
     expect(imported.scenes.gallery).toMatchObject({ moonBrightness: 1.1 })
     expect(Object.values(imported.scenes.gallery.cloudLayers).reduce((sum, layer) => sum + layer.count, 0)).toBe(7)
     expect(imported.scenes.identity).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity)
@@ -90,12 +174,12 @@ it('loads moonlit gallery settings from legacy schemas and preserves schema v10 
 })
 
 it('migrates gallery water controls into schema v15, retaining saved reflections and validating bounds', () => {
-  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(19)
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(20)
   for (const schemaVersion of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) {
     const migrated = normalizeConfig({ schemaVersion, scenes: { gallery: {
       moonBrightness: 1.1, reflectionStrength: 0.24, reflectionBlur: 0.8,
     } } })
-    expect(migrated.schemaVersion).toBe(19)
+    expect(migrated.schemaVersion).toBe(20)
     expect(migrated.scenes.gallery).toMatchObject({
       moonBrightness: 1.1, reflectionStrength: 0.24, reflectionBlur: 0.8,
       waterDistortion: 0.008, waterDistortionScale: 1, waterRippleSpeed: 0.12, waterNormalStrength: 0.22,
@@ -146,7 +230,7 @@ it('expands only the old schema v9 cloud maximum while preserving intentional lo
 
 it('normalizes schema v6 atmosphere controls and supplies them to schema v5 documents', () => {
   const oldGallery = normalizeConfig({ schemaVersion: 5, scenes: { gallery: { moonBrightness: 1.1, cloudDensity: 1.4 } } })
-  expect(oldGallery.schemaVersion).toBe(19)
+  expect(oldGallery.schemaVersion).toBe(20)
   expect(oldGallery.scenes.gallery).toMatchObject({
     moonBrightness: 1.1, hazeHeight: 0, moonCloudLightIntensity: 0.72,
   })
@@ -169,7 +253,7 @@ it('normalizes schema v6 atmosphere controls and supplies them to schema v5 docu
 
 it('migrates bounded moon source, color, halo radius, and godray controls into schema v14', () => {
   const migrated = normalizeConfig({ schemaVersion: 6, scenes: { gallery: { moonPositionX: 2.4, moonLightColor: '#abcde0' } } })
-  expect(migrated.schemaVersion).toBe(19)
+  expect(migrated.schemaVersion).toBe(20)
   expect(migrated.scenes.gallery).toMatchObject({
     moonLightColor: '#ABCDE0', moonPositionX: 2.4, moonPositionY: 16, moonPositionZ: -126,
     moonTargetX: 0, moonTargetY: -2.35, moonTargetZ: -34, moonHaloRadius: 1,
@@ -189,7 +273,7 @@ it('migrates bounded moon source, color, halo radius, and godray controls into s
 
 it('persists bounded cloud volume settings while keeping old settings compatible', () => {
   const migrated = normalizeConfig({ schemaVersion: 7, scenes: { gallery: { cloudLayerCount: 6 } } })
-  expect(migrated.schemaVersion).toBe(19)
+  expect(migrated.schemaVersion).toBe(20)
   expect(Object.values(migrated.scenes.gallery.cloudLayers).reduce((sum, layer) => sum + layer.count, 0)).toBe(6)
   expect(migrated.scenes.gallery.cloudLayers.far.driftSpeed).toBe(0.26)
 
@@ -323,8 +407,8 @@ it('normalizes capture limits and repairs turn ordering without losing legacy se
   })
 })
 
-it('uses immutable schema v19 defaults and the local Great Vibes prologue face', () => {
-  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(19)
+it('uses immutable schema v20 defaults and the local Great Vibes prologue face', () => {
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(20)
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('great-vibes')
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue).toMatchObject({
     interphraseInterval: 1.35,
@@ -360,12 +444,12 @@ it('keeps the floating island controls bounded and supplies defaults for older c
     islandRadius: 1.05, grassDensity: 720, windSpeed: 0,
   } } })
   expect(bounded.scenes.growth).toMatchObject({ islandRadius: 1.05, grassDensity: 720, windSpeed: 0 })
-  expect(bounded.schemaVersion).toBe(19)
+  expect(bounded.schemaVersion).toBe(20)
   const latest = normalizeConfig({ schemaVersion: 12, scenes: { growth: {
     islandRadius: 0.7, islandThickness: 0.4, islandDepth: 1.2, islandRoughness: 0.85,
     grassDensity: 500, grassHeight: 0.2, windStrength: 1.8, windSpeed: 2.1,
   } } })
-  expect(latest.schemaVersion).toBe(19)
+  expect(latest.schemaVersion).toBe(20)
   expect(latest.scenes.growth).toMatchObject({
     islandRadius: 0.7, islandThickness: 0.4, islandDepth: 1.2, islandRoughness: 0.85,
     grassDensity: 500, grassHeight: 0.2, windStrength: 1.8, windSpeed: 2.1,
@@ -382,7 +466,7 @@ it('keeps the floating island controls bounded and supplies defaults for older c
 
 it('migrates bounded Scene 02 moonlight controls from schema v13', () => {
   const legacy = normalizeConfig({ schemaVersion: 13, scenes: { growth: { islandDepth: 0.58 } } })
-  expect(legacy.schemaVersion).toBe(19)
+  expect(legacy.schemaVersion).toBe(20)
   expect(legacy.scenes.growth).toMatchObject({
     moonLightIntensity: 1.2, moonLightColor: '#AFC9F5', moonBeamRadius: 2,
     moonBeamSoftness: 0.6, moonBeamIntensity: 0.55,
@@ -418,7 +502,7 @@ it('migrates Scene 02 staging and cloud defaults from schema v15 without losing 
     gallery: { cloudDensity: 1.33, cloudOpacity: 0.63 },
   } })
 
-  expect(migrated.schemaVersion).toBe(19)
+  expect(migrated.schemaVersion).toBe(20)
   expect(migrated.scenes.growth).toMatchObject({
     seedOrbitCount: 3, seedOrbitRadius: 0.4, seedOrbitTilt: 0.62, seedOrbitSpeed: 0.85,
     seedFallDuration: 8, seedFallAcceleration: 3.2, seedFallHeight: 3.2,
@@ -442,7 +526,7 @@ it('preserves main v15 and Scene 02 v18 profiles in the combined schema', () => 
     gallery: { waterOpacity: 0.8, cloudLayers: { far: { density: 1.4, count: 4 } } },
     identity: { vortexSpeedMultiplier: 1.2 },
   } })
-  expect(main.schemaVersion).toBe(19)
+  expect(main.schemaVersion).toBe(20)
   expect(main.scenes.openingBackground).toMatchObject({ zoom: 1.7, offsetX: 0.2 })
   expect(main.scenes.gallery).toMatchObject({ waterOpacity: 0.8, cloudLayers: { far: { density: 1.4, count: 4 } } })
   expect(main.scenes.identity.vortexSpeedMultiplier).toBe(1.2)
@@ -453,7 +537,7 @@ it('preserves main v15 and Scene 02 v18 profiles in the combined schema', () => 
     gallery: { cloudDensity: 1.2, cloudOpacity: 0.7, cloudLayerCount: 9, cloudScale: 1.5,
       cloudIntensity: 1.3, cloudForegroundAmount: 0.6, cloudBackgroundAmount: 0.5 },
   } })
-  expect(feature.schemaVersion).toBe(19)
+  expect(feature.schemaVersion).toBe(20)
   expect(feature.scenes.growth).toMatchObject({ seedFallDuration: 12, seedFallHeight: 4, cloudDepthVariation: 0.9 })
   expect(feature.scenes.gallery.cloudLayers.mid).toMatchObject({ density: 1.2, opacity: 0.7, scale: 1.5, brightness: 1.3 })
   expect(feature.scenes.gallery.cloudLayers.nearLow.opacity).toBeCloseTo(0.42)
@@ -522,7 +606,7 @@ it('migrates schema v15 camera controls, preserves saved fall duration, and defa
   const saved = normalizeConfig({ schemaVersion: 15, scenes: { growth: {
     seedFallDuration: 2.6, seedCameraLag: 0.42, islandRevealDuration: 2.25,
   } } })
-  expect(saved.schemaVersion).toBe(19)
+  expect(saved.schemaVersion).toBe(20)
   expect(saved.scenes.growth).toMatchObject({
     seedFallDuration: 2.6, seedCameraLag: 0.42,
     seedCameraFollowSpeed: 3, seedSpinSpeed: 1, seedWobbleAmplitude: 0.08,
@@ -561,7 +645,7 @@ it('migrates schema v1 particle settings and preserves compatible fields', () =>
     prologue: { fontSize: 72, particleCount: 120, particleSpeed: 2, particleSpread: 1.2, particleDuration: 9, particleReturnFraction: 0.9 },
   } })
 
-  expect(migrated.schemaVersion).toBe(19)
+  expect(migrated.schemaVersion).toBe(20)
   expect(migrated.global.quality).toBe('low')
   expect(migrated.scenes.prologue).toMatchObject({
     fontSize: 72, particleCount: 300, windStrength: 2.3, turbulence: 0.36,
@@ -600,7 +684,7 @@ it('falls back per field, drops unknown keys, and rejects unsupported versions',
   expect(malformed.global).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.global)
   expect(malformed.scenes.prologue).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)
   expect(Object.keys(malformed)).toEqual(['schemaVersion', 'global', 'scenes', 'preset'])
-  expect(normalizeConfig({ schemaVersion: 20, scenes: { prologue: { fontSize: 72 } } })).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
+  expect(normalizeConfig({ schemaVersion: 21, scenes: { prologue: { fontSize: 72 } } })).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
 })
 
 it('accepts schema v2 inclusive bounds and defaults out-of-range or non-finite values', () => {
@@ -688,7 +772,7 @@ it('normalizes additive bloom camera and calligraphy fields while preserving old
 
 it('migrates schema v2 documents with galaxy defaults and bounds the new controls', () => {
   const migrated = normalizeConfig({ schemaVersion: 2, scenes: { growth: { seedScale: 1.2 } } })
-  expect(migrated.schemaVersion).toBe(19)
+  expect(migrated.schemaVersion).toBe(20)
   expect(migrated.scenes.galaxy).toMatchObject({ seed: 'andromeda', starCount: 32000, arms: 5, palette: 'spore', cameraEndAngle: 0.785 })
   const galaxy = normalizeConfig({ schemaVersion: 4, scenes: { galaxy: {
     starCount: 90000, arms: 8, quality: 'high', palette: 'custom', coreColor: '#A1B2C3', fogLayers: 8,
@@ -707,9 +791,9 @@ it('migrates schema v3 galaxy spin from turns to radians and converts schema v4 
     coreSize: 1.55, coreDensity: 0.4, thickness: 0.12,
   } } })
 
-  expect(legacy.schemaVersion).toBe(19)
+  expect(legacy.schemaVersion).toBe(20)
   expect(legacy.scenes.galaxy.spin).toBeCloseTo(1.2 * Math.PI * 2, 10)
-  expect(current.schemaVersion).toBe(19)
+  expect(current.schemaVersion).toBe(20)
   expect(current.scenes.galaxy).toMatchObject({
     seed: '154684308', spin: 4.6, armWidth: 0.16,
     coreSize: 1.55 / 8.2, coreDensity: 0.248, thickness: 0.12 / 8.2,

@@ -1,12 +1,14 @@
 import { readFileSync } from 'node:fs'
-import { AnimationClip, Group, LoopOnce, LoopRepeat, type Object3D } from 'three'
+import { AnimationClip, Group, LoopOnce, LoopRepeat, Mesh, Vector3, type Object3D } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import { expect, it } from 'vitest'
 import { getBloomSceneFrames, getGrowthSceneFrames } from '../../engine/filmConfig'
 import { getGrowthClipTime, getSyncedBloomClipTime } from '../../scenes/lily/animationTiming'
 import { LilyAnimationPlayer } from '../../scenes/lily/animationPlayer'
+import { createLilyGrowthVfx, getGrowthVfxBirthTime } from '../../scenes/lily/lilyGrowthVfx'
 import { createLilyGeometryParticleSource } from '../../scenes/lily/particleSource'
+import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 
 interface GlbDocument {
   accessors: Array<{ max?: number[] }>
@@ -122,6 +124,152 @@ it('samples the actual open GLB morph and maps its vertices into the identity sc
   expect(worldSample[2]).toBeCloseTo(first[2] * 3, 4)
   player.dispose()
   worldPlayer.dispose()
+})
+
+it('samples actual Growth geometry deterministically after forward and backward timeline seeks', async () => {
+  const source = readFileSync(new URL('./lily_004_final.glb', import.meta.url))
+  const gltf = await parseAnimationFixture(source)
+  const model = clone(gltf.scene) as Group
+  const wrapper = new Group()
+  wrapper.position.set(0, -1.45, 0)
+  wrapper.scale.setScalar(3)
+  wrapper.add(model)
+  const player = new LilyAnimationPlayer(model, gltf.animations)
+  const clip = gltf.animations.find(({ name }) => name === 'Growth')!
+  const parentChildCount = wrapper.children.length
+  const effect = createLilyGrowthVfx(wrapper, model, clip)
+  let geometryDisposeCount = 0
+  let materialDisposeCount = 0
+  effect.geometry.addEventListener('dispose', () => { geometryDisposeCount++ })
+  effect.material.addEventListener('dispose', () => { materialDisposeCount++ })
+  expect(wrapper.children).toHaveLength(parentChildCount + 1)
+  const stemBirth = getGrowthVfxBirthTime(clip, 'stem', 0.5)
+  const secondLeafBirth = getGrowthVfxBirthTime(clip, 'leafB', 0.5)
+  const firstLeafBirth = getGrowthVfxBirthTime(clip, 'leafA', 0.5)
+  const budBirth = getGrowthVfxBirthTime(clip, 'bud', 0.5)
+  expect(stemBirth).toBeLessThan(secondLeafBirth)
+  expect(secondLeafBirth).toBeLessThan(firstLeafBirth)
+  expect(firstLeafBirth).toBeLessThan(budBirth)
+  const frames = getGrowthSceneFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth)
+  const sample = (time: number, settings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth) => {
+    const clipTime = getGrowthClipTime(time, frames, clip.duration)
+    player.play('Growth', LoopOnce, 1)
+    player.seek(clipTime)
+    effect.update({ scene: 'growth', time, clipTime, clipDuration: clip.duration, frames, pixelRatio: 1.5, reducedMotion: false, quality: 'standard' }, settings)
+    const opacity = Array.from(effect.geometry.getAttribute('aOpacity').array)
+    const points = Array.from(effect.geometry.getAttribute('position').array)
+    const glow = Array.from(effect.geometry.getAttribute('aGlow').array)
+    const stemMesh = model.getObjectByName('Stem') as Mesh
+    const stemPoint = new Vector3()
+    let stemMinY = Infinity, stemMaxY = -Infinity
+    const stemPosition = stemMesh.geometry.getAttribute('position')
+    for (let index = 0; index < stemPosition.count; index++) {
+      stemMesh.getVertexPosition(index, stemPoint)
+      stemMesh.localToWorld(stemPoint)
+      wrapper.worldToLocal(stemPoint)
+      stemMinY = Math.min(stemMinY, stemPoint.y); stemMaxY = Math.max(stemMaxY, stemPoint.y)
+    }
+    const visibleStemY: number[] = [], visibleLeafY: number[] = [], visibleBudY: number[] = []
+    for (let index = 30; index < glow.length; index++) {
+      if (glow[index]! <= 0) continue
+      const source = effect.particleSources[index - 30]
+      if (opacity[index]! <= 0.1) continue
+      const y = points[index * 3 + 1] ?? 0
+      if (source === 'stem') visibleStemY.push(y)
+      else if (source === 'leafA' || source === 'leafB') visibleLeafY.push(y)
+      else if (source === 'bud') visibleBudY.push(y)
+    }
+    return {
+      positions: points,
+      opacity,
+      particlePositions: points.slice(30 * 3),
+      particleOpacity: opacity.slice(30),
+      pulsePositions: points.slice(0, 28 * 3),
+      pulseOpacity: opacity.slice(0, 28),
+      pulseColors: Array.from(effect.geometry.getAttribute('color').array).slice(0, 28 * 3),
+      sizes: Array.from(effect.geometry.getAttribute('aSize').array),
+      colors: Array.from(effect.geometry.getAttribute('color').array),
+      glowStrength: effect.material.uniforms.uGlowStrength!.value as number,
+      visibleParticles: opacity.slice(30)
+        .reduce((total, value, index) => total + (value > 0.1 && effect.geometry.getAttribute('aGlow').getX(index + 30) > 0 ? 1 : 0), 0),
+      visibleHeight: visibleStemY.length > 1 ? Math.max(...visibleStemY) - Math.min(...visibleStemY) : 0,
+      stemHeight: stemMaxY - stemMinY,
+      lowerStemParticles: visibleStemY.filter(y => y < (stemMinY + stemMaxY) * 0.5).length,
+      upperStemParticles: visibleStemY.filter(y => y >= (stemMinY + stemMaxY) * 0.5).length,
+      visibleLeafParticles: visibleLeafY.length,
+      visibleBudParticles: visibleBudY.length,
+    }
+  }
+
+  const early = sample(7)
+  expect(early.visibleParticles).toBeGreaterThanOrEqual(40)
+  expect(early.visibleParticles).toBeLessThanOrEqual(80)
+  expect(early.visibleHeight / early.stemHeight).toBeGreaterThan(0.35)
+  expect(early.lowerStemParticles).toBeGreaterThan(25)
+  expect(early.upperStemParticles).toBeGreaterThan(25)
+  expect(Math.min(early.lowerStemParticles, early.upperStemParticles) / Math.max(early.lowerStemParticles, early.upperStemParticles)).toBeGreaterThan(0.35)
+  const earlyLowerDensity = sample(7, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxParticleCount: 220 })
+  expect(earlyLowerDensity.visibleParticles).toBeLessThan(early.visibleParticles)
+  const leafStage = sample(9.5)
+  expect(leafStage.visibleParticles).toBeGreaterThan(5)
+  expect(leafStage.visibleLeafParticles).toBeGreaterThan(5)
+  const budStage = sample(12.5)
+  expect(budStage.visibleParticles).toBeGreaterThan(5)
+  expect(budStage.visibleBudParticles).toBeGreaterThan(5)
+  const speedChanged = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseSpeed: 1.6 })
+  const leafBoosted = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseLeafBoost: 1.5 })
+  const budBoosted = sample(12.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseBudBoost: 1.5 })
+  const pulseDisabled = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseEnabled: false })
+  const pulseBrighter = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseBrightness: 2.5 })
+  const pulseNarrower = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseWidth: 0.05 })
+  const pulseFade = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseTrailFade: 2.8 })
+  const pulseTinted = sample(9.5, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxPulseColor: '#D8C994' })
+  expect(speedChanged.pulsePositions).not.toEqual(sample(9.5).pulsePositions)
+  expect(speedChanged.particlePositions).toEqual(sample(9.5).particlePositions)
+  expect(speedChanged.particleOpacity).toEqual(sample(9.5).particleOpacity)
+  expect(leafBoosted.pulseOpacity).not.toEqual(sample(9.5).pulseOpacity)
+  expect(budBoosted.pulseOpacity).not.toEqual(budStage.pulseOpacity)
+  expect(pulseDisabled.pulseOpacity.every(value => value === 0)).toBe(true)
+  expect(pulseBrighter.pulseOpacity).not.toEqual(sample(9.5).pulseOpacity)
+  expect(pulseNarrower.pulsePositions).not.toEqual(sample(9.5).pulsePositions)
+  expect(pulseFade.pulseOpacity).not.toEqual(sample(9.5).pulseOpacity)
+  expect(pulseTinted.pulseColors).not.toEqual(sample(9.5).pulseColors)
+  const middle = sample(frames.handoff[1] + 1.2)
+  const held = sample(frames.handoff[1] + 1.2)
+  expect(held).toEqual(middle)
+  const later = sample(frames.model[1] - 0.3)
+  expect(later.positions).not.toEqual(middle.positions)
+  const rewind = sample(frames.handoff[1] + 1.2)
+  expect(rewind).toEqual(middle)
+  expect(rewind.opacity.some(value => value > 0)).toBe(true)
+  const lowerCount = sample(frames.handoff[1] + 1.2, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxParticleCount: 80 })
+  expect(lowerCount.visibleParticles).toBeLessThan(middle.visibleParticles)
+  const larger = sample(frames.handoff[1] + 1.2, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxParticleSize: 6 })
+  expect(larger.sizes).not.toEqual(middle.sizes)
+  const uniformSizes = sample(frames.handoff[1] + 1.2, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxParticleSizeVariation: 0 })
+  expect(uniformSizes.sizes).not.toEqual(middle.sizes)
+  const dimmer = sample(frames.handoff[1] + 1.2, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxParticleBrightness: 0.35 })
+  expect(dimmer.opacity).not.toEqual(middle.opacity)
+  const noGlow = sample(frames.handoff[1] + 1.2, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxParticleGlow: 0 })
+  expect(noGlow.sizes).not.toEqual(middle.sizes)
+  expect(noGlow.glowStrength).toBe(0)
+  expect(middle.glowStrength).toBe(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleGlow)
+  const shorterLife = sample(frames.handoff[1] + 1.2, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxParticleLifetime: 0.3 })
+  expect(shorterLife.opacity).not.toEqual(middle.opacity)
+  const slower = sample(frames.handoff[1] + 1.2, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxParticleSpeed: 0.2 })
+  expect(slower.positions).not.toEqual(middle.positions)
+  const narrow = sample(frames.handoff[1] + 1.2, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxParticleSpread: 0 })
+  expect(narrow.positions).not.toEqual(middle.positions)
+  const tinted = sample(frames.handoff[1] + 1.2, { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, vfxParticleTint: '#B4D8AE' })
+  expect(tinted.colors).not.toEqual(middle.colors)
+  effect.dispose()
+  expect(wrapper.children).toHaveLength(parentChildCount)
+  expect(geometryDisposeCount).toBe(1)
+  expect(materialDisposeCount).toBe(1)
+  effect.dispose()
+  expect(geometryDisposeCount).toBe(1)
+  expect(materialDisposeCount).toBe(1)
+  player.dispose()
 })
 
 async function parseAnimationFixture(source: Buffer): Promise<{ scene: Object3D; animations: AnimationClip[] }> {
