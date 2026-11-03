@@ -8,7 +8,6 @@
   color-scheme: dark;
   --muted: #bdb7cc;
   --serif: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
-  --film-footer: 84px;
 }
 * { box-sizing: border-box; scrollbar-color: #b9a4e8 #141421; scrollbar-width: thin; }
 body { margin: 0; min-width: 320px; }
@@ -25,25 +24,22 @@ h1, h2, h3, h4, p { overflow-wrap: break-word; }
 h1, .film-phrase { font-family: var(--serif); font-weight: 400; text-wrap: balance; }
 h1 { font-size: clamp(2.6rem, 5.4vw, 5.7rem); line-height: 1.08; letter-spacing: -0.03em; margin: 0 0 1.4rem; }
 .universe { height: 100svh; min-height: 440px; position: relative; isolation: isolate; }
-.film-surface { position: absolute; inset: 0 0 var(--film-footer); overflow: hidden; }
+.film-surface { position: absolute; inset: 0; overflow: hidden; }
 .viewport { position: absolute; inset: 0; }
 .viewport > div { height: 100%; }
 .universe[data-scene='gallery'] .film-surface { touch-action: none; }
 .universe[data-scene='bloom'] .viewport { touch-action: none; }
 .page-header { position: absolute; inset: max(20px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) auto max(24px, env(safe-area-inset-left)); display: flex; justify-content: space-between; gap: 1rem; font-size: 0.875rem; pointer-events: none; }
-.universe[data-scene="growth"] .page-header, .universe[data-scene="growth"] .film-status { visibility: hidden; }
-.universe[data-scene="growth"] .page-footer { background: transparent; }
+.universe[data-scene="growth"] .page-header { visibility: hidden; }
 .dedication { color: #f4cdd9; }
-.build-label, .prototype-note, .film-status, .gesture-hint, .simulation-note { color: var(--muted); font-size: 0.875rem; }
+.build-label, .prototype-note, .gesture-hint, .simulation-note { color: var(--muted); font-size: 0.875rem; }
 .start-screen { position: absolute; left: max(6vw, env(safe-area-inset-left)); top: 50%; transform: translateY(-50%); width: min(47%, 43rem); }
 .start-screen h1 { max-width: 12ch; }
 .start-screen > p { max-width: 39ch; }
 .start-screen .prototype-note { margin-bottom: 1.5rem; }
 .primary-button { color: #080914; background: #f4cdd9; border-color: #f4cdd9; }
 .primary-button:hover:not(:disabled) { background: #fff0e8; }
-.page-footer { position: absolute; inset: auto 0 0; min-height: var(--film-footer); display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 12px max(24px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); background: #080914; }
-.playback-controls, .quality-control, .gallery-controls, .ending-actions, .greeting-controls { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-.quality-control { color: var(--muted); font-size: 0.875rem; }
+.gallery-controls, .ending-actions, .greeting-controls { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 .phrase-zone { position: absolute; top: 18%; left: 10%; right: 10%; text-align: center; pointer-events: none; }
 .film-phrase { font-size: clamp(1.6rem, 3.5vw, 3rem); max-width: 28ch; margin: 0 auto; line-height: 1.3; }
 .interaction-prompt { position: absolute; bottom: 8%; left: 20px; right: 20px; display: flex; justify-content: center; }
@@ -115,13 +111,7 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.7rem); line-height: 1.08; letter-spacing:
   .greeting-overlay { inset-inline: 7%; }
 }
 @media (max-width: 600px) {
-  :root { --film-footer: 100px; }
   .page-header { inset-inline: 16px; font-size: 0.75rem; }
-  .page-footer { padding-inline: 16px; align-items: flex-end; gap: 0.5rem; }
-  .film-status { font-size: 0.75rem; max-width: 13ch; }
-  .playback-controls { gap: 0.4rem; justify-content: flex-end; }
-  .quality-control { gap: 0.3rem; font-size: 0.75rem; }
-  .quality-control select { padding-inline: 0.5rem; font-size: 0.875rem; }
   .start-screen { top: 45%; }
   .start-screen h1 { font-size: clamp(2.2rem, 10vw, 3.4rem); }
   .start-screen > p { font-size: 0.875rem; }
@@ -172,8 +162,7 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.7rem); line-height: 1.08; letter-spacing:
 
 /* The prologue is a viewport composition; the minimal seed handoff shares its centre. */
 .cinematic .film-surface, .universe[data-scene='growth'] .film-surface { inset: 0; }
-.universe[data-debug='true'] .film-surface { inset: 0; }
-.universe[data-debug='true'] .page-header, .universe[data-debug='true'] .page-footer { display: none; }
+.universe[data-debug='true'] .page-header { display: none; }
 .cinematic-pause { position: fixed; z-index: 4; right: max(22px, env(safe-area-inset-right)); bottom: max(22px, env(safe-area-inset-bottom)); min-width: 44px; color: #fff0e891; background: transparent; border-color: transparent; font-size: .8rem; }
 .cinematic-pause:hover:not(:disabled) { color: #fff0e8; background: #fff0e809; border-color: #fff0e826; }
 .universe[data-debug='true'] .cinematic-pause { top: max(22px, env(safe-area-inset-top)); left: max(22px, env(safe-area-inset-left)); right: auto; bottom: auto; }
