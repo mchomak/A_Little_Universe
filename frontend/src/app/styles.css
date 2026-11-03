@@ -172,6 +172,8 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.7rem); line-height: 1.08; letter-spacing:
 
 /* The prologue is a viewport composition; the minimal seed handoff shares its centre. */
 .cinematic .film-surface, .universe[data-scene='growth'] .film-surface { inset: 0; }
+.universe[data-debug='true'] .film-surface { inset: 0; }
+.universe[data-debug='true'] .page-header, .universe[data-debug='true'] .page-footer { display: none; }
 .cinematic-pause { position: fixed; z-index: 4; right: max(22px, env(safe-area-inset-right)); bottom: max(22px, env(safe-area-inset-bottom)); min-width: 44px; color: #fff0e891; background: transparent; border-color: transparent; font-size: .8rem; }
 .cinematic-pause:hover:not(:disabled) { color: #fff0e8; background: #fff0e809; border-color: #fff0e826; }
 .universe[data-debug='true'] .cinematic-pause { top: max(22px, env(safe-area-inset-top)); left: max(22px, env(safe-area-inset-left)); right: auto; bottom: auto; }
