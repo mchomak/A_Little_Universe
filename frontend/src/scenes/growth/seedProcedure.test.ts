@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PerspectiveCamera, Vector3 } from 'three'
-import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthFrames, getGrowthHandoff, getGrowthViewportHeight, getSeedCorePose, getSeedFallDistance, getSeedFallProgress, getSeedPose, getSeedShellCenterY, sampleSeedParticleSeeds, SEED_ROOT, SEED_SHELL_HALF_HEIGHT, type GrowthSettings } from './seedProcedure'
+import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthFrames, getGrowthHandoff, getGrowthViewportHeight, getSeedCorePose, getSeedFallDistance, getSeedFallHeightMultiplier, getSeedFallProgress, getSeedPose, getSeedShellCenterY, sampleSeedParticleSeeds, SEED_ROOT, SEED_SHELL_HALF_HEIGHT, type GrowthSettings } from './seedProcedure'
 import { getPrologueLightPose } from '../prologue/lightPose'
 import { getConfig } from '../../systems/scene-config/config'
 
@@ -22,8 +22,8 @@ describe('scene 02 seed procedure', () => {
     expect(frames.fall[1] - frames.fall[0]).toBeCloseTo(settings.seedFallDuration, 5)
     expect(frames.islandReveal[1]).toBe(frames.fall[1])
     expect(frames.islandReveal[1] - frames.islandReveal[0]).toBe(settings.islandRevealDuration)
-    expect(frames.model[0]).toBe(frames.fall[1] + 0.7)
-    expect(frames.model[1] - frames.model[0]).toBe(settings.flowerGrowthDuration)
+    expect(frames.model[0]).toBeCloseTo(frames.fall[1] + 0.7, 5)
+    expect(frames.model[1] - frames.model[0]).toBeCloseTo(settings.flowerGrowthDuration, 5)
     expect(frames.sprout[1] - frames.handoff[1]).toBeGreaterThanOrEqual(8)
     expect(frames.sprout[1] - frames.handoff[1]).toBeLessThanOrEqual(10)
     expect(frames.sprout[1]).toBeLessThan(frames.duration)
@@ -38,7 +38,7 @@ describe('scene 02 seed procedure', () => {
     expect(getSeedPose(frames.handoff[0] + 0.1, 3.82, false).stage).toBe('handoff')
     expect(getSeedPose(frames.handoff[1], 3.82, false).stage).toBe('growth')
     expect(getSeedPose(frames.handoff[1], 3.82, false).growthWeight).toBeCloseTo(0.065, 3)
-    expect(getSeedPose(18, 3.82, false).growthWeight).toBeCloseTo(1)
+    expect(getSeedPose(frames.model[1], 3.82, false).growthWeight).toBeCloseTo(1)
     expect(getGrowthHandoff(frames.handoff[1]).localTime).toBeCloseTo(0.75)
     expect(getSeedPose(frames.formation[1], 3.82, false).seedSize).toBeGreaterThanOrEqual(0.0764)
     const settings = getConfig().scenes.prologue
@@ -112,12 +112,43 @@ describe('scene 02 seed procedure', () => {
     expect(getSeedPose(frames.fall[1] + 0.08, 3.82, true).impactPulse).toBe(0)
   })
 
+  it('keeps a compact seed and the island in the fixed reduced-motion 4:3 camera at default and max height', () => {
+    const base = getConfig().scenes.growth
+    const width = 1024
+    const height = 768
+    const aspect = width / height
+    const viewportHeight = getGrowthViewportHeight(width, height)
+
+    for (const configuredHeight of [3.2, 6.4]) {
+      const settings = { ...base, seedFallHeight: configuredHeight } as GrowthSettings
+      const frames = getGrowthFrames(settings)
+      const startCamera = getGrowthCameraPose(0, true, settings, viewportHeight)
+      const contactCamera = getGrowthCameraPose(frames.fall[1], true, settings, viewportHeight)
+      const startSeed = getSeedPose(0, viewportHeight, true, settings)
+      const middleSeed = getSeedPose((frames.fall[0] + frames.fall[1]) / 2, viewportHeight, true, settings)
+      const contactSeed = getSeedPose(frames.fall[1], viewportHeight, true, settings)
+      const screenY = (seed: typeof startSeed) => projectWorldY(seed.anchor[1] + seed.seedY, startCamera, aspect)
+
+      expect(getSeedFallHeightMultiplier(configuredHeight, true)).toBe(1)
+      expect(screenY(startSeed)).toBeGreaterThan(0)
+      expect(screenY(startSeed)).toBeLessThan(1)
+      expect(screenY(middleSeed)).toBeGreaterThan(0)
+      expect(screenY(middleSeed)).toBeLessThan(1)
+      expect(screenY(contactSeed)).toBeGreaterThan(0)
+      expect(screenY(contactSeed)).toBeLessThan(1)
+      expect(projectWorldY(SEED_ROOT[1], startCamera, aspect)).toBeLessThan(1)
+      expect(contactCamera).toEqual(startCamera)
+      expect(getGrowthCameraPose(frames.duration, true, settings, viewportHeight))
+        .toEqual(getGrowthBloomEntryCameraPose(settings, true, viewportHeight))
+    }
+  })
+
   it('fits the seed against the current landscape or portrait camera framing', () => {
     expect(getGrowthViewportHeight(1024, 768)).toBeCloseTo(3.856, 2)
     expect(getGrowthViewportHeight(768, 1024)).toBeCloseTo(5.732, 2)
   })
 
-  it('accelerates early, settles to zero speed at impact, and keeps the camera aligned', () => {
+  it('accelerates through impact with nonzero terminal speed and keeps the camera aligned', () => {
     const frames = getGrowthFrames(getConfig().scenes.growth)
     const [start, end] = frames.fall
     const step = (end - start) / 20
@@ -131,8 +162,8 @@ describe('scene 02 seed procedure', () => {
     expect(velocities[0]).toBeLessThan(averageVelocity * 0.2)
     expect(velocities[1]).toBeGreaterThan(velocities[0]!)
     expect(velocities[10]).toBeGreaterThan(velocities[2]!)
-    expect(velocities[19]).toBeLessThan(velocities[18]!)
-    expect(velocities[19]).toBeLessThan(averageVelocity * 0.2)
+    expect(velocities[19]).toBeGreaterThan(velocities[18]!)
+    expect(velocities[19]).toBeGreaterThan(averageVelocity * 2)
     const cameraAtFallStart = getGrowthCameraPose(start, false)
     expect(getGrowthCameraPose(start + 0.15, false).y).toBe(cameraAtFallStart.y)
     expect(getGrowthCameraPose(start + 0.8, false).y).toBe(cameraAtFallStart.y)
@@ -180,6 +211,32 @@ describe('scene 02 seed procedure', () => {
     expect(projectWorldY(SEED_ROOT[1], landingCamera, width / height)).toBeLessThan(1)
   })
 
+  it('catches the seed near the center at impact across the maximum 4:3 fall distance', () => {
+    const base = getConfig().scenes.growth
+    const settings = { ...base, seedFallHeight: 6.4 } as GrowthSettings
+    const frames = getGrowthFrames(settings)
+    const width = 1200
+    const height = 900
+    const aspect = width / height
+    const viewportHeight = getGrowthViewportHeight(width, height)
+    const startCamera = getGrowthCameraPose(frames.fall[0], false, settings, viewportHeight)
+    const startSeed = getSeedPose(frames.fall[0], viewportHeight, false, settings)
+    const startWorldY = startSeed.anchor[1] + startSeed.seedY
+    const impactCamera = getGrowthCameraPose(frames.fall[1], false, settings, viewportHeight)
+    const impactSeed = getSeedPose(frames.fall[1], viewportHeight, false, settings)
+    const beforeImpact = getGrowthCameraPose(frames.fall[1] - 0.001, false, settings, viewportHeight)
+    const afterImpact = getGrowthCameraPose(frames.fall[1] + 0.001, false, settings, viewportHeight)
+
+    expect(projectWorldY(startWorldY, startCamera, aspect)).toBeCloseTo(0.5, 4)
+    expect(projectWorldY(SEED_ROOT[1], startCamera, aspect)).toBeGreaterThan(1)
+    expect(impactSeed.anchor[1] + impactSeed.seedY).toBeCloseTo(SEED_ROOT[1], 6)
+    const impactScreenY = projectWorldY(impactSeed.anchor[1] + impactSeed.seedY, impactCamera, aspect)
+    expect(impactScreenY).toBeGreaterThan(0.35)
+    expect(impactScreenY).toBeLessThan(0.75)
+    expect(impactCamera.y).toBeLessThan(startCamera.y)
+    expect(Math.abs(beforeImpact.y - afterImpact.y)).toBeLessThan(0.01)
+  })
+
   it('slows the seed spin smoothly to a stable orientation at contact', () => {
     const base = getConfig().scenes.growth
     const settings = { ...base, seedSpinSpeed: 2, seedWobbleAmplitude: 0.3 } as GrowthSettings
@@ -206,13 +263,13 @@ describe('scene 02 seed procedure', () => {
     expect(reducedMotion.tumbleAngle).toBe(0)
   })
 
-  it('uses an analytic accelerating curve that reaches a smooth landing and responds to its setting', () => {
+  it('uses a monotonic accelerating curve and retains nonzero terminal velocity', () => {
     const slow = getSeedFallProgress(0.5, 2)
     const fast = getSeedFallProgress(0.5, 3.2)
     expect(getSeedFallProgress(0, 3.2)).toBe(0)
     expect(getSeedFallProgress(1, 3.2)).toBe(1)
     expect(fast).toBeLessThan(slow)
-    expect(getSeedFallProgress(0.9, 3.2)).toBeGreaterThan(0.93)
+    expect(getSeedFallProgress(0.9, 3.2)).toBeCloseTo(0.7138, 4)
   })
 
   it('preserves formation rotation and transitions continuously into the configured fall spin', () => {
@@ -239,7 +296,7 @@ describe('scene 02 seed procedure', () => {
     const tangent = Math.tan(38 * Math.PI / 360)
     const islandBottom = SEED_ROOT[1] - settings.islandThickness - settings.islandDepth - settings.islandRadius * 0.05
     const contact = getGrowthCameraPose(frames.fall[1], false, settings)
-    const finale = getGrowthCameraPose(15.5, false, settings)
+    const finale = getGrowthCameraPose(frames.duration, false, settings)
     const reduced = getGrowthCameraPose(frames.fall[1], true, settings)
     const budTip = 1.8
 

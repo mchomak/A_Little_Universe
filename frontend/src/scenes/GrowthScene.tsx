@@ -4,7 +4,7 @@ import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, G
 import type { SceneProps } from '../engine/sceneTypes'
 import { getIdentityEnvironmentOpacity, shouldMountGrowthClouds } from '../engine/sceneContinuity'
 import { useSceneAnimation } from './shared/animation'
-import { getGrowthFrames, getGrowthViewportHeight, getSeedCorePose, getSeedParticleCount, getSeedPose, getSeedShellCenterY, sampleSeedParticleSeeds, SEED_ROOT, SEED_SHELL_HALF_HEIGHT, type GrowthSettings } from './growth/seedProcedure'
+import { getGrowthFrames, getGrowthViewportHeight, getSeedCorePose, getSeedFallHeightMultiplier, getSeedParticleCount, getSeedPose, getSeedShellCenterY, getSeedShatterOpacity, sampleSeedParticleSeeds, SEED_ROOT, SEED_SHELL_HALF_HEIGHT, type GrowthSettings } from './growth/seedProcedure'
 import { coreFragment, haloFragment, impactWaveFragment, particleFragment, particleVertex, seedFragment, seedSurfaceVertex, surfaceVertex } from './growth/seedShaders'
 import { createSeedParticleReferences } from './growth/seedTargets'
 import { RecStudioParticleSimulation } from './growth/recstudioSimulation'
@@ -18,13 +18,14 @@ import type { FilmRuntime } from '../engine/runtime'
 type SimulationRef = { current: RecStudioParticleSimulation | null }
 type MatterSyncRef = { current: ((time: number, settings: GrowthSettings) => void) | null }
 
-function SeedMatter({ count, settings, runtime, simulationRef, syncRef, gpuReady, onStatus }: {
+function SeedMatter({ count, settings, runtime, simulationRef, syncRef, gpuReady, opacityRef, onStatus }: {
   count: number
   settings: GrowthSettings
   runtime: FilmRuntime
   simulationRef: SimulationRef
   syncRef: MatterSyncRef
   gpuReady: boolean
+  opacityRef: { current: number }
   onStatus(ready: boolean): void
 }) {
   const renderer = useThree(({ gl }) => gl)
@@ -64,11 +65,11 @@ function SeedMatter({ count, settings, runtime, simulationRef, syncRef, gpuReady
     uniforms.uTime!.value = Math.max(0, time)
     uniforms.uFormationProgress!.value = Math.min(1, Math.max(0, time / nextSettings.formationDuration))
     uniforms.uFormationDuration!.value = nextSettings.formationDuration
-    uniforms.uOpacity!.value = nextSettings.particleOpacity
+    uniforms.uOpacity!.value = nextSettings.particleOpacity * opacityRef.current
     ;(uniforms.uPearlColor!.value as Color).set(nextSettings.pearlColor)
     ;(uniforms.uRoseColor!.value as Color).set(nextSettings.roseColor)
     ;(uniforms.uLavenderColor!.value as Color).set(nextSettings.lavenderColor)
-  }, [simulationRef])
+  }, [simulationRef, opacityRef])
 
   useLayoutEffect(() => { dprRef.current = dpr }, [dpr])
   useLayoutEffect(() => { settingsRef.current = settings }, [settings])
@@ -146,6 +147,7 @@ function SeedParticles({ mode, count, materialRef, fallRange, impactRadius, impa
     orbitCount: { value: orbitCount }, orbitRadius: { value: orbitRadius }, orbitTilt: { value: orbitTilt }, orbitSpeed: { value: orbitSpeed }, formationDuration: { value: formationDuration }, orbitAbsorption: { value: 0 },
     seedFallAcceleration: { value: seedFallAcceleration }, seedFallHeight: { value: seedFallHeight },
     seedTrailSpread: { value: seedTrailSpread }, seedTrailLifetime: { value: seedTrailLifetime }, seedTrailLiftSpeed: { value: seedTrailLiftSpeed },
+    impactOriginY: { value: 0 },
   }), [mode, fallRange, impactRadius, impactLifetime, impactStrength, orbitCount, orbitRadius, orbitSpeed, orbitTilt, formationDuration, seedFallAcceleration, seedFallHeight, seedTrailSpread, seedTrailLifetime, seedTrailLiftSpeed])
   return <points frustumCulled={false}>
     <bufferGeometry><bufferAttribute attach="attributes-position" args={[positions, 3]} /></bufferGeometry>
@@ -174,6 +176,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
   const orbit = useRef<ShaderMaterial>(null)
   const trail = useRef<ShaderMaterial>(null)
   const sparks = useRef<ShaderMaterial>(null)
+  const seedMatterOpacity = useRef(1)
   const simulationRef = useRef<RecStudioParticleSimulation | null>(null)
   const matterSyncRef = useRef<((time: number, settings: GrowthSettings) => void) | null>(null)
   const [gpuStatus, setGpuStatus] = useState<'pending' | 'ready' | 'fallback'>('pending')
@@ -193,6 +196,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
   const low = state.quality === 'low'
   const particleCount = getSeedParticleCount(state.quality, growthSettings.particleQuality)
   const growthFrames = useMemo(() => getGrowthFrames(growthSettings), [growthSettings])
+  const effectiveSeedFallHeight = getSeedFallHeightMultiplier(growthSettings.seedFallHeight, reducedMotion)
   const particleSettings = {
     impactRadius: growthSettings.seedImpactRadius,
     impactStrength: growthSettings.seedImpactStrength,
@@ -203,7 +207,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
     orbitSpeed: growthSettings.seedOrbitSpeed,
     formationDuration: growthSettings.formationDuration,
     seedFallAcceleration: growthSettings.seedFallAcceleration,
-    seedFallHeight: growthSettings.seedFallHeight,
+    seedFallHeight: effectiveSeedFallHeight,
     seedTrailSpread: growthSettings.seedTrailSpread,
     seedTrailLifetime: growthSettings.seedTrailLifetime,
     seedTrailLiftSpeed: growthSettings.seedTrailLiftSpeed,
@@ -215,6 +219,8 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
     const frames = growthFrames
     const poseTime = environmentOnly ? frames.duration : time
     const pose = getSeedPose(poseTime, height, reducedMotion, growthSettings)
+    const seedVisualOpacity = pose.seedOpacity * getSeedShatterOpacity(time, frames.fall[1], growthSettings.seedImpactLifetime, reducedMotion)
+    seedMatterOpacity.current = seedVisualOpacity
     const worldOpacity = identityScene ? getIdentityEnvironmentOpacity(time, config.scenes.identity.dissolveDuration) : 1
     environmentOpacity.current = worldOpacity
     islandOpacity.current = worldOpacity
@@ -239,17 +245,18 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
           material.uniforms.formationDuration!.value = growthSettings.formationDuration
           material.uniforms.orbitAbsorption!.value = pose.orbitAbsorption
           material.uniforms.seedFallAcceleration!.value = growthSettings.seedFallAcceleration
-          material.uniforms.seedFallHeight!.value = growthSettings.seedFallHeight
+          material.uniforms.seedFallHeight!.value = effectiveSeedFallHeight
           material.uniforms.seedTrailSpread!.value = growthSettings.seedTrailSpread
           material.uniforms.seedTrailLifetime!.value = growthSettings.seedTrailLifetime
           material.uniforms.seedTrailLiftSpeed!.value = growthSettings.seedTrailLiftSpeed
+          material.uniforms.impactOriginY!.value = getSeedShellCenterY(pose)
         }
       }
       if (seed.current) {
         seed.current.position.set(0, getSeedShellCenterY(pose), 0)
         seed.current.scale.setScalar(pose.seedSize)
         seed.current.rotation.set(pose.tumbleAngle, pose.spinAngle, pose.wobbleAngle)
-        seed.current.visible = pose.seedOpacity > 0
+        seed.current.visible = seedVisualOpacity > 0.001
       }
       if (coreAnchor.current) {
         const corePose = getSeedCorePose(pose, growthSettings.grassHeight)
@@ -259,7 +266,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
       }
       if (shell.current) {
         const shellReveal = pose.formation * (0.26 + 0.74 * pose.formation)
-        shell.current.uniforms.opacity!.value = shellReveal * pose.seedOpacity * 0.82
+        shell.current.uniforms.opacity!.value = shellReveal * seedVisualOpacity * 0.82
         shell.current.uniforms.time!.value = time
       }
       if (core.current) {
@@ -281,7 +288,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
       impactWaveMaterial.current.uniforms.uImpactProgress!.value = pose.impactProgress
       impactWaveMaterial.current.uniforms.uImpactStrength!.value = 1
     }
-  }, [height, dpr, reducedMotion, growthSettings, growthFrames, fallRange, environmentOnly, identityScene, config.scenes.identity.dissolveDuration])
+  }, [height, dpr, reducedMotion, growthSettings, growthFrames, fallRange, effectiveSeedFallHeight, environmentOnly, identityScene, config.scenes.identity.dissolveDuration])
 
   useSceneAnimation(runtime, growthFrames.duration, draw)
   return <group position={SEED_ROOT}>
@@ -292,7 +299,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
         {growthSettings.seedImpactParticles > 0 && <SeedParticles mode={2} count={low ? Math.ceil(growthSettings.seedImpactParticles * 0.6) : growthSettings.seedImpactParticles} materialRef={sparks} fallRange={fallRange} {...particleSettings} />}
       </>}
       <group ref={seed}>
-        <SeedMatter count={particleCount} settings={growthSettings} runtime={runtime} simulationRef={simulationRef} syncRef={matterSyncRef} onStatus={setMatterStatus} gpuReady={gpuStatus === 'ready'} />
+        <SeedMatter count={particleCount} settings={growthSettings} runtime={runtime} simulationRef={simulationRef} syncRef={matterSyncRef} opacityRef={seedMatterOpacity} onStatus={setMatterStatus} gpuReady={gpuStatus === 'ready'} />
         <mesh>
           <latheGeometry args={[profile, low ? 32 : 64]} />
           <shaderMaterial ref={shell} vertexShader={seedSurfaceVertex} fragmentShader={seedFragment} uniforms={shellUniforms} transparent depthWrite={false} side={DoubleSide} toneMapped={false} />

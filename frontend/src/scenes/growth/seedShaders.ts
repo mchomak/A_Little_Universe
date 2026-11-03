@@ -131,13 +131,14 @@ uniform float seedFallHeight;
 uniform float seedTrailSpread;
 uniform float seedTrailLifetime;
 uniform float seedTrailLiftSpeed;
+uniform float impactOriginY;
   varying float vAlpha;
   varying vec3 vColor;
   varying float vTrailAge;
   float seedFallProgress(float u, float acceleration) {
     float t = clamp(u, 0.0, 1.0);
-    float a = clamp(acceleration, 1.0, 4.0);
-    return clamp(1.0 - pow(1.0 - pow(t, a), 3.0), 0.0, 1.0);
+    float a = clamp(acceleration, 1.0, 5.0);
+    return pow(t, a);
   }
   void main() {
     float id = position.x;
@@ -145,6 +146,7 @@ uniform float seedTrailLiftSpeed;
     float s = position.z;
     float angle = id * 2.399963;
     float trailAgeProgress = 0.0;
+    float burstAgeProgress = 0.0;
     vec3 p = vec3(0.0);
     float alpha = opacity;
     if (mode < 0.5) {
@@ -171,7 +173,7 @@ uniform float seedTrailLiftSpeed;
       alpha *= smoothstep(0.0, 0.16, time) * (1.0 - smoothstep(0.84, 1.0, formation));
     } else if (mode < 1.5) {
       float fallDuration = max(0.1, fallRange.y - fallRange.x);
-      float emission = mix(0.04, 0.84, clamp(r, 0.0, 1.0));
+      float emission = mix(0.04, 0.98, clamp(r, 0.0, 1.0));
       float emissionTime = fallRange.x + emission * fallDuration;
       float ageSeconds = time - emissionTime;
       float age = max(0.0, ageSeconds);
@@ -191,14 +193,19 @@ uniform float seedTrailLiftSpeed;
       alpha *= alive * (1.0 - r * 0.45) * (1.0 - reduced) * 1.4
         * smoothstep(fallRange.x, fallRange.x + 0.12, time);
     } else {
-      float age = max(0.0, time - fallRange.y);
+      float impactAge = time - fallRange.y;
+      float delay = r * 0.045;
+      float age = max(0.0, impactAge - delay);
       float lifetime = max(0.15, impactLifetime);
       float progress = clamp(age / lifetime, 0.0, 1.0);
-      float travel = impactRadius * (0.28 + r * 0.82) * progress;
-      float lift = impactStrength * (0.28 + s * 0.34);
-      p = vec3(cos(angle) * travel, 0.025 + lift * (progress - progress * progress * 0.72), sin(angle) * travel * 0.88);
-      alpha *= (1.0 - smoothstep(lifetime * 0.35, lifetime, age)) * impactStrength
-        * smoothstep(-0.06, 0.02, p.y);
+      burstAgeProgress = progress;
+      float expansion = 1.0 - pow(1.0 - progress, 3.0);
+      float travel = impactRadius * (0.2 + r * 0.8) * expansion;
+      float lift = impactStrength * (0.42 + s * 1.28) * expansion;
+      float gravity = age * age * (0.08 + r * 0.04);
+      p = vec3(cos(angle) * travel, impactOriginY + lift - gravity, sin(angle) * travel * 0.88);
+      alpha *= step(0.0, impactAge - delay) * (1.0 - smoothstep(lifetime * 0.35, lifetime, age)) * impactStrength
+        * (1.0 - reduced) * smoothstep(-0.06, 0.02, p.y);
     }
     vAlpha = alpha;
     vTrailAge = mode >= 0.5 && mode < 1.5 ? trailAgeProgress : -1.0;
@@ -211,7 +218,9 @@ uniform float seedTrailLiftSpeed;
     gl_Position = projectionMatrix * view;
     float pointScale = mode >= 0.5 && mode < 1.5
       ? (6.0 + s * 9.0) * (1.0 - trailAgeProgress * 0.32)
-      : 3.0 + s * 5.5;
+      : mode >= 1.5
+        ? (6.0 + s * 9.0) * (1.0 - burstAgeProgress * 0.24)
+        : 3.0 + s * 5.5;
     gl_PointSize = pointScale * dpr * (5.6 / max(1.0, -view.z));
   }
 `

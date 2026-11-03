@@ -44,7 +44,9 @@ it('retimes an actively playing Growth scene when the fall duration changes', as
     const after = getConfig()
     const expected = retimeSceneElapsed('growth', runtimeTime, before, after, 'playing')
     expect(dispatch).toHaveBeenLastCalledWith({ type: 'dev-seek', time: expected })
-    expect(expected).toBeGreaterThan(runtimeTime)
+    // The new default fall is 8s, so editing it to 6s shortens this phase.
+    expect(expected).toBeLessThan(runtimeTime)
+    expect(expected).toBeGreaterThan(state.elapsed)
   } finally {
     unsubscribe()
   }

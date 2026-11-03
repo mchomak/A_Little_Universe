@@ -48,11 +48,17 @@ export function getSeedFallDistance(viewportHeight: number): number {
   return Math.max(Math.abs(SEED_ROOT[1]), height * SEED_SCREEN_CAMERA_START_FRACTION)
 }
 
-/** Fast acceleration through most of the fall with a smooth, zero-speed landing. */
+/** Shortens only the fall distance under reduced motion so the fixed camera still frames seed and soil. */
+export function getSeedFallHeightMultiplier(configuredHeight: number, reducedMotion: boolean): number {
+  const height = Number.isFinite(configuredHeight) ? Math.min(6.4, Math.max(2, configuredHeight)) : 3.2
+  return reducedMotion ? Math.min(1, height) : height
+}
+
+/** Monotonic acceleration keeps the seed moving until impact instead of easing to a hover. */
 export function getSeedFallProgress(progress: number, acceleration: number): number {
   const u = clamp01(progress)
-  const a = Number.isFinite(acceleration) ? Math.min(4, Math.max(1, acceleration)) : 2.6
-  return clamp01(1 - (1 - u ** a) ** 3)
+  const a = Number.isFinite(acceleration) ? Math.min(5, Math.max(1, acceleration)) : 3.2
+  return clamp01(u ** a)
 }
 
 export interface SeedPose {
@@ -119,7 +125,7 @@ const inverseFall = (value: number, acceleration: number) => {
 }
 const getSeedSpinProgress = (value: number, acceleration: number) => {
   const u = clamp01(value)
-  const a = Number.isFinite(acceleration) ? Math.min(4, Math.max(1, acceleration)) : 3.2
+  const a = Number.isFinite(acceleration) ? Math.min(5, Math.max(1, acceleration)) : 3.2
   return 1 - (1 - u ** a) ** 6
 }
 const progress = (time: number, range: readonly [number, number]) => {
@@ -132,15 +138,22 @@ export function getGrowthProgress(time: number, range: readonly [number, number]
   return Number.isFinite(time) ? progress(time, range) : 0
 }
 
+/** Keeps the seed fully visible through contact, then fades it as deterministic impact fragments take over. */
+export function getSeedShatterOpacity(time: number, impactTime: number, impactLifetime: number, reducedMotion: boolean): number {
+  if (reducedMotion) return 1
+  const fadeDuration = Math.min(0.18, Math.max(0.08, impactLifetime * 0.2))
+  return 1 - getGrowthProgress(time, [impactTime, impactTime + fadeDuration])
+}
+
 /** A pure sampled pose: replay, backward seek and viewport updates never depend on history. */
 export function getSeedPose(time: number, viewportHeight: number, reducedMotion: boolean, settings: GrowthSettings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth): SeedPose {
   const { formation, fall, landing, handoff, moonlight, sprout } = getGrowthFrames(settings)
   const forming = progress(time, formation)
-  // The seed gathers speed through the fall, then arrives with zero velocity at contact.
+  // The seed accelerates along the full path and reaches the soil with nonzero velocity.
   const fallTime = clamp01((time - fall[0]) / (fall[1] - fall[0]))
   const falling = getSeedFallProgress(fallTime, settings.seedFallAcceleration)
   const fallDuration = fall[1] - fall[0]
-  const fallDistance = getSeedFallDistance(viewportHeight) * settings.seedFallHeight
+  const fallDistance = getSeedFallDistance(viewportHeight) * getSeedFallHeightMultiplier(settings.seedFallHeight, reducedMotion)
   const spinCarry = 0.24 * fallDuration * (1 - (1 - fallTime) ** 2.2) / 2.2
   const fallSpin = getSeedSpinProgress(fallTime, settings.seedFallAcceleration)
   const spinAngle = reducedMotion ? 0 : time <= fall[0] ? time * 0.24
@@ -221,8 +234,8 @@ export function getGrowthCameraPose(time: number, reducedMotion: boolean, settin
   const follow = pathFollow * response
   const settle = progress(time, [frames.handoff[1], frames.duration])
   const parallax = Math.sin(Math.max(0, trackingTime) * 0.72) * 0.025 * follow * (1 - settle)
-  const followY = startY + (-0.02 - startY) * follow
-  const followTargetY = startY + (-0.12 - startY) * follow
+  const followY = startY + (SEED_ROOT[1] + 0.25 - startY) * follow
+  const followTargetY = startY + (SEED_ROOT[1] - 0.1 - startY) * follow
   const y = followY + (-0.02 - followY) * settle
   const ty = followTargetY + (-0.12 - followTargetY) * settle
   const followZ = 5.6 + 1.4 * follow

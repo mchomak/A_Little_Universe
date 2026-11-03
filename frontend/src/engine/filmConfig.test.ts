@@ -90,10 +90,10 @@ describe('greeting frames', () => {
 })
 
 describe('Lily scene timing', () => {
-  it('uses the v17 default fall duration when a saved value is not finite', () => {
+  it('uses the v18 default fall duration when a saved value is not finite', () => {
     const settings = { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, seedFallDuration: Number.NaN }
     const growth = getGrowthSceneFrames(settings)
-    expect(growth.fall[1] - growth.fall[0]).toBeCloseTo(4.8, 5)
+    expect(growth.fall[1] - growth.fall[0]).toBeCloseTo(8, 5)
   })
 
   it('fits full Growth and Bloom clips plus the existing handoff and contemplation beats', () => {
@@ -103,13 +103,24 @@ describe('Lily scene timing', () => {
     expect(growth.fall[1] - growth.fall[0]).toBeCloseTo(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedFallDuration, 5)
     expect(growth.islandReveal[1]).toBe(growth.fall[1])
     expect(growth.islandReveal[1] - growth.islandReveal[0]).toBe(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandRevealDuration)
-    expect(growth.model[0]).toBe(growth.fall[1] + 0.7)
-    expect(growth.model[1] - growth.model[0]).toBe(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.flowerGrowthDuration)
+    expect(growth.model[0]).toBeCloseTo(growth.fall[1] + 0.7, 5)
+    expect(growth.model[1] - growth.model[0]).toBeCloseTo(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.flowerGrowthDuration, 5)
     expect(growth.duration).toBeCloseTo(growth.model[1] + 1.9, 5)
     expect(getSceneDuration('growth', DEFAULT_SCENE_COMPOSER_CONFIG)).toBe(growth.duration)
     expect(bloom.opening).toEqual([0, 16])
     expect(bloom.contemplate).toEqual([16, 22])
     expect(getSceneDuration('bloom', DEFAULT_SCENE_COMPOSER_CONFIG)).toBe(22)
+  })
+
+  it('keeps every downstream beat in range when the fall duration reaches its 20 second limit', () => {
+    const settings = { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, seedFallDuration: 20 }
+    const growth = getGrowthSceneFrames(settings)
+
+    expect(growth.fall[1] - growth.fall[0]).toBe(20)
+    expect(growth.landing[0]).toBe(growth.fall[1])
+    expect(growth.model[0]).toBe(growth.fall[1] + 0.7)
+    expect(growth.model[1] - growth.model[0]).toBe(settings.flowerGrowthDuration)
+    expect(growth.duration).toBe(growth.model[1] + 1.9)
   })
 
   it('updates seed handoff and total duration together when animation timing changes', () => {

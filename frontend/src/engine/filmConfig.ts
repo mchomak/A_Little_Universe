@@ -6,7 +6,7 @@ export const SCENE_ORDER = ['prologue', 'growth', 'bloom', 'identity', 'gallery'
 
 export const TIMING = {
   prologue: { duration: 18, seed: [0, 2], first: [2, 5.5], second: [7, 10.5], hold: [10.5, 12.5], dissolve: [12.5, 16], prompt: 18 },
-  growth: { duration: 19.6, formation: [0, 3.2], fall: [3.2, 8], landing: [8, 8.5], moonlight: [8.5, 10], handoff: [8.7, 9.45], sprout: [9.45, 17.7], stem: [13.5, 17.7], settle: [17.7, 19.6] },
+  growth: { duration: 22.8, formation: [0, 3.2], fall: [3.2, 11.2], landing: [11.2, 11.7], moonlight: [11.7, 13.2], handoff: [11.9, 12.65], sprout: [12.65, 20.9], stem: [16.7, 20.9], settle: [20.9, 22.8] },
   bloom: { duration: 22, opening: [0, 16], contemplate: [16, 22] },
   identity: { duration: 34, flower: [0, 4], particles: [4, 8], name: [8, 13], morph: [13, 17], portrait: [17, 23], photo: [23, 34], caption: [28, 34] },
   gallery: { duration: 0, move: 1.2 },
@@ -45,7 +45,7 @@ const round = (value: number) => Number(value.toFixed(2))
 /** Model growth begins with the seed-to-sprout handoff; the existing settle beat remains after the GLB clip. */
 export function getGrowthSceneFrames(settings: SceneComposerConfig['scenes']['growth'] = getConfig().scenes.growth): GrowthSceneFrames {
   const formationEnd = round(clamp(settings.formationDuration, 2.5, 3.5, 3.2))
-  const fallEnd = round(formationEnd + clamp(settings.seedFallDuration, 1.8, 6.5, 4.8))
+  const fallEnd = round(formationEnd + clamp(settings.seedFallDuration, 1.8, 20, 8))
   const islandRevealDuration = clamp(settings.islandRevealDuration, 0.4, 3, 1.5)
   const modelStart = round(fallEnd + 0.7)
   const handoffEnd = round(fallEnd + 1.45)

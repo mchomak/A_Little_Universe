@@ -6,7 +6,9 @@ import {
   createGrowthCloudVolumeMaterial, getGrowthCloudDrift, getGrowthCloudMasses, MAX_GROWTH_CLOUD_MASSES,
   getGrowthCloudMotionTime, getGrowthCloudVisibility, setGrowthCloudMoonPosition,
 } from './growthCloudMath'
-import type { GrowthFrames, GrowthSettings } from './seedProcedure'
+import {
+  getGrowthViewportHeight, getSeedFallDistance, getSeedFallHeightMultiplier, type GrowthFrames, type GrowthSettings,
+} from './seedProcedure'
 
 const CLOUD_RENDER_LIMIT = MAX_GROWTH_CLOUD_MASSES
 const noRaycast = () => undefined
@@ -26,13 +28,26 @@ export function GrowthClouds({
   settings: GrowthSettings
 }) {
   const invalidate = useThree(({ invalidate }) => invalidate)
+  const viewportHeight = useThree(({ size }) => getGrowthViewportHeight(size.width, size.height))
   const root = useRef<Group>(null)
   const meshes = useRef<Array<Mesh | null>>([])
   const materialRefs = useRef<Array<ShaderMaterial | null>>([])
   const geometry = useMemo(() => new SphereGeometry(1, 20, 14), [])
   const materials = useMemo(() => getGrowthCloudMasses(CLOUD_RENDER_LIMIT, 1)
     .map(({ seed }) => createGrowthCloudVolumeMaterial({ seed })), [])
-  const masses = useMemo(() => getGrowthCloudMasses(settings.cloudCount, settings.cloudScale), [settings.cloudCount, settings.cloudScale])
+  const effectiveFallHeight = getSeedFallHeightMultiplier(settings.seedFallHeight, reducedMotion)
+  const fallDistance = getSeedFallDistance(viewportHeight) * effectiveFallHeight
+  const masses = useMemo(() => getGrowthCloudMasses(settings.cloudCount, settings.cloudScale, {
+    fallDistance,
+    viewportHeight,
+    sizeVariation: settings.cloudSizeVariation,
+    lightVariation: settings.cloudLightVariation,
+    pathDensity: reducedMotion ? 0 : settings.cloudPathDensity,
+    depthVariation: settings.cloudDepthVariation,
+  }), [
+    fallDistance, reducedMotion, settings.cloudCount, settings.cloudDepthVariation, settings.cloudLightVariation,
+    settings.cloudPathDensity, settings.cloudScale, settings.cloudSizeVariation, viewportHeight,
+  ])
   const rootOrigin = useMemo(() => new Vector3(), [])
   const moonPosition = useMemo(() => new Vector3(), [])
   const moonColor = useMemo(() => new Color(), [])
@@ -57,13 +72,17 @@ export function GrowthClouds({
         const mass = masses[index]
         const material = materialRefs.current[index]
         if (!material) continue
-        const opacity = getGrowthCloudVisibility(safeTime, frames, settings.cloudOpacity, environmentOpacity.current, mass?.persistent)
+        const opacity = getGrowthCloudVisibility(
+          safeTime, frames, settings.cloudOpacity, environmentOpacity.current, mass?.persistent, reducedMotion,
+        )
         material.uniforms.uOpacity!.value = opacity
         material.uniforms.uDensity!.value = settings.cloudDensity * (mass?.densityScale ?? 1)
-        material.uniforms.uLightIntensity!.value = settings.cloudLightIntensity
+        material.uniforms.uLightIntensity!.value = settings.cloudLightIntensity * (mass?.lightScale ?? 1)
+        material.uniforms.uShapeVariation!.value = settings.cloudShapeVariation
         material.uniforms.uMoonColor!.value.copy(moonColor)
         material.uniforms.uMoonPosition!.value.copy(moonPosition)
         material.uniforms.uTime!.value = motionTime * motionSpeed
+        material.uniforms.uSeed!.value = mass?.seed ?? 0
 
         if (!mesh || !mass) continue
         const drift = getGrowthCloudDrift(mass, motionTime, motionSpeed)
@@ -83,7 +102,7 @@ export function GrowthClouds({
     center, environmentOpacity, frames, invalidate, masses, materials, moonColor, moonPosition,
     reducedMotion, rootOrigin, runtime, settings.cloudDensity, settings.cloudDriftSpeed,
     settings.cloudLightIntensity, settings.cloudOpacity, settings.moonLightColor,
-    settings.moonPositionY,
+    settings.moonPositionY, settings.cloudShapeVariation,
   ])
 
   return <group ref={root} dispose={null}>
