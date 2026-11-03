@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Mesh, MeshBasicMaterial, PlaneGeometry, Raycaster, Vector3 } from 'three'
-import { galleryColumnPosition, GALLERY, GALLERY_MEMORIES, memoryPosition } from './content'
+import { galleryColumnPosition, galleryColumnPositions, galleryPhotoYaw, GALLERY, GALLERY_MEMORIES, memoryPosition } from './content'
 import { advanceGallery, galleryCanRaycastPhoto, galleryExit, galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, galleryStart, resetGallery, resetGalleryInstruction, travel } from './controller'
 import { galleryFocusOpacity } from './visibility'
 
@@ -124,15 +124,37 @@ describe('gallery travel', () => {
   it('suppresses selection during a pinch', () => { galleryMotion.pinching = true; galleryFocus(1); expect(gallerySnapshot().focus).toBeNull() })
   it('shows instructions only once until a new film run', () => { resetGallery(); advanceGallery(GALLERY.intro); expect(gallerySnapshot().phase).toBe('explore'); resetGalleryInstruction(); resetGallery(); advanceGallery(GALLERY.intro); expect(gallerySnapshot().phase).toBe('instruction') })
 })
-  it('centers B photos halfway between the previous paired column positions and shares each pair depth', () => {
+  it('centers opposing B photos between straight, facing column pairs along the aisle', () => {
     const left = GALLERY_MEMORIES[0]!
     const right = GALLERY_MEMORIES[1]!
     const nextLeft = GALLERY_MEMORIES[2]!
-    expect(memoryPosition(left, GALLERY.width, 'between-columns')).toEqual([-3.5, 0, -7.2])
-    expect(memoryPosition(right, GALLERY.width, 'between-columns')).toEqual([3.5, 0, -7.2])
-    expect(memoryPosition(nextLeft, GALLERY.width, 'between-columns')).toEqual([-3.5, 0, -18])
-    expect(memoryPosition(left, GALLERY.width, 'between-columns', { laneWidth: GALLERY.width, offsetX: 0.4, offsetY: 0.2, offsetZ: 1 })).toEqual([-3.1, 0.2, -6.2])
+    expect(memoryPosition(left, GALLERY.width, 'between-columns')).toEqual([-3.5, 0, -9.9])
+    expect(memoryPosition(right, GALLERY.width, 'between-columns')).toEqual([3.5, 0, -9.9])
+    const nextLeftPosition = memoryPosition(nextLeft, GALLERY.width, 'between-columns')
+    expect(nextLeftPosition[0]).toBe(-3.5)
+    expect(nextLeftPosition[2]).toBeCloseTo(-20.7, 8)
+    expect(memoryPosition(left, GALLERY.width, 'between-columns', { laneWidth: GALLERY.width, offsetX: 0.4, offsetY: 0.2, offsetZ: 1 })).toEqual([-3.1, 0.2, -8.9])
+    expect(galleryColumnPositions(left, GALLERY.width, 'between-columns')).toEqual([[-3.5, 0, -4.5], [3.5, 0, -4.5], [-3.5, 0, -15.3], [3.5, 0, -15.3]])
+    expect(galleryColumnPositions(right, GALLERY.width, 'between-columns')).toEqual([])
+    expect(galleryColumnPositions(nextLeft, GALLERY.width, 'between-columns')).toEqual([[-3.5, 0, -26.1], [3.5, 0, -26.1]])
+    expect(galleryPhotoYaw(left, 'between-columns')).toBe(Math.PI / 2)
+    expect(galleryPhotoYaw(right, 'between-columns')).toBe(-Math.PI / 2)
+    expect(galleryPhotoYaw(left, 'on-columns')).toBeCloseTo(1.15)
     expect(galleryColumnPosition(left, GALLERY.width)).toEqual([-3.5, 0, -4.5])
-    expect(galleryColumnPosition(right, GALLERY.width)).toEqual([3.5, 0, -9.9])
+
+    const supportsBySide = [-1, 1].map(side => [...new Set(GALLERY_MEMORIES
+      .flatMap(memory => galleryColumnPositions(memory, GALLERY.width, 'between-columns'))
+      .filter(([x]) => Math.sign(x) === side)
+      .map(([, , supportZ]) => supportZ))].sort((a, b) => b - a))
+    expect(supportsBySide.map(supports => supports.length)).toEqual([7, 7])
+
+    for (let row = 0; row < 6; row++) {
+      const leftPhoto = memoryPosition(GALLERY_MEMORIES[row * 2]!, GALLERY.width, 'between-columns')
+      const rightPhoto = memoryPosition(GALLERY_MEMORIES[row * 2 + 1]!, GALLERY.width, 'between-columns')
+      for (const supports of supportsBySide) {
+        expect(leftPhoto[2]).toBeCloseTo((supports[row]! + supports[row + 1]!) / 2, 8)
+        expect(rightPhoto[2]).toBeCloseTo(leftPhoto[2], 8)
+      }
+    }
   })
 

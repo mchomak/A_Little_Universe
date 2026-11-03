@@ -28,7 +28,7 @@ export function memoryPosition(
 ): [number, number, number] {
   const configuredWidth = layout?.laneWidth ?? galleryWidth
   const halfWidth = Number.isFinite(configuredWidth) ? Math.max(0, configuredWidth) / 2 : GALLERY.width / 2
-  const pairDepth = GALLERY.firstZ - Math.floor(memory.order / 2) * GALLERY.spacing * 2 - GALLERY.spacing / 2
+  const pairDepth = GALLERY.firstZ - GALLERY.spacing - Math.floor(memory.order / 2) * GALLERY.spacing * 2
   const z = variant === 'between-columns' ? pairDepth : GALLERY.firstZ - memory.order * GALLERY.spacing
   return [memory.side * halfWidth + (layout?.offsetX ?? 0), layout?.offsetY ?? 0, z + (layout?.offsetZ ?? 0)]
 }
@@ -37,4 +37,32 @@ export function memoryPosition(
 export function galleryColumnPosition(memory: GalleryMemory, galleryWidth: number): [number, number, number] {
   const halfWidth = Number.isFinite(galleryWidth) ? Math.max(0, galleryWidth) / 2 : GALLERY.width / 2
   return [memory.side * halfWidth, 0, GALLERY.firstZ - memory.order * GALLERY.spacing]
+}
+
+/** B keeps each photo between two straight supports on its side of the aisle. */
+export function galleryColumnPositions(
+  memory: GalleryMemory,
+  galleryWidth: number,
+  variant: GalleryLayoutVariant = 'on-columns',
+  layout?: Readonly<GalleryPhotoLayout>,
+): [number, number, number][] {
+  if (variant !== 'between-columns') return [galleryColumnPosition(memory, galleryWidth)]
+  if (memory.order % 2 === 1) return []
+  const halfWidth = Number.isFinite(galleryWidth) ? Math.max(0, galleryWidth) / 2 : GALLERY.width / 2
+  const row = memory.order / 2
+  // The previous row already renders this row's near boundary as its far boundary.
+  const firstBoundary = row === 0 ? row : row + 1
+  const lastBoundary = row + 1
+  const columns: [number, number, number][] = []
+  for (let boundary = firstBoundary; boundary <= lastBoundary; boundary++) {
+    const z = GALLERY.firstZ - boundary * GALLERY.spacing * 2 + (layout?.offsetZ ?? 0)
+    columns.push([-halfWidth, 0, z], [halfWidth, 0, z])
+  }
+  return columns
+}
+
+/** Side-facing cardinal yaw makes B exhibits face each other across the walkway. */
+export function galleryPhotoYaw(memory: GalleryMemory, variant: GalleryLayoutVariant = 'on-columns'): number {
+  const sideYaw = variant === 'between-columns' ? Math.PI / 2 : 1.15
+  return -memory.side * sideYaw
 }

@@ -2,7 +2,7 @@
 import { useFrame, useLoader, useThree } from '@react-three/fiber'
 import type { RefObject } from 'react'
 import { galleryDistanceOpacity, galleryFocusOpacity } from './gallery/visibility'
-import { galleryPhotoBlurAtFocus, galleryPhotoLightAtFocus, GALLERY_ART } from './gallery/artDirection'
+import { galleryPhotoBlurAtFocus, galleryPhotoLightAtFocus } from './gallery/artDirection'
 import { createFrameParticleGeometry } from './gallery/frameParticles'
 import { createGalleryDustGeometry, getGalleryDustCount } from './gallery/dust'
 import type { GalleryArtSettings } from './gallery/reflections'
@@ -15,7 +15,7 @@ import type { SceneProps } from '../engine/sceneTypes'
 import { useSyncExternalStore } from 'react'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
-import { GALLERY, GALLERY_MEMORIES, galleryColumnPosition, memoryPosition, type GalleryMemory } from './gallery/content'
+import { GALLERY, GALLERY_MEMORIES, galleryColumnPositions, galleryPhotoYaw, memoryPosition, type GalleryMemory } from './gallery/content'
 import { GalleryColumn } from './gallery/GalleryColumn'
 import { GalleryArch } from './gallery/GalleryArch'
 import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, resetGallery } from './gallery/controller'
@@ -229,7 +229,8 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   useEffect(() => () => frameParticles.dispose(), [frameParticles])
   const layout = settings.galleryLayoutVariant === 'between-columns' ? settings.galleryLayoutB : settings.galleryLayoutA
   const [x, y, z] = memoryPosition(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
-  const [columnX, columnY, columnZ] = galleryColumnPosition(memory, settings.galleryWidth)
+  const supportPositions = galleryColumnPositions(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
+  const photoYaw = galleryPhotoYaw(memory, settings.galleryLayoutVariant)
 
   const applyArtSettings = useCallback((alpha = visual.current.alpha, focusAmount = visual.current.focusAmount) => {
     const frameIntensity = Math.max(0, Math.min(2, settings.frameIntensity))
@@ -254,10 +255,13 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     const first = memory.order === 0
     group.current.position.set(first ? x * e : x, y, first ? z * e : z)
     group.current.scale.setScalar(first ? 1 + 0.35 * e : 1)
-    group.current.rotation.set(0, first ? (reducedMotion ? 0 : 0.065 * (1 - e)) - memory.side * GALLERY_ART.wallYaw * e : -memory.side * GALLERY_ART.wallYaw, 0)
+    group.current.rotation.set(0, first && settings.galleryLayoutVariant === 'on-columns' ? (reducedMotion ? 0 : 0.065 * (1 - e)) + photoYaw * e : photoYaw, 0)
+    const [columnX, columnY, columnZ] = settings.galleryLayoutVariant === 'between-columns'
+      ? [x, y, z]
+      : supportPositions[0]!
     supportGroup.current.position.set(first ? columnX * e : columnX, first ? columnY * e : columnY, first ? columnZ * e : columnZ)
     supportGroup.current.scale.setScalar(first ? 1 + 0.35 * e : 1)
-    supportGroup.current.rotation.set(0, group.current.rotation.y, 0)
+    supportGroup.current.rotation.set(0, settings.galleryLayoutVariant === 'between-columns' ? 0 : group.current.rotation.y, 0)
     visualGroup.current.position.set(0, reducedMotion ? 0 : Math.sin(m.time * 0.3 + memory.order) * 0.025, 0)
     visualGroup.current.scale.setScalar(1)
     visualGroup.current.rotation.set(first && !reducedMotion ? -0.022 * (1 - e) : 0, 0, first && !reducedMotion ? -0.009 * (1 - e) : 0)
@@ -311,14 +315,21 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
 
   return <>
     <group ref={supportGroup} renderOrder={GALLERY_MEMORY_RENDER_ORDER}>
-      <GalleryColumn
-        visible={settings.columnVisible}
-        scale={settings.columnScale}
-        depth={settings.columnDepth}
-        offsetX={settings.columnOffsetX}
-        offsetY={settings.columnOffsetY}
-        opacity={columnOpacity}
-      />
+      {supportPositions.map(([supportX, supportY, supportZ], index) => <group
+        key={index}
+        position={settings.galleryLayoutVariant === 'between-columns'
+          ? [supportX - x, supportY - y, supportZ - z]
+          : [0, 0, 0]}
+      >
+        <GalleryColumn
+          visible={settings.columnVisible}
+          scale={settings.columnScale}
+          depth={settings.columnDepth}
+          offsetX={settings.columnOffsetX}
+          offsetY={settings.columnOffsetY}
+          opacity={columnOpacity}
+        />
+      </group>)}
     </group>
     <group ref={group} renderOrder={GALLERY_MEMORY_RENDER_ORDER} onClick={(event) => { event.stopPropagation(); if (!paused) galleryFocus(memory.order) }}>
       <group ref={visualGroup}>

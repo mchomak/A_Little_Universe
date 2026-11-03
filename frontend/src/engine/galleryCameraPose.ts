@@ -1,7 +1,6 @@
 import { advanceGallery, galleryMotion } from '../scenes/gallery/controller'
-import { GALLERY, GALLERY_MEMORIES, memoryPosition } from '../scenes/gallery/content'
+import { GALLERY, GALLERY_MEMORIES, galleryPhotoYaw, memoryPosition } from '../scenes/gallery/content'
 import { focusCamera } from '../scenes/gallery/camera'
-import { GALLERY_ART } from '../scenes/gallery/artDirection'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
 import type { SceneComposerConfig } from '../systems/scene-config/config'
 import type { CameraPose } from '../scenes/shared/galleryMotion'
@@ -44,6 +43,6 @@ export function updateGalleryCameraPose(
     pose.tz = -8 * eased
   }
 
-  const camera = focusCamera([pose.x, pose.y, pose.z], [x, y, z], focal, -memory.side * GALLERY_ART.wallYaw)
+  const camera = focusCamera([pose.x, pose.y, pose.z], [x, y, z], focal, galleryPhotoYaw(memory, settings.galleryLayoutVariant))
   return { camera, target: [pose.tx, pose.ty, pose.tz] as const, memory, eased, focal }
 }
