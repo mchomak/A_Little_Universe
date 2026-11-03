@@ -23,6 +23,10 @@ export const LILY_PORTRAIT_MAX_FEATURE_ACCENT = 1.8
 const LILY_PORTRAIT_CAPTURE_MIN_FADE = 0.15
 const LILY_PORTRAIT_CAPTURE_MIN_TURNS = 1.8
 const LILY_PORTRAIT_CAPTURE_PARTICLE_FRACTION = 0.1
+const LILY_PORTRAIT_CAPTURE_SCREEN_DISTANCE = 0.38
+const LILY_PORTRAIT_CAPTURE_TREE_MARGIN = 0.17
+const LILY_PORTRAIT_CAPTURE_TREE_TIME_BIN = 2
+const LILY_PORTRAIT_CAPTURE_MIN_TRAVEL_DURATION = 0.45
 
 export function glslFloat(value: number) {
   return Number.isInteger(value) ? `${value}.0` : String(value)
@@ -295,28 +299,48 @@ export function createLilyParticleGeometry(source: LilySurfaceSource, count: num
   }
   if (portrait) {
     if (isVisiblePortraitGeometry(portrait)) {
-      const routes = planVisiblePortraitRoutes(positions, parts, seeds, count, source, portrait)
       const totalTargets = Math.min(portrait.targets.length, portrait.targetPositions.length)
-      const targetIndices = selectRepresentativePortraitTargets(portrait.targets.slice(0, totalTargets), routes.length)
       const capture = normalizePortraitCaptureSettings(portrait.capture)
+      const targetCount = Math.min(totalTargets, Math.floor(count * capture.portraitFraction))
+      const targetIndices = selectRepresentativePortraitTargets(portrait.targets.slice(0, totalTargets), targetCount)
+      const targetTreesByTimeBin = new Map<number, PortraitTargetsAtTimeBin>()
+      const routes = planVisiblePortraitRoutes(positions, parts, seeds, count, source, portrait, targetIndices, targetTreesByTimeBin)
       const routeSettings = { ...portrait.settings, vortexSpeedMultiplier: capture.vortexSpeedMultiplier,
         dissolveDuration: Math.max(0.001, portrait.dissolveDuration), edgeWidth: portrait.edgeWidth }
-      const targetTrees = createPortraitTargetTrees(targetIndices, portrait.targetPositions)
+      const usedPortraitTargets = new Set<number>()
       for (let routeIndex = 0; routeIndex < routes.length; routeIndex++) {
         const route = routes[routeIndex]!
-        // Keep each reveal stage in its authored part of the portrait, while
-        // choosing the closest unused point to the particle's current orbit.
-        const stage = Math.min(3, Math.floor(routeIndex / Math.max(1, routes.length) * 4))
+        const stage = route.stage
         const origin: [number, number, number] = [positions[route.index * 3]!, positions[route.index * 3 + 1]!, positions[route.index * 3 + 2]!]
         const departure = getLilyParticleVortexPosition(origin, parts[route.index]!, seeds[route.index]!, route.launchTime,
           source, routeSettings, route.captureMotion)
-        const targetIndex = takeNearestPortraitTarget(targetTrees.get(stage), departure)
+        const timeBin = Math.floor(route.launchTime / LILY_PORTRAIT_CAPTURE_TREE_TIME_BIN)
+        const targetBin = getPortraitTargetTreeForTimeBin(timeBin, targetIndices, portrait.targetPositions,
+          portrait.cameraBasisAtTime, targetTreesByTimeBin)
+        const exactDeparture = projectPortraitPoint(departure, route.cameraBasis)
+        const binBasis = portrait.cameraBasisAtTime((timeBin + 0.5) * LILY_PORTRAIT_CAPTURE_TREE_TIME_BIN)
+        const binDeparture = projectPortraitPoint(departure, binBasis)
+        const targetIndex = takeNearestPortraitTarget(targetBin.tree, [binDeparture.x, binDeparture.y, 0],
+          LILY_PORTRAIT_CAPTURE_SCREEN_DISTANCE + LILY_PORTRAIT_CAPTURE_TREE_MARGIN,
+          (targetNode) => {
+            if (targetNode.stage !== stage || usedPortraitTargets.has(targetNode.index)) return false
+            const target = projectPortraitPoint(portrait.targetPositions[targetNode.index]!, route.cameraBasis)
+            return Math.hypot(target.x - exactDeparture.x, target.y - exactDeparture.y) <= LILY_PORTRAIT_CAPTURE_SCREEN_DISTANCE
+          })
         if (targetIndex === undefined) continue
         const target = portrait.targets[targetIndex]!
         const targetPosition = portrait.targetPositions[targetIndex]!
         const index = route.index, i3 = index * 3, i4 = index * 4
+        const safeTravelDuration = getSafePortraitTravelDuration({
+          origin, part: parts[index]!, seed: seeds[index]!, target: targetPosition,
+          launchTime: route.launchTime, travelDuration: route.travelDuration, captureMotion: route.captureMotion,
+        }, source, routeSettings, portrait.cameraBasisAtTime,
+        { portraitBraking: capture.portraitBraking, portraitSteering: capture.portraitSteering },
+        LILY_PORTRAIT_CAPTURE_SCREEN_DISTANCE - 0.001, LILY_PORTRAIT_CAPTURE_MIN_TRAVEL_DURATION)
+        if (safeTravelDuration === undefined) continue
+        usedPortraitTargets.add(targetIndex)
         portraitTargets.set([targetPosition[0], targetPosition[1], targetPosition[2], stage], i4)
-        portraitMotion.set([route.launchTime, route.travelDuration, clampFinite(target.tone, 0, 1, 0.5), 1 + clampFinite(target.contrast, 0, 1, 0)], i4)
+        portraitMotion.set([route.launchTime, safeTravelDuration, clampFinite(target.tone, 0, 1, 0.5), 1 + clampFinite(target.contrast, 0, 1, 0)], i4)
         portraitSourceColors.set(target.photoColorLinear.map((channel) => clampFinite(channel, 0, 1, 1)), i3)
         portraitSeedData.set([clampFinite(target.seed, 0, 1, 0.5), clampFinite(target.featureWeight, 0, 1, 0.5), route.captureMotion ? 1 : 0], index * 3)
         artSize[index] = clampFinite(target.artSize ?? 1, 0, 3, 1)
@@ -396,10 +420,11 @@ export function selectRepresentativePortraitTargets(targets: readonly StarPortra
   return selected.sort((a, b) => a - b)
 }
 
-interface PlannedPortraitRoute { index: number; launchTime: number; travelDuration: number; captureMotion: boolean }
+interface PlannedPortraitRoute { index: number; launchTime: number; travelDuration: number; captureMotion: boolean; cameraBasis: PortraitCameraBasis; stage: number }
 
 interface PortraitTargetKdNode {
   index: number
+  stage: number
   point: readonly [number, number, number]
   axis: number
   boundsMin: [number, number, number]
@@ -411,18 +436,98 @@ interface PortraitTargetKdNode {
   right?: PortraitTargetKdNode
 }
 
-function createPortraitTargetTrees(targetIndices: readonly number[], targetPositions: readonly [number, number, number][]) {
-  const groups = new Map<number, { index: number; point: readonly [number, number, number] }[]>()
-  targetIndices.forEach((index, ordinal) => {
-    const stage = Math.min(3, Math.floor(ordinal / Math.max(1, targetIndices.length) * 4))
-    const group = groups.get(stage) ?? []
-    group.push({ index, point: targetPositions[index]! })
-    groups.set(stage, group)
-  })
-  return new Map(Array.from(groups, ([stage, points]) => [stage, buildPortraitTargetTree(points)]))
+interface ScreenPortraitTarget {
+  index: number
+  stage: number
+  x: number
+  y: number
 }
 
-function buildPortraitTargetTree(points: { index: number; point: readonly [number, number, number] }[], depth = 0, parent?: PortraitTargetKdNode): PortraitTargetKdNode | undefined {
+interface ScreenPortraitTargetGrid {
+  cellSize: number
+  cells: Map<number, Map<number, ScreenPortraitTarget[]>>
+}
+
+interface PortraitTargetsAtTimeBin {
+  tree: PortraitTargetKdNode | undefined
+  grid: ScreenPortraitTargetGrid
+}
+
+function getPortraitTargetTreeForTimeBin(
+  timeBin: number,
+  targetIndices: readonly number[],
+  targetPositions: readonly [number, number, number][],
+  cameraBasisAtTime: (time: number) => PortraitCameraBasis,
+  cache: Map<number, PortraitTargetsAtTimeBin>,
+): PortraitTargetsAtTimeBin {
+  const cachedTargets = cache.get(timeBin)
+  if (cachedTargets) return cachedTargets
+  const binBasis = cameraBasisAtTime((timeBin + 0.5) * LILY_PORTRAIT_CAPTURE_TREE_TIME_BIN)
+  const screenPoints = targetPositions.map((point) => {
+    const projected = projectPortraitPoint(point, binBasis)
+    return [projected.x, projected.y, 0] as [number, number, number]
+  })
+  const targetPoints = targetIndices.map((index, ordinal) => ({
+    index,
+    stage: Math.min(3, Math.floor(ordinal / Math.max(1, targetIndices.length) * 4)),
+    point: screenPoints[index]!,
+  }))
+  const tree = buildPortraitTargetTree(targetPoints)
+  const grid = createScreenPortraitTargetGrid(targetPoints)
+  const result = { tree, grid }
+  cache.set(timeBin, result)
+  return result
+}
+
+function createScreenPortraitTargetGrid(targets: readonly { index: number; stage: number; point: readonly [number, number, number] }[]): ScreenPortraitTargetGrid {
+  const cellSize = 0.25
+  const cells = new Map<number, Map<number, ScreenPortraitTarget[]>>()
+  for (const { index, stage, point } of targets) {
+    const cellX = Math.floor(point[0] / cellSize), cellY = Math.floor(point[1] / cellSize)
+    const column = cells.get(cellX) ?? new Map<number, ScreenPortraitTarget[]>()
+    const bucket = column.get(cellY) ?? []
+    bucket.push({ index, stage, x: point[0], y: point[1] })
+    column.set(cellY, bucket)
+    cells.set(cellX, column)
+  }
+  return { cellSize, cells }
+}
+
+function findNearestScreenPortraitTarget(
+  grid: ScreenPortraitTargetGrid,
+  position: readonly [number, number],
+  maximumDistance: number,
+) {
+  const centerX = Math.floor(position[0] / grid.cellSize), centerY = Math.floor(position[1] / grid.cellSize)
+  const searchCells = Math.ceil(maximumDistance / grid.cellSize)
+  const maxDistanceSquared = maximumDistance * maximumDistance
+  let nearest: ScreenPortraitTarget | undefined
+  let nearestDistance = maxDistanceSquared
+  for (let ring = 0; ring <= searchCells; ring++) {
+    for (let offsetX = -ring; offsetX <= ring; offsetX++) {
+      for (let offsetY = -ring; offsetY <= ring; offsetY++) {
+        if (Math.max(Math.abs(offsetX), Math.abs(offsetY)) !== ring) continue
+        const cellX = centerX + offsetX, cellY = centerY + offsetY
+        const column = grid.cells.get(cellX)
+        const bucket = column?.get(cellY)
+        if (!bucket) continue
+        for (const target of bucket) {
+          const dx = position[0] - target.x, dy = position[1] - target.y
+          const distance = dx * dx + dy * dy
+          if (distance < nearestDistance) {
+            nearest = target
+            nearestDistance = distance
+          }
+        }
+      }
+    }
+    const unsearchedCellDistance = ring * grid.cellSize
+    if (nearest && nearestDistance <= unsearchedCellDistance * unsearchedCellDistance) break
+  }
+  return nearest ? { target: nearest, distance: nearestDistance } : undefined
+}
+
+function buildPortraitTargetTree(points: { index: number; stage: number; point: readonly [number, number, number] }[], depth = 0, parent?: PortraitTargetKdNode): PortraitTargetKdNode | undefined {
   if (points.length === 0) return undefined
   const axis = depth % 3
   points.sort((a, b) => a.point[axis]! - b.point[axis]! || a.index - b.index)
@@ -445,7 +550,12 @@ function buildPortraitTargetTree(points: { index: number; point: readonly [numbe
   return node
 }
 
-function takeNearestPortraitTarget(tree: PortraitTargetKdNode | undefined, position: readonly [number, number, number]): number | undefined {
+function findNearestPortraitTarget(
+  tree: PortraitTargetKdNode | undefined,
+  position: readonly [number, number, number],
+  maximumDistance = Infinity,
+  accepts: (target: PortraitTargetKdNode) => boolean = () => true,
+): { target: PortraitTargetKdNode; distance: number } | undefined {
   let bestNode: PortraitTargetKdNode | undefined
   let bestDistance = Infinity
   const distanceToBounds = (node: PortraitTargetKdNode) => {
@@ -458,10 +568,11 @@ function takeNearestPortraitTarget(tree: PortraitTargetKdNode | undefined, posit
     return distance
   }
   const visit = (node: PortraitTargetKdNode | undefined) => {
-    if (!node || node.activeCount === 0 || distanceToBounds(node) > bestDistance) return
+    if (!node || node.activeCount === 0 || distanceToBounds(node) > Math.min(bestDistance, maximumDistance * maximumDistance)) return
     const dx = position[0] - node.point[0], dy = position[1] - node.point[1], dz = position[2] - node.point[2]
     const distance = dx * dx + dy * dy + dz * dz
-    if (node.active && (distance < bestDistance || (distance === bestDistance && (bestNode === undefined || node.index < bestNode.index)))) {
+    if (node.active && accepts(node)
+      && (distance < bestDistance || (distance === bestDistance && (bestNode === undefined || node.index < bestNode.index)))) {
       bestDistance = distance
       bestNode = node
     }
@@ -471,10 +582,21 @@ function takeNearestPortraitTarget(tree: PortraitTargetKdNode | undefined, posit
     else { visit(node.right); visit(node.left) }
   }
   visit(tree)
-  if (!bestNode) return undefined
-  bestNode.active = false
-  for (let node: PortraitTargetKdNode | undefined = bestNode; node; node = node.parent) node.activeCount -= 1
-  return bestNode.index
+  if (!bestNode || bestDistance > maximumDistance * maximumDistance) return undefined
+  return { target: bestNode, distance: bestDistance }
+}
+
+function takeNearestPortraitTarget(
+  tree: PortraitTargetKdNode | undefined,
+  position: readonly [number, number, number],
+  maximumDistance = Infinity,
+  accepts: (target: PortraitTargetKdNode) => boolean = () => true,
+): number | undefined {
+  const nearest = findNearestPortraitTarget(tree, position, maximumDistance, accepts)
+  if (!nearest) return undefined
+  nearest.target.active = false
+  for (let node: PortraitTargetKdNode | undefined = nearest.target; node; node = node.parent) node.activeCount -= 1
+  return nearest.target.index
 }
 
 function isVisiblePortraitGeometry(options: LilyPortraitGeometryOptions): options is LilyVisiblePortraitGeometryOptions {
@@ -488,10 +610,11 @@ function planVisiblePortraitRoutes(
   count: number,
   source: LilySurfaceSource,
   options: LilyVisiblePortraitGeometryOptions,
+  targetIndices: readonly number[],
+  targetTreesByTimeBin: Map<number, PortraitTargetsAtTimeBin>,
 ): PlannedPortraitRoute[] {
   const controls = normalizePortraitCaptureSettings(options.capture)
-  const targetCount = Math.min(options.targets.length, options.targetPositions.length,
-    Math.floor(count * controls.portraitFraction))
+  const targetCount = targetIndices.length
   if (targetCount === 0) return []
 
   const dissolveDuration = Math.max(0.001, options.dissolveDuration)
@@ -500,7 +623,7 @@ function planVisiblePortraitRoutes(
   const gateTime = controls.portraitStartProgress * dissolveDuration
   const candidates: PlannedPortraitRoute[] = []
   const turnRange = controls.portraitMaxTurns - controls.portraitMinTurns
-  const visibilitySamples = turnRange > 0.000001 ? 8 : 1
+  const visibilitySamples = turnRange > 0.000001 ? 2 : 1
   const longTurnCaptureAvailable = controls.portraitMaxTurns >= LILY_PORTRAIT_CAPTURE_MIN_TURNS
 
   for (let index = 0; index < count; index++) {
@@ -519,9 +642,11 @@ function planVisiblePortraitRoutes(
       && random01(index, 0x5be0cd19) < LILY_PORTRAIT_CAPTURE_PARTICLE_FRACTION
     const searchCaptureMotion = [false, true].filter((captureMotion) => captureMotion ? captureEligible : true)
 
-    // Keep the ordinary proposal search first. A small deterministic subset
-    // gets an additional long-turn pass with capture-only rise/fade behavior.
+    // Search the available spiral samples and prefer a close portrait stop.
+    // Capture-rise samples remain a fallback for a small eligible subset.
     for (const captureMotion of searchCaptureMotion) {
+      let bestRoute: PlannedPortraitRoute | undefined
+      let bestDistance = Infinity
       for (let sample = 0; sample < visibilitySamples; sample++) {
         const turns = controls.portraitMinTurns + turnRange * fract(turnOffset + sample * 0.6180339887498949)
         if (captureMotion && turns < LILY_PORTRAIT_CAPTURE_MIN_TURNS) continue
@@ -532,13 +657,29 @@ function planVisiblePortraitRoutes(
 
         const launchTime = birthTime + age
         const launchPosition = getLilyParticleVortexPosition(position, parts[index]!, seed, launchTime, source, settings, captureMotion)
-        const projected = projectPortraitPoint(launchPosition, options.cameraBasisAtTime(launchTime))
+        const cameraBasis = options.cameraBasisAtTime(launchTime)
+        const projected = projectPortraitPoint(launchPosition, cameraBasis)
         if (projected.depth <= 0 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1
           || !Number.isFinite(projected.x) || !Number.isFinite(projected.y)) continue
-        visibleRoute = { index, launchTime, travelDuration: 0.75 + random01(index, 0x510e527f) * 1.1, captureMotion }
-        break
+
+        const timeBin = Math.floor(launchTime / LILY_PORTRAIT_CAPTURE_TREE_TIME_BIN)
+        const targetBin = getPortraitTargetTreeForTimeBin(timeBin, targetIndices, options.targetPositions,
+          options.cameraBasisAtTime, targetTreesByTimeBin)
+        const binBasis = options.cameraBasisAtTime((timeBin + 0.5) * LILY_PORTRAIT_CAPTURE_TREE_TIME_BIN)
+        const binDeparture = projectPortraitPoint(launchPosition, binBasis)
+        const nearest = findNearestScreenPortraitTarget(targetBin.grid, [binDeparture.x, binDeparture.y],
+            LILY_PORTRAIT_CAPTURE_SCREEN_DISTANCE + LILY_PORTRAIT_CAPTURE_TREE_MARGIN)
+        if (!nearest) continue
+        const targetIndex = nearest.target.index
+        const target = projectPortraitPoint(options.targetPositions[targetIndex]!, cameraBasis)
+        const screenDistance = Math.hypot(target.x - projected.x, target.y - projected.y)
+        if (screenDistance > LILY_PORTRAIT_CAPTURE_SCREEN_DISTANCE) continue
+        if (screenDistance >= bestDistance) continue
+        bestDistance = screenDistance
+        bestRoute = { index, launchTime, travelDuration: 0.75 + random01(index, 0x510e527f) * 1.1,
+          captureMotion, cameraBasis, stage: nearest.target.stage }
       }
-      if (visibleRoute) break
+      if (bestRoute) { visibleRoute = bestRoute; break }
     }
 
     if (visibleRoute) {
@@ -671,6 +812,43 @@ export function getLilyParticlePortraitPosition(
   const position = getPortraitHermitePosition(departure, velocity, route.target, elapsed, duration)
   const bend = (steering - 1) * 0.16 * 16 * travel * travel * (1 - travel) * (1 - travel)
   return position.map((value, axis) => value + (route.target[axis]! - departure[axis]!) * bend) as [number, number, number]
+}
+
+function getSafePortraitTravelDuration(
+  route: LilyPortraitRouteState,
+  source: LilySurfaceSource,
+  settings: LilyParticleSettings & { dissolveDuration: number; edgeWidth: number },
+  cameraBasisAtTime: (time: number) => PortraitCameraBasis,
+  controls: Partial<Pick<LilyPortraitCaptureSettings, 'portraitSteering' | 'portraitBraking'>>,
+  maximumScreenGap: number,
+  minimumTravelDuration: number,
+): number | undefined {
+  const braking = clampFinite(controls.portraitBraking ?? 1, 0.25, 2, 1)
+  const gapAtDuration = (travelDuration: number) => {
+    const candidate = { ...route, travelDuration }
+    const duration = Math.max(0.05, travelDuration * braking)
+    let maximumGap = 0
+    for (let sample = 0; sample <= 48; sample++) {
+      const elapsed = duration * sample / 48
+      const time = route.launchTime + elapsed
+      const cameraBasis = cameraBasisAtTime(time)
+      const position = getLilyParticlePortraitPosition(candidate, time, source, settings, controls)
+      const projectedPosition = projectPortraitPoint(position, cameraBasis)
+      const projectedTarget = projectPortraitPoint(route.target, cameraBasis)
+      maximumGap = Math.max(maximumGap, Math.hypot(projectedPosition.x - projectedTarget.x, projectedPosition.y - projectedTarget.y))
+    }
+    return maximumGap
+  }
+
+  if (gapAtDuration(route.travelDuration) <= maximumScreenGap) return route.travelDuration
+  if (gapAtDuration(minimumTravelDuration) > maximumScreenGap) return undefined
+  let safe = minimumTravelDuration, unsafe = route.travelDuration
+  for (let iteration = 0; iteration < 7; iteration++) {
+    const candidateDuration = (safe + unsafe) * 0.5
+    if (gapAtDuration(candidateDuration) <= maximumScreenGap) safe = candidateDuration
+    else unsafe = candidateDuration
+  }
+  return safe
 }
 
 export function createLilyParticleMaterial(uniforms: LilyDissolveUniforms) {

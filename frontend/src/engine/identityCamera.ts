@@ -8,6 +8,7 @@ export function getIdentityCameraMoveTarget(start: CameraPose, settings: Identit
   return {
     ...start,
     y: start.y + settings.cameraRise,
+    ty: start.ty + settings.cameraRise * 0.6,
     z: start.z + settings.cameraPullback,
   }
 }
