@@ -2,6 +2,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import { initialFilmState } from '../engine/film'
+import { DEFAULT_SCENE_COMPOSER_CONFIG, updateConfig } from '../systems/scene-config/config'
 import DeveloperPanel from './DeveloperPanel'
 
 it('shows bounded ash-motion controls and does not expose the removed return setting', () => {
@@ -112,7 +113,7 @@ it('exposes the imported galaxy seed and optional black center in Scene 07 Inspe
   expect(markup).toMatch(/id="composer-scenes-galaxy-backgroundStarCount"[^>]*max="10000"[^>]*value="5200"/)
 })
 
-it('exposes all bounded moonlit gallery settings in the existing Scene Inspector', () => {
+it('exposes the gallery layout switch and independently editable active layout', () => {
   const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
     state: { ...initialFilmState, scene: 'gallery' },
     dispatch: () => undefined,
@@ -123,6 +124,16 @@ it('exposes all bounded moonlit gallery settings in the existing Scene Inspector
   }))
 
   expect(markup).toContain('Лунная галерея')
+  expect(markup).toContain('Вариант расположения картин')
+  expect(markup).toMatch(/id="composer-scenes-gallery-galleryLayoutVariant"/)
+  expect(markup).toMatch(/<option value="on-columns" selected="">A · На колоннах/)
+  expect(markup).toContain('На колоннах')
+  expect(markup).toContain('Между колоннами')
+  expect(markup).toMatch(/id="composer-scenes-gallery-galleryLayoutA-laneWidth"[^>]*min="6" max="12" step="0\.1"/)
+  expect(markup).toContain('composer-scenes-gallery-galleryLayoutA-offsetX')
+  expect(markup).toContain('composer-scenes-gallery-galleryLayoutA-offsetY')
+  expect(markup).toContain('composer-scenes-gallery-galleryLayoutA-offsetZ')
+  expect(markup).not.toContain('composer-scenes-gallery-galleryLayoutB-laneWidth')
   expect(markup).toContain('Колонны и геометрия галереи')
   expect(markup).toMatch(/id="composer-scenes-gallery-columnVisible"[^>]*type="checkbox"[^>]*checked/)
   expect(markup).toMatch(/id="composer-scenes-gallery-galleryWidth"[^>]*min="6" max="12" step="0.1" value="7"/)
@@ -191,7 +202,7 @@ it('exposes all bounded moonlit gallery settings in the existing Scene Inspector
   expect(markup).toMatch(/id="composer-scenes-gallery-moonHaloIntensity"[^>]*min="0" max="2" step="0.05" value="1.2"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-moonCloudLightIntensity"[^>]*min="0" max="2" step="0.05" value="0.72"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-moonScatteringIntensity"[^>]*min="0" max="1.5" step="0.025" value="0.62"/)
-  expect(markup).toContain('Сравнение недоступно для интерактивной галереи')
+  expect(markup).not.toContain('Сохранить A')
   expect(markup).not.toContain('Показать A')
 })
 
@@ -207,5 +218,33 @@ it('keeps independent cloud count controls while respecting the shared low-quali
 
   expect(markup).toMatch(/id="composer-scenes-gallery-cloudLayers-waterline-count"[^>]*min="0" max="32" step="1" value="10"/)
   expect(markup).toContain('не более 24 объёмных масс (16 в низком профиле)')
+})
+
+it('shows the B profile values when the between-columns layout is active', async () => {
+  await updateConfig({ scenes: { gallery: {
+    galleryLayoutVariant: 'between-columns',
+    galleryLayoutA: { laneWidth: 6.5, offsetX: 0.3, offsetY: -0.2, offsetZ: 1 },
+    galleryLayoutB: { laneWidth: 8.6, offsetX: -0.4, offsetY: 0.5, offsetZ: -2.1 },
+  } } })
+  try {
+    const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+      state: { ...initialFilmState, scene: 'gallery' },
+      dispatch: () => undefined,
+      reducedMotion: false,
+      onPreload: () => undefined,
+      onPermissions: () => undefined,
+      route: 'film',
+    }))
+
+    expect(markup).toMatch(/id="composer-scenes-gallery-galleryLayoutVariant"/)
+    expect(markup).toMatch(/<option value="between-columns" selected="">B · Между колоннами/)
+    expect(markup).toMatch(/id="composer-scenes-gallery-galleryLayoutB-laneWidth"[^>]*min="6" max="12" step="0\.1" value="8\.6"/)
+    expect(markup).toMatch(/id="composer-scenes-gallery-galleryLayoutB-offsetX"[^>]*value="-0\.4"/)
+    expect(markup).toMatch(/id="composer-scenes-gallery-galleryLayoutB-offsetY"[^>]*value="0\.5"/)
+    expect(markup).toMatch(/id="composer-scenes-gallery-galleryLayoutB-offsetZ"[^>]*value="-2\.1"/)
+    expect(markup).not.toContain('composer-scenes-gallery-galleryLayoutA-laneWidth')
+  } finally {
+    await updateConfig(DEFAULT_SCENE_COMPOSER_CONFIG)
+  }
 })
 

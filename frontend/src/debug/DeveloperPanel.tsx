@@ -194,6 +194,16 @@ const GALLERY_LAYOUT_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.columnOffsetY', label: 'Вертикальное смещение колонны от пола', unit: 'м', min: -2, max: 2, step: 0.05 },
 ]
 
+function galleryPhotoLayoutControls(variant: 'A' | 'B'): readonly NumericControl[] {
+  const prefix = `scenes.gallery.galleryLayout${variant}` as const
+  return [
+    { path: `${prefix}.laneWidth` as ComposerFieldPath, label: 'Ширина стороны с картинами', unit: 'м', min: 6, max: 12, step: 0.1 },
+    { path: `${prefix}.offsetX` as ComposerFieldPath, label: 'Смещение картин · X', unit: 'м', min: -3, max: 3, step: 0.05 },
+    { path: `${prefix}.offsetY` as ComposerFieldPath, label: 'Смещение картин · Y', unit: 'м', min: -2, max: 2, step: 0.05 },
+    { path: `${prefix}.offsetZ` as ComposerFieldPath, label: 'Смещение картин · Z', unit: 'м', min: -5, max: 5, step: 0.05 },
+  ]
+}
+
 const GALLERY_ARCH_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.archScale', label: 'Масштаб арки', unit: '×', min: 8, max: 28, step: 0.25 },
   { path: 'scenes.gallery.archOpacity', label: 'Прозрачность арки', unit: '×', min: 0.1, max: 1, step: 0.01 },
@@ -581,7 +591,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–16. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–17. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -702,7 +712,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         <h3 id="inspector-scene-title">{title}</h3>
         {currentScope && <details className="inspector-compare"><summary>{currentScope === 'gallery' ? 'История параметров' : 'История и сравнение A/B'}</summary>
           {historyButtons(currentScope)}
-          {currentScope === 'gallery' ? <p>Сравнение недоступно для интерактивной галереи: у прогулки нет стабильной точки фильма.</p> : <>
+          {currentScope !== 'gallery' && <>
             <p>Снимки временные и относятся к этой сцене. Сравнение останавливает фильм в текущем кадре.</p>
             <div className="inspector-history"><button type="button" onClick={() => remember('A')}>Сохранить A</button><button type="button" onClick={() => remember('B')}>Сохранить B</button></div>
             <div className="inspector-history"><button type="button" aria-pressed={currentSnapshots?.active === 'A' && !!currentSnapshots.A && matchesPatch(section(config, currentScope), currentSnapshots.A)} disabled={comparing || !currentSnapshots?.A || selected !== active || route !== 'film'} onClick={() => { void compare('A') }}>Показать A</button><button type="button" aria-pressed={currentSnapshots?.active === 'B' && !!currentSnapshots.B && matchesPatch(section(config, currentScope), currentSnapshots.B)} disabled={comparing || !currentSnapshots?.B || selected !== active || route !== 'film'} onClick={() => { void compare('B') }}>Показать B</button></div>
@@ -759,6 +769,17 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           <details open><summary>Колонны и геометрия галереи</summary>
             <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-gallery-columnVisible">Показывать колонны</label>{config.scenes.gallery.columnVisible !== defaultAtPath('scenes.gallery.columnVisible') && <button type="button" className="inspector-reset" aria-label="Сбросить видимость колонн" onClick={() => { void resetField('scenes.gallery.columnVisible') }}>↺</button>}</div><input id="composer-scenes-gallery-columnVisible" data-testid="composer-scenes-gallery-columnVisible" type="checkbox" checked={config.scenes.gallery.columnVisible} onChange={(event) => { void changeField('scenes.gallery.columnVisible', event.target.checked) }} /></div>
             {GALLERY_LAYOUT_CONTROLS.map(range)}
+          </details>
+          <details open><summary>Компоновка картин A/B</summary>
+            <div className="composer-control">
+              <div className="inspector-control-heading"><label htmlFor="composer-scenes-gallery-galleryLayoutVariant">Вариант расположения картин</label></div>
+              <select id="composer-scenes-gallery-galleryLayoutVariant" data-testid="composer-scenes-gallery-galleryLayoutVariant" value={config.scenes.gallery.galleryLayoutVariant} onChange={(event) => { void changeField('scenes.gallery.galleryLayoutVariant', event.target.value) }}>
+                <option value="on-columns">A · На колоннах</option>
+                <option value="between-columns">B · Между колоннами</option>
+              </select>
+            </div>
+            <p>Настройки ниже относятся к выбранному варианту; параметры A и B сохраняются отдельно.</p>
+            {galleryPhotoLayoutControls(config.scenes.gallery.galleryLayoutVariant === 'on-columns' ? 'A' : 'B').map(range)}
           </details>
           <details open><summary>Арка у Луны</summary>
             <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-gallery-archVisible">Показывать арку</label>{config.scenes.gallery.archVisible !== defaultAtPath('scenes.gallery.archVisible') && <button type="button" className="inspector-reset" aria-label="Сбросить видимость арки" onClick={() => { void resetField('scenes.gallery.archVisible') }}>↺</button>}</div><input id="composer-scenes-gallery-archVisible" data-testid="composer-scenes-gallery-archVisible" type="checkbox" checked={config.scenes.gallery.archVisible} onChange={(event) => { void changeField('scenes.gallery.archVisible', event.target.checked) }} /></div>
