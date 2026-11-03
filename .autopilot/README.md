@@ -52,3 +52,5 @@
 | 2026-11-03 | `2026-11-03-gallery-layout-ab` | сдан | Равномерное размещение B и зеркальный сдвиг картин |
 
 | 2026-11-03 | `2026-11-03-gallery-symmetry-turn` | ?????? | ????????? ? ??????? ?????? B |
+
+| 2026-11-03 | `2026-11-03-gallery-centering` | done | Gallery B support alignment |

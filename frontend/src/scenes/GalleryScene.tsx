@@ -15,7 +15,7 @@ import type { SceneProps } from '../engine/sceneTypes'
 import { useSyncExternalStore } from 'react'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
-import { GALLERY, GALLERY_MEMORIES, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, memoryPosition, type GalleryMemory } from './gallery/content'
+import { GALLERY, GALLERY_MEMORIES, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, gallerySupportGroupScale, gallerySupportLocalPositions, memoryPosition, type GalleryMemory } from './gallery/content'
 import { GalleryColumn } from './gallery/GalleryColumn'
 import { GalleryArch } from './gallery/GalleryArch'
 import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, resetGallery } from './gallery/controller'
@@ -231,6 +231,10 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   const [x, y, z] = memoryPosition(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
   const supportPositions = galleryColumnPositions(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
   const photoYaw = galleryPhotoYaw(memory, settings.galleryLayoutVariant)
+  const supportLocalPositions = useMemo(
+    () => gallerySupportLocalPositions(settings.galleryLayoutVariant, [x, y, z], supportPositions),
+    [settings.galleryLayoutVariant, x, y, z, supportPositions],
+  )
 
   const applyArtSettings = useCallback((alpha = visual.current.alpha, focusAmount = visual.current.focusAmount) => {
     const frameIntensity = Math.max(0, Math.min(2, settings.frameIntensity))
@@ -262,8 +266,16 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     const [columnX, columnY, columnZ] = settings.galleryLayoutVariant === 'between-columns'
       ? [x, y, z]
       : supportPositions[0]!
-    supportGroup.current.position.set(first ? columnX * e : columnX, first ? columnY * e : columnY, first ? columnZ * e : columnZ)
-    supportGroup.current.scale.setScalar(first ? 1 + 0.35 * e : 1)
+    const animateSupportsWithPhoto = first && settings.galleryLayoutVariant === 'on-columns'
+    supportGroup.current.position.set(
+      animateSupportsWithPhoto ? columnX * e : columnX,
+      animateSupportsWithPhoto ? columnY * e : columnY,
+      animateSupportsWithPhoto ? columnZ * e : columnZ,
+    )
+    supportGroup.current.scale.setScalar(gallerySupportGroupScale(
+      settings.galleryLayoutVariant,
+      first ? 1 + 0.35 * e : 1,
+    ))
     supportGroup.current.rotation.set(0, settings.galleryLayoutVariant === 'between-columns' ? 0 : group.current.rotation.y, 0)
     visualGroup.current.position.set(0, reducedMotion ? 0 : Math.sin(m.time * 0.3 + memory.order) * 0.025, 0)
     visualGroup.current.scale.setScalar(1)
@@ -318,11 +330,9 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
 
   return <>
     <group ref={supportGroup} renderOrder={GALLERY_MEMORY_RENDER_ORDER}>
-      {supportPositions.map(([supportX, supportY, supportZ], index) => <group
+      {supportPositions.map(([supportX], index) => <group
         key={index}
-        position={settings.galleryLayoutVariant === 'between-columns'
-          ? [supportX - x, supportY - y, supportZ - z]
-          : [0, 0, 0]}
+        position={supportLocalPositions[index] ?? [0, 0, 0]}
       >
         <GalleryColumn
           visible={settings.columnVisible}

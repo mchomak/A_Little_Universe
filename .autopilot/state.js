@@ -1,8 +1,8 @@
 window.STATE =
 {
-  "slug": "gallery-symmetry-turn",
-  "dir": "2026-11-03-gallery-symmetry-turn",
-  "title": "????????? ? ??????? ?????? ???????",
+  "slug": "gallery-centering",
+  "dir": "2026-11-03-gallery-centering",
+  "title": "Gallery centering",
   "mode": "full",
   "depth": "normal",
   "polish": null,
@@ -10,57 +10,57 @@ window.STATE =
   "briefFile": "2026-11-03-brief.md",
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
-  "startedAt": "2026-11-03T22:17:13+03:00",
-  "updatedAt": "2026-11-03T22:22:20+03:00",
-  "finishedAt": "2026-11-03T22:22:20+03:00",
+  "startedAt": "2026-11-03T22:54:17+03:00",
+  "updatedAt": "2026-11-03T23:07:53+03:00",
+  "finishedAt": "2026-11-03T23:07:53+03:00",
   "stages": [
     {
       "id": "preflight",
       "status": "done",
-      "startedAt": "2026-11-03T22:17:13+03:00",
-      "finishedAt": "2026-11-03T22:22:20+03:00"
+      "startedAt": "2026-11-03T22:54:17+03:00",
+      "finishedAt": "2026-11-03T23:07:53+03:00"
     },
     {
       "id": "manifest",
       "status": "done",
-      "startedAt": "2026-11-03T22:17:13+03:00",
-      "finishedAt": "2026-11-03T22:22:20+03:00"
+      "startedAt": "2026-11-03T22:54:17+03:00",
+      "finishedAt": "2026-11-03T23:07:53+03:00"
     },
     {
       "id": "briefing",
       "status": "done",
-      "startedAt": "2026-11-03T22:17:13+03:00",
-      "finishedAt": "2026-11-03T22:22:20+03:00"
+      "startedAt": "2026-11-03T22:54:17+03:00",
+      "finishedAt": "2026-11-03T23:07:53+03:00"
     },
     {
       "id": "spec",
       "status": "done",
-      "startedAt": "2026-11-03T22:17:13+03:00",
-      "finishedAt": "2026-11-03T22:22:20+03:00"
+      "startedAt": "2026-11-03T22:54:17+03:00",
+      "finishedAt": "2026-11-03T23:07:53+03:00"
     },
     {
       "id": "plan",
       "status": "done",
-      "startedAt": "2026-11-03T22:17:13+03:00",
-      "finishedAt": "2026-11-03T22:22:20+03:00"
+      "startedAt": "2026-11-03T22:54:17+03:00",
+      "finishedAt": "2026-11-03T23:07:53+03:00"
     },
     {
       "id": "build",
       "status": "done",
-      "startedAt": "2026-11-03T22:17:13+03:00",
-      "finishedAt": "2026-11-03T22:22:20+03:00"
+      "startedAt": "2026-11-03T22:54:17+03:00",
+      "finishedAt": "2026-11-03T23:07:53+03:00"
     },
     {
       "id": "review",
       "status": "done",
-      "startedAt": "2026-11-03T22:17:13+03:00",
-      "finishedAt": "2026-11-03T22:22:20+03:00"
+      "startedAt": "2026-11-03T22:54:17+03:00",
+      "finishedAt": "2026-11-03T23:07:53+03:00"
     },
     {
       "id": "final",
       "status": "done",
-      "startedAt": "2026-11-03T22:17:13+03:00",
-      "finishedAt": "2026-11-03T22:22:20+03:00"
+      "startedAt": "2026-11-03T22:54:17+03:00",
+      "finishedAt": "2026-11-03T23:07:53+03:00"
     }
   ],
   "requirements": {
@@ -75,24 +75,22 @@ window.STATE =
   "tickets": [],
   "singlePass": {
     "status": "done",
-    "startedAt": "2026-11-03T22:17:13+03:00",
-    "finishedAt": "2026-11-03T22:22:20+03:00"
+    "startedAt": "2026-11-03T22:54:17+03:00",
+    "finishedAt": "2026-11-03T23:07:53+03:00"
   },
   "tests": {
-    "passed": 469,
+    "passed": 471,
     "failed": 0
   },
   "debt": {
     "placeholders": [],
-    "assumptions": [
-      "??? ??????????? ???? ??????????????? ???????? ????? ????."
-    ],
+    "assumptions": [],
     "emptyEnv": []
   },
   "additions": [],
   "coverage": null,
   "concerns": [
-    "?????????? ???????? ??????????: ??????? ?? ????????????? WebGL2."
+    "WebGL2 unavailable for visual comparison"
   ],
   "reviewers": {
     "manifestSpec": null,

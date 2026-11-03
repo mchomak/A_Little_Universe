@@ -70,6 +70,23 @@ export function galleryColumnPositions(
   return columns
 }
 
+/** Keep B's support rails independent of the offset, animated photo group. */
+export function gallerySupportGroupScale(variant: GalleryLayoutVariant, introScale: number): number {
+  const safeIntroScale = Number.isFinite(introScale) ? Math.max(0.001, introScale) : 1
+  return variant === 'between-columns' ? 1 : safeIntroScale
+}
+
+/** Positions B supports relative to the stable photo anchor, outside the per-frame transform. */
+export function gallerySupportLocalPositions(
+  variant: GalleryLayoutVariant,
+  photoPosition: readonly [number, number, number],
+  supportPositions: readonly (readonly [number, number, number])[],
+): [number, number, number][] {
+  return supportPositions.map(([x, y, z]) => variant === 'between-columns'
+      ? [x - photoPosition[0], y - photoPosition[1], z - photoPosition[2]]
+      : [0, 0, 0])
+}
+
 /** B's shared column offset is radial so opposite supports stay mirrored. */
 export function gallerySupportColumnOffsetX(supportX: number, variant: GalleryLayoutVariant, offsetX: number): number {
   const safeOffset = Number.isFinite(offsetX) ? offsetX : 0
