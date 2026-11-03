@@ -15,7 +15,7 @@ import type { SceneProps } from '../engine/sceneTypes'
 import { useSyncExternalStore } from 'react'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
-import { GALLERY, GALLERY_MEMORIES, memoryPosition, type GalleryMemory } from './gallery/content'
+import { GALLERY, GALLERY_MEMORIES, galleryColumnPosition, memoryPosition, type GalleryMemory } from './gallery/content'
 import { GalleryColumn } from './gallery/GalleryColumn'
 import { GalleryArch } from './gallery/GalleryArch'
 import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, resetGallery } from './gallery/controller'
@@ -158,6 +158,7 @@ function setFocusFog(material: Material, focus: boolean) { if (material instance
 function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: GalleryMemory; reducedMotion: boolean; halo: CanvasTexture; paused: boolean; settings: GalleryArtSettings }) {
   const materials = useRef<{ material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[]>([])
   const group = useRef<Group>(null)
+  const supportGroup = useRef<Group>(null)
   const visualGroup = useRef<Group>(null)
   const glow = useRef<MeshBasicMaterial>(null)
   const captionMaterial = useRef<MeshBasicMaterial>(null)
@@ -226,7 +227,9 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     [height, memory.order, settings.frameIntensity, width],
   )
   useEffect(() => () => frameParticles.dispose(), [frameParticles])
-  const [x, y, z] = memoryPosition(memory, settings.galleryWidth)
+  const layout = settings.galleryLayoutVariant === 'between-columns' ? settings.galleryLayoutB : settings.galleryLayoutA
+  const [x, y, z] = memoryPosition(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
+  const [columnX, columnY, columnZ] = galleryColumnPosition(memory, settings.galleryWidth)
 
   const applyArtSettings = useCallback((alpha = visual.current.alpha, focusAmount = visual.current.focusAmount) => {
     const frameIntensity = Math.max(0, Math.min(2, settings.frameIntensity))
@@ -244,7 +247,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   useEffect(() => { applyArtSettings() }, [applyArtSettings])
 
   useFrame(({ camera }) => {
-    if (!group.current || !visualGroup.current || paused || document.hidden) return
+    if (!group.current || !supportGroup.current || !visualGroup.current || document.hidden) return
     const m = galleryMotion
     const t = Math.min(1, m.intro / (reducedMotion ? 0.35 : GALLERY.intro))
     const e = t * t * (3 - 2 * t)
@@ -252,6 +255,9 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     group.current.position.set(first ? x * e : x, y, first ? z * e : z)
     group.current.scale.setScalar(first ? 1 + 0.35 * e : 1)
     group.current.rotation.set(0, first ? (reducedMotion ? 0 : 0.065 * (1 - e)) - memory.side * GALLERY_ART.wallYaw * e : -memory.side * GALLERY_ART.wallYaw, 0)
+    supportGroup.current.position.set(first ? columnX * e : columnX, first ? columnY * e : columnY, first ? columnZ * e : columnZ)
+    supportGroup.current.scale.setScalar(first ? 1 + 0.35 * e : 1)
+    supportGroup.current.rotation.set(0, group.current.rotation.y, 0)
     visualGroup.current.position.set(0, reducedMotion ? 0 : Math.sin(m.time * 0.3 + memory.order) * 0.025, 0)
     visualGroup.current.scale.setScalar(1)
     visualGroup.current.rotation.set(first && !reducedMotion ? -0.022 * (1 - e) : 0, 0, first && !reducedMotion ? -0.009 * (1 - e) : 0)
@@ -291,6 +297,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
       setFocusFog(saved.material, focusTarget)
     }
     group.current.visible = visible > 0 && distanceAlpha > 0 && alpha > 0.001
+    supportGroup.current.visible = group.current.visible && settings.columnVisible
     visual.current = { alpha, focusAmount }
 
     setShaderUniform(photoMaterialRef.current, 'uAlpha', alpha)
@@ -303,7 +310,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   })
 
   return <>
-    <group ref={group} renderOrder={GALLERY_MEMORY_RENDER_ORDER} onClick={(event) => { event.stopPropagation(); if (!paused) galleryFocus(memory.order) }}>
+    <group ref={supportGroup} renderOrder={GALLERY_MEMORY_RENDER_ORDER}>
       <GalleryColumn
         visible={settings.columnVisible}
         scale={settings.columnScale}
@@ -312,6 +319,8 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
         offsetY={settings.columnOffsetY}
         opacity={columnOpacity}
       />
+    </group>
+    <group ref={group} renderOrder={GALLERY_MEMORY_RENDER_ORDER} onClick={(event) => { event.stopPropagation(); if (!paused) galleryFocus(memory.order) }}>
       <group ref={visualGroup}>
       <primitive object={backplate} />
       <mesh position={[0, 0, -0.07]}><planeGeometry args={[width + 0.36, height + 0.36]} /><meshBasicMaterial ref={glow} map={halo} color="#ffd7b0" transparent opacity={0.2} depthWrite={false} blending={AdditiveBlending} toneMapped={false} /></mesh>
@@ -388,7 +397,8 @@ function Dust({ low, reducedMotion, settings }: { low: boolean; reducedMotion: b
   </points>
 }
 function MemoryThreads({ settings, low, paused, halo }: { settings: GalleryArtSettings; low: boolean; paused: boolean; halo: CanvasTexture }) {
-  const paths = useMemo(() => createMemoryThreadPaths(GALLERY_MEMORIES, settings.galleryWidth), [settings.galleryWidth])
+  const layout = settings.galleryLayoutVariant === 'between-columns' ? settings.galleryLayoutB : settings.galleryLayoutA
+  const paths = useMemo(() => createMemoryThreadPaths(GALLERY_MEMORIES, settings.galleryWidth, settings.galleryLayoutVariant, layout), [layout, settings.galleryLayoutVariant, settings.galleryWidth])
   const geometries = useMemo(
     () => paths.map(path => createMemoryThreadGeometry(path, { segments: low ? 22 : 38, radius: 0.01, radialSegments: 4 })),
     [low, paths],

@@ -44,6 +44,16 @@ describe('gallery memory thread paths', () => {
     }
   })
 
+  it('repositions accent paths along B paired frames and uses that variant lane width', () => {
+    const layout = { laneWidth: 9, offsetX: 0.2, offsetY: 0.15, offsetZ: -0.5 }
+    const paths = createMemoryThreadPaths(GALLERY_MEMORIES, GALLERY.width, 'between-columns', layout)
+    expect(paths).toHaveLength(3)
+    expect(paths[0]!.start[0]).toBeCloseTo(-5.65)
+    expect(paths[0]!.end[0]).toBeCloseTo(-5.65)
+    expect(paths[0]!.start[2]).not.toBe(paths[0]!.end[2])
+    expect(paths.every(path => [...path.start, ...path.control, ...path.end].every(Number.isFinite))).toBe(true)
+  })
+
   it('creates a deterministic thin spatial tube from a public thread path', () => {
     const path = createMemoryThreadPaths(GALLERY_MEMORIES)[1]!
     const first = createMemoryThreadGeometry(path, { segments: 16, radius: 0.01, radialSegments: 4 })
@@ -146,3 +156,13 @@ describe('gallery memory thread paths', () => {
     material.dispose()
   })
 })
+
+  it('moves both thread endpoints and its control point with the photo layout height', () => {
+    const base = createMemoryThreadPaths(GALLERY_MEMORIES)[0]!
+    const shifted = createMemoryThreadPaths(GALLERY_MEMORIES, GALLERY.width, 'between-columns', {
+      laneWidth: GALLERY.width, offsetX: 0, offsetY: 0.6, offsetZ: 0,
+    })[0]!
+    for (const point of ['start', 'control', 'end'] as const) {
+      expect(shifted[point][1] - base[point][1]).toBeCloseTo(0.6)
+    }
+  })

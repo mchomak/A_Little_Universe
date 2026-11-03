@@ -1,6 +1,7 @@
 import { BufferAttribute, BufferGeometry, MeshBasicMaterial, QuadraticBezierCurve3, TubeGeometry, Vector3 } from 'three'
-import { GALLERY, GALLERY_MEMORIES, memoryPosition, type GalleryMemory } from './content'
+import { GALLERY, GALLERY_MEMORIES, memoryPosition, type GalleryLayoutVariant, type GalleryMemory } from './content'
 import type { GalleryArtSettings } from './reflections'
+import type { GalleryPhotoLayout } from '../../systems/scene-config/config'
 
 export type ThreadPoint = readonly [number, number, number]
 
@@ -34,12 +35,12 @@ const THREAD_CONNECTIONS = [
 const THREAD_OUTER_FRAME_GAP = 1.35
 const THREAD_SHORT_ARC_HALF_LENGTH = 0.9
 
-function outerFrameX(memory: GalleryMemory, galleryWidth: number) {
-  return memoryPosition(memory, galleryWidth)[0] + memory.side * THREAD_OUTER_FRAME_GAP
+function outerFrameX(memory: GalleryMemory, galleryWidth: number, variant: GalleryLayoutVariant, layout?: Readonly<GalleryPhotoLayout>) {
+  return memoryPosition(memory, galleryWidth, variant, layout)[0] + memory.side * THREAD_OUTER_FRAME_GAP
 }
 
 /** Builds short, sparse world-space links in the gaps outside photo frames. */
-export function createMemoryThreadPaths(memories: readonly GalleryMemory[] = GALLERY_MEMORIES, galleryWidth: number = GALLERY.width): MemoryThreadPath[] {
+export function createMemoryThreadPaths(memories: readonly GalleryMemory[] = GALLERY_MEMORIES, galleryWidth: number = GALLERY.width, variant: GalleryLayoutVariant = 'on-columns', layout?: Readonly<GalleryPhotoLayout>): MemoryThreadPath[] {
   const byOrder = new Map(memories.map(memory => [memory.order, memory]))
   const paths: MemoryThreadPath[] = []
 
@@ -47,20 +48,20 @@ export function createMemoryThreadPaths(memories: readonly GalleryMemory[] = GAL
     const startMemory = byOrder.get(connection.start)
     const endMemory = byOrder.get(connection.end)
     if (!startMemory || !endMemory || startMemory.side !== endMemory.side) continue
-    const startPosition = memoryPosition(startMemory, galleryWidth)
-    const endPosition = memoryPosition(endMemory, galleryWidth)
+    const startPosition = memoryPosition(startMemory, galleryWidth, variant, layout)
+    const endPosition = memoryPosition(endMemory, galleryWidth, variant, layout)
     const middleZ = (startPosition[2] + endPosition[2]) / 2
     const startZ = middleZ + THREAD_SHORT_ARC_HALF_LENGTH
     const endZ = middleZ - THREAD_SHORT_ARC_HALF_LENGTH
     const side = startMemory.side
-    const railY = 0.18 + index * 0.08
+    const railY = 0.18 + index * 0.08 + (layout?.offsetY ?? 0)
 
     paths.push({
       startOrder: connection.start,
       endOrder: connection.end,
-      start: [outerFrameX(startMemory, galleryWidth), railY, startZ],
-      control: [side * (galleryWidth / 2 + THREAD_OUTER_FRAME_GAP + Math.abs(connection.bend) * 0.4), railY + connection.lift, middleZ],
-      end: [outerFrameX(endMemory, galleryWidth), railY, endZ],
+      start: [outerFrameX(startMemory, galleryWidth, variant, layout), railY, startZ],
+      control: [side * ((layout?.laneWidth ?? galleryWidth) / 2 + THREAD_OUTER_FRAME_GAP + Math.abs(connection.bend) * 0.4) + (layout?.offsetX ?? 0), railY + connection.lift, middleZ],
+      end: [outerFrameX(endMemory, galleryWidth, variant, layout), railY, endZ],
     })
   }
 

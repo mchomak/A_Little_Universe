@@ -36,6 +36,21 @@ describe('focus dolly', () => {
     expect(wide.distance).toBeCloseTo(narrow.distance)
   })
 
+  it('retargets a focused exhibit to its paired B position while the interaction index stays fixed', () => {
+    const memory = GALLERY_MEMORIES[2]!
+    const layout = { laneWidth: 8, offsetX: 0.25, offsetY: 0.1, offsetZ: -0.4 }
+    const targetA = memoryPosition(memory, 7)
+    const targetB = memoryPosition(memory, 7, 'between-columns', layout)
+    const yaw = -memory.side * GALLERY_ART.wallYaw
+    const focusedA = focusCamera([0, 0, 6], targetA, 1, yaw)
+    const focusedB = focusCamera([0, 0, 6], targetB, 1, yaw)
+
+    expect(memory.order).toBe(2)
+    expect(targetA).toEqual([-3.5, 0, -15.3])
+    expect(targetB).toEqual([-3.75, 0.1, -18.4])
+    expect(focusedA.z).not.toBeCloseTo(focusedB.z)
+  })
+
   it('extends the shared camera far plane only for gallery entry and restores it on exit', () => {
     const updates: number[] = []
     const camera = { far: 100, updateProjectionMatrix: () => updates.push(camera.far) }
