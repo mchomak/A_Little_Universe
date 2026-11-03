@@ -1,9 +1,10 @@
 import { useGLTF } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useLayoutEffect, useMemo, useRef } from 'react'
+import type { RefObject } from 'react'
 import { Camera, Group, Light, Mesh } from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
-import { acquireGalleryColumnMaterials, acquireGalleryColumnShaftGeometry, extendGalleryColumnShaft, getGalleryColumnPlacement, type GalleryColumnSettings } from './columnModel'
+import { acquireGalleryColumnMaterials, acquireGalleryColumnShaftGeometry, extendGalleryColumnShaft, getGalleryColumnPlacement, setGalleryColumnOpacity, type GalleryColumnSettings } from './columnModel'
 import { GALLERY_WORLD } from './world'
 import columnModelUrl from '../../assets/gallery-ionic-column/column.glb?url'
 
@@ -42,7 +43,7 @@ function createColumnModel(scene: Group): ColumnModelInstance {
  * Original Sketchfab ionic column, attached to one photo's Memory transform.
  * Local photo face is +Z, so a positive depth puts the column behind the card.
  */
-export function GalleryColumn({ visible, scale, depth, offsetX, offsetY }: GalleryColumnSettings) {
+export function GalleryColumn({ visible, scale, depth, offsetX, offsetY, opacity }: GalleryColumnSettings & { opacity: RefObject<number> }) {
   const gltf = useGLTF(columnModelUrl)
   const rootRef = useRef<Group>(null)
   const model = useMemo(() => createColumnModel(gltf.scene), [gltf.scene])
@@ -64,6 +65,7 @@ export function GalleryColumn({ visible, scale, depth, offsetX, offsetY }: Galle
     )
     root.position.set(...placement.position)
     root.scale.set(...placement.scale)
+    setGalleryColumnOpacity(model.root, opacity.current)
   })
 
   return <group ref={rootRef} visible={visible} raycast={IGNORE_RAYCAST}>

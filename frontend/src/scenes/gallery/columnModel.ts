@@ -52,13 +52,7 @@ export const GALLERY_COLUMN_MODEL_SCALE = 1
 /** Five unscaled source shaft sections put the original cap safely above the gallery's normal camera view. */
 export const GALLERY_COLUMN_SHAFT_SEGMENTS = 5
 
-interface SharedColumnMaterial {
-  material: MeshStandardMaterial
-  references: number
-}
-
 const COLUMN_MARBLE_TINT = new Color('#9eb5d7')
-const sharedColumnMaterials = new WeakMap<MeshStandardMaterial, SharedColumnMaterial>()
 
 interface SharedColumnGeometry {
   geometry: BufferGeometry
@@ -109,37 +103,30 @@ export function getGalleryColumnAssetBounds(modelRoot: Object3D): GalleryColumnA
   }
 }
 
-function getSharedColumnMaterial(source: MeshStandardMaterial) {
-  let shared = sharedColumnMaterials.get(source)
-  if (!shared) {
-    const material = source.clone()
-    material.color.multiply(COLUMN_MARBLE_TINT)
-    material.roughness = Math.max(material.roughness, 0.9)
-    material.metalness = Math.min(material.metalness, 0.04)
-    material.needsUpdate = true
-    shared = { material, references: 0 }
-    sharedColumnMaterials.set(source, shared)
-  }
-  return shared
-}
-
-/** Share tinted PBR variants across instances; the returned idempotent release restores loader materials before disposal. */
+/** Each column owns its translucent material copies so distance fades never affect neighboring exhibits. */
 export function acquireGalleryColumnMaterials(root: Object3D): () => void {
   const originals = new Map<Mesh, Material | Material[]>()
-  const acquired = new Map<MeshStandardMaterial, SharedColumnMaterial>()
+  const instances = new Map<MeshStandardMaterial, MeshStandardMaterial>()
   root.traverse((object) => {
     if (!(object instanceof Mesh)) return
     const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material]
     let changed = false
     const tintedMaterials = sourceMaterials.map((source) => {
       if (!(source instanceof MeshStandardMaterial)) return source
-      const shared = getSharedColumnMaterial(source)
-      if (!acquired.has(source)) {
-        shared.references += 1
-        acquired.set(source, shared)
+      let material = instances.get(source)
+      if (!material) {
+        material = source.clone()
+        material.color.multiply(COLUMN_MARBLE_TINT)
+        material.roughness = Math.max(material.roughness, 0.9)
+        material.metalness = Math.min(material.metalness, 0.04)
+        material.transparent = true
+        material.opacity = 1
+        material.depthWrite = false
+        material.needsUpdate = true
+        instances.set(source, material)
       }
       changed = true
-      return shared.material
+      return material
     })
     if (!changed) return
     originals.set(object, object.material)
@@ -151,13 +138,17 @@ export function acquireGalleryColumnMaterials(root: Object3D): () => void {
     if (released) return
     released = true
     originals.forEach((material, mesh) => { mesh.material = material })
-    acquired.forEach((shared, source) => {
-      shared.references -= 1
-      if (shared.references > 0) return
-      shared.material.dispose()
-      if (sharedColumnMaterials.get(source) === shared) sharedColumnMaterials.delete(source)
-    })
+    instances.forEach((material) => material.dispose())
   }
+}
+
+export function setGalleryColumnOpacity(root: Object3D, opacity: number) {
+  const safeOpacity = Number.isFinite(opacity) ? Math.max(0, Math.min(1, opacity)) : 0
+  root.traverse((object) => {
+    if (!(object instanceof Mesh)) return
+    const materials = Array.isArray(object.material) ? object.material : [object.material]
+    materials.forEach((material) => { if (material instanceof MeshStandardMaterial) material.opacity = safeOpacity })
+  })
 }
 
 function movePartByRootOffset(root: Object3D, part: Object3D, offset: readonly [number, number, number], name: string) {

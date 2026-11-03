@@ -30,7 +30,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 15
+  readonly schemaVersion: 16
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -161,6 +161,13 @@ export interface SceneComposerConfig {
       columnDepth: number
       columnOffsetX: number
       columnOffsetY: number
+      archVisible: boolean
+      archScale: number
+      archOpacity: number
+      archPositionX: number
+      archPositionY: number
+      archPositionZ: number
+      archRotationY: number
       frameIntensity: number
       particleCount: number
       moonBrightness: number
@@ -278,7 +285,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 15,
+  schemaVersion: 16,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
@@ -321,6 +328,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
     gallery: {
       galleryWidth: 7,
       columnVisible: true, columnScale: 1, columnDepth: 0.15, columnOffsetX: 0, columnOffsetY: 0,
+      archVisible: true, archScale: 16, archOpacity: 0.78, archPositionX: 0, archPositionY: 0, archPositionZ: -84, archRotationY: 0,
       frameIntensity: 1, particleCount: 220, moonBrightness: 0.8, moonSize: 1,
       cloudDriftVariation: 0.65,
       cloudLayers: {
@@ -398,7 +406,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 15) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 16) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -570,7 +578,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 15, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 16, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
@@ -601,6 +609,13 @@ function normalizeGallery(input: Record<string, unknown> | undefined): SceneComp
     columnDepth: numberValue(input?.columnDepth, d.columnDepth, 0.02, 2),
     columnOffsetX: numberValue(input?.columnOffsetX, d.columnOffsetX, -2, 2),
     columnOffsetY: numberValue(input?.columnOffsetY, d.columnOffsetY, -2, 2),
+    archVisible: typeof input?.archVisible === 'boolean' ? input.archVisible : d.archVisible,
+    archScale: numberValue(input?.archScale, d.archScale, 8, 28),
+    archOpacity: numberValue(input?.archOpacity, d.archOpacity, 0.1, 1),
+    archPositionX: numberValue(input?.archPositionX, d.archPositionX, -30, 30),
+    archPositionY: numberValue(input?.archPositionY, d.archPositionY, -12, 24),
+    archPositionZ: numberValue(input?.archPositionZ, d.archPositionZ, -140, -65),
+    archRotationY: numberValue(input?.archRotationY, d.archRotationY, -Math.PI, Math.PI),
     frameIntensity: numberValue(input?.frameIntensity, d.frameIntensity, 0, 2),
     particleCount: numberValue(input?.particleCount, d.particleCount, 0, 600, true),
     moonBrightness: numberValue(input?.moonBrightness, d.moonBrightness, 0, 2),

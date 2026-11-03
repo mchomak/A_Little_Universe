@@ -16,6 +16,7 @@ import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
 import { GALLERY, GALLERY_MEMORIES, memoryPosition, type GalleryMemory } from './gallery/content'
 import { GalleryColumn } from './gallery/GalleryColumn'
+import { GalleryArch } from './gallery/GalleryArch'
 import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, resetGallery } from './gallery/controller'
 import { bindGalleryGestures } from './gallery/gestures'
 import { MoonlitWorld } from './gallery/MoonlitWorld'
@@ -174,6 +175,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   const frameMaterial = useMemo(() => frameShaderMaterial(), [])
   const frameMaterialRef = useRef(frameMaterial)
   const visual = useRef({ alpha: 0, focusAmount: 0 })
+  const columnOpacity = useRef(0)
 
   useEffect(() => {
     photoMaterialRef.current = photoMaterial
@@ -277,6 +279,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     const distanceAlpha = galleryDistanceOpacity(photoDistance)
     const focusAlpha = galleryFocusOpacity(m.focusMix, selected)
     const alpha = visible * (1 - m.exit / GALLERY.exit) * focusAlpha * distanceAlpha
+    columnOpacity.current = alpha
     for (const saved of materials.current) {
       setMaterialAlpha(saved, alpha)
       setFocusFog(saved.material, focusTarget)
@@ -301,6 +304,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
         depth={settings.columnDepth}
         offsetX={settings.columnOffsetX}
         offsetY={settings.columnOffsetY}
+        opacity={columnOpacity}
       />
       <group ref={visualGroup}>
       <mesh position={[0, 0, -0.04]}><boxGeometry args={[width + 0.08, height + 0.08, 0.07]} /><meshStandardMaterial color="#171b23" roughness={0.96} metalness={0.02} /></mesh>
@@ -436,6 +440,7 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
     <color attach="background" args={[skyColor]} />
     <fog attach="fog" args={[skyColor, 55, 208 - settings.hazeDensity * 14]} />
     <MoonlitWorld settings={settings} quality={quality} halo={halo} reducedMotion={reducedMotion} />
+    <GalleryArch settings={settings} />
     <Dust low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
     {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} />)}
     <MemoryThreads settings={settings} low={quality === 'low'} paused={state.paused} halo={halo} />

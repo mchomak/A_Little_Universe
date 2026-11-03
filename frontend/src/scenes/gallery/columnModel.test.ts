@@ -11,6 +11,7 @@ import {
   getGalleryColumnAssetBounds,
   getGalleryColumnPlacement,
   getGalleryColumnShaftLocalBounds,
+  setGalleryColumnOpacity,
 } from './columnModel'
 
 const columnAssetUrl = new URL('../../assets/gallery-ionic-column/column.glb', import.meta.url)
@@ -79,7 +80,7 @@ describe('gallery column placement', () => {
     expect(alignedBaseFrontZ).toBeCloseTo(shaftFrontZ, 8)
   })
 
-  it('shares tinted materials across instances and releases them safely across StrictMode effect replay', async () => {
+  it('isolates tinted materials per instance so distant columns can fade independently', async () => {
     const scene = await loadAssetScene()
     const firstInstance = clone(scene)
     const secondInstance = clone(scene)
@@ -99,21 +100,25 @@ describe('gallery column placement', () => {
     const tintedFirst = getBaseMaterial(firstInstance)
     const releaseSecond = acquireGalleryColumnMaterials(secondInstance)
     const tintedSecond = getBaseMaterial(secondInstance)
-    expect(tintedSecond).toBe(tintedFirst)
+    expect(tintedSecond).not.toBe(tintedFirst)
     expect(tintedFirst).not.toBe(sourceMaterial)
-    expect(tintedFirst.depthWrite).toBe(true)
+    expect(tintedFirst.transparent).toBe(true)
+    expect(tintedFirst.depthWrite).toBe(false)
     expect(tintedFirst.depthTest).toBe(true)
     expect(tintedFirst.map).toBe(sourceMaterial.map)
+    setGalleryColumnOpacity(firstInstance, 0.2)
+    expect(tintedFirst.opacity).toBeCloseTo(0.2)
+    expect(tintedSecond.opacity).toBe(1)
     const dispose = vi.spyOn(tintedFirst, 'dispose')
 
     releaseFirst()
     releaseFirst()
-    expect(dispose).not.toHaveBeenCalled()
+    expect(dispose).toHaveBeenCalledTimes(1)
     expect(getBaseMaterial(firstInstance)).toBe(sourceMaterial)
     const replayRelease = acquireGalleryColumnMaterials(firstInstance)
-    expect(getBaseMaterial(firstInstance)).toBe(tintedSecond)
+    expect(getBaseMaterial(firstInstance)).not.toBe(tintedSecond)
     replayRelease()
-    expect(dispose).not.toHaveBeenCalled()
+    expect(dispose).toHaveBeenCalledTimes(1)
 
     releaseSecond()
     expect(dispose).toHaveBeenCalledTimes(1)

@@ -194,6 +194,15 @@ const GALLERY_LAYOUT_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.columnOffsetY', label: 'Вертикальное смещение колонны от пола', unit: 'м', min: -2, max: 2, step: 0.05 },
 ]
 
+const GALLERY_ARCH_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.gallery.archScale', label: 'Масштаб арки', unit: '×', min: 8, max: 28, step: 0.25 },
+  { path: 'scenes.gallery.archOpacity', label: 'Прозрачность арки', unit: '×', min: 0.1, max: 1, step: 0.01 },
+  { path: 'scenes.gallery.archPositionX', label: 'Положение арки · X', unit: 'м', min: -30, max: 30, step: 0.25 },
+  { path: 'scenes.gallery.archPositionY', label: 'Высота арки от пола', unit: 'м', min: -12, max: 24, step: 0.25 },
+  { path: 'scenes.gallery.archPositionZ', label: 'Положение арки · Z', unit: 'м', min: -140, max: -65, step: 0.5 },
+  { path: 'scenes.gallery.archRotationY', label: 'Поворот арки', unit: 'рад', min: -Math.PI, max: Math.PI, step: 0.05 },
+]
+
 const GALLERY_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.frameIntensity', label: 'Интенсивность рамок', unit: '×', min: 0, max: 2, step: 0.05 },
   { path: 'scenes.gallery.particleCount', label: 'Количество частиц', unit: 'шт.', min: 0, max: 600, step: 1 },
@@ -750,6 +759,10 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           <details open><summary>Колонны и геометрия галереи</summary>
             <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-gallery-columnVisible">Показывать колонны</label>{config.scenes.gallery.columnVisible !== defaultAtPath('scenes.gallery.columnVisible') && <button type="button" className="inspector-reset" aria-label="Сбросить видимость колонн" onClick={() => { void resetField('scenes.gallery.columnVisible') }}>↺</button>}</div><input id="composer-scenes-gallery-columnVisible" data-testid="composer-scenes-gallery-columnVisible" type="checkbox" checked={config.scenes.gallery.columnVisible} onChange={(event) => { void changeField('scenes.gallery.columnVisible', event.target.checked) }} /></div>
             {GALLERY_LAYOUT_CONTROLS.map(range)}
+          </details>
+          <details open><summary>Арка у Луны</summary>
+            <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-gallery-archVisible">Показывать арку</label>{config.scenes.gallery.archVisible !== defaultAtPath('scenes.gallery.archVisible') && <button type="button" className="inspector-reset" aria-label="Сбросить видимость арки" onClick={() => { void resetField('scenes.gallery.archVisible') }}>↺</button>}</div><input id="composer-scenes-gallery-archVisible" data-testid="composer-scenes-gallery-archVisible" type="checkbox" checked={config.scenes.gallery.archVisible} onChange={(event) => { void changeField('scenes.gallery.archVisible', event.target.checked) }} /></div>
+            {GALLERY_ARCH_CONTROLS.map(range)}
           </details>
           {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.name.startsWith('Near Low') || group.name.startsWith('Waterline')}><summary>{group.name}</summary>
             {group.controls.map(range)}

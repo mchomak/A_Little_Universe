@@ -1,84 +1,84 @@
 window.STATE =
 {
-  "slug": "gallery-cloud-layers",
-  "dir": "2026-11-02-gallery-cloud-layers",
-  "title": "Scene 05: cloud layers",
+  "slug": "gallery-arch",
+  "dir": "2026-11-03-gallery-arch",
+  "title": "Галерея: плавное появление и арка",
   "mode": "full",
   "depth": "normal",
+  "polish": null,
   "tier": "T0",
-  "briefFile": "2026-11-02-brief.md",
+  "briefFile": "2026-11-03-brief.md",
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
-  "startedAt": "2026-11-02T15:56:05+03:00",
-  "updatedAt": "2026-11-02T20:27:37+03:00",
-  "finishedAt": "2026-11-02T20:27:37+03:00",
+  "startedAt": "2026-11-03T12:35:50+03:00",
+  "updatedAt": "2026-11-03T14:16:57+03:00",
+  "finishedAt": "2026-11-03T14:16:57+03:00",
   "stages": [
     {
       "id": "preflight",
       "status": "done",
-      "startedAt": "2026-11-02T15:56:05+03:00",
-      "finishedAt": "2026-11-02T15:56:05+03:00"
+      "startedAt": "2026-11-03T12:35:50+03:00",
+      "finishedAt": "2026-11-03T12:35:50+03:00"
     },
     {
       "id": "manifest",
       "status": "done",
-      "startedAt": "2026-11-02T15:56:05+03:00",
-      "finishedAt": "2026-11-02T15:56:05+03:00"
+      "startedAt": "2026-11-03T12:35:50+03:00",
+      "finishedAt": "2026-11-03T12:35:50+03:00"
     },
     {
       "id": "briefing",
       "status": "skipped",
-      "note": "full self-briefing"
+      "note": "полный автомат — самобрифинг"
     },
     {
       "id": "spec",
       "status": "done",
-      "startedAt": "2026-11-02T15:56:05+03:00",
-      "finishedAt": "2026-11-02T15:56:05+03:00"
+      "startedAt": "2026-11-03T12:35:50+03:00",
+      "finishedAt": "2026-11-03T12:35:50+03:00"
     },
     {
       "id": "plan",
       "status": "skipped",
-      "note": "single pass"
+      "note": "T0 — один проход"
     },
     {
       "id": "build",
       "status": "done",
-      "startedAt": "2026-11-02T15:56:05+03:00",
-      "note": "Cloud layers and controls in progress",
-      "finishedAt": "2026-11-02T20:27:37+03:00"
+      "startedAt": "2026-11-03T12:35:50+03:00",
+      "finishedAt": "2026-11-03T14:16:57+03:00"
     },
     {
       "id": "review",
       "status": "done",
-      "finishedAt": "2026-11-02T20:27:37+03:00"
+      "finishedAt": "2026-11-03T14:16:57+03:00",
+      "startedAt": "2026-11-03T14:16:57+03:00"
     },
     {
       "id": "final",
       "status": "done",
-      "finishedAt": "2026-11-02T20:27:37+03:00",
-      "note": "Визуальная проверка выполнена; фактура низких облаков остаётся мягче референса."
+      "finishedAt": "2026-11-03T14:16:57+03:00",
+      "startedAt": "2026-11-03T14:16:57+03:00"
     }
   ],
   "requirements": {
-    "total": 12,
-    "done": 10,
+    "total": 5,
+    "done": 5,
     "inTicket": 0,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
-    "dropped": 0,
-    "partial": 2
+    "dropped": 0
   },
   "tickets": [],
   "singlePass": {
-    "startedAt": "2026-11-02T15:56:05+03:00",
-    "finishedAt": "2026-11-02T20:27:37+03:00"
+    "startedAt": "2026-11-03T12:35:50+03:00",
+    "finishedAt": "2026-11-03T14:16:57+03:00"
   },
   "tests": {
     "command": "npm run check",
     "status": "passed",
-    "detail": "91 файлов, 434 теста; lint, typecheck и production build прошли"
+    "detail": "92 файлов, 447 тестов; lint, typecheck и production build прошли"
   },
   "debt": {
     "placeholders": [],
@@ -87,27 +87,17 @@ window.STATE =
   },
   "additions": [],
   "coverage": {
-    "found": 6,
-    "fixed": 6,
-    "deferred": 0
+    "findings": 2,
+    "resolved": 2
   },
   "concerns": [
-    {
-      "title": "Художественное совпадение",
-      "note": "Низкие облака мягче утверждённого референса; нужна оценка на целевом дисплее."
-    },
-    {
-      "title": "Целевое устройство",
-      "note": "FPS и цвет на физическом MacBook M2 не измерялись."
-    }
+    "Композиция проверена на Windows Chrome, на MacBook M2 не проверялась."
   ],
   "reviewers": {
     "manifestSpec": null,
     "craft": null
   },
   "blind": {
-    "status": "findings",
-    "note": "Первичная независимая приёмка выявила слабые низкие облака и незаметное перекрытие луны. После ремонта выполнен повторный просмотр координатором: низкие массы и пересечение диска видны, но фактура остаётся мягче референса; физический MacBook M2 не проверен."
-  },
-  "polish": null
+    "result": "Встроенный браузер без WebGL2; координатор проверил Chrome: арка и луна видны в проёме, дальние объекты полупрозрачны."
+  }
 }
