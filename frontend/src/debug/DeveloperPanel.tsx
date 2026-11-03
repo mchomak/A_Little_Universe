@@ -198,7 +198,7 @@ function galleryPhotoLayoutControls(variant: 'A' | 'B'): readonly NumericControl
   const prefix = `scenes.gallery.galleryLayout${variant}` as const
   return [
     { path: `${prefix}.laneWidth` as ComposerFieldPath, label: 'Ширина стороны с картинами', unit: 'м', min: 6, max: 12, step: 0.1 },
-    { path: `${prefix}.offsetX` as ComposerFieldPath, label: 'Смещение картин · X', unit: 'м', min: -3, max: 3, step: 0.05 },
+    { path: `${prefix}.offsetX` as ComposerFieldPath, label: variant === 'B' ? 'Смещение обеих сторон от центра · X' : 'Смещение картин · X', unit: 'м', min: variant === 'B' ? -2.5 : -3, max: 3, step: 0.05 },
     { path: `${prefix}.offsetY` as ComposerFieldPath, label: 'Смещение картин · Y', unit: 'м', min: -2, max: 2, step: 0.05 },
     { path: `${prefix}.offsetZ` as ComposerFieldPath, label: 'Смещение картин · Z', unit: 'м', min: -5, max: 5, step: 0.05 },
   ]
@@ -778,7 +778,8 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
                 <option value="between-columns">B · Между колоннами</option>
               </select>
             </div>
-            <p>Настройки ниже относятся к выбранному варианту; параметры A и B сохраняются отдельно.</p>
+            {config.scenes.gallery.galleryLayoutVariant === 'between-columns' && <p>Настройки ниже относятся к B и сохраняются отдельно. Для X минус приближает обе стороны к центру, плюс отдаляет.</p>}
+            {config.scenes.gallery.galleryLayoutVariant === 'on-columns' && <p>Настройки ниже относятся к A и сохраняются отдельно от B.</p>}
             {galleryPhotoLayoutControls(config.scenes.gallery.galleryLayoutVariant === 'on-columns' ? 'A' : 'B').map(range)}
           </details>
           <details open><summary>Арка у Луны</summary>

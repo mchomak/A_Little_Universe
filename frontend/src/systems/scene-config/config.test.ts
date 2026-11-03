@@ -679,6 +679,16 @@ it('migrates the current gallery width into independent A/B photo layout profile
   expect(customized.scenes.gallery.galleryLayoutVariant).toBe('between-columns')
   expect(customized.scenes.gallery.galleryLayoutA).toEqual({ laneWidth: 7, offsetX: 0.3, offsetY: -0.2, offsetZ: 1.1 })
   expect(customized.scenes.gallery.galleryLayoutB).toEqual({ laneWidth: 7, offsetX: -0.4, offsetY: 0.5, offsetZ: -2.1 })
+  const tightB = normalizeConfig({ schemaVersion: 17, scenes: { gallery: {
+    galleryLayoutA: { offsetX: -3 },
+    galleryLayoutB: { laneWidth: 6, offsetX: -2.75 },
+  } } })
+  expect(tightB.scenes.gallery.galleryLayoutA.offsetX).toBe(-3)
+  expect(tightB.scenes.gallery.galleryLayoutB).toMatchObject({ laneWidth: 6, offsetX: -2.5 })
+  const savedV17Profile = normalizeConfig({ schemaVersion: 17, scenes: { gallery: { galleryLayoutB: { offsetX: -3 } } } })
+  expect(savedV17Profile.scenes.gallery.galleryLayoutB.offsetX).toBe(-2.5)
+  const invalidBOffset = normalizeConfig({ schemaVersion: 17, scenes: { gallery: { galleryLayoutB: { laneWidth: 6, offsetX: -3.1 } } } })
+  expect(invalidBOffset.scenes.gallery.galleryLayoutB).toMatchObject({ laneWidth: 6, offsetX: 0 })
 })
 
 

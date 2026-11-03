@@ -60,7 +60,7 @@ export function createMemoryThreadPaths(memories: readonly GalleryMemory[] = GAL
       startOrder: connection.start,
       endOrder: connection.end,
       start: [outerFrameX(startMemory, galleryWidth, variant, layout), railY, startZ],
-      control: [side * ((layout?.laneWidth ?? galleryWidth) / 2 + THREAD_OUTER_FRAME_GAP + Math.abs(connection.bend) * 0.4) + (layout?.offsetX ?? 0), railY + connection.lift, middleZ],
+      control: [startPosition[0] + side * (THREAD_OUTER_FRAME_GAP + Math.abs(connection.bend) * 0.4), railY + connection.lift, middleZ],
       end: [outerFrameX(endMemory, galleryWidth, variant, layout), railY, endZ],
     })
   }

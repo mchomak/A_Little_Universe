@@ -627,7 +627,9 @@ function normalizeGallery(input: Record<string, unknown> | undefined): SceneComp
     },
     galleryLayoutB: {
       laneWidth: numberValue(layoutB?.laneWidth, numberValue(input?.galleryWidth, d.galleryLayoutB.laneWidth, 6, 12), 6, 12),
-      offsetX: numberValue(layoutB?.offsetX, d.galleryLayoutB.offsetX, -3, 3),
+      // v17 profiles allowed -3; preserve those saved values while applying the
+      // tighter current bound used to keep the two mirrored cards apart.
+      offsetX: clampedNumberValue(layoutB?.offsetX, d.galleryLayoutB.offsetX, -3, 3, -2.5, 3),
       offsetY: numberValue(layoutB?.offsetY, d.galleryLayoutB.offsetY, -2, 2),
       offsetZ: numberValue(layoutB?.offsetZ, d.galleryLayoutB.offsetZ, -5, 5),
     },
@@ -892,6 +894,11 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 function numberValue(value: unknown, fallback: number, min: number, max: number, integer = false) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max || (integer && !Number.isInteger(value))) return fallback
   return value
+}
+
+function clampedNumberValue(value: unknown, fallback: number, acceptedMin: number, acceptedMax: number, min: number, max: number, integer = false) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < acceptedMin || value > acceptedMax || (integer && !Number.isInteger(value))) return fallback
+  return clamp(value, min, max)
 }
 
 function migrateLegacyNumber(value: unknown, fallback: number, legacyMin: number, legacyMax: number, min: number, max: number, integer = false) {

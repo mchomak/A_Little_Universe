@@ -48,8 +48,8 @@ describe('gallery memory thread paths', () => {
     const layout = { laneWidth: 9, offsetX: 0.2, offsetY: 0.15, offsetZ: -0.5 }
     const paths = createMemoryThreadPaths(GALLERY_MEMORIES, GALLERY.width, 'between-columns', layout)
     expect(paths).toHaveLength(3)
-    expect(paths[0]!.start[0]).toBeCloseTo(-5.65)
-    expect(paths[0]!.end[0]).toBeCloseTo(-5.65)
+    expect(paths[0]!.start[0]).toBeCloseTo(-6.05)
+    expect(paths[0]!.end[0]).toBeCloseTo(-6.05)
     expect(paths[0]!.start[2]).not.toBe(paths[0]!.end[2])
     expect(paths.every(path => [...path.start, ...path.control, ...path.end].every(Number.isFinite))).toBe(true)
   })

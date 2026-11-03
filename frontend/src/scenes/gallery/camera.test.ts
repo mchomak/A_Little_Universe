@@ -45,7 +45,7 @@ describe('focus dolly', () => {
 
     expect(memory.order).toBe(2)
     expect(targetA).toEqual([-3.5, 0, -15.3])
-    expect(targetB).toEqual([-3.75, 0.1, -21.1])
+    expect(targetB).toEqual([-4.25, 0.1, -21.1])
     expect(focusedA.z).not.toBeCloseTo(focusedB.z)
     expect(focusedB.x).toBeCloseTo(targetB[0] - memory.side * 4.8)
     expect(focusedB.z).toBeCloseTo(targetB[2])

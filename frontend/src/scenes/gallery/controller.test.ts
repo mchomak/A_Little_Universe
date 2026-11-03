@@ -29,6 +29,35 @@ describe('gallery travel', () => {
       expect(wideZ).toBe(defaultZ)
     }
   })
+  it('mirrors B photo X offsets while preserving the original A translation', () => {
+    const left = GALLERY_MEMORIES[0]!
+    const right = GALLERY_MEMORIES[1]!
+    const layout = { laneWidth: 8, offsetX: -1.25, offsetY: 0, offsetZ: 0 }
+    const leftIn = memoryPosition(left, GALLERY.width, 'between-columns', layout)
+    const rightIn = memoryPosition(right, GALLERY.width, 'between-columns', layout)
+    expect(leftIn[0]).toBe(-2.75)
+    expect(rightIn[0]).toBe(2.75)
+
+    const leftOut = memoryPosition(left, GALLERY.width, 'between-columns', { ...layout, offsetX: 1.25 })
+    const rightOut = memoryPosition(right, GALLERY.width, 'between-columns', { ...layout, offsetX: 1.25 })
+    expect(leftOut[0]).toBe(-5.25)
+    expect(rightOut[0]).toBe(5.25)
+    expect(leftIn[0]).toBe(-rightIn[0])
+    expect(leftOut[0]).toBe(-rightOut[0])
+
+    expect(memoryPosition(left, GALLERY.width, 'on-columns', layout)[0]).toBe(-5.25)
+    expect(memoryPosition(right, GALLERY.width, 'on-columns', layout)[0]).toBe(2.75)
+  })
+  it('keeps a nonzero gap between opposing B photos at the tightest valid layout', () => {
+    const left = memoryPosition(GALLERY_MEMORIES[0]!, GALLERY.width, 'between-columns', { laneWidth: 6, offsetX: -2.5, offsetY: 0, offsetZ: 0 })
+    const right = memoryPosition(GALLERY_MEMORIES[1]!, GALLERY.width, 'between-columns', { laneWidth: 6, offsetX: -2.5, offsetY: 0, offsetZ: 0 })
+    expect(left[0]).toBe(-0.5)
+    expect(right[0]).toBe(0.5)
+    expect(right[0] - left[0]).toBeGreaterThanOrEqual(1)
+
+    const invalid = memoryPosition(GALLERY_MEMORIES[0]!, GALLERY.width, 'between-columns', { laneWidth: 6, offsetX: -3, offsetY: 0, offsetZ: 0 })
+    expect(invalid[0]).toBe(-0.5)
+  })
   it('moves forward for a spreading pinch, backward for a closing pinch and clamps both ends', () => {
     travel(5); advanceGallery(.2); expect(galleryMotion.progress).toBeGreaterThan(0)
     travel(-100); expect(galleryMotion.target).toBe(0); travel(1000); expect(galleryMotion.target).toBe(GALLERY.travel)
@@ -133,7 +162,7 @@ describe('gallery travel', () => {
     const nextLeftPosition = memoryPosition(nextLeft, GALLERY.width, 'between-columns')
     expect(nextLeftPosition[0]).toBe(-3.5)
     expect(nextLeftPosition[2]).toBeCloseTo(-20.7, 8)
-    expect(memoryPosition(left, GALLERY.width, 'between-columns', { laneWidth: GALLERY.width, offsetX: 0.4, offsetY: 0.2, offsetZ: 1 })).toEqual([-3.1, 0.2, -8.9])
+    expect(memoryPosition(left, GALLERY.width, 'between-columns', { laneWidth: GALLERY.width, offsetX: 0.4, offsetY: 0.2, offsetZ: 1 })).toEqual([-3.9, 0.2, -8.9])
     expect(galleryColumnPositions(left, GALLERY.width, 'between-columns')).toEqual([[-3.5, 0, -4.5], [3.5, 0, -4.5], [-3.5, 0, -15.3], [3.5, 0, -15.3]])
     expect(galleryColumnPositions(right, GALLERY.width, 'between-columns')).toEqual([])
     expect(galleryColumnPositions(nextLeft, GALLERY.width, 'between-columns')).toEqual([[-3.5, 0, -26.1], [3.5, 0, -26.1]])
@@ -147,14 +176,25 @@ describe('gallery travel', () => {
       .filter(([x]) => Math.sign(x) === side)
       .map(([, , supportZ]) => supportZ))].sort((a, b) => b - a))
     expect(supportsBySide.map(supports => supports.length)).toEqual([7, 7])
+    for (const supports of supportsBySide) {
+      for (let index = 1; index < supports.length; index++) {
+        expect(supports[index - 1]! - supports[index]!).toBeCloseTo(GALLERY.spacing * 2, 8)
+      }
+    }
 
+    const rowCenters: number[] = []
     for (let row = 0; row < 6; row++) {
       const leftPhoto = memoryPosition(GALLERY_MEMORIES[row * 2]!, GALLERY.width, 'between-columns')
       const rightPhoto = memoryPosition(GALLERY_MEMORIES[row * 2 + 1]!, GALLERY.width, 'between-columns')
+      rowCenters.push(leftPhoto[2])
       for (const supports of supportsBySide) {
         expect(leftPhoto[2]).toBeCloseTo((supports[row]! + supports[row + 1]!) / 2, 8)
         expect(rightPhoto[2]).toBeCloseTo(leftPhoto[2], 8)
       }
     }
+    for (let row = 1; row < rowCenters.length; row++) {
+      expect(rowCenters[row - 1]! - rowCenters[row]!).toBeCloseTo(GALLERY.spacing * 2, 8)
+    }
+    expect(rowCenters.at(-1)).toBeCloseTo(GALLERY.startZ - (GALLERY.travel - 4), 8)
   })
 
