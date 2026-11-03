@@ -1,65 +1,64 @@
 window.STATE =
 {
-  "slug": "macbook-production",
-  "dir": "2026-11-03-macbook-production",
-  "title": "Показ на MacBook и плавность сцен",
+  "slug": "lily-magical-growth-bloom",
+  "dir": "2026-11-03-lily-magical-growth-bloom--wip",
+  "title": "Lily 004 — магический рост и раскрытие",
   "mode": "full",
   "depth": "normal",
   "polish": null,
   "tier": "T1",
   "briefFile": "2026-11-03-brief.md",
   "memoryFile": "AGENTS.md",
-  "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
-  "startedAt": "2026-11-03T14:53:22+03:00",
-  "updatedAt": "2026-11-03T15:18:43+03:00",
-  "finishedAt": "2026-11-03T15:18:43+03:00",
+  "skillDir": "C:\\Users\\McHomak\\.agents\\skills\\autopilot",
+  "startedAt": "2026-11-03T14:59:03+03:00",
+  "updatedAt": "2026-11-03T15:12:01+03:00",
+  "finishedAt": null,
   "stages": [
     {
       "id": "preflight",
       "status": "done",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "startedAt": "2026-11-03T14:59:03+03:00",
+      "finishedAt": "2026-11-03T15:05:11+03:00"
     },
     {
       "id": "manifest",
       "status": "done",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "finishedAt": "2026-11-03T15:05:11+03:00"
     },
     {
       "id": "briefing",
       "status": "skipped",
-      "note": "полный автомат — самобрифинг"
+      "note": "полный автомат — самобрифинг; дополнительных вопросов нет"
     },
     {
       "id": "spec",
       "status": "done",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "startedAt": "2026-11-03T15:05:11+03:00",
+      "finishedAt": "2026-11-03T15:12:01+03:00"
     },
     {
       "id": "plan",
       "status": "done",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "finishedAt": "2026-11-03T15:12:01+03:00"
     },
     {
       "id": "build",
-      "status": "done",
-      "startedAt": "2026-11-03T14:56:36+03:00",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "status": "active",
+      "startedAt": "2026-11-03T15:12:01+03:00"
     },
     {
       "id": "review",
-      "status": "done",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "status": "pending"
     },
     {
       "id": "final",
-      "status": "done",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "status": "pending"
     }
   ],
   "requirements": {
-    "total": 9,
-    "done": 9,
-    "inTicket": 0,
+    "total": 69,
+    "done": 0,
+    "inTicket": 69,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
@@ -68,87 +67,138 @@ window.STATE =
   "tickets": [
     {
       "id": "01",
-      "title": "Удаление подготовки и инструкции",
+      "title": "Материалы и DEV-настройки",
       "requirements": [
+        "R01",
         "R02",
-        "R03"
+        "R03",
+        "R04",
+        "R05",
+        "R06",
+        "R07",
+        "R08",
+        "R09",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R14",
+        "R58",
+        "R59",
+        "R60",
+        "R61",
+        "R62",
+        "R63",
+        "R64",
+        "R65",
+        "R66",
+        "R67",
+        "R68",
+        "R69"
       ],
       "blockedBy": [],
       "wave": 1,
       "zone": [
-        "Запуск и документация"
+        "lily material/config"
       ],
-      "status": "done",
-      "startedAt": "2026-11-03T14:56:36+03:00",
+      "status": "in-progress",
       "retries": 0,
       "repairs": 0,
       "handoffs": 0,
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "startedAt": "2026-11-03T15:12:01+03:00"
     },
     {
       "id": "02",
-      "title": "Переход и взаимодействие",
+      "title": "Вихрь и пыльца",
       "requirements": [
-        "R07",
-        "R08"
-      ],
-      "blockedBy": [],
-      "wave": 1,
-      "zone": [
-        "Сцены 02–03"
-      ],
-      "status": "done",
-      "startedAt": "2026-11-03T14:56:36+03:00",
-      "retries": 0,
-      "repairs": 0,
-      "handoffs": 0,
-      "finishedAt": "2026-11-03T15:18:43+03:00"
-    },
-    {
-      "id": "03",
-      "title": "Движение фона",
-      "requirements": [
+        "R01",
+        "R02",
+        "R03",
         "R04",
         "R05",
-        "R06"
+        "R06",
+        "R15",
+        "R16",
+        "R17",
+        "R18",
+        "R19",
+        "R20",
+        "R21",
+        "R22",
+        "R23",
+        "R24",
+        "R25",
+        "R26",
+        "R27",
+        "R28",
+        "R29",
+        "R30",
+        "R39",
+        "R40",
+        "R41",
+        "R42",
+        "R43",
+        "R44",
+        "R45",
+        "R46",
+        "R47",
+        "R48",
+        "R49",
+        "R50",
+        "R51",
+        "R52",
+        "R53",
+        "R54",
+        "R55",
+        "R56",
+        "R57",
+        "R58",
+        "R59",
+        "R60",
+        "R61",
+        "R62",
+        "R63",
+        "R64",
+        "R65",
+        "R66",
+        "R67",
+        "R68",
+        "R69"
       ],
-      "blockedBy": [],
-      "wave": 1,
+      "blockedBy": [
+        "01"
+      ],
+      "wave": 2,
       "zone": [
-        "Фон"
+        "lily particles"
       ],
-      "status": "done",
-      "startedAt": "2026-11-03T14:56:36+03:00",
+      "status": "pending",
       "retries": 0,
       "repairs": 0,
-      "handoffs": 0,
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "handoffs": 0
     }
   ],
   "singlePass": null,
-  "tests": {
-    "passed": 553,
-    "failed": 0
-  },
+  "tests": null,
   "debt": {
     "placeholders": [],
-    "assumptions": [
-      "Перемещение фона реализовано как панорамирование видимой области статичного изображения."
-    ],
+    "assumptions": [],
     "emptyEnv": []
   },
   "additions": [],
   "coverage": {
-    "found": 2,
-    "fixed": 2,
-    "deferred": 0
+    "findings": 3,
+    "resolved": 3,
+    "notes": [
+      "Dissipation begins only after full growth",
+      "Vein can use local coordinates without suitable UV",
+      "Preservation is comparison against fetched main; absence documented, no replacement effects"
+    ]
   },
   "concerns": [],
   "reviewers": {
     "manifestSpec": null,
     "craft": null
   },
-  "blind": {
-    "result": "Приёмка по брифу: устаревшая запись AGENTS.md исправлена; визуальная проверка на MacBook остаётся открытой."
-  }
+  "blind": null
 }

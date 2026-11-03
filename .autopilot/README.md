@@ -50,3 +50,4 @@
 | 2026-11-02 | `2026-11-02-lily-growth-pulse` | завершено | Импульс роста Lily 004 |
 
 | 2026-11-03 | `2026-11-03-macbook-production` | сдан с оговорками | Сцены и фон для MacBook; 553 теста; визуальная проверка на MacBook ожидается |
+| 2026-11-03 | `2026-11-03-lily-magical-growth-bloom--wip` | in progress | Lily 004 magical growth and bloom VFX |

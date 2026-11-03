@@ -1,4 +1,4 @@
-﻿import { expect, it, vi } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, normalizeConfig, SCENE_CONFIG_PRESETS } from './config'
 
 it('normalizes the shared opening background crop in partial schema v14 configs', () => {
@@ -881,3 +881,64 @@ it('applies a font change only after the requested local face is ready', async (
 async function resetForFontTest() {
   await configApi.resetConfig('all')
 }
+
+it('migrates schemas 1 through 20 into schema 21 Lily effect groups with bounded values', () => {
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(21)
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lilyBudGlow).toEqual({
+    enabled: true, intensity: 0.48, color: '#E9B9CE', rimStrength: 0.28, bloomBoost: 0.7,
+  })
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lilyLeafMaterial).toEqual({
+    translucencyStrength: 0.32, edgeLightIntensity: 0.2, colorVariation: 0.24,
+  })
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex).toEqual({
+    enabled: true, particleCount: 360, particleSize: 1.8, sizeVariation: 0.55, brightness: 1,
+    orbitRadius: 0.42, rotationSpeed: 1.2, verticalSpread: 0.9, spiralTightness: 1.4,
+    dissipationDuration: 4, dissipationSpread: 0.8, color: '#EBD4A7',
+  })
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen).toEqual({
+    enabled: true, particleCount: 48, particleSize: 1.6, glowIntensity: 0.75,
+    riseSpeed: 0.09, spreadRadius: 0.28, lifetime: 3.8, innerCupGlow: 0.35,
+  })
+
+  for (let schemaVersion = 1; schemaVersion <= 20; schemaVersion++) {
+    const migrated = normalizeConfig({ schemaVersion, scenes: { growth: { flowerGrowthDuration: 8.5 } } })
+    expect(migrated.schemaVersion).toBe(21)
+    expect(migrated.scenes.growth.flowerGrowthDuration).toBe(8.5)
+    expect(migrated.scenes.growth.lilyBudGlow).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lilyBudGlow)
+    expect(migrated.scenes.bloom.lilyBloomPollen).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen)
+  }
+
+  const saved = normalizeConfig({ schemaVersion: 20, scenes: {
+    growth: {
+      lilyBudGlow: { enabled: false, intensity: 1.25, color: '#aabbcc', rimStrength: 1.1, bloomBoost: 0.9 },
+      lilyLeafMaterial: { translucencyStrength: 0.8, edgeLightIntensity: 0.65, colorVariation: 0.42 },
+      growthVortex: { enabled: false, particleCount: 1200, particleSize: 4, sizeVariation: 0.8, brightness: 2,
+        orbitRadius: 1.2, rotationSpeed: 3.5, verticalSpread: 1.7, spiralTightness: 4.5,
+        dissipationDuration: 8, dissipationSpread: 2, color: '#abcdef' },
+      vfxPulseEnabled: false, vfxParticleCount: 224, seedFallDuration: 11, islandRadius: 0.95,
+    },
+    bloom: { lilyBloomPollen: { enabled: false, particleCount: 240, particleSize: 4, glowIntensity: 2,
+      riseSpeed: 0.35, spreadRadius: 0.6, lifetime: 8, innerCupGlow: 1.6 } },
+  } })
+  expect(saved.schemaVersion).toBe(21)
+  expect(saved.scenes.growth).toMatchObject({
+    lilyBudGlow: { enabled: false, intensity: 1.25, color: '#AABBCC', rimStrength: 1.1, bloomBoost: 0.9 },
+    lilyLeafMaterial: { translucencyStrength: 0.8, edgeLightIntensity: 0.65, colorVariation: 0.42 },
+    growthVortex: { enabled: false, particleCount: 1200, particleSize: 4, sizeVariation: 0.8, brightness: 2,
+      orbitRadius: 1.2, rotationSpeed: 3.5, verticalSpread: 1.7, spiralTightness: 4.5,
+      dissipationDuration: 8, dissipationSpread: 2, color: '#ABCDEF' },
+    vfxPulseEnabled: false, vfxParticleCount: 224, seedFallDuration: 11, islandRadius: 0.95,
+  })
+  expect(saved.scenes.bloom.lilyBloomPollen).toMatchObject({
+    enabled: false, particleCount: 240, particleSize: 4, glowIntensity: 2,
+    riseSpeed: 0.35, spreadRadius: 0.6, lifetime: 8, innerCupGlow: 1.6,
+  })
+  expect(Object.isFrozen(saved.scenes.growth.growthVortex)).toBe(true)
+
+  const invalid = normalizeConfig({ schemaVersion: 21, scenes: {
+    growth: { growthVortex: { particleCount: 1600.5, particleSize: 8.1, color: 'gold' } },
+    bloom: { lilyBloomPollen: { particleCount: 601, lifetime: Number.NaN } },
+  } })
+  expect(invalid.scenes.growth.growthVortex).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex)
+  expect(invalid.scenes.bloom.lilyBloomPollen).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen)
+})
