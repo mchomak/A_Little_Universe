@@ -15,12 +15,12 @@ Keep this file compact. Current project status, setup, and architecture are in [
 Current user instructions take priority over this file. Keep scene-by-scene implementation details and task-specific requirements in the README, storyboard, or the active task prompt.
 
 <!-- autopilot:start -->
-## Сцена 05: вода и облака
+## Сцена 05: вода, облака и компоновка картин
 
-`GalleryScene` → `MoonlitWorld` → `WetFloor` используют общий canvas, renderer и `galleryMotion.time`; пауза и reduced motion сохраняются.
+`GalleryScene` → `MoonlitWorld` → `WetFloor` используют общий canvas, renderer и `galleryMotion.time`; пауза и reduced motion сохраняются. Камера и выбор фотографии используют ту же функцию позиции, что и рендер.
 `gallery/waterMaterial.ts` управляет рябью и лунной дорожкой; `gallery/planarReflection.ts` владеет зеркальным проходом и восстановлением renderer/visibility. Тёмные подложки фото исключены из отражений, размытие остаётся общим с фотографиями.
 `gallery/world.ts` задаёт квоты и дистанционное качество облаков, `gallery/cloudMaterial.ts` — raymarch; максимум 24 массы standard / 16 low, отражённый проход дешевле основного. Оценка количества сэмплов не заменяет замер GPU.
-Настройки воды и облаков остаются в `scenes.gallery` (schema v16) и существующем DEV Inspector; подробности — `docs/scene-05-gallery.md`.
+Настройки галереи сохраняются в `scenes.gallery` Scene Composer schema v17. DEV Inspector позволяет переключать компоновку A «На колоннах» и B «Между колоннами»; у каждой отдельно настраиваются ширина ряда фотографий и смещения X/Y/Z. Ширина прохода и настройки колонн общие. Импорт schema v16 переносит прежний `galleryWidth` в оба варианта; A выбран по умолчанию. Общий film-checkpoint A/B для интерактивной прогулки отключён.
 В этом worktree: `Set-Location .\frontend; npm run dev -- --port 5199`; открыть `http://127.0.0.1:5199/?debug`.
 Проверка из `frontend`: `npm run check` (lint, Vitest, typecheck, production build).
 Прогоны и требования записаны в `.autopilot/`; требование снимается только пользователем.
