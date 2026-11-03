@@ -38,7 +38,7 @@ export function Preloader({ manager, onReady }: PreloaderProps) {
         setResult(value)
         collapseRef.current = value.ready
         // A quiet pause after real readiness, never a simulated loading duration.
-        if (value.ready && value.offline !== 'unavailable') timer = setTimeout(() => onReady(value), 1250)
+        if (value.ready) timer = setTimeout(() => onReady(value), 1250)
       })
     }
     // Guarantee a painted lightweight frame before starting the heavy module graph.
@@ -111,15 +111,12 @@ export function Preloader({ manager, onReady }: PreloaderProps) {
     <canvas className="preloader-particles" ref={canvas} style={{ '--preload-glow': visual.glow } as CSSProperties} aria-hidden="true" />
     <div className="preloader-copy">
       <p role="status" aria-live="polite">{progress.message}</p>
-      <progress aria-label="Подготовка обязательных ресурсов" max={progress.total} value={measured ? progress.completed : undefined} />
-      {progress.phase === 'assets' && <small>{progress.completed} из {progress.total} ресурсов</small>}
-      {result && (!result.ready || result.offline === 'unavailable') && <div className="preloader-recovery">
-        {[...result.errors, ...result.warnings].map((message) => <p key={message}>{message}</p>)}
-        {result.recovery !== 'reload' && <button type="button" onClick={retry}>Повторить проверку</button>}
-        {!result.ready && <button type="button" onClick={() => location.reload()}>Перезагрузить</button>}
-        {result.ready && <button type="button" onClick={() => onReady(result)}>Продолжить с доступными ресурсами</button>}
+      <progress aria-label="Подготовка подарка" max={progress.total} value={measured ? progress.completed : undefined} />
+      {result && !result.ready && <div className="preloader-recovery">
+        <p>Кажется, что-то задержалось. Давай попробуем ещё раз.</p>
+        {result.recovery !== 'reload' && <button type="button" onClick={retry}>Попробовать ещё раз</button>}
+        <button type="button" onClick={() => location.reload()}>Начать заново</button>
       </div>}
-      {result?.offline === 'development' && <small>Автономный кэш проверяется в production-сборке.</small>}
     </div>
   </main>
 }

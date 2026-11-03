@@ -63,10 +63,10 @@ export class AssetManager {
     } catch (error) {
       const recovery = this.completed.has('modules') ? 'retry' : 'reload'
       errors.push(`Не удалось подготовить фильм: ${errorMessage(error)}. ${recovery === 'reload' ? 'Перезагрузи страницу после восстановления сети.' : 'Повтори проверку.'}`)
-      emit('error', 'Не всё удалось загрузить')
+      emit('error', 'Кажется, что-то задержалось…')
       return { ready: false, offline: 'unavailable', recovery, errors, warnings }
     }
-    emit('assets', 'Проверяем ресурсы фильма…')
+    emit('assets', 'Собираем твою маленькую вселенную…')
     for (const asset of this.manifest.assets) {
       if (this.completed.has(asset.url)) continue
       try {
@@ -84,16 +84,16 @@ export class AssetManager {
       } catch (error) {
         ;(asset.required ? errors : warnings).push(`${asset.url}: ${errorMessage(error)}`)
       }
-      emit('assets', 'Проверяем ресурсы фильма…')
+      emit('assets', 'Собираем твою маленькую вселенную…')
     }
     if (errors.length) {
-      emit('error', 'Не всё удалось загрузить')
+      emit('error', 'Кажется, что-то задержалось…')
       return { ready: false, offline: 'unavailable', errors, warnings }
     }
     let offline: PreparationResult['offline'] = 'development'
     if (this.options.development) warnings.push('Режим разработки: автономный запуск проверяется в production-сборке.')
     else {
-      emit('cache', 'Проверяем готовность без сети…')
+      emit('cache', 'Почти готово…')
       try {
         await (this.options.verifyOffline ?? prepareOffline)(this.manifest)
         offline = 'verified'
