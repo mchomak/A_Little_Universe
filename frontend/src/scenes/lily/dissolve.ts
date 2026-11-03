@@ -298,15 +298,22 @@ export function createLilyParticleGeometry(source: LilySurfaceSource, count: num
       const routes = planVisiblePortraitRoutes(positions, parts, seeds, count, source, portrait)
       const totalTargets = Math.min(portrait.targets.length, portrait.targetPositions.length)
       const targetIndices = selectRepresentativePortraitTargets(portrait.targets.slice(0, totalTargets), routes.length)
+      const capture = normalizePortraitCaptureSettings(portrait.capture)
+      const routeSettings = { ...portrait.settings, vortexSpeedMultiplier: capture.vortexSpeedMultiplier,
+        dissolveDuration: Math.max(0.001, portrait.dissolveDuration), edgeWidth: portrait.edgeWidth }
+      const targetTrees = createPortraitTargetTrees(targetIndices, portrait.targetPositions)
       for (let routeIndex = 0; routeIndex < routes.length; routeIndex++) {
         const route = routes[routeIndex]!
-        // The approved export is ordered by reveal region. Sampling across the
-        // entire ordering preserves the full silhouette even when fewer routes
-        // are visible than there are target points.
-        const targetIndex = targetIndices[routeIndex]!
+        // Keep each reveal stage in its authored part of the portrait, while
+        // choosing the closest unused point to the particle's current orbit.
+        const stage = Math.min(3, Math.floor(routeIndex / Math.max(1, routes.length) * 4))
+        const origin: [number, number, number] = [positions[route.index * 3]!, positions[route.index * 3 + 1]!, positions[route.index * 3 + 2]!]
+        const departure = getLilyParticleVortexPosition(origin, parts[route.index]!, seeds[route.index]!, route.launchTime,
+          source, routeSettings, route.captureMotion)
+        const targetIndex = takeNearestPortraitTarget(targetTrees.get(stage), departure)
+        if (targetIndex === undefined) continue
         const target = portrait.targets[targetIndex]!
         const targetPosition = portrait.targetPositions[targetIndex]!
-        const stage = Math.min(3, Math.floor(routeIndex / Math.max(1, routes.length) * 4))
         const index = route.index, i3 = index * 3, i4 = index * 4
         portraitTargets.set([targetPosition[0], targetPosition[1], targetPosition[2], stage], i4)
         portraitMotion.set([route.launchTime, route.travelDuration, clampFinite(target.tone, 0, 1, 0.5), 1 + clampFinite(target.contrast, 0, 1, 0)], i4)
@@ -390,6 +397,85 @@ export function selectRepresentativePortraitTargets(targets: readonly StarPortra
 }
 
 interface PlannedPortraitRoute { index: number; launchTime: number; travelDuration: number; captureMotion: boolean }
+
+interface PortraitTargetKdNode {
+  index: number
+  point: readonly [number, number, number]
+  axis: number
+  boundsMin: [number, number, number]
+  boundsMax: [number, number, number]
+  activeCount: number
+  active: boolean
+  parent?: PortraitTargetKdNode
+  left?: PortraitTargetKdNode
+  right?: PortraitTargetKdNode
+}
+
+function createPortraitTargetTrees(targetIndices: readonly number[], targetPositions: readonly [number, number, number][]) {
+  const groups = new Map<number, { index: number; point: readonly [number, number, number] }[]>()
+  targetIndices.forEach((index, ordinal) => {
+    const stage = Math.min(3, Math.floor(ordinal / Math.max(1, targetIndices.length) * 4))
+    const group = groups.get(stage) ?? []
+    group.push({ index, point: targetPositions[index]! })
+    groups.set(stage, group)
+  })
+  return new Map(Array.from(groups, ([stage, points]) => [stage, buildPortraitTargetTree(points)]))
+}
+
+function buildPortraitTargetTree(points: { index: number; point: readonly [number, number, number] }[], depth = 0, parent?: PortraitTargetKdNode): PortraitTargetKdNode | undefined {
+  if (points.length === 0) return undefined
+  const axis = depth % 3
+  points.sort((a, b) => a.point[axis]! - b.point[axis]! || a.index - b.index)
+  const middle = Math.floor(points.length / 2)
+  const entry = points[middle]!
+  const node: PortraitTargetKdNode = { ...entry, axis, boundsMin: [...entry.point], boundsMax: [...entry.point], activeCount: 1, active: true,
+    ...(parent ? { parent } : {}) }
+  const left = buildPortraitTargetTree(points.slice(0, middle), depth + 1, node)
+  const right = buildPortraitTargetTree(points.slice(middle + 1), depth + 1, node)
+  if (left) node.left = left
+  if (right) node.right = right
+  for (const child of [node.left, node.right]) {
+    if (!child) continue
+    node.activeCount += child.activeCount
+    for (let coordinate = 0; coordinate < 3; coordinate++) {
+      node.boundsMin[coordinate] = Math.min(node.boundsMin[coordinate]!, child.boundsMin[coordinate]!)
+      node.boundsMax[coordinate] = Math.max(node.boundsMax[coordinate]!, child.boundsMax[coordinate]!)
+    }
+  }
+  return node
+}
+
+function takeNearestPortraitTarget(tree: PortraitTargetKdNode | undefined, position: readonly [number, number, number]): number | undefined {
+  let bestNode: PortraitTargetKdNode | undefined
+  let bestDistance = Infinity
+  const distanceToBounds = (node: PortraitTargetKdNode) => {
+    let distance = 0
+    for (let axis = 0; axis < 3; axis++) {
+      const delta = position[axis]! < node.boundsMin[axis]! ? node.boundsMin[axis]! - position[axis]!
+        : position[axis]! > node.boundsMax[axis]! ? position[axis]! - node.boundsMax[axis]! : 0
+      distance += delta * delta
+    }
+    return distance
+  }
+  const visit = (node: PortraitTargetKdNode | undefined) => {
+    if (!node || node.activeCount === 0 || distanceToBounds(node) > bestDistance) return
+    const dx = position[0] - node.point[0], dy = position[1] - node.point[1], dz = position[2] - node.point[2]
+    const distance = dx * dx + dy * dy + dz * dz
+    if (node.active && (distance < bestDistance || (distance === bestDistance && (bestNode === undefined || node.index < bestNode.index)))) {
+      bestDistance = distance
+      bestNode = node
+    }
+    const leftDistance = node.left ? distanceToBounds(node.left) : Infinity
+    const rightDistance = node.right ? distanceToBounds(node.right) : Infinity
+    if (leftDistance <= rightDistance) { visit(node.left); visit(node.right) }
+    else { visit(node.right); visit(node.left) }
+  }
+  visit(tree)
+  if (!bestNode) return undefined
+  bestNode.active = false
+  for (let node: PortraitTargetKdNode | undefined = bestNode; node; node = node.parent) node.activeCount -= 1
+  return bestNode.index
+}
 
 function isVisiblePortraitGeometry(options: LilyPortraitGeometryOptions): options is LilyVisiblePortraitGeometryOptions {
   return 'capture' in options && 'cameraBasisAtTime' in options && typeof options.cameraBasisAtTime === 'function'

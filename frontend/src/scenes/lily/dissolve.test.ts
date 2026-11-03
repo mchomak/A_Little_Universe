@@ -3,7 +3,7 @@ import { expect, it } from 'vitest'
 import { getBloomCloseupPose } from '../../engine/bloomCamera'
 import { getIdentityCameraMoveTarget } from '../../engine/identityCamera'
 import { createLilyGeometryParticleSource } from './particleSource'
-import { createLilyDissolveUniforms, createLilyParticleGeometry, createLilyParticleMaterial, getLilyParticleCaptureRiseAge, getLilyParticleFade, getLilyParticleOrbitRadius, getLilyParticlePortraitAlpha, getLilyParticlePortraitSettledProgress, getLilyParticlePortraitPosition, getLilyParticleVerticalRise, getLilyParticleVortexPosition, glslFloat, LILY_FIELD, LILY_PARTICLE_CAPTURE_FINAL_RISE_RATE, LILY_PARTICLE_CAPTURE_SLOWDOWN_DURATION, LILY_PARTICLE_CAPTURE_SLOWDOWN_START_AGE, LILY_PARTICLE_FADE_START_SECONDS, LILY_PARTICLE_MAX_POINT_SIZE, LILY_PARTICLE_MAX_SIZE_ACCENT, LILY_PARTICLE_TAIL_SECONDS, LILY_PORTRAIT_MIN_FEATURE_ACCENT, LILY_PORTRAIT_MIN_TONE_CONTRAST, LILY_PORTRAIT_SETTLED_RAMP_SECONDS, LILY_VORTEX_RADIUS_CAP_OFFSET, patchLilyMaterial, updateLilyDissolve, updateLilyParticleSettings, updateLilyPortraitAppearance, updateLilyPortraitSettings } from './dissolve'
+import { createLilyDissolveUniforms, createLilyParticleGeometry, createLilyParticleMaterial, getLilyParticleCaptureRiseAge, getLilyParticleFade, getLilyParticleOrbitRadius, getLilyParticlePortraitAlpha, getLilyParticlePortraitSettledProgress, getLilyParticlePortraitPosition, getLilyParticleVerticalRise, getLilyParticleVortexPosition, glslFloat, LILY_FIELD, LILY_PARTICLE_CAPTURE_FINAL_RISE_RATE, LILY_PARTICLE_CAPTURE_SLOWDOWN_DURATION, LILY_PARTICLE_CAPTURE_SLOWDOWN_START_AGE, LILY_PARTICLE_FADE_START_SECONDS, LILY_PARTICLE_MAX_POINT_SIZE, LILY_PARTICLE_MAX_SIZE_ACCENT, LILY_PARTICLE_TAIL_SECONDS, LILY_PORTRAIT_MIN_FEATURE_ACCENT, LILY_PORTRAIT_MIN_TONE_CONTRAST, LILY_PORTRAIT_SETTLED_RAMP_SECONDS, LILY_VORTEX_RADIUS_CAP_OFFSET, patchLilyMaterial, selectRepresentativePortraitTargets, updateLilyDissolve, updateLilyParticleSettings, updateLilyPortraitAppearance, updateLilyPortraitSettings } from './dissolve'
 import type { LilySurfaceSource } from './particleSource'
 import { createPortraitCameraBasis, projectPortraitPoint } from './portraitTargets'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
@@ -460,6 +460,77 @@ it('assigns a limited number of visible routes across the whole portrait and kee
   expect(Math.max(...selected.map((index) => target.getY(index)))).toBeGreaterThan(0.8)
   expect(selected.every((index) => Math.abs(geometry.getAttribute('aArtSize').getX(index) - 0.75) < 1e-5)).toBe(true)
   expect(selected.every((index) => Math.abs(geometry.getAttribute('aArtBrightness').getX(index) - 0.45) < 1e-5)).toBe(true)
+  geometry.dispose()
+})
+
+it('matches each visible particle to the nearest unused point in its reveal stage', () => {
+  const source: LilySurfaceSource = {
+    center: [0, 0.5, 0], radius: 1, minY: 0, maxY: 1,
+    sample: (index) => sampleRoute(index),
+    sampleSurface: (index) => ({ position: sampleRoute(index), part: 0 }),
+  }
+  function sampleRoute(index: number): [number, number, number] {
+    const angle = index * 2.399963229728653
+    const radius = 0.28 + (index % 7) * 0.035
+    return [Math.cos(angle) * radius, 0.38 + (index % 5) * 0.055, Math.sin(angle) * radius]
+  }
+  const targets = Array.from({ length: 48 }, (_, index) => ({
+    u: (index % 8) / 8, v: Math.floor(index / 8) / 6, tone: 0.5, contrast: 0.4,
+    featureWeight: 0.5, seed: (index + 0.5) / 48, photoColorLinear: [0.2, 0.4, 0.6] as const,
+  }))
+  const targetPositions = targets.map((_, index) => [
+    (((index * 19) % 48) / 47 - 0.5) * 1.7,
+    (((index * 13) % 48) / 47 - 0.5) * 1.3 + 0.45,
+    (((index * 7) % 48) / 47 - 0.5) * 0.15,
+  ] as [number, number, number])
+  const basis = createPortraitCameraBasis({ eye: [0, 0.5, 6], lookAt: [0, 0.5, 0], aspect: 4 / 3, fovDegrees: 38, planeDistance: 3 })
+  const capture = {
+    portraitStartProgress: 0.5, portraitFraction: 0.4, portraitMinTurns: 0, portraitMaxTurns: 0,
+    portraitSteering: 1, portraitBraking: 1, portraitSettledBrightness: 1.15, vortexSpeedMultiplier: 0.9,
+  }
+  const settings = {
+    particleBrightness: 1.25, vortexRadius: 0.8, vortexExpansion: 0.45,
+    swirlSpeed: 0, swirlAcceleration: 0, centerDissolveAt: 0.5,
+  }
+  const options = {
+    targets, targetPositions, start: 12, duration: 8.5, dissolveDuration: 12, edgeWidth: 0.035,
+    cameraBasisAtTime: () => basis, capture, settings,
+  }
+  const geometry = createLilyParticleGeometry(source, 48, options)
+  const routeAttribute = geometry.getAttribute('aPortraitRoute')
+  const motion = geometry.getAttribute('aPortraitMotion')
+  const assignedTargets = geometry.getAttribute('aPortraitTarget')
+  const seedData = geometry.getAttribute('aPortraitSeedData')
+  const positions = geometry.getAttribute('position')
+  const parts = geometry.getAttribute('aPart')
+  const seeds = geometry.getAttribute('aSeed')
+  const routed = Array.from({ length: routeAttribute.count }, (_, index) => index)
+    .filter((index) => routeAttribute.getX(index) > 0.5)
+    .sort((a, b) => motion.getX(a) - motion.getX(b) || a - b)
+  const targetIndices = selectRepresentativePortraitTargets(targets, routed.length)
+  const distanceSquared = (a: readonly number[], b: readonly number[]) => (a[0]! - b[0]!) ** 2 + (a[1]! - b[1]!) ** 2 + (a[2]! - b[2]!) ** 2
+  const remainingByStage = new Map<number, number[]>()
+  targetIndices.forEach((targetIndex, ordinal) => {
+    const stage = Math.min(3, Math.floor(ordinal / targetIndices.length * 4))
+    remainingByStage.set(stage, [...(remainingByStage.get(stage) ?? []), targetIndex])
+  })
+
+  expect(routed.length).toBeGreaterThanOrEqual(8)
+  for (let routeOrdinal = 0; routeOrdinal < routed.length; routeOrdinal++) {
+    const particleIndex = routed[routeOrdinal]!
+    const stage = Math.min(3, Math.floor(routeOrdinal / routed.length * 4))
+    const pool = remainingByStage.get(stage)!
+    const origin: [number, number, number] = [positions.getX(particleIndex), positions.getY(particleIndex), positions.getZ(particleIndex)]
+    const departure = getLilyParticleVortexPosition(origin, parts.getX(particleIndex), seeds.getX(particleIndex),
+      motion.getX(particleIndex), source, { ...settings, vortexSpeedMultiplier: capture.vortexSpeedMultiplier, dissolveDuration: 12, edgeWidth: 0.035 }, seedData.getZ(particleIndex) > 0.5)
+    const assignedSeed = seedData.getX(particleIndex)
+    const assignedIndex = targets.findIndex((target) => Math.abs(target.seed - assignedSeed) < 1e-6)
+    const nearest = pool.reduce((best, candidate) => distanceSquared(departure, targetPositions[candidate]!) < distanceSquared(departure, targetPositions[best]!) ? candidate : best)
+
+    expect(assignedIndex).toBe(nearest)
+    expect(assignedTargets.getW(particleIndex)).toBe(stage)
+    pool.splice(pool.indexOf(assignedIndex), 1)
+  }
   geometry.dispose()
 })
 
