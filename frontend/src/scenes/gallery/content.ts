@@ -57,7 +57,11 @@ export function galleryColumnPositions(
 ): [number, number, number][] {
   if (variant !== 'between-columns') return [galleryColumnPosition(memory, galleryWidth)]
   if (memory.order % 2 === 1) return []
-  const halfWidth = Number.isFinite(galleryWidth) ? Math.max(0, galleryWidth) / 2 : GALLERY.width / 2
+  const configuredWidth = layout?.laneWidth ?? galleryWidth
+  const halfWidth = Number.isFinite(configuredWidth) ? Math.max(0, configuredWidth) / 2 : GALLERY.width / 2
+  const configuredOffsetX = layout?.offsetX ?? 0
+  const laneOffsetX = Number.isFinite(configuredOffsetX) ? configuredOffsetX : 0
+  const laneRadius = Math.max(GALLERY_B_MIN_PHOTO_X, halfWidth + laneOffsetX)
   const row = memory.order / 2
   // The previous row already renders this row's near boundary as its far boundary.
   const firstBoundary = row === 0 ? row : row + 1
@@ -65,7 +69,7 @@ export function galleryColumnPositions(
   const columns: [number, number, number][] = []
   for (let boundary = firstBoundary; boundary <= lastBoundary; boundary++) {
     const z = GALLERY.firstZ - boundary * GALLERY.spacing * 2 + (layout?.offsetZ ?? 0)
-    columns.push([-halfWidth, 0, z], [halfWidth, 0, z])
+    columns.push([-laneRadius, 0, z], [laneRadius, 0, z])
   }
   return columns
 }

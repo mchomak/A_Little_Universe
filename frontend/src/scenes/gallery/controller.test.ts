@@ -48,6 +48,23 @@ describe('gallery travel', () => {
     expect(memoryPosition(left, GALLERY.width, 'on-columns', layout)[0]).toBe(-5.25)
     expect(memoryPosition(right, GALLERY.width, 'on-columns', layout)[0]).toBe(2.75)
   })
+  it('keeps B photo lanes centered on their support columns for custom lane width and radial offset', () => {
+    const layout = { laneWidth: 9.4, offsetX: -0.4, offsetY: 0, offsetZ: 1.2 }
+    const leftPhoto = GALLERY_MEMORIES[0]!
+    const rightPhoto = GALLERY_MEMORIES[1]!
+    const [leftX, , leftZ] = memoryPosition(leftPhoto, GALLERY.width, 'between-columns', layout)
+    const [rightX, , rightZ] = memoryPosition(rightPhoto, GALLERY.width, 'between-columns', layout)
+    const supports = galleryColumnPositions(leftPhoto, GALLERY.width, 'between-columns', layout)
+    const leftSupports = supports.filter(([x]) => x < 0)
+    const rightSupports = supports.filter(([x]) => x > 0)
+
+    expect(leftX).toBeCloseTo(-4.3)
+    expect(rightX).toBeCloseTo(4.3)
+    expect(leftSupports[0]![0]).toBeCloseTo(leftX)
+    expect(rightSupports[0]![0]).toBeCloseTo(rightX)
+    expect(leftZ).toBeCloseTo((leftSupports[0]![2] + leftSupports[1]![2]) / 2)
+    expect(rightZ).toBe(leftZ)
+  })
   it('keeps a nonzero gap between opposing B photos at the tightest valid layout', () => {
     const left = memoryPosition(GALLERY_MEMORIES[0]!, GALLERY.width, 'between-columns', { laneWidth: 6, offsetX: -2.5, offsetY: 0, offsetZ: 0 })
     const right = memoryPosition(GALLERY_MEMORIES[1]!, GALLERY.width, 'between-columns', { laneWidth: 6, offsetX: -2.5, offsetY: 0, offsetZ: 0 })
