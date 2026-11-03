@@ -32,6 +32,13 @@ it('uses a custom inline light mark instead of a heading emoji', () => {
   expect(markup).toContain('class="preparation-light-mark"')
 })
 
+it('keeps the shared phone image beneath the preparation content', () => {
+  const markup = renderPreparation()
+
+  expect(markup).toContain('class="phone-background"')
+  expect(markup).toContain('aria-hidden="true"')
+})
+
 it('keeps the three switches without printing their off state', () => {
   const markup = renderPreparation()
 

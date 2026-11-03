@@ -13,6 +13,7 @@ import {
 
 export type ComposerFieldPath =
   | `global.${keyof SceneComposerConfig['global'] & string}`
+  | `scenes.openingBackground.${keyof SceneComposerConfig['scenes']['openingBackground'] & string}`
   | `scenes.preload.${keyof SceneComposerConfig['scenes']['preload'] & string}`
   | `scenes.preparation.${keyof SceneComposerConfig['scenes']['preparation'] & string}`
   | `scenes.prologue.${keyof SceneComposerConfig['scenes']['prologue'] & string}`
@@ -53,12 +54,12 @@ export async function importComposerJson(source: string): Promise<ComposerImport
     return { ok: false, reason: 'json' }
   }
   if (document === null || typeof document !== 'object' || Array.isArray(document)) return { ok: false, reason: 'document' }
-  if (!('schemaVersion' in document) || !Number.isInteger(document.schemaVersion) || Number(document.schemaVersion) < 1 || Number(document.schemaVersion) > 14) return { ok: false, reason: 'version' }
+  if (!('schemaVersion' in document) || !Number.isInteger(document.schemaVersion) || Number(document.schemaVersion) < 1 || Number(document.schemaVersion) > 15) return { ok: false, reason: 'version' }
   const root = document as Record<string, unknown>
   if ('global' in root && !isRecord(root.global)) return { ok: false, reason: 'document' }
   if ('scenes' in root && !isRecord(root.scenes)) return { ok: false, reason: 'document' }
   const scenes = isRecord(root.scenes) ? root.scenes : {}
-  for (const section of ['preload', 'preparation', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy']) {
+  for (const section of ['openingBackground', 'preload', 'preparation', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy']) {
     if (section in scenes && !isRecord(scenes[section])) return { ok: false, reason: 'document' }
   }
   const preparation = scenes.preparation as Record<string, unknown> | undefined

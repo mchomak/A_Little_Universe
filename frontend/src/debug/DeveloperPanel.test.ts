@@ -46,6 +46,32 @@ it('renders bounded typography and surface controls for preparation', () => {
   expect(markup).toMatch(/id="composer-scenes-preparation-cardOpacity"[^>]*min="85" max="100" step="1" value="100"/)
 })
 
+it('shows shared opening background crop controls through Scene 04 and hides them in the gallery', () => {
+  const openingMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'identity' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    onPermissions: () => undefined,
+    route: 'film',
+  }))
+
+  expect(openingMarkup).toMatch(/id="composer-scenes-openingBackground-zoom"[^>]*type="range"[^>]*min="1" max="3" step="0.01" value="1"/)
+  expect(openingMarkup).toMatch(/id="composer-scenes-openingBackground-offsetX"[^>]*type="range"[^>]*min="-1" max="1" step="0.01" value="0"/)
+  expect(openingMarkup).toMatch(/id="composer-scenes-openingBackground-offsetY"[^>]*type="range"[^>]*min="-1" max="1" step="0.01" value="0"/)
+  expect(openingMarkup).toContain('Сбросить кадрирование фона')
+
+  const galleryMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'gallery' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    onPermissions: () => undefined,
+    route: 'film',
+  }))
+  expect(galleryMarkup).not.toContain('composer-scenes-openingBackground-zoom')
+})
+
 it('shows only the active scene controls and keeps playback in the timeline', () => {
   const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
     state: { ...initialFilmState, scene: 'growth' },

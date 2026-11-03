@@ -120,6 +120,7 @@ export interface LilyDissolveUniforms {
   uLilySceneTime: { value: number }; uLilyPortraitStart: { value: number }; uLilyPortraitDuration: { value: number }
   uLilyPortraitBrightness: { value: number }; uLilyPortraitSize: { value: number }
   uLilyPortraitPhotoColorMix: { value: number }; uLilyPortraitOpacity: { value: number }
+  uLilyPortraitMinimumBrightness: { value: number }; uLilyPortraitContrast: { value: number }
   uLilyPortraitGlow: { value: number }; uLilyPortraitPointMinSize: { value: number }; uLilyPortraitPointMaxSize: { value: number }
 }
 
@@ -177,6 +178,8 @@ export interface LilyPortraitAppearanceSettings {
   glow: number
   minSize: number
   maxSize: number
+  minimumBrightness?: number
+  contrast?: number
 }
 
 export function createLilyDissolveUniforms(): LilyDissolveUniforms {
@@ -191,6 +194,7 @@ export function createLilyDissolveUniforms(): LilyDissolveUniforms {
     uLilySceneTime: { value: 0 }, uLilyPortraitStart: { value: 12 }, uLilyPortraitDuration: { value: 8.5 },
     uLilyPortraitBrightness: { value: 1.8 }, uLilyPortraitSize: { value: 1.8 },
     uLilyPortraitPhotoColorMix: { value: 0 }, uLilyPortraitOpacity: { value: 1 },
+    uLilyPortraitMinimumBrightness: { value: 0 }, uLilyPortraitContrast: { value: 1 },
     uLilyPortraitGlow: { value: 1 }, uLilyPortraitPointMinSize: { value: 1 }, uLilyPortraitPointMaxSize: { value: LILY_PARTICLE_MAX_POINT_SIZE } }
 }
 
@@ -218,6 +222,8 @@ export function updateLilyPortraitAppearance(uniforms: LilyDissolveUniforms, set
   uniforms.uLilyPortraitPhotoColorMix.value = clampFinite(settings.photoColorMix, 0, 1, 0)
   uniforms.uLilyPortraitOpacity.value = clampFinite(settings.opacity, 0.2, 1, 1)
   uniforms.uLilyPortraitGlow.value = clampFinite(settings.glow, 0, 2, 1)
+  uniforms.uLilyPortraitMinimumBrightness.value = clampFinite(settings.minimumBrightness ?? 0, 0, 0.7, 0)
+  uniforms.uLilyPortraitContrast.value = clampFinite(settings.contrast ?? 1, 0.5, 2, 1)
 
   const maxSize = clampFinite(settings.maxSize, 0.8, 3, 1.55)
   const minSize = Math.min(clampFinite(settings.minSize, 0.4, 1.6, 0.65), maxSize)
@@ -277,6 +283,8 @@ export function createLilyParticleGeometry(source: LilySurfaceSource, count: num
   const portraitSourceColors = new Float32Array(count * 3)
   const portraitSeedData = new Float32Array(count * 3)
   const portraitRoute = new Float32Array(count)
+  const artSize = new Float32Array(count), artBrightness = new Float32Array(count)
+  artSize.fill(1); artBrightness.fill(1)
   portraitSourceColors.fill(1)
   for (let i = 0; i < count; i++) {
     const sample = source.sampleSurface(i, count)
@@ -288,16 +296,24 @@ export function createLilyParticleGeometry(source: LilySurfaceSource, count: num
   if (portrait) {
     if (isVisiblePortraitGeometry(portrait)) {
       const routes = planVisiblePortraitRoutes(positions, parts, seeds, count, source, portrait)
-      for (let targetIndex = 0; targetIndex < routes.length; targetIndex++) {
-        const route = routes[targetIndex]!
+      const totalTargets = Math.min(portrait.targets.length, portrait.targetPositions.length)
+      const targetIndices = selectRepresentativePortraitTargets(portrait.targets.slice(0, totalTargets), routes.length)
+      for (let routeIndex = 0; routeIndex < routes.length; routeIndex++) {
+        const route = routes[routeIndex]!
+        // The approved export is ordered by reveal region. Sampling across the
+        // entire ordering preserves the full silhouette even when fewer routes
+        // are visible than there are target points.
+        const targetIndex = targetIndices[routeIndex]!
         const target = portrait.targets[targetIndex]!
         const targetPosition = portrait.targetPositions[targetIndex]!
-        const stage = Math.min(3, Math.floor(targetIndex / Math.max(1, routes.length) * 4))
+        const stage = Math.min(3, Math.floor(routeIndex / Math.max(1, routes.length) * 4))
         const index = route.index, i3 = index * 3, i4 = index * 4
         portraitTargets.set([targetPosition[0], targetPosition[1], targetPosition[2], stage], i4)
         portraitMotion.set([route.launchTime, route.travelDuration, clampFinite(target.tone, 0, 1, 0.5), 1 + clampFinite(target.contrast, 0, 1, 0)], i4)
         portraitSourceColors.set(target.photoColorLinear.map((channel) => clampFinite(channel, 0, 1, 1)), i3)
         portraitSeedData.set([clampFinite(target.seed, 0, 1, 0.5), clampFinite(target.featureWeight, 0, 1, 0.5), route.captureMotion ? 1 : 0], index * 3)
+        artSize[index] = clampFinite(target.artSize ?? 1, 0, 3, 1)
+        artBrightness[index] = clampFinite(target.artBrightness ?? 1, 0, 4, 1)
         portraitRoute[index] = 1
       }
     } else {
@@ -336,7 +352,41 @@ export function createLilyParticleGeometry(source: LilySurfaceSource, count: num
   geometry.setAttribute('aPortraitSourceColor', new BufferAttribute(portraitSourceColors, 3))
   geometry.setAttribute('aPortraitSeedData', new BufferAttribute(portraitSeedData, 3))
   geometry.setAttribute('aPortraitRoute', new BufferAttribute(portraitRoute, 1))
+  geometry.setAttribute('aArtSize', new BufferAttribute(artSize, 1))
+  geometry.setAttribute('aArtBrightness', new BufferAttribute(artBrightness, 1))
   return geometry
+}
+
+/** Preserve the full reveal-ordered portrait and retain rare authored layers. */
+export function selectRepresentativePortraitTargets(targets: readonly StarPortraitPoint[], requested: number): number[] {
+  const count = Math.max(0, Math.min(targets.length, Math.floor(requested)))
+  if (count === 0) return []
+  const contours = targets.flatMap((point, index) => point.type === 'contour' ? [index] : [])
+  const others = targets.flatMap((point, index) => point.type === 'contour' ? [] : [index])
+  // The hand-authored eye, nose and mouth accents are scarce; ordinary
+  // downsampling can remove almost all of them even with thousands of routes.
+  const contourCount = Math.max(count - others.length, count >= contours.length + 3 ? contours.length : Math.min(contours.length, Math.max(1, Math.floor(count * 0.2))))
+  const selected = Array.from({ length: contourCount }, (_, index) => contours[Math.floor((index + 0.5) * contours.length / contourCount)]!)
+  const remaining = count - selected.length
+  for (let index = 0; index < remaining; index++) selected.push(others[Math.floor((index + 0.5) * others.length / remaining)]!)
+  const kinds = ['contour', 'flow', 'support', 'fill'] as const
+  const present = kinds.filter((kind) => targets.some((point) => (point.type ?? 'fill') === kind))
+  if (count >= present.length) {
+    for (const kind of present) {
+      if (selected.some((index) => (targets[index]!.type ?? 'fill') === kind)) continue
+      const candidates = targets.flatMap((point, index) => (point.type ?? 'fill') === kind ? [index] : [])
+      const replacement = candidates[Math.floor(candidates.length / 2)]!
+      const counts = new Map<string, number>()
+      for (const index of selected) { const type = targets[index]!.type ?? 'fill'; counts.set(type, (counts.get(type) ?? 0) + 1) }
+      let best = -1, distance = Infinity
+      selected.forEach((index, position) => {
+        const type = targets[index]!.type ?? 'fill'
+        if (type !== 'contour' && (counts.get(type) ?? 0) > 1 && Math.abs(index - replacement) < distance) { best = position; distance = Math.abs(index - replacement) }
+      })
+      if (best >= 0) selected[best] = replacement
+    }
+  }
+  return selected.sort((a, b) => a - b)
 }
 
 interface PlannedPortraitRoute { index: number; launchTime: number; travelDuration: number; captureMotion: boolean }
@@ -657,6 +707,7 @@ export function createLilyParticleMaterial(uniforms: LilyDissolveUniforms) {
     fragmentShader: /* glsl */ `
       uniform vec3 uPearl; uniform vec3 uPink; uniform vec3 uGold; uniform float uLilyParticleBrightness; uniform float uLilyPortraitBrightness; uniform float uLilyPortraitSettledBrightness;
       uniform float uLilyPortraitPhotoColorMix; uniform float uLilyPortraitOpacity; uniform float uLilyPortraitGlow;
+      uniform float uLilyPortraitMinimumBrightness; uniform float uLilyPortraitContrast;
       varying float vAlpha; varying float vSeed; varying float vPart; varying float vPortraitMix; varying float vPortraitTone; varying float vPortraitContrast; varying float vPortraitSettled;
       varying float vPortraitTargetSeed; varying float vPortraitFeatureWeight;
       varying vec3 vPortraitSourceColor;
@@ -671,14 +722,15 @@ export function createLilyParticleMaterial(uniforms: LilyDissolveUniforms) {
         float featureAccent = mix(${glslFloat(LILY_PORTRAIT_MIN_FEATURE_ACCENT)}, ${glslFloat(LILY_PORTRAIT_MAX_FEATURE_ACCENT)}, smoothstep(0.1, 0.48, vPortraitContrast));
         float targetFeatureAccent = mix(0.95, 1.05, vPortraitFeatureWeight);
         float portraitBrightness = mix(1.0, uLilyPortraitBrightness * featureAccent * targetFeatureAccent, vPortraitMix);
-        float toneContrast = mix(${glslFloat(LILY_PORTRAIT_MIN_TONE_CONTRAST)}, ${glslFloat(LILY_PORTRAIT_MAX_TONE_CONTRAST)}, smoothstep(0.16, 0.82, vPortraitTone));
+        float portraitTone = clamp(0.5 + (vPortraitTone - 0.5) * uLilyPortraitContrast, uLilyPortraitMinimumBrightness, 1.0);
+        float toneContrast = mix(${glslFloat(LILY_PORTRAIT_MIN_TONE_CONTRAST)}, ${glslFloat(LILY_PORTRAIT_MAX_TONE_CONTRAST)}, smoothstep(0.16, 0.82, portraitTone));
         float sourceContrast = mix(1.0, toneContrast, vPortraitMix);
         float settledBrightness = mix(1.0, uLilyPortraitSettledBrightness, vPortraitSettled);
         float targetSeedAccent = mix(0.98, 1.02, vPortraitTargetSeed);
         float glow = (core + halo * haloScale) * vAlpha * uLilyParticleBrightness * brightnessAccent * portraitBrightness * sourceContrast * settledBrightness * targetSeedAccent;
         if (glow < 0.004) discard;
         vec3 vortexColor = vPart > 0.5 && vPart < 1.5 ? mix(uPearl, uGold, 0.55) : mix(uPearl, uPink, vSeed * 0.55);
-        vec3 sourceTone = mix(mix(uGold, uPink, 0.58), uPearl, smoothstep(0.16, 0.9, vPortraitTone));
+        vec3 sourceTone = mix(mix(uGold, uPink, 0.58), uPearl, smoothstep(0.16, 0.9, portraitTone));
         vec3 color = mix(vortexColor, sourceTone, vPortraitMix);
         color = mix(color, vPortraitSourceColor, clamp(uLilyPortraitPhotoColorMix, 0.0, 1.0) * vPortraitMix);
         float opacity = mix(1.0, uLilyPortraitOpacity, vPortraitMix);

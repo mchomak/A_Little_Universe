@@ -1,0 +1,33 @@
+{
+  "format": "a-little-universe/scene04-approved-portrait",
+  "version": 1,
+  "sourceFile": "portrait-points2.json",
+  "sourceSha256": "70acb2845809076a0376b4313748871bcda42b958a35aecabe7937ee164aa1ef",
+  "binarySha256": "42250edc97805e174deebe55a43f1d878c7b30240d36204a18491bd4e5084b2f",
+  "count": 32000,
+  "source": {
+    "width": 640,
+    "height": 640
+  },
+  "settings": {
+    "version": 2,
+    "seed": 20903,
+    "count": 32000,
+    "minSize": 1.2,
+    "maxSize": 2.8,
+    "brightness": 2,
+    "opacity": 1,
+    "glow": 1.8,
+    "detailBoost": 2,
+    "fillDensity": 1.9,
+    "contrast": 1.75,
+    "backgroundThreshold": 0.16,
+    "irregularity": 0.55,
+    "photoColorMix": 0.25,
+    "minimumBrightness": 0.3,
+    "portraitContrast": 1,
+    "scale": 0.95,
+    "offsetX": 0,
+    "offsetY": 0
+  }
+}

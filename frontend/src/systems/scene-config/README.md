@@ -1,6 +1,6 @@
 # Scene Composer configuration
 
-`SceneComposerConfig` is an immutable schema version 14. `normalizeConfig(input)` accepts partial schema v1–v14 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the gallery and identity controls; schema v12 adds the first gallery water settings; schema v13 adds independent water base brightness, reflection falloff, micro-normal scale, and moon reflection spread. Schema v14 adds the `far`, `mid`, `nearLow`, and `waterline` cloud layer settings. Legacy cloud density, scale, opacity, brightness, drift speed, and count values migrate into active layer settings; saved water controls remain unchanged. The store publishes font changes only after the selected local font is ready.
+`SceneComposerConfig` is an immutable schema version 15. `normalizeConfig(input)` accepts partial schema v1–v15 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the gallery and identity controls; schema v12 adds the first gallery water settings; schema v13 adds independent water base brightness, reflection falloff, micro-normal scale, and moon reflection spread. Schema v14 adds the `far`, `mid`, `nearLow`, and `waterline` cloud layer settings. Schema v15 adds the shared `scenes.openingBackground` crop profile (`zoom`, `offsetX`, `offsetY`) for the opening screens and scenes 01–04. Partial v14 JSON remains accepted and receives the new crop defaults. Legacy cloud density, scale, opacity, brightness, drift speed, and count values migrate into active layer settings; saved water controls remain unchanged. The store publishes font changes only after the selected local font is ready.
 
 The public store is:
 
@@ -11,7 +11,7 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v14.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v15.
 
 Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its 0.1–20 second travel-window meaning, with the cinematic default now 2.2 seconds; `particleFadeDuration` controls individual dust fade and defaults to 1.2 seconds. `particleReturnFraction` is ignored. The light, atmosphere, typography and interaction fields are additive schema-v2 fields: missing fields in both v1 and v2 files receive current defaults.
 
@@ -19,9 +19,14 @@ An optional production override can contain only values that differ from the def
 
 ```json
 {
-  "schemaVersion": 14,
+  "schemaVersion": 15,
   "global": { "quality": "low" },
   "scenes": {
+    "openingBackground": {
+      "zoom": 1.4,
+      "offsetX": -0.2,
+      "offsetY": 0.15
+    },
     "preparation": {
       "typeScale": 1.05,
       "lineHeight": 1.2,
@@ -55,6 +60,8 @@ An optional production override can contain only values that differ from the def
 
 | Section | Field | Accepted range / default |
 |---|---|---:|
+| Opening background | Zoom | 1–3 (1) |
+| Opening background | X / Y crop offset | −1…1 (0); offsets are clamped to these bounds |
 | Global | DPR min / max | 0.5–1.5 / 1–2, with min ≤ max |
 | Global | Playback speed | 0.25–4 |
 | Preload | Glow, particle count, movement speed, collapse duration | 0–2, 40–300 integer, 0.1–4, 0–4 |

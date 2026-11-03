@@ -30,6 +30,7 @@ function IdentityLoading({ runtime }: { runtime: FilmRuntime }) {
 export function SceneDirector(props: SceneProps) {
   const { scene, elapsed } = props.state
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
+  const openingScene = scene === 'prologue' || scene === 'growth' || scene === 'bloom' || scene === 'identity'
   const lighting = getSceneLighting(scene, config.scenes.gallery.coldLightIntensity)
   const Scene = scene === 'growth' || scene === 'identity' ? null : modules[scene]
   const [lilyParticleSource, setLilyParticleSource] = useState<LilySurfaceSource | null>(null)
@@ -41,7 +42,7 @@ export function SceneDirector(props: SceneProps) {
   // touch scene and the first seconds of the 04 handoff.
   const keepGrowthWorld = shouldKeepGrowthWorld(scene, elapsed, config.scenes.identity.dissolveDuration)
   return <>
-    <color attach="background" args={['#080914']} />
+    {!openingScene && <color attach="background" args={['#080914']} />}
     <ambientLight intensity={lighting.ambientIntensity} />
     <directionalLight position={[-3, 5, 4]} intensity={lighting.keyIntensity} color={lighting.keyColor} />
     <directionalLight position={[3, 1, -2]} intensity={lighting.fillIntensity} color={lighting.fillColor} />

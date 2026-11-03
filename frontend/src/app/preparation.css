@@ -4,10 +4,12 @@
   padding: max(22px, env(safe-area-inset-top)) max(6vw, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(6vw, env(safe-area-inset-left));
   overflow-x: hidden;
   color: #f5f1f0;
-  background: radial-gradient(ellipse at 50% 30%, #121422 0, #0b0c17 45%, #080914 78%);
+  background: transparent;
 }
 
 .preparation-header {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -21,7 +23,7 @@
 
 .preparation-header span:last-child { letter-spacing: .04em; }
 .universe:has(.debug-toggle) .preparation-header { padding-right: 72px; }
-.preparation-content { max-width: 1280px; margin: clamp(26px, 4vh, 48px) auto 0; text-align: center; animation: preparation-enter var(--preparation-entrance-duration, .8s) cubic-bezier(.2, .7, .2, 1) both; }
+.preparation-content { position: relative; z-index: 1; max-width: 1280px; margin: clamp(26px, 4vh, 48px) auto 0; text-align: center; animation: preparation-enter var(--preparation-entrance-duration, .8s) cubic-bezier(.2, .7, .2, 1) both; }
 .preparation h1 { max-width: 20ch; margin: 0 auto 14px; font-family: var(--preparation-font-family, var(--serif)); font-size: clamp(2.8rem, 5.2vw, 5rem); line-height: var(--preparation-line-height, 1.08); letter-spacing: -.025em; text-wrap: balance; zoom: var(--preparation-type-scale, 1); }
 .preparation h1:focus { outline: none; }
 .preparation-light-mark { display: inline-block; width: .42em; height: .42em; margin-left: .16em; vertical-align: .12em; fill: #e9b8cb; }

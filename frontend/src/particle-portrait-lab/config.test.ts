@@ -4,7 +4,8 @@ import { copyParticlePortraitSettings, DEFAULT_PARTICLE_PORTRAIT_SETTINGS, loadP
 describe('particle portrait settings', () => {
   it('starts with the tuned version 1 defaults for a legible static portrait', () => {
     expect(DEFAULT_PARTICLE_PORTRAIT_SETTINGS).toEqual({
-      version: 1,
+      version: 2,
+      seed: 20903,
       count: 32_000,
       minSize: 1.2,
       maxSize: 2.8,
@@ -17,10 +18,22 @@ describe('particle portrait settings', () => {
       backgroundThreshold: 0.16,
       irregularity: 0.55,
       photoColorMix: 0.25,
+      minimumBrightness: 0.3,
+      portraitContrast: 1,
       scale: 0.95,
       offsetX: 0,
       offsetY: 0,
     })
+  })
+
+  it('migrates version 1 settings and keeps appearance controls outside point sampling inputs', () => {
+    const legacy = { ...DEFAULT_PARTICLE_PORTRAIT_SETTINGS, version: 1 }
+    const restored = parseParticlePortraitSettings(legacy)
+
+    expect(restored.version).toBe(2)
+    expect(restored.minimumBrightness).toBe(0.3)
+    expect(restored.portraitContrast).toBe(1)
+    expect(restored.seed).toBe(20903)
   })
 
   it('preserves a complete version 1 settings export when parsing it', () => {

@@ -18,6 +18,7 @@ export function toStarPortraitSamplingSettings(settings: ParticlePortraitSetting
     contrast: settings.contrast,
     backgroundThreshold: settings.backgroundThreshold,
     irregularity: settings.irregularity,
+    seed: settings.seed,
   }
 }
 
@@ -28,6 +29,8 @@ export function toLilyPortraitAppearanceSettings(settings: ParticlePortraitSetti
     glow: settings.glow,
     minSize: settings.minSize,
     maxSize: settings.maxSize,
+    minimumBrightness: settings.minimumBrightness,
+    contrast: settings.portraitContrast,
   }
 }
 

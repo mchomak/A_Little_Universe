@@ -5,10 +5,11 @@
   place-items: center;
   overflow: auto;
   color: #d8d3dc;
-  background: #080914;
+  background: transparent;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
 .preloader-particles { position: absolute; width: min(560px, 92vw); height: min(420px, 57vh); top: 43%; left: 50%; filter: brightness(var(--preload-glow, 1)); transform: translate(-50%, -50%); pointer-events: none; }
+.preloader-particles, .preloader-copy { z-index: 1; }
 .preloader-copy { position: absolute; top: 62%; width: min(600px, calc(100vw - max(32px, env(safe-area-inset-left)) - max(32px, env(safe-area-inset-right)))); text-align: center; padding: 0 max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
 .preloader-copy > p { margin: 0 0 25px; font-size: clamp(17px, 2.2vw, 24px); line-height: 1.5; font-weight: 400; }
 .preloader-copy progress { display: block; appearance: none; border: 0; width: min(272px, 65vw); height: 2px; margin: 0 auto 16px; background: #34313f; color: #d4c8db; }

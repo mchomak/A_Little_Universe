@@ -8,14 +8,14 @@ const vertex = `varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.x
 const fragment = `
 varying vec2 vUv;
 uniform float uDepth; uniform float uHaze; uniform float uReveal; uniform float uAspect;
-uniform vec3 uInk; uniform vec3 uBlue; uniform vec3 uPink; uniform vec3 uLavender;
+uniform vec3 uBlue; uniform vec3 uPink; uniform vec3 uLavender;
 void main(){
  vec2 p=(vUv-.5)*vec2(uAspect,1.);
  float deep=exp(-dot(p-vec2(-.18,.08),p-vec2(-.18,.08))*1.4);
  float veil=exp(-dot((p-vec2(.12,-.03))*vec2(.8,2.7),(p-vec2(.12,-.03))*vec2(.8,2.7))*4.);
  vec3 depth=uBlue*deep*uDepth*.26;
  vec3 haze=mix(uLavender,uPink,vUv.x)*veil*uHaze*.06;
- gl_FragColor=vec4(uInk+(depth+haze)*uReveal,1.);
+ gl_FragColor=vec4(depth+haze,uReveal);
  #include <colorspace_fragment>
 }`
 const dustVertex = `
@@ -54,7 +54,7 @@ export function PrologueAtmosphere({ state, runtime, reducedMotion }: SceneProps
     g.setAttribute('position', new Float32BufferAttribute(positions, 3)); g.setAttribute('aPhase', new Float32BufferAttribute(phases, 1)); g.setAttribute('aSize', new Float32BufferAttribute(sizes, 1))
     return g
   }, [config.seed, count])
-  const hazeUniforms = useMemo(() => ({ uInk: { value: new Color('#080914') }, uBlue: { value: new Color('#101A33') }, uPink: { value: new Color('#F4CDD9') }, uLavender: { value: new Color('#B9A4E8') }, uDepth: { value: config.spaceDepth }, uHaze: { value: config.hazeIntensity }, uReveal: { value: 0 }, uAspect: { value: size.width / size.height } }), [config.hazeIntensity, config.spaceDepth, size.height, size.width])
+  const hazeUniforms = useMemo(() => ({ uBlue: { value: new Color('#101A33') }, uPink: { value: new Color('#F4CDD9') }, uLavender: { value: new Color('#B9A4E8') }, uDepth: { value: config.spaceDepth }, uHaze: { value: config.hazeIntensity }, uReveal: { value: 0 }, uAspect: { value: size.width / size.height } }), [config.hazeIntensity, config.spaceDepth, size.height, size.width])
   const dustUniforms = useMemo(() => ({ uTime: { value: 0 }, uSpeed: { value: config.driftSpeed }, uDpr: { value: dpr }, uReveal: { value: 0 }, uReduced: { value: reducedMotion ? 1 : 0 } }), [config.driftSpeed, dpr, reducedMotion])
   useLayoutEffect(() => {
     let previousReveal = -1
@@ -73,7 +73,7 @@ export function PrologueAtmosphere({ state, runtime, reducedMotion }: SceneProps
   return <>
     <mesh frustumCulled={false} renderOrder={-10}>
       <planeGeometry args={[1, 1]} />
-      <shaderMaterial ref={haze} uniforms={hazeUniforms} vertexShader={vertex} fragmentShader={fragment} depthWrite={false} depthTest={false} toneMapped={false} />
+      <shaderMaterial ref={haze} uniforms={hazeUniforms} vertexShader={vertex} fragmentShader={fragment} transparent blending={AdditiveBlending} depthWrite={false} depthTest={false} toneMapped={false} />
     </mesh>
     <points geometry={geometry} frustumCulled={false} renderOrder={-9}>
       <shaderMaterial ref={dust} uniforms={dustUniforms} vertexShader={dustVertex} fragmentShader={dustFragment} transparent blending={AdditiveBlending} depthWrite={false} depthTest={false} toneMapped={false} />

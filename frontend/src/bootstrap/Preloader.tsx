@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import type { AssetManager, PreparationProgress, PreparationResult } from '../systems/assets/AssetManager'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
+import { PhoneBackground } from '../components/PhoneBackground'
 import './preload.css'
 
 interface PreloaderProps {
@@ -106,6 +107,7 @@ export function Preloader({ manager, onReady }: PreloaderProps) {
   const retry = () => { setResult(null); collapseRef.current = false; setAttempt((value) => value + 1) }
   const measured = progress.phase === 'assets' || progress.phase === 'ready'
   return <main className="preloader" data-phase={progress.phase} aria-label="Подготовка подарка">
+    <PhoneBackground />
     <canvas className="preloader-particles" ref={canvas} style={{ '--preload-glow': visual.glow } as CSSProperties} aria-hidden="true" />
     <div className="preloader-copy">
       <p role="status" aria-live="polite">{progress.message}</p>

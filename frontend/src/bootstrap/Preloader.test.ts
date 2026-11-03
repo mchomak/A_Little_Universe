@@ -16,3 +16,13 @@ it('reflects the active preload glow setting in its rendered canvas', async () =
 
   expect(markup).toContain('--preload-glow:1.6')
 })
+
+it('keeps the shared phone image behind the loading content', () => {
+  const markup = renderToStaticMarkup(createElement(Preloader, {
+    manager: {} as AssetManager,
+    onReady: () => undefined,
+  }))
+
+  expect(markup).toContain('class="phone-background"')
+  expect(markup).toContain('aria-hidden="true"')
+})

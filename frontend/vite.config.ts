@@ -43,17 +43,21 @@ function offlineBuild(): Plugin {
     generateBundle: {
       order: 'post',
       handler(_options, bundle) {
-        const assets = Object.values(bundle).map((output) => {
+        const runtimeAssets = Object.values(bundle).map((output) => {
           const bytes = Buffer.from(output.type === 'chunk' ? output.code : output.source)
           const extension = output.fileName.split('.').at(-1)?.toLowerCase()
           const kind = ['png', 'jpg', 'jpeg', 'webp', 'avif', 'gif'].includes(extension ?? '') ? 'image'
             : ['mp3', 'wav', 'ogg', 'm4a'].includes(extension ?? '') ? 'audio'
               : ['gltf', 'glb'].includes(extension ?? '') ? 'model' : 'file'
           const contentType = extension === 'js' ? 'javascript' : extension === 'css' ? 'text/css' : extension === 'html' ? 'text/html' : undefined
-          return { url: `${base}${output.fileName}`, kind, required: true, bytes: bytes.length,
-            sha256: createHash('sha256').update(bytes).digest('hex'), ...(contentType ? { contentType } : {}) }
-        }).sort((a, b) => a.url.localeCompare(b.url))
-        const optionalAssets = [{ url: `${base}scene-composer.json`, kind: 'file', required: false }]
+          const isOptionalOpeningBackground = output.fileName.toLowerCase().includes('phone_1')
+          return { url: `${base}${output.fileName}`, kind, required: !isOptionalOpeningBackground, bytes: bytes.length,
+            sha256: createHash('sha256').update(bytes).digest('hex'), ...(contentType ? { contentType } : {}),
+            ...(isOptionalOpeningBackground ? { cacheOnInstall: true } : {}) }
+        })
+        const assets = runtimeAssets.filter((asset) => asset.required).sort((a, b) => a.url.localeCompare(b.url))
+        const optionalAssets = [...runtimeAssets.filter((asset) => !asset.required),
+          { url: `${base}scene-composer.json`, kind: 'file', required: false }].sort((a, b) => a.url.localeCompare(b.url))
         const version = createHash('sha256').update(offlineBuild.toString()).update(JSON.stringify({ assets, optionalAssets })).digest('hex').slice(0, 20)
         const manifest = { version, assets, optionalAssets }
         this.emitFile({ type: 'asset', fileName: 'runtime-manifest.json', source: JSON.stringify(manifest) })
@@ -74,6 +78,16 @@ self.addEventListener('install', event => event.waitUntil((async () => {
       const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('');
       if (bytes.byteLength !== asset.bytes || digest !== asset.sha256) throw new Error('Runtime integrity failure: ' + asset.url);
       await cache.put(asset.url, response);
+    }
+    for (const asset of (MANIFEST.optionalAssets || []).filter(asset => asset.cacheOnInstall)) {
+      try {
+        const response = await fetch(new Request(asset.url, {cache: 'reload', signal: AbortSignal.timeout(5000)}));
+        if (!response.ok || response.type === 'opaque') continue;
+        const bytes = await response.clone().arrayBuffer();
+        const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('');
+        if (bytes.byteLength !== asset.bytes || digest !== asset.sha256) continue;
+        await cache.put(asset.url, response);
+      } catch { /* Optional art must never block startup. */ }
     }
     await cache.put(BASE + 'runtime-manifest.json', new Response(JSON.stringify(MANIFEST), {headers: {'Content-Type': 'application/json'}}));
   } catch (error) { await caches.delete(CACHE); throw error; }

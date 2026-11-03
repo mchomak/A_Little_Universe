@@ -64,7 +64,7 @@ it('uses the same field for surface and particles and supports deterministic bac
   expect(material.fragmentShader).toContain('uLilyParticleBrightness * brightnessAccent')
   expect(material.fragmentShader).toContain('float core = mix(softCore, portraitCore, vPortraitMix)')
   expect(material.fragmentShader).toContain('float haloScale = mix(1.0, 0.55, vPortraitMix)')
-  expect(material.fragmentShader).toContain('float toneContrast = mix(0.95, 1.15, smoothstep(0.16, 0.82, vPortraitTone))')
+  expect(material.fragmentShader).toContain('float toneContrast = mix(0.95, 1.15, smoothstep(0.16, 0.82, portraitTone))')
   expect(material.vertexShader).toContain('vPortraitContrast = clamp(aPortraitMotion.w - 1.0, 0.0, 1.0)')
   expect(material.vertexShader).toContain('float featureSize = mix(0.92, 1.7, smoothstep(0.1, 0.48, vPortraitContrast))')
   expect(material.vertexShader).toContain('float portraitSize = mix(1.0, uLilyPortraitSize * featureSize * targetSeedSize, portraitMix)')
@@ -111,12 +111,15 @@ it('keeps shared portrait appearance neutral by default and clamps optional appe
   expect(uniforms.uLilyPortraitPhotoColorMix.value).toBe(0)
   expect(uniforms.uLilyPortraitOpacity.value).toBe(1)
   expect(uniforms.uLilyPortraitGlow.value).toBe(1)
+  expect(uniforms.uLilyPortraitMinimumBrightness.value).toBe(0)
+  expect(uniforms.uLilyPortraitContrast.value).toBe(1)
   expect(uniforms.uLilyPortraitPointMinSize.value).toBe(1)
   expect(uniforms.uLilyPortraitPointMaxSize.value).toBe(6)
   expect(material.vertexShader).toContain('attribute vec3 aPortraitSourceColor')
   expect(material.fragmentShader).toContain('uLilyPortraitPhotoColorMix')
   expect(material.fragmentShader).toContain('uLilyPortraitOpacity')
   expect(material.fragmentShader).toContain('uLilyPortraitGlow')
+  expect(material.fragmentShader).toContain('float portraitTone = clamp(0.5 + (vPortraitTone - 0.5) * uLilyPortraitContrast, uLilyPortraitMinimumBrightness, 1.0)')
   expect(material.fragmentShader).toContain('clamp(uLilyPortraitPhotoColorMix, 0.0, 1.0) * vPortraitMix')
   expect(material.fragmentShader).toContain('mix(1.0, uLilyPortraitGlow, vPortraitMix)')
   expect(material.fragmentShader).toContain('float opacity = mix(1.0, uLilyPortraitOpacity, vPortraitMix)')
@@ -130,20 +133,25 @@ it('keeps shared portrait appearance neutral by default and clamps optional appe
   expect(Array.from(geometry.getAttribute('aPortraitSourceColor').array)).toEqual([1, 1, 1, 1, 1, 1])
 
   updateLilyPortraitAppearance(uniforms, {
-    photoColorMix: 0.65, opacity: 0.75, glow: 1.5, minSize: 0.8, maxSize: 2.2,
+    photoColorMix: 0.65, opacity: 0.75, glow: 1.5, minSize: 0.8, maxSize: 2.2, minimumBrightness: 0.42, contrast: 1.35,
   })
   expect(uniforms.uLilyPortraitPhotoColorMix.value).toBe(0.65)
   expect(uniforms.uLilyPortraitOpacity.value).toBe(0.75)
   expect(uniforms.uLilyPortraitGlow.value).toBe(1.5)
+  expect(uniforms.uLilyPortraitMinimumBrightness.value).toBe(0.42)
+  expect(uniforms.uLilyPortraitContrast.value).toBe(1.35)
   expect(uniforms.uLilyPortraitPointMinSize.value).toBe(0.8)
   expect(uniforms.uLilyPortraitPointMaxSize.value).toBe(2.2)
 
   updateLilyPortraitAppearance(uniforms, {
     photoColorMix: -1, opacity: 3, glow: Number.NaN, minSize: 2, maxSize: 0.2,
+    minimumBrightness: 3, contrast: 0,
   })
   expect(uniforms.uLilyPortraitPhotoColorMix.value).toBe(0)
   expect(uniforms.uLilyPortraitOpacity.value).toBe(1)
   expect(uniforms.uLilyPortraitGlow.value).toBe(1)
+  expect(uniforms.uLilyPortraitMinimumBrightness.value).toBe(0.7)
+  expect(uniforms.uLilyPortraitContrast.value).toBe(0.5)
   expect(uniforms.uLilyPortraitPointMinSize.value).toBeLessThanOrEqual(uniforms.uLilyPortraitPointMaxSize.value)
   geometry.dispose()
   material.dispose()
@@ -152,7 +160,7 @@ it('keeps shared portrait appearance neutral by default and clamps optional appe
 it('keeps dark photo-derived portrait details visible within bounded emission', () => {
   const material = createLilyParticleMaterial(createLilyDissolveUniforms())
 
-  expect(material.fragmentShader).toContain('float toneContrast = mix(0.95, 1.15, smoothstep(0.16, 0.82, vPortraitTone))')
+  expect(material.fragmentShader).toContain('float toneContrast = mix(0.95, 1.15, smoothstep(0.16, 0.82, portraitTone))')
   expect(material.fragmentShader).toContain('gl_FragColor = vec4(color, min(0.9, glow * 0.58) * opacity)')
   material.dispose()
 })
@@ -423,6 +431,35 @@ it('captures unique detached particles that are visible at their time-specific c
   expect(new Set(selected.map((index) => geometry.getAttribute('aPortraitSeedData').getX(index)))).toEqual(new Set([0.25, 0.75]))
   expect(selected.every((index) => geometry.getAttribute('aPortraitRoute').getX(index) === 1)).toBe(true)
   expect(geometry.getAttribute('position').count).toBe(particlePositions.length)
+  geometry.dispose()
+})
+
+it('assigns a limited number of visible routes across the whole portrait and keeps authored appearance', () => {
+  const source: LilySurfaceSource = {
+    center: [0, 0, 0], radius: 1, minY: 0, maxY: 1,
+    sample: () => [1, 0.5, 0], sampleSurface: () => ({ position: [1, 0.5, 0], part: 0 }),
+  }
+  const targets = Array.from({ length: 1000 }, (_, index) => ({
+    u: 0.5, v: index / 1000, tone: 0.5, contrast: 0.3, featureWeight: 0.4,
+    seed: 0.25, photoColorLinear: [0.2, 0.4, 0.6] as const, artSize: 0.75, artBrightness: 0.45,
+  }))
+  const basis = createPortraitCameraBasis({ eye: [0, 0, 6], lookAt: [0, 0, 0], aspect: 4 / 3, fovDegrees: 38, planeDistance: 3 })
+  const options = {
+    targets, targetPositions: targets.map((target) => [0, target.v, 0] as [number, number, number]),
+    start: 2, duration: 8.5, dissolveDuration: 12, edgeWidth: 0.035, cameraBasisAtTime: () => basis,
+    capture: { portraitStartProgress: 0.3, portraitFraction: 0.4, portraitMinTurns: 0, portraitMaxTurns: 0,
+      portraitSteering: 1, portraitBraking: 1, portraitSettledBrightness: 1.15, vortexSpeedMultiplier: 0.9 },
+    settings: { particleBrightness: 1.25, vortexRadius: 0.8, vortexExpansion: 0.45, swirlSpeed: 0, swirlAcceleration: 0, centerDissolveAt: 0.5 },
+  } as unknown as NonNullable<Parameters<typeof createLilyParticleGeometry>[2]>
+  const geometry = createLilyParticleGeometry(source, 80, options)
+  const route = geometry.getAttribute('aPortraitRoute'), target = geometry.getAttribute('aPortraitTarget')
+  const selected = Array.from({ length: route.count }, (_, index) => index).filter((index) => route.getX(index) > 0.5)
+  expect(selected.length).toBeGreaterThan(0)
+  expect(selected.length).toBeLessThanOrEqual(32)
+  expect(Math.min(...selected.map((index) => target.getY(index)))).toBeLessThan(0.2)
+  expect(Math.max(...selected.map((index) => target.getY(index)))).toBeGreaterThan(0.8)
+  expect(selected.every((index) => Math.abs(geometry.getAttribute('aArtSize').getX(index) - 0.75) < 1e-5)).toBe(true)
+  expect(selected.every((index) => Math.abs(geometry.getAttribute('aArtBrightness').getX(index) - 0.45) < 1e-5)).toBe(true)
   geometry.dispose()
 })
 

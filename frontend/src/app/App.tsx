@@ -15,6 +15,7 @@ import { useAudioDirector } from '../systems/audio/useAudioDirector'
 import { AssetManager, type PreparationResult } from '../systems/assets/AssetManager'
 import { Preloader } from '../bootstrap/Preloader'
 import { PreparationScreen, type PreparationStep } from './PreparationScreen'
+import { PhoneBackground } from '../components/PhoneBackground'
 import { openGift } from './openGift'
 import { getImplementationStatus } from './filmStatus'
 import { LILY_MODEL_RUNTIME_ASSET, preloadLilyModel } from '../assets/lily/lilyAsset'
@@ -105,10 +106,13 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   const lightPhase: PersistentLightPhase = route === 'ready' ? 'ready' : route === 'film' && cinematic ? 'prologue' : route === 'film' && state.scene === 'growth' ? 'growth' : 'hidden'
   const lightInteractive = lightPhase === 'prologue' && state.mode === 'waiting'
   const implementationStatus = getImplementationStatus(state.scene)
+  const showOpeningBackground = route === 'film'
+    && (state.scene === 'prologue' || state.scene === 'growth' || state.scene === 'bloom' || state.scene === 'identity')
 
   return <main className={`universe${cinematic ? ' cinematic' : ''}`} data-route={route} data-scene={state.scene} data-mode={state.mode} data-reading={state.reading} data-paused={state.paused} data-debug={import.meta.env.DEV && debug ? 'true' : undefined}>
     {mountedFilm && <div className="film-presentation" hidden={route !== 'film'}>
       <div className="film-surface">
+        <PhoneBackground active={showOpeningBackground} />
         <div className="viewport" role="region" aria-label="Интерактивный фильм"><FilmCanvas state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} /></div>
         {!cinematic && <header className="page-header"><span className="dedication">Для Василисы</span>{import.meta.env.DEV && <span className="build-label">{implementationStatus}</span>}</header>}
         <SceneOverlay key={`${state.scene}:${state.revision}`} state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} />

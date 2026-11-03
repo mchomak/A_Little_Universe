@@ -1,0 +1,15 @@
+.phone-background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #080914;
+}
+
+.phone-background-image {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-size: cover;
+  transform-origin: center;
+}

@@ -56,6 +56,12 @@ const PREPARATION_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.preparation.cardOpacity', label: 'Непрозрачность поверхности', unit: '%', min: 85, max: 100, step: 1, displayScale: 100 },
 ]
 
+const OPENING_BACKGROUND_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.openingBackground.zoom', label: 'Масштаб фона', unit: '×', min: 1, max: 3, step: 0.01 },
+  { path: 'scenes.openingBackground.offsetX', label: 'Положение фона · X', unit: '', min: -1, max: 1, step: 0.01 },
+  { path: 'scenes.openingBackground.offsetY', label: 'Положение фона · Y', unit: '', min: -1, max: 1, step: 0.01 },
+]
+
 const PROLOGUE_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
   { name: 'Typography', controls: [
     { path: 'scenes.prologue.fontSize', label: 'Размер первой фразы', unit: 'px', min: 16, max: 160, step: 1 },
@@ -522,7 +528,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
     await commitGalaxySettings(selectGalaxyPalette(getConfig().scenes.galaxy, palette))
   }
 
-  const resetScope = async (scope: 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy') => {
+  const resetScope = async (scope: 'global' | 'openingBackground' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy') => {
     const before = getConfig()
     const result = await resetComposerScope(scope)
     if (!result.ok) {
@@ -564,7 +570,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–14. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–15. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -603,6 +609,8 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const title = selected === 'preload' ? '00 · Загрузка' : selected === 'preparation' ? '00.1 · Подготовка' : SCENES[selected].label
   const hasSceneControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue'
     || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'gallery' || selected === 'cosmos'
+  const hasOpeningBackgroundControls = selected === 'preload' || selected === 'preparation' || selected === 'prologue'
+    || selected === 'growth' || selected === 'bloom' || selected === 'identity'
   const currentScope: InspectorScope | undefined = selected === 'cosmos' ? 'galaxy'
     : selected === 'preload' || selected === 'preparation' || selected === 'prologue' || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'gallery'
       ? selected : undefined
@@ -683,6 +691,11 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
       </details>
       <section aria-labelledby="inspector-scene-title" className="inspector-scene">
         <h3 id="inspector-scene-title">{title}</h3>
+        {hasOpeningBackgroundControls && <details open><summary>00–04 · Кадрирование фона</summary>
+          {historyButtons('openingBackground')}
+          {OPENING_BACKGROUND_CONTROLS.map(range)}
+          <button type="button" onClick={() => { void resetScope('openingBackground') }}>Сбросить кадрирование фона</button>
+        </details>}
         {currentScope && <details className="inspector-compare"><summary>{currentScope === 'gallery' ? 'История параметров' : 'История и сравнение A/B'}</summary>
           {historyButtons(currentScope)}
           {currentScope === 'gallery' ? <p>Сравнение недоступно для интерактивной галереи: у прогулки нет стабильной точки фильма.</p> : <>

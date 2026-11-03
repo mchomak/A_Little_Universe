@@ -3,6 +3,7 @@ import type { MediaOptions, MediaSession } from '../systems/media/MediaSession'
 import type { PreparationResult } from '../systems/assets/AssetManager'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { ART_FONT_CATALOG } from '../systems/scene-config/fontCatalog'
+import { PhoneBackground } from '../components/PhoneBackground'
 import './preparation.css'
 
 export type PreparationStep = 'settings' | 'checking' | 'ready'
@@ -46,6 +47,7 @@ export function PreparationScreen({ step, session, preparation, checked, startin
   } as CSSProperties
   const title = step === 'settings' ? 'Почти всё готово' : step === 'checking' ? 'Проверка камеры' : 'Всё готово. Это для тебя.'
   return <section className={`preparation preparation-${step}`} style={style} aria-labelledby="preparation-title" data-testid="preparation" data-step={step}>
+    <PhoneBackground />
     <header className="preparation-header"><span>A LITTLE UNIVERSE FOR YOU</span><span>00.1 / {step === 'settings' ? 'ПОДГОТОВКА' : step === 'checking' ? 'ПРОВЕРКА КАМЕРЫ' : 'ГОТОВО'}</span></header>
     <div className="preparation-content">
       <h1 id="preparation-title" ref={heading} tabIndex={-1}>{title}{step === 'settings' && <svg className="preparation-light-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.25c.7 4.35 2.65 6.55 7.5 7.5-4.85.95-6.8 3.15-7.5 7.5-.7-4.35-2.65-6.55-7.5-7.5 4.85-.95 6.8-3.15 7.5-7.5Z" /><circle cx="19.75" cy="18.75" r="1" /></svg>}</h1>

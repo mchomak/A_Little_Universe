@@ -103,6 +103,22 @@ describe('sampleStarPortraitTargets', () => {
     expect(meanContrast(chromatic)).toBeGreaterThan(0.6)
   })
 
+  it('allocates substantially more particles to high-importance grayscale mask regions', () => {
+    const source = makeSource(96, 64, () => [128, 128, 128, 255])
+    const importanceMask = new Uint8Array(source.width * source.height).fill(128)
+    for (let y = 16; y < 48; y += 1) {
+      for (let x = 12; x < 36; x += 1) importanceMask[y * source.width + x] = 255
+      for (let x = 60; x < 84; x += 1) importanceMask[y * source.width + x] = 0
+    }
+    const points = sampleStarPortraitTargets({ ...source, importanceMask }, { ...settings, count: 1800, seed: 117 })
+    const inRect = (u: number, v: number, left: number, right: number) => u >= left / 96 && u < right / 96 && v >= 16 / 64 && v < 48 / 64
+    const white = points.filter(({ u, v }) => inRect(u, v, 12, 36)).length
+    const black = points.filter(({ u, v }) => inRect(u, v, 60, 84)).length
+
+    expect(white).toBeGreaterThan(black * 5)
+    expect(black).toBe(0)
+  })
+
   it('amplifies subtle interior luminance edges in the returned particle contrast', () => {
     const source = makeSource(64, 48, (x) => {
       const value = x < 32 ? 112 : 150

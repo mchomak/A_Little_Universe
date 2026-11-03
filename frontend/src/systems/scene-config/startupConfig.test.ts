@@ -3,7 +3,7 @@ import { expect, it, vi } from 'vitest'
 it('loads a same-origin partial startup JSON override and keeps defaults for omitted fields', async () => {
   vi.resetModules()
   const fetchStartup = vi.fn(async () => new Response(JSON.stringify({ schemaVersion: 1, global: { quality: 'low' },
-    scenes: { prologue: { fontSize: 70, unrecognized: true } }, unexpected: 'ignored',
+    scenes: { prologue: { fontSize: 70, unrecognized: true }, openingBackground: { zoom: 2.35, offsetX: 0.6, offsetY: -0.4 } }, unexpected: 'ignored',
   })))
   vi.stubGlobal('fetch', fetchStartup)
   try {
@@ -12,6 +12,7 @@ it('loads a same-origin partial startup JSON override and keeps defaults for omi
     expect(fetchStartup).toHaveBeenCalledWith('/scene-composer.json', expect.objectContaining({ cache: 'no-cache' }))
     expect(getConfig().global.quality).toBe('low')
     expect(getConfig().scenes.prologue.fontSize).toBe(70)
+    expect(getConfig().scenes.openingBackground).toEqual({ zoom: 2.35, offsetX: 0.6, offsetY: -0.4 })
     expect(getConfig().scenes.prologue.glow).toBe(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.glow)
     expect(getConfig()).not.toHaveProperty('unexpected')
   } finally {

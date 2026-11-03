@@ -5,7 +5,7 @@ export type QualityProfile = 'standard' | 'low'
 export type ScenePresetId = 'moonlit-letter' | 'stardust' | 'vasilisa-cinematic'
 export type GalaxyPalette = 'vasilisa' | 'spore' | 'ember' | 'emerald' | 'ice' | 'rose' | 'custom'
 export type SeedQuality = 'low' | 'standard' | 'high'
-export type ConfigResetScope = 'all' | 'global' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy' | 'preset'
+export type ConfigResetScope = 'all' | 'global' | 'openingBackground' | 'preload' | 'preparation' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy' | 'preset'
 
 export interface GalleryCloudLayerSettings {
   count: number
@@ -30,7 +30,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 14
+  readonly schemaVersion: 15
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -38,6 +38,7 @@ export interface SceneComposerConfig {
     playbackSpeed: number
   }>
   readonly scenes: Readonly<{
+    openingBackground: Readonly<{ zoom: number; offsetX: number; offsetY: number }>
     preload: Readonly<{ glow: number; particleCount: number; movementSpeed: number; collapseDuration: number }>
     preparation: Readonly<{
       fontFamily: ArtFontId
@@ -270,9 +271,10 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 14,
+  schemaVersion: 15,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
+    openingBackground: { zoom: 1, offsetX: 0, offsetY: 0 },
     preload: { glow: 1, particleCount: 150, movementSpeed: 1, collapseDuration: 1.25 },
     preparation: { fontFamily: 'marck-script', spacing: 24, entranceDuration: 0.8, typeScale: 1, lineHeight: 1.08, cardOpacity: 1 },
     prologue: {
@@ -388,10 +390,11 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 14) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 15) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
+  const openingBackgroundInput = asRecord(scenesInput?.openingBackground)
   const preloadInput = asRecord(scenesInput?.preload)
   const preparationInput = asRecord(scenesInput?.preparation)
   const prologueInput = asRecord(scenesInput?.prologue)
@@ -428,6 +431,11 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
 
   const scenes = {
+    openingBackground: {
+      zoom: numberValue(openingBackgroundInput?.zoom, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.openingBackground.zoom, 1, 3),
+      offsetX: boundedNumberValue(openingBackgroundInput?.offsetX, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.openingBackground.offsetX, -1, 1),
+      offsetY: boundedNumberValue(openingBackgroundInput?.offsetY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.openingBackground.offsetY, -1, 1),
+    },
     preload: {
       glow: numberValue(preloadInput?.glow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preload.glow, 0, 2),
       particleCount: numberValue(preloadInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.preload.particleCount, 40, 300, true),
@@ -560,7 +568,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 14, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 15, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
@@ -833,6 +841,11 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 function numberValue(value: unknown, fallback: number, min: number, max: number, integer = false) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max || (integer && !Number.isInteger(value))) return fallback
   return value
+}
+
+function boundedNumberValue(value: unknown, fallback: number, min: number, max: number) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
+  return clamp(value, min, max)
 }
 
 function migrateLegacyNumber(value: unknown, fallback: number, legacyMin: number, legacyMax: number, min: number, max: number, integer = false) {
