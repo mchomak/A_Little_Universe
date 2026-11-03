@@ -13,6 +13,7 @@ import {
   Vector3,
 } from 'three'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
+import { GALLERY } from './content'
 import { GALLERY_WORLD } from './world'
 
 export type GalleryWaterSettings = SceneComposerConfig['scenes']['gallery']
@@ -53,39 +54,43 @@ export function calculateWaterMoonReflectionGain(reflectionStrength: number) {
   return Math.max(0, Math.min(1.2, reflectionStrength / 0.5))
 }
 
-/** Runs a soft band from the moon's floor footprint to the camera, with the physical glint kept inside it. */
+/** Keeps the moonlit band anchored to the moon and gallery entrance as the camera moves. */
 export function calculateMoonReflectionTrack(
   moon: WorldPoint,
   target: WorldPoint,
-  camera: WorldPoint,
   floorY: number,
 ): GalleryMoonReflectionTrack {
-  const virtualMoonY = 2 * floorY - moon.y
-  const projectionDenominator = camera.y - virtualMoonY
-  const projectionT = Math.abs(projectionDenominator) < 0.0001
-    ? 0.5
-    : Math.max(0, Math.min(1, (camera.y - floorY) / projectionDenominator))
-  const reflectedX = camera.x + (moon.x - camera.x) * projectionT
-  const reflectedZ = camera.z + (moon.z - camera.z) * projectionT
-
+  const aimVertical = target.y - moon.y
+  const floorProjectionT = Math.abs(aimVertical) < 0.0001
+    ? 1
+    : Math.max(0, Math.min(2, (floorY - moon.y) / aimVertical))
+  const floorPointX = moon.x + (target.x - moon.x) * floorProjectionT
+  const floorPointZ = moon.z + (target.z - moon.z) * floorProjectionT
   const originX = moon.x
   const originZ = moon.z
-  const towardCameraX = camera.x - originX
-  const towardCameraZ = camera.z - originZ
-  const cameraLength = Math.hypot(towardCameraX, towardCameraZ)
-  const aimDirectionX = target.x - moon.x
-  const aimDirectionZ = target.z - moon.z
-  const aimLength = Math.hypot(aimDirectionX, aimDirectionZ)
-  const fallbackX = aimLength > 0.0001 ? aimDirectionX / aimLength : 0
-  const fallbackZ = aimLength > 0.0001 ? aimDirectionZ / aimLength : 1
-  const directionX = cameraLength > 0.0001 ? towardCameraX / cameraLength : fallbackX
-  const directionZ = cameraLength > 0.0001 ? towardCameraZ / cameraLength : fallbackZ
-  const reflectedDistance = (reflectedX - originX) * directionX + (reflectedZ - originZ) * directionZ
-  const trackLength = Math.max(0.5, cameraLength)
+  let directionX = floorPointX - originX
+  let directionZ = floorPointZ - originZ
+  let aimLength = Math.hypot(directionX, directionZ)
+
+  // The configured aim can be moved off the gallery path. Keep the band aimed
+  // through the entrance in that case so it never turns away from the water.
+  if (aimLength < 0.0001 || directionZ <= 0.0001) {
+    directionX = -originX
+    directionZ = GALLERY.startZ - originZ
+    aimLength = Math.hypot(directionX, directionZ)
+  }
+  directionX /= aimLength
+  directionZ /= aimLength
+
+  const hotspot = Math.max(0, Math.min(
+    (GALLERY.startZ - originZ) / directionZ,
+    (floorPointX - originX) * directionX + (floorPointZ - originZ) * directionZ,
+  ))
+  const trackLength = Math.max(0.5, (GALLERY.startZ - originZ) / directionZ)
   return {
     origin: [originX, originZ],
     direction: [directionX, directionZ],
-    hotspot: Math.max(0, Math.min(trackLength, reflectedDistance)),
+    hotspot,
     length: trackLength,
   }
 }
@@ -315,10 +320,10 @@ export function updateGalleryWaterMaterial(
 }
 
 export function updateGalleryWaterCamera(material: ShaderMaterial, camera: Camera) {
-  const cameraPosition = camera.getWorldPosition(material.uniforms.uCameraPosition!.value as Vector3)
+  camera.getWorldPosition(material.uniforms.uCameraPosition!.value as Vector3)
   const moon = material.uniforms.uMoonPosition!.value as Vector3
   const target = material.uniforms.uMoonTarget!.value as Vector3
-  const track = calculateMoonReflectionTrack(moon, target, cameraPosition, GALLERY_WORLD.floor.y)
+  const track = calculateMoonReflectionTrack(moon, target, GALLERY_WORLD.floor.y)
   ;(material.uniforms.uMoonTrackOrigin!.value as Vector2).set(track.origin[0], track.origin[1])
   ;(material.uniforms.uMoonTrackDirection!.value as Vector2).set(track.direction[0], track.direction[1])
   material.uniforms.uMoonTrackHotspot!.value = track.hotspot
