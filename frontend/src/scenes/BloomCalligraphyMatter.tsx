@@ -1,18 +1,22 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useThree } from '@react-three/fiber'
 import type { SceneProps } from '../engine/sceneTypes'
+import { getGrowthSceneFrames } from '../engine/filmConfig'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { loadArtFont } from '../systems/scene-config/fontCatalog'
 import { LetterLayer, makeResource, type LetterLayerOptions, type LetterResource } from './prologue/LetterLayer'
 import { createPrologueDissolveStyle, rasterizeLetter } from './prologue/letterMatter'
 import { resolvePrologueParticleCount } from './prologue/particleMath'
-import { createBloomTextClock } from './lily/bloomGesture'
+import { createBloomTextClock, getBloomTextStartDelay } from './lily/bloomGesture'
 
 /** Renders the scene-03 invitation through the same atlas, ink shader and dust system as scene 01. */
 export function BloomCalligraphyMatter(props: SceneProps) {
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const prologue = config.scenes.prologue
   const text = config.scenes.bloom
+  const growthFrames = getGrowthSceneFrames(config.scenes.growth)
+  const textStartDelay = getBloomTextStartDelay(config.scenes.growth.growthVortex.dissipationDuration,
+    growthFrames.duration - growthFrames.model[1])
   const size = useThree((state) => state.size)
   const gl = useThree((state) => state.gl)
   const dpr = useThree((state) => state.viewport.dpr)
@@ -54,14 +58,14 @@ export function BloomCalligraphyMatter(props: SceneProps) {
   }), [prologue.textGlow, prologue.particleGlow, prologue.particleFadeDuration, prologue.windStrength, prologue.turbulence, prologue.particleDuration, text.textColor])
   const layerOptions = useMemo<LetterLayerOptions>(() => ({
     settings: layerSettings,
-    write: [0, text.textWritingDuration],
+    write: [textStartDelay, textStartDelay + text.textWritingDuration],
     fracture: [0, 2.6],
     getTime,
     getFractureStart,
     getEmissionOffset: getFractureStart,
     getDissolveEnd,
     subscribeTime,
-  }), [getDissolveEnd, getFractureStart, getTime, layerSettings, subscribeTime, text.textWritingDuration])
+  }), [getDissolveEnd, getFractureStart, getTime, layerSettings, subscribeTime, text.textWritingDuration, textStartDelay])
 
   useLayoutEffect(() => {
     let disposed = false

@@ -1,8 +1,9 @@
 import { useLayoutEffect, useRef, useSyncExternalStore, type CSSProperties } from 'react'
 import type { SceneProps } from '../engine/sceneTypes'
+import { getGrowthSceneFrames } from '../engine/filmConfig'
 import { ART_FONT_CATALOG } from '../systems/scene-config/fontCatalog'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
-import { createBloomTextClock, isBloomGestureReady } from '../scenes/lily/bloomGesture'
+import { createBloomTextClock, getBloomTextStartDelay, isBloomGestureReady } from '../scenes/lily/bloomGesture'
 import './bloom.css'
 
 // eslint-disable-next-line react-refresh/only-export-components -- shared content contract for the GPU matter layer.
@@ -24,6 +25,9 @@ export function BloomOverlay({ state, runtime, reducedMotion }: SceneProps) {
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const prologue = config.scenes.prologue
   const text = config.scenes.bloom
+  const growthFrames = getGrowthSceneFrames(config.scenes.growth)
+  const textStartDelay = getBloomTextStartDelay(config.scenes.growth.growthVortex.dissipationDuration,
+    growthFrames.duration - growthFrames.model[1])
   const fontFamily = ART_FONT_CATALOG.find((font) => font.id === prologue.fontFamily)?.family ?? 'Great Vibes'
   const stateRef = useRef(state)
   const clock = useRef(createBloomTextClock(runtime.presentationTime, state.mode === 'waiting' ? 'waiting' : 'playing', state.revision))
@@ -44,13 +48,15 @@ export function BloomOverlay({ state, runtime, reducedMotion }: SceneProps) {
       const target = paragraph.current
       if (!target) return
       const time = clock.current.time()
-      const write = reducedMotion ? 1 : getReveal(time, text.textWritingDuration)
+      const writeElapsed = time - textStartDelay
+      const write = reducedMotion ? Number(writeElapsed >= 0) : getReveal(writeElapsed, text.textWritingDuration)
       const start = fractureStart.current
       const dissolve = start === null ? 0 : reducedMotion ? getReveal(time - start, 0.7) : Math.max(0, Math.min(1, (time - start) / 2.6))
       target.style.setProperty('--write-progress', `${write * 104}%`)
-      target.style.opacity = String(1 - dissolve)
+      target.style.opacity = String(writeElapsed < 0 ? 0 : 1 - dissolve)
       target.style.setProperty('--fracture-progress', `${dissolve * 100}%`)
-      const ready = stateRef.current.mode === 'waiting' && isBloomGestureReady(clock.current.waitingElapsed(), text.textWritingDuration)
+      const ready = stateRef.current.mode === 'waiting'
+        && isBloomGestureReady(clock.current.waitingElapsed(), textStartDelay + text.textWritingDuration)
       target.setAttribute('aria-hidden', String(!ready))
       if (accessibleHint.current) accessibleHint.current.textContent = ready ? BLOOM_COPY[3] : ''
     }
@@ -60,7 +66,7 @@ export function BloomOverlay({ state, runtime, reducedMotion }: SceneProps) {
     const unsubscribePresentation = runtime.subscribePresentation(updatePresentation)
     const unsubscribeFrame = runtime.subscribeFrame(updateScene)
     return () => { unsubscribePresentation(); unsubscribeFrame() }
-  }, [reducedMotion, runtime, text.textWritingDuration, state.revision])
+  }, [reducedMotion, runtime, state.revision, text.textWritingDuration, textStartDelay])
 
   const style: CSSProperties = {
     left: `${text.textPositionX * 100}%`, top: `${text.textPositionY * 100}%`,

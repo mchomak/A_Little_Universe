@@ -898,8 +898,8 @@ it('migrates schemas 1 through 20 into schema 21 Lily effect groups with bounded
   })
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex).toEqual({
     enabled: true, particleCount: 360, particleSize: 1.8, sizeVariation: 0.55, brightness: 1,
-    orbitRadius: 0.42, rotationSpeed: 1.2, verticalSpread: 0.9, spiralTightness: 1.4,
-    dissipationDuration: 4, dissipationSpread: 0.8, color: '#EBD4A7',
+    orbitRadius: 0.42, rotationSpeed: 1.55, verticalSpread: 0.9, spiralTightness: 1.4,
+    dissipationDuration: 2.3, dissipationSpread: 1.35, color: '#EBD4A7',
   })
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen).toEqual({
     enabled: true, particleCount: 48, particleSize: 1.6, glowIntensity: 0.75,

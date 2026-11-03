@@ -1,5 +1,12 @@
 import type { FilmAction, FilmState } from '../../engine/film'
 
+/** Scene 03 starts its invitation after Scene 02's final vortex sparks fade. */
+export function getBloomTextStartDelay(dissipationDuration: number, growthSettleDuration: number): number {
+  const dissipation = Number.isFinite(dissipationDuration) ? Math.max(0, dissipationDuration) : 0
+  const settle = Number.isFinite(growthSettleDuration) ? Math.max(0, growthSettleDuration) : 0
+  return Math.max(0, dissipation - settle)
+}
+
 /** The bloom gate accepts one ordinary primary-button click or touch activation. */
 export function isBloomPrimaryClick(button: number, isPrimary: boolean) {
   return button === 0 && isPrimary

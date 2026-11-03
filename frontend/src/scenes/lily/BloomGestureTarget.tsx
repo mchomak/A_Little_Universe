@@ -2,13 +2,18 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useSyncExternalStore, ty
 import type { ThreeEvent } from '@react-three/fiber'
 import type { SceneProps } from '../../engine/sceneTypes'
 import { getConfig, subscribeConfig } from '../../systems/scene-config/config'
-import { createBloomTextClock, handleBloomPointerDown, isBloomGestureReady } from './bloomGesture'
+import { getGrowthSceneFrames } from '../../engine/filmConfig'
+import { createBloomTextClock, getBloomTextStartDelay, handleBloomPointerDown, isBloomGestureReady } from './bloomGesture'
 import { BloomPointerContext } from './BloomPointerContext'
 
 /** The island and lily share this event boundary, so either can start the bloom with one click. */
 export function BloomGestureTarget({ state, dispatch, runtime, writingDuration, children }: SceneProps & { writingDuration?: number; children?: ReactNode }) {
-  const configuredDuration = useSyncExternalStore(subscribeConfig, getConfig, getConfig).scenes.bloom.textWritingDuration
-  const duration = writingDuration ?? configuredDuration
+  const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
+  const configuredDuration = config.scenes.bloom.textWritingDuration
+  const growthFrames = getGrowthSceneFrames(config.scenes.growth)
+  const textStartDelay = getBloomTextStartDelay(config.scenes.growth.growthVortex.dissipationDuration,
+    growthFrames.duration - growthFrames.model[1])
+  const duration = textStartDelay + (writingDuration ?? configuredDuration)
   const stateRef = useRef(state)
   const readyRef = useRef(false)
   const clockRef = useRef(createBloomTextClock(runtime.presentationTime, 'waiting', state.revision))

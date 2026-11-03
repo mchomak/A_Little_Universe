@@ -52,6 +52,7 @@ export interface GrowthVortexParticleSeed {
   verticalPhase: number
   spread: number
   lift: number
+  birthProgress?: number
 }
 
 interface GrowthVortexSeed extends GrowthVortexParticleSeed {
@@ -105,20 +106,30 @@ export function getBloomPollenAge(seed: BloomPollenParticleSeed, bloomClipTime: 
 
 /** Positive X moving toward positive Z is clockwise from above (+Y). */
 export function getGrowthVortexPosition(seed: GrowthVortexParticleSeed, elapsed: number, dissipation: number,
-  anchor: Vector3, settings: LilyGrowthVortexSettings, out: Vector3, worldScale = 1, motionScale = 1): Vector3 {
+  anchor: Vector3, settings: LilyGrowthVortexSettings, out: Vector3, worldScale = 1, motionScale = 1,
+  growthProgress = 0, flowerHeight = 0): Vector3 {
   const scale = Math.max(0.001, Number.isFinite(worldScale) ? worldScale : 1)
   const motion = clamp(motionScale, 0, 1)
   const dissipationProgress = clamp(dissipation)
   const motionElapsed = Math.max(0, elapsed) * motion
-  const angle = seed.angle + motionElapsed * settings.rotationSpeed * seed.angularSpeed
-  const radius = (settings.orbitRadius * (0.72 + seed.radius * 0.56)
-    + settings.dissipationSpread * dissipationProgress * seed.spread) / scale
+  const angularTravel = motionElapsed * settings.rotationSpeed * seed.angularSpeed
+  const angle = seed.angle + angularTravel
+  const turns = angularTravel / (Math.PI * 2)
+  const orbitGrowth = smooth(turns / 1.75)
+  const burst = 1 - (1 - dissipationProgress) ** 3
+  const initialRadius = Math.min(0.055, settings.orbitRadius * 0.13)
+  const finalRadius = settings.orbitRadius * (0.86 + seed.radius * 0.35)
+  const radius = (initialRadius + (finalRadius - initialRadius) * orbitGrowth
+    + settings.dissipationSpread * burst * seed.spread) / scale
   const verticalSpread = settings.verticalSpread / scale
-  const lift = settings.dissipationSpread * dissipationProgress * seed.lift / scale
-  const helixRise = motionElapsed * settings.rotationSpeed * seed.angularSpeed / (Math.PI * 2) * verticalSpread * 0.12
+  const particleRise = smooth((clamp(growthProgress) - clamp(seed.birthProgress ?? 0)) / 0.28)
+  const lead = Math.max(0, Number.isFinite(flowerHeight) ? flowerHeight : 0) * 1.12 * particleRise
+  const heightVariation = seed.height * verticalSpread * 0.08 * particleRise
+  const helix = Math.sin(angle * settings.spiralTightness + seed.verticalPhase) * verticalSpread * 0.06 * orbitGrowth
+  const lift = settings.dissipationSpread * burst * seed.lift * 0.28 / scale
   out.set(
     anchor.x + Math.cos(angle) * radius,
-    anchor.y + seed.height * verticalSpread + Math.sin(angle * settings.spiralTightness + seed.verticalPhase) * verticalSpread * 0.18 + lift + helixRise,
+    anchor.y + Math.max(0, lead + heightVariation + helix) + lift,
     anchor.z + Math.sin(angle) * radius,
   )
   return out
@@ -620,6 +631,7 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
   const pollenPearl = new Color('#FFF2DF')
   const cupGlowColor = new Color('#F7E4BC')
   const anchor = new Vector3()
+  const groundAnchor = new Vector3()
   const cupAnchor = new Vector3()
   const antherAnchor = new Vector3()
   const worldScale = new Vector3()
@@ -649,6 +661,7 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
       base.getWorldPosition(anchor)
       parent.worldToLocal(anchor)
     } else anchor.set(0, 0, 0)
+    groundAnchor.copy(anchor)
     writePoint(positions, sizes, opacities, colors, glows, IMPULSE_POINTS, anchor, 23, coreOpacity * settings.vfxCoreIntensity * 0.42, baseColor)
     writePoint(positions, sizes, opacities, colors, glows, IMPULSE_POINTS + 1, anchor, 8.5, coreOpacity * settings.vfxCoreIntensity, pearl)
 
@@ -821,7 +834,8 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
         ? getGrowthVortexOpacity(vortexProgress, seed.birthProgress, dissipationAge, vortexSettings.dissipationDuration)
         : 0
       const elapsed = getGrowthVortexElapsed(frame, seed)
-      getGrowthVortexPosition(seed, elapsed, dissipationProgress, anchor, vortexSettings, pathPoint, scaleY, frame.reducedMotion ? 0.3 : 1)
+      getGrowthVortexPosition(seed, elapsed, dissipationProgress, groundAnchor, vortexSettings, pathPoint, scaleY,
+        frame.reducedMotion ? 0.3 : 1, vortexProgress, Math.max(0, anchor.y - groundAnchor.y))
       const palette = seed.palette < 0.63 ? vortexChampagne : seed.palette < 0.86 ? vortexPearl : vortexRose
       particleColor.copy(vortexColor).lerp(palette, seed.palette < 0.63 ? 0.24 : 0.58)
       const size = vortexSettings.particleSize * (1 - vortexSettings.sizeVariation * 0.5 + seed.size * vortexSettings.sizeVariation)

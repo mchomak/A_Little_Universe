@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import { Vector3 } from 'three'
-import { createBloomTextClock } from './bloomGesture'
+import { createBloomTextClock, getBloomTextStartDelay } from './bloomGesture'
 import { getBloomSceneFrames, getGrowthSceneFrames } from '../../engine/filmConfig'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 import {
@@ -18,26 +18,44 @@ import {
 
 const vortex = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex
 
-it('moves a growth-vortex mote clockwise around the moving plant anchor', () => {
+it('starts the growth vortex at the root and expands its orbit on successive turns', () => {
   const seed: GrowthVortexParticleSeed = {
-    angle: 0, angularSpeed: 1, radius: 0, height: 0, verticalPhase: 0, spread: 0.5, lift: 0.5,
+    angle: 0, angularSpeed: 1, radius: 0, height: 0, verticalPhase: 0, spread: 0.5, lift: 0.5, birthProgress: 0,
   }
   const anchor = new Vector3(2, 3, 4)
-  const clockwiseSettings = { ...vortex, rotationSpeed: 1, orbitRadius: 0.5555555555555555 }
-  const start = getGrowthVortexPosition(seed, 0, 0, anchor, clockwiseSettings, new Vector3())
-  const quarterTurn = getGrowthVortexPosition(seed, Math.PI / 2, 0, anchor, clockwiseSettings, new Vector3())
+  const clockwiseSettings = { ...vortex, rotationSpeed: 1, orbitRadius: 0.6, verticalSpread: 1 }
+  const start = getGrowthVortexPosition(seed, 0, 0, anchor, clockwiseSettings, new Vector3(), 1, 1, 0, 2)
+  const quarterTurn = getGrowthVortexPosition(seed, Math.PI / 2, 0, anchor, clockwiseSettings, new Vector3(), 1, 1, 0, 2)
+  const oneTurn = getGrowthVortexPosition(seed, Math.PI * 2, 0, anchor, clockwiseSettings, new Vector3(), 1, 1, 0, 2)
+  const twoTurns = getGrowthVortexPosition(seed, Math.PI * 4, 0, anchor, clockwiseSettings, new Vector3(), 1, 1, 0, 2)
 
-  expect(start.x).toBeCloseTo(2.4)
+  expect(start.x - anchor.x).toBeLessThan(0.1)
   expect(start.y).toBeCloseTo(3)
   expect(start.z).toBeCloseTo(4)
   // Viewed from +Y, positive X moving toward positive Z is clockwise.
-  expect(quarterTurn.x).toBeCloseTo(2)
-  expect(quarterTurn.z).toBeCloseTo(4.4)
-  const oneTurn = getGrowthVortexPosition(seed, Math.PI * 2, 0, anchor,
-    { ...clockwiseSettings, verticalSpread: 1, spiralTightness: 1 }, new Vector3())
-  expect(oneTurn.y - start.y).toBeCloseTo(0.12)
-  expect(getGrowthVortexPosition(seed, 0, 0, new Vector3(5, 7, 1), clockwiseSettings, new Vector3()).toArray())
-    .toEqual([start.x + 3, start.y + 4, start.z - 3])
+  expect(quarterTurn.x).toBeCloseTo(anchor.x)
+  expect(quarterTurn.z).toBeGreaterThan(anchor.z)
+  expect(Math.hypot(oneTurn.x - anchor.x, oneTurn.z - anchor.z)).toBeGreaterThan(Math.hypot(start.x - anchor.x, start.z - anchor.z))
+  expect(Math.hypot(twoTurns.x - anchor.x, twoTurns.z - anchor.z)).toBeGreaterThan(Math.hypot(oneTurn.x - anchor.x, oneTurn.z - anchor.z))
+  const ahead = getGrowthVortexPosition(seed, Math.PI * 4, 0, anchor, clockwiseSettings, new Vector3(), 1, 1, 1, 2)
+  expect(ahead.y).toBeGreaterThan(anchor.y + 2)
+})
+
+it('starts text only after the remaining vortex dissipation tail has cleared', () => {
+  const frames = getGrowthSceneFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth)
+  const settleDuration = frames.duration - frames.model[1]
+  const delay = getBloomTextStartDelay(vortex.dissipationDuration, settleDuration)
+  const bloomFrames = getBloomSceneFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom)
+  const bloomStart = {
+    scene: 'bloom' as const, time: 0, clipTime: 9, clipDuration: 9, frames, bloomFrames,
+    bloomClipTime: 0, bloomClipDuration: 16, bloomOpen: false, bloomElapsed: 0, pixelRatio: 1,
+    reducedMotion: false, quality: 'standard' as const,
+  }
+
+  expect(delay).toBeCloseTo(0.4)
+  expect(getGrowthVortexDissipationAge({ ...bloomStart, bloomElapsed: delay - 0.01 })).toBeLessThan(vortex.dissipationDuration)
+  expect(getGrowthVortexDissipationAge({ ...bloomStart, bloomElapsed: delay })).toBeCloseTo(vortex.dissipationDuration)
+  expect(getBloomTextStartDelay(1, 1.9)).toBe(0)
 })
 
 it('fades and expands the vortex only across its configured dissipation interval', () => {

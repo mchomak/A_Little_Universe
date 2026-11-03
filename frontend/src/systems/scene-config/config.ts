@@ -409,8 +409,8 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       lilyLeafMaterial: { translucencyStrength: 0.32, edgeLightIntensity: 0.2, colorVariation: 0.24 },
       growthVortex: {
         enabled: true, particleCount: 360, particleSize: 1.8, sizeVariation: 0.55, brightness: 1,
-        orbitRadius: 0.42, rotationSpeed: 1.2, verticalSpread: 0.9, spiralTightness: 1.4,
-        dissipationDuration: 4, dissipationSpread: 0.8, color: '#EBD4A7',
+        orbitRadius: 0.42, rotationSpeed: 1.55, verticalSpread: 0.9, spiralTightness: 1.4,
+        dissipationDuration: 2.3, dissipationSpread: 1.35, color: '#EBD4A7',
       },
       seedScale: 1, flowerGrowthDuration: 9,
       islandRadius: 0.82, islandThickness: 0.24, islandDepth: 0.58, islandRoughness: 0.5,

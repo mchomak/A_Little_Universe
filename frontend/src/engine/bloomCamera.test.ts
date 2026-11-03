@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../systems/scene-config/config'
-import { getBloomCameraMoveDuration, getBloomCloseupPose, getBloomEntryCameraPose } from './bloomCamera'
+import { getBloomCameraApproach, getBloomCameraMoveDuration, getBloomCloseupPose, getBloomEntryCameraPose } from './bloomCamera'
 
 it('aims the bloom close-up at the flower cup using configured distance and height', () => {
   expect(getBloomCloseupPose(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom)).toEqual({
@@ -20,4 +20,12 @@ it('preserves the actual camera pose at the 02-to-03 handoff and on Bloom timeli
   expect(getBloomEntryCameraPose('growth', growthExit, authoredEntry)).toBe(growthExit)
   expect(getBloomEntryCameraPose('bloom', growthExit, authoredEntry)).toBe(growthExit)
   expect(getBloomEntryCameraPose('prologue', growthExit, authoredEntry)).toBe(authoredEntry)
+})
+
+it('holds the 02-to-03 camera pose until the viewer touches the flower', () => {
+  const bloom = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom
+  expect(getBloomCameraApproach('waiting', bloom, [0, 16])).toBeNull()
+  expect(getBloomCameraApproach('playing', bloom, [0, 16])).toEqual({
+    pose: getBloomCloseupPose(bloom), duration: getBloomCameraMoveDuration(bloom, [0, 16]),
+  })
 })

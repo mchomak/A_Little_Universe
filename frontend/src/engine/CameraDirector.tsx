@@ -14,7 +14,7 @@ import { GALLERY_ART } from '../scenes/gallery/artDirection'
 import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
 import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthViewportHeight } from '../scenes/growth/seedProcedure'
-import { getBloomCameraMoveDuration, getBloomCloseupPose, getBloomEntryCameraPose } from './bloomCamera'
+import { getBloomCameraApproach, getBloomCloseupPose, getBloomEntryCameraPose } from './bloomCamera'
 import { galaxyCameraPose, interpolateCameraPose } from '../scenes/galaxy/camera'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { getIdentityCameraMoveTarget } from './identityCamera'
@@ -32,7 +32,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
   const galaxySettings = config.scenes.galaxy
   const pose = useRef<CameraPose>({ x: 0, y: 0, z: 5.6, tx: 0, ty: 0, tz: 0 })
   const galleryRevision = useRef<number | null>(null)
-  const { scene, revision, paused, reading, speed } = state
+  const { scene, mode, revision, paused, reading, speed } = state
   const lastBuiltScene = useRef(scene)
   const hasBuiltScene = useRef(false)
   const render = useCallback(() => {
@@ -54,6 +54,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const flowerSide = getGrowthBloomEntryCameraPose(growthSettings, reducedMotion, growthViewportHeight)
     const bloomFrames = getBloomSceneFrames(bloomSettings)
     const flowerCloseup = getBloomCloseupPose(bloomSettings)
+    const bloomApproach = scene === 'bloom' ? getBloomCameraApproach(mode, bloomSettings, bloomFrames.opening) : null
     const timeline = gsap.timeline({ onUpdate: render })
     if (scene === 'gallery') {
       if (galleryRevision.current !== revision) {
@@ -94,9 +95,9 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       return timeline.to(cursor, { time: duration, duration, ease: 'none' })
     }
     if (reducedMotion) return timeline
-    if (scene === 'bloom') timeline.to(p, {
-      ...flowerCloseup,
-      duration: getBloomCameraMoveDuration(bloomSettings, bloomFrames.opening),
+    if (bloomApproach) timeline.to(p, {
+      ...bloomApproach.pose,
+      duration: bloomApproach.duration,
       ease: 'sine.inOut',
     })
     if (scene === 'identity') timeline.to(p, {
@@ -114,7 +115,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       if (slowdown > 0) timeline.to(p, { ...finish, duration: slowdown, ease: 'sine.out' })
     }
     return timeline
-  }, [bloomSettings, galaxySettings, growthSettings, growthViewportHeight, identitySettings, reducedMotion, render, revision, scene])
+  }, [bloomSettings, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, reducedMotion, render, revision, scene])
   useSceneTimeline(build, { runtime })
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return
