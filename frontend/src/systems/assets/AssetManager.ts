@@ -70,7 +70,14 @@ export class AssetManager {
     for (const asset of this.manifest.assets) {
       if (this.completed.has(asset.url)) continue
       try {
-        const response = await request(asset.url, { signal: AbortSignal.timeout(25000) })
+        // Old service workers can serve their cached entry document at this mutable URL.
+        // The build query bypasses that stale URL match before checking the current manifest.
+        const isEntryDocument = asset.url === `${import.meta.env.BASE_URL}index.html`
+        const requestUrl = isEntryDocument ? `${asset.url}?build=${encodeURIComponent(this.manifest.version)}` : asset.url
+        const response = await request(requestUrl, {
+          ...(isEntryDocument ? { cache: 'reload' as const } : {}),
+          signal: AbortSignal.timeout(25000),
+        })
         const bytes = await validateResponse(response, asset)
         await decodeAsset(bytes, asset)
         this.completed.add(asset.url)
