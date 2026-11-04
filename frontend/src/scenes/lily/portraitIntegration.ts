@@ -9,6 +9,13 @@ import { sampleStarPortraitTargets, type StarPortraitPoint, type StarPortraitSam
 type IdentitySettings = SceneComposerConfig['scenes']['identity']
 type BloomSettings = SceneComposerConfig['scenes']['bloom']
 
+export interface LilyPortraitCameraWorkerSettings {
+  bloomSettings: Pick<BloomSettings, 'cameraTargetX' | 'cameraTargetY' | 'cameraFinalDistance' | 'cameraFinalHeight'>
+  identitySettings: Pick<IdentitySettings, 'cameraPullback' | 'cameraRise' | 'cameraMoveDuration'>
+  aspect: number
+  reducedMotion: boolean
+}
+
 /** Keep the sampler inputs identical to the standalone DEV portrait lab. */
 export function toStarPortraitSamplingSettings(settings: ParticlePortraitSettings): StarPortraitSamplingSettings {
   return {
@@ -73,12 +80,7 @@ function getPortraitRevealPriority(point: StarPortraitPoint) {
  * This matches CameraDirector's Scene 04 `sine.inOut` camera timeline and
  * returns a basis for the camera at any absolute identity-scene time.
  */
-export function createLilyPortraitCameraBasisAtTime(input: {
-  bloomSettings: BloomSettings
-  identitySettings: IdentitySettings
-  aspect: number
-  reducedMotion: boolean
-}) {
+export function createLilyPortraitCameraBasisAtTime(input: LilyPortraitCameraWorkerSettings) {
   const start = getBloomCloseupPose(input.bloomSettings)
   const end = getIdentityCameraMoveTarget(start, input.identitySettings)
   const aspect = Number.isFinite(input.aspect) && input.aspect > 0 ? input.aspect : 1
@@ -105,7 +107,7 @@ export function placeLilyPortraitTargets(
   targets: readonly StarPortraitPoint[],
   sourceAspect: number,
   basis: PortraitCameraBasis,
-  settings: ParticlePortraitSettings,
+  settings: Pick<ParticlePortraitSettings, 'scale' | 'offsetX' | 'offsetY'>,
 ): [number, number, number][] {
   const aspect = Number.isFinite(sourceAspect) && sourceAspect > 0 ? sourceAspect : 1
   const fitWidth = aspect <= basis.aspect ? basis.visibleHeight * aspect : basis.visibleWidth

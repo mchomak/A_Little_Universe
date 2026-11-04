@@ -1,4 +1,4 @@
-import { useGLTF } from '@react-three/drei'
+﻿import { useGLTF } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
 import { useCallback, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { LoopOnce, Material, Mesh, type Group } from 'three'
@@ -10,13 +10,12 @@ import { LILY_MODEL_URL } from '../../assets/lily/lilyAsset'
 import { getGrowthClipTime, getSyncedBloomClipTime } from './animationTiming'
 import { attachLilyAnimationPlayer, LilyAnimationPlayer } from './animationPlayer'
 import { subscribeLilyAnimationClock } from './animationClock'
-import { createLilyGeometryParticleSource, lilyDissolvePart, type LilySurfaceSource } from './particleSource'
+import { createLilyGeometryParticleSourceAsync, lilyDissolvePart, type LilySurfaceSource } from './particleSource'
 import { patchLilyMaterial, setLilySurfaceBounds, updateLilyDissolve, updateLilyParticleSettings, type LilyDissolveUniforms } from './dissolve'
 import { createLilyGrowthVfx, type LilyGrowthVfx } from './lilyGrowthVfx'
+import { createLilyParticleGeometrySetup, lilyParticlePreparation } from './lilyParticlePreparation'
+import { getLilyParticleSourceSignature, LILY_PARTICLE_MODEL_POSITION, LILY_PARTICLE_MODEL_SCALE, seekLilyBloomEndpoint } from './lilyParticlePose'
 import { enableGrowthObjectShadows, shouldUseGrowthShadows } from '../growth/sceneShadows'
-
-const MODEL_POSITION: [number, number, number] = [0, -1.45, 0]
-const MODEL_SCALE = 3
 
 interface LilyMaterialState {
   material: Material
@@ -63,11 +62,18 @@ function setLilyOpacity(states: LilyMaterialState[], opacity: number) {
 }
 
 /** A single GLB instance spans scene 02's growth and scene 03's automatic bloom. */
-export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, dissolveUniforms }: SceneProps & { onParticleSource?: (source: LilySurfaceSource) => void; dissolveUniforms: LilyDissolveUniforms }) {
+export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, onParticleSourceError, sourceAttempt = 0, dissolveUniforms }: SceneProps & {
+  onParticleSource?: (source: LilySurfaceSource) => void
+  onParticleSourceError?: (error: unknown) => void
+  sourceAttempt?: number
+  dissolveUniforms: LilyDissolveUniforms
+}) {
   const gltf = useGLTF(LILY_MODEL_URL)
   const invalidate = useThree(({ invalidate }) => invalidate)
   const pixelRatio = useThree(({ viewport }) => viewport.dpr)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
+  const preparationSnapshot = useSyncExternalStore(lilyParticlePreparation.subscribe, lilyParticlePreparation.getSnapshot, lilyParticlePreparation.getSnapshot)
+  const screenSize = useThree(({ size }) => size)
   const model = useMemo(() => clone(gltf.scene) as Group, [gltf.scene])
   const stateRef = useRef(state)
   const playerRef = useRef<LilyAnimationPlayer | null>(null)
@@ -107,15 +113,41 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
     const clip = gltf.animations.find((animation) => animation.name === 'Bloom')
     const player = playerRef.current
     if (!clip || !player) return
+    const setup = createLilyParticleGeometrySetup({
+      config,
+      width: screenSize.width,
+      height: screenSize.height,
+      reducedMotion,
+      bloomClipDuration: clip.duration,
+    })
+    const prepared = lilyParticlePreparation.getForKey(setup.key)
+    if (prepared?.source) {
+      setLilySurfaceBounds(dissolveUniforms, prepared.source)
+      particleSourceRef.current = prepared.source
+      onParticleSource(prepared.source)
+      return
+    }
+    // The preparation screen owns matching worker input until its source is
+    // available; don't capture a second copy when a DEV jump enters scene 04.
+    const currentPreparation = lilyParticlePreparation.getSnapshot()
+    if (currentPreparation.status === 'preparing' && currentPreparation.key === setup.seedKey) return
     // Sample the same posed model at its actual world transform. IdentityScene
     // waits for this one-time capture instead of briefly using mock positions.
-    player.play('Bloom', LoopOnce, 1)
-    player.seek(clip.duration)
-    const source = createLilyGeometryParticleSource(model)
-    setLilySurfaceBounds(dissolveUniforms, source)
-    particleSourceRef.current = source
-    onParticleSource(source)
-  }, [dissolveUniforms, gltf.animations, model, onParticleSource, state.scene])
+    seekLilyBloomEndpoint(player, clip)
+    let cancelled = false
+    void createLilyGeometryParticleSourceAsync(model, { isCancelled: () => cancelled }).then((source) => {
+      if (cancelled) return
+      const posedSource = { ...source, signature: getLilyParticleSourceSignature(clip.duration) }
+      setLilySurfaceBounds(dissolveUniforms, posedSource)
+      particleSourceRef.current = posedSource
+      onParticleSource(posedSource)
+    }).catch((reason: unknown) => {
+      if (cancelled || (reason instanceof Error && reason.name === 'AbortError')) return
+      console.error('Scene 04 lily surface capture failed.', reason)
+      onParticleSourceError?.(reason)
+    })
+    return () => { cancelled = true }
+  }, [config, dissolveUniforms, gltf.animations, model, onParticleSource, onParticleSourceError, preparationSnapshot, reducedMotion, screenSize.height, screenSize.width, sourceAttempt, state.scene])
 
   const draw = useCallback((time: number) => {
     const currentState = stateRef.current
@@ -179,7 +211,7 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
     return subscribeLilyAnimationClock(runtime, sync)
   }, [draw, model, runtime, state.scene, state.mode, reducedMotion])
 
-  return <group ref={wrapperRef} position={MODEL_POSITION} scale={MODEL_SCALE}>
+  return <group ref={wrapperRef} position={LILY_PARTICLE_MODEL_POSITION} scale={LILY_PARTICLE_MODEL_SCALE}>
     <primitive ref={modelRef} object={model} dispose={null} />
   </group>
 }

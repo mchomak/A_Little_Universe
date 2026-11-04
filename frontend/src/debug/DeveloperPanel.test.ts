@@ -316,7 +316,6 @@ it('shows the B profile values when the between-columns layout is active', async
       dispatch: () => undefined,
       reducedMotion: false,
       onPreload: () => undefined,
-      onPermissions: () => undefined,
       route: 'film',
     }))
 

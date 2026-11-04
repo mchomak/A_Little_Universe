@@ -25,6 +25,12 @@ h1, h2, h3, h4, p { overflow-wrap: break-word; }
 h1, .film-phrase { font-family: var(--serif); font-weight: 400; text-wrap: balance; }
 h1 { font-size: clamp(2.6rem, 5.4vw, 5.7rem); line-height: 1.08; letter-spacing: -0.03em; margin: 0 0 1.4rem; }
 .universe { height: 100svh; min-height: 440px; position: relative; isolation: isolate; }
+.particle-preparation-banner { position: fixed; z-index: 20; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; gap: 0.7rem; width: max-content; max-width: min(92vw, 42rem); padding: 0.55rem 0.85rem; border: 1px solid #e0d4ff38; border-radius: 999px; background: #0c0c1acc; color: #f1eaff; box-shadow: 0 4px 18px #0004; font-size: 0.85rem; line-height: 1.35; text-align: center; }
+.particle-preparation-error { border-color: #f4cdd966; }
+.particle-preparation-banner button { flex: 0 0 auto; min-height: 40px; padding-block: 0.35rem; }
+.particle-preparation-spinner { width: 0.9rem; height: 0.9rem; flex: 0 0 auto; border: 2px solid #e0d4ff55; border-top-color: #f4cdd9; border-radius: 50%; animation: particle-preparation-spin 0.85s linear infinite; }
+@keyframes particle-preparation-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .particle-preparation-spinner { animation: none; } }
 .film-surface { position: absolute; inset: 0 0 var(--film-footer); overflow: hidden; }
 .viewport { position: absolute; inset: 0; }
 .viewport > div { height: 100%; }
