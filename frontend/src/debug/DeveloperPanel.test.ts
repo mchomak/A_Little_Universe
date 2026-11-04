@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import { initialFilmState } from '../engine/film'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, updateConfig } from '../systems/scene-config/config'
+import { resetLilyMaterialExperiment } from '../scenes/lily/materialPolishState'
 import DeveloperPanel from './DeveloperPanel'
 
 it('shows bounded ash-motion controls and does not expose the removed return setting', () => {
@@ -176,6 +177,38 @@ it('exposes the Lily bloom pollen controls in Scene 03', () => {
   expect(markup).toContain('id="composer-scenes-bloom-lilyBloomPollen-glowIntensity"')
   expect(markup).toContain('id="composer-scenes-bloom-lilyBloomPollen-riseSpeed"')
   expect(markup).toContain('id="composer-scenes-bloom-lilyBloomPollen-innerCupGlow"')
+})
+
+it('exposes the Original/Enhanced A/B switch only while DEV scene 03 is active', () => {
+  resetLilyMaterialExperiment()
+  const bloomMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'bloom' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    route: 'film',
+  }))
+  expect(bloomMarkup).toContain('Материалы лилии · A/B')
+  expect(bloomMarkup).toMatch(/aria-pressed="true">Original<\/button>/)
+  expect(bloomMarkup).toMatch(/aria-pressed="false">Enhanced<\/button>/)
+
+  const growthMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'growth' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    route: 'film',
+  }))
+  expect(growthMarkup).not.toContain('Материалы лилии · A/B')
+
+  const settingsMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'bloom' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    route: 'settings',
+  }))
+  expect(settingsMarkup).not.toContain('Материалы лилии · A/B')
 })
 
 it('exposes bounded portrait assembly controls in the Scene 04 Inspector', () => {
