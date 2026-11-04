@@ -376,10 +376,10 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       moonLightIntensity: 1.2, moonLightColor: '#AFC9F5', moonBeamRadius: 2,
       moonBeamSoftness: 0.6, moonBeamIntensity: 0.55, moonScatteringIntensity: 0.35,
       moonPositionX: -0.65, moonPositionY: 5.5, moonPositionZ: 1,
-      cloudCount: 18, cloudDensity: 0.8, cloudScale: 1, cloudDriftSpeed: 0.3,
-      cloudOpacity: 0.42, cloudLightIntensity: 0.7,
+      cloudCount: 20, cloudDensity: 0.9, cloudScale: 1, cloudDriftSpeed: 0.28,
+      cloudOpacity: 0.48, cloudLightIntensity: 0.7,
       cloudSizeVariation: 0.72, cloudLightVariation: 0.55, cloudPathDensity: 0.65,
-      cloudShapeVariation: 0.65, cloudDepthVariation: 0.65,
+      cloudShapeVariation: 0.72, cloudDepthVariation: 0.8,
     },
     bloom: {
       flowerBloomDuration: 16, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,

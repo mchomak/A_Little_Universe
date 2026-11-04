@@ -2,10 +2,15 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useThree } from '@react-three/fiber'
 import { AdditiveBlending, Color, DoubleSide, NormalBlending, Object3D, type DirectionalLight, type HemisphereLight, type ShaderMaterial } from 'three'
 import type { FilmRuntime } from '../../engine/runtime'
+import type { SceneId } from '../../engine/film'
 import {
   getGrowthMoonlightBeamLayout, getGrowthMoonlightLevels, growthContactShadowFragmentShader,
   growthContactShadowVertexShader, growthMoonBeamFragmentShader, type GrowthMoonlightSettings,
 } from './moonlight'
+import {
+  configureGrowthDirectionalShadow, createGrowthShadowSceneController, getGrowthShadowStrength,
+  type GrowthShadowSceneController,
+} from './sceneShadows'
 
 const noRaycast = () => undefined
 
@@ -15,15 +20,23 @@ export function GrowthMoonlight({
   runtime,
   growthProgress,
   environmentOpacity,
+  shadowsEnabled,
+  scene,
+  bloomDuration,
 }: {
   settings: GrowthMoonlightSettings
   runtime: FilmRuntime
   growthProgress: { current: number }
   environmentOpacity: { current: number }
+  shadowsEnabled: boolean
+  scene: SceneId
+  bloomDuration: number
 }) {
   const invalidate = useThree(({ invalidate }) => invalidate)
+  const renderer = useThree(({ gl }) => gl)
   const key = useRef<DirectionalLight>(null)
   const fill = useRef<HemisphereLight>(null)
+  const shadowController = useRef<GrowthShadowSceneController | null>(null)
   const beam = useRef<ShaderMaterial>(null)
   const contactShadow = useRef<ShaderMaterial>(null)
   const lightTarget = useMemo(() => new Object3D(), [])
@@ -39,6 +52,21 @@ export function GrowthMoonlight({
   const contactShadowUniforms = useMemo(() => ({ uOpacity: { value: 0 } }), [])
 
   useLayoutEffect(() => {
+    if (!shadowsEnabled || !key.current) return
+    const light = key.current
+    const controller = createGrowthShadowSceneController(light, renderer.shadowMap)
+    shadowController.current = controller
+    return () => {
+      controller.dispose()
+      if (shadowController.current === controller) shadowController.current = null
+    }
+  }, [renderer, shadowsEnabled])
+
+  useLayoutEffect(() => {
+    if (key.current) configureGrowthDirectionalShadow(key.current, settings.moonPositionY)
+  }, [renderer, settings.moonPositionY])
+
+  useLayoutEffect(() => {
     lightTarget.position.set(0, 0, 0)
     const update = () => {
       const levels = getGrowthMoonlightLevels(
@@ -48,7 +76,10 @@ export function GrowthMoonlight({
         environmentOpacity.current,
         settings.moonScatteringIntensity,
       )
-      if (key.current) key.current.intensity = levels.key
+      if (key.current) {
+        if (shadowsEnabled) shadowController.current?.sync(levels, getGrowthShadowStrength(scene, runtime.time, bloomDuration))
+        else { key.current.intensity = levels.key; key.current.castShadow = false }
+      }
       if (fill.current) fill.current.intensity = levels.fill
       if (beam.current) {
         beam.current.uniforms.uOpacity!.value = levels.beam
@@ -63,9 +94,9 @@ export function GrowthMoonlight({
     update()
     return runtime.subscribePresentation(update)
   }, [
-    environmentOpacity, growthProgress, invalidate, lightColor, lightTarget, runtime,
+    bloomDuration, environmentOpacity, growthProgress, invalidate, lightColor, lightTarget, renderer, runtime, scene, shadowsEnabled,
     layout.radius, settings.moonBeamIntensity, settings.moonBeamRadius, settings.moonBeamSoftness,
-    settings.moonLightIntensity, settings.moonScatteringIntensity,
+    settings.moonLightIntensity, settings.moonPositionY, settings.moonScatteringIntensity,
   ])
 
   return <group>

@@ -512,10 +512,10 @@ it('migrates Scene 02 staging and cloud defaults from schema v15 without losing 
     seedImpactParticles: 64, seedImpactLifetime: 0.85,
     moonScatteringIntensity: 0.35,
     moonPositionX: 2.25, moonPositionY: 6.1, moonPositionZ: -1.75,
-    cloudCount: 18, cloudDensity: 0.8, cloudScale: 1, cloudDriftSpeed: 0.3,
-    cloudOpacity: 0.42, cloudLightIntensity: 0.7,
+    cloudCount: 20, cloudDensity: 0.9, cloudScale: 1, cloudDriftSpeed: 0.28,
+    cloudOpacity: 0.48, cloudLightIntensity: 0.7,
     cloudSizeVariation: 0.72, cloudLightVariation: 0.55, cloudPathDensity: 0.65,
-    cloudShapeVariation: 0.65, cloudDepthVariation: 0.65,
+    cloudShapeVariation: 0.72, cloudDepthVariation: 0.8,
   })
   expect(migrated.scenes.gallery.cloudLayers.mid).toMatchObject({ density: 1.33, opacity: 0.63 })
 })
@@ -595,10 +595,10 @@ it('normalizes bounded Scene 02 staging, scattering, and cloud controls', () => 
     seedTrailIntensity: 1.2, seedTrailSpread: 0.36, seedTrailLifetime: 1,
     seedTrailLiftSpeed: 0.8, seedTrailParticleCount: 60, seedImpactStrength: 0.6, seedImpactRadius: 0.72,
     seedImpactParticles: 64, seedImpactLifetime: 0.85, moonScatteringIntensity: 0.35,
-    cloudCount: 18, cloudDensity: 0.8, cloudScale: 1, cloudDriftSpeed: 0.3,
-    cloudOpacity: 0.42, cloudLightIntensity: 0.7,
+    cloudCount: 20, cloudDensity: 0.9, cloudScale: 1, cloudDriftSpeed: 0.28,
+    cloudOpacity: 0.48, cloudLightIntensity: 0.7,
     cloudSizeVariation: 0.72, cloudLightVariation: 0.55, cloudPathDensity: 0.65,
-    cloudShapeVariation: 0.65, cloudDepthVariation: 0.65,
+    cloudShapeVariation: 0.72, cloudDepthVariation: 0.8,
   })
 })
 

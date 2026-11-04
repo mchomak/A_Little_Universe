@@ -1,5 +1,7 @@
 import { Quaternion } from 'three'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
+export { createGrowthShadowMapLease, enableGrowthObjectShadows } from './sceneShadows'
+export type { GrowthShadowMapLease, GrowthShadowMapState } from './sceneShadows'
 
 export type GrowthMoonlightSettings = Pick<SceneComposerConfig['scenes']['growth'],
   | 'islandRadius'
@@ -13,9 +15,6 @@ export type GrowthMoonlightSettings = Pick<SceneComposerConfig['scenes']['growth
   | 'moonPositionZ'
 > & { moonScatteringIntensity?: number }
 
-const MOONLIGHT_BASE = 0.68
-const MOONLIGHT_GROWTH_BOOST = 0.32
-
 export interface GrowthMoonlightLevels {
   key: number
   fill: number
@@ -24,7 +23,7 @@ export interface GrowthMoonlightLevels {
   shadow: number
 }
 
-/** A restrained lunar base is present before impact, then deepens with the existing scene pose. */
+/** All lunar contributions follow the history-free impact ramp supplied by the seed pose. */
 export function getGrowthMoonlightLevels(
   lightIntensity: number,
   beamIntensity: number,
@@ -34,15 +33,14 @@ export function getGrowthMoonlightLevels(
 ): GrowthMoonlightLevels {
   const progress = Math.min(1, Math.max(0, Number.isFinite(growthProgress) ? growthProgress : 0))
   const opacity = Math.min(1, Math.max(0, Number.isFinite(environmentOpacity) ? environmentOpacity : 0))
-  const growth = MOONLIGHT_BASE + MOONLIGHT_GROWTH_BOOST * progress
   const intensity = Math.max(0, Number.isFinite(lightIntensity) ? lightIntensity : 0)
   const beam = Math.max(0, Number.isFinite(beamIntensity) ? beamIntensity : 0)
   const scattering = Math.max(0, Number.isFinite(scatteringIntensity) ? scatteringIntensity : 0.35)
   return {
-    key: intensity * growth * opacity,
-    fill: intensity * growth * 0.4 * opacity,
-    beam: beam * (0.68 + 0.32 * progress) * opacity,
-    scattering: scattering * (0.68 + 0.32 * progress) * opacity,
+    key: intensity * progress * opacity,
+    fill: intensity * progress * 0.4 * opacity,
+    beam: beam * progress * opacity,
+    scattering: scattering * progress * opacity,
     shadow: progress * opacity,
   }
 }
@@ -103,8 +101,8 @@ export const growthMoonBeamFragmentShader = `
     float ends = smoothstep(0.0, 0.08, vUv.y) * (1.0 - smoothstep(0.96, 1.0, vUv.y));
     float shaftEnergy = max(0.0, uOpacity);
     float hazeEnergy = max(0.0, uScatteringIntensity);
-    float compressedShaft = 0.34 * shaftEnergy / (0.55 + shaftEnergy);
-    float compressedHaze = 0.30 * hazeEnergy / (0.4 + hazeEnergy);
+    float compressedShaft = 0.10 * shaftEnergy / (0.55 + shaftEnergy);
+    float compressedHaze = 0.08 * hazeEnergy / (0.4 + hazeEnergy);
     float alpha = ends * (shaft * shaftFeather * compressedShaft + haze * hazeFeather * compressedHaze);
     gl_FragColor = vec4(uMoonColor, alpha);
     #include <colorspace_fragment>

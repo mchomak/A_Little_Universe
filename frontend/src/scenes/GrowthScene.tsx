@@ -2,6 +2,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExterna
 import { useThree } from '@react-three/fiber'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, GLSL3, Group, MeshBasicMaterial, RawShaderMaterial, Sphere, Vector2, Vector3, type Mesh, type ShaderMaterial } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
+import { getBloomSceneFrames } from '../engine/filmConfig'
 import { getIdentityEnvironmentOpacity, shouldMountGrowthClouds } from '../engine/sceneContinuity'
 import { useSceneAnimation } from './shared/animation'
 import { getGrowthFrames, getGrowthViewportHeight, getSeedCorePose, getSeedFallHeightMultiplier, getSeedParticleCount, getSeedPose, getSeedShellCenterY, getSeedShatterOpacity, sampleSeedParticleSeeds, SEED_ROOT, SEED_SHELL_HALF_HEIGHT, type GrowthSettings } from './growth/seedProcedure'
@@ -12,6 +13,7 @@ import { seedPointsFragmentShader, seedPointsVertexShader } from './growth/recst
 import { FloatingIsland } from './growth/FloatingIsland'
 import { GrowthClouds } from './growth/GrowthClouds'
 import { GrowthMoonlight } from './growth/GrowthMoonlight'
+import { shouldUseGrowthShadows } from './growth/sceneShadows'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import type { FilmRuntime } from '../engine/runtime'
 
@@ -330,6 +332,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
         windSpeed={growthSettings.windSpeed}
         reducedMotion={reducedMotion}
         opacity={islandOpacity}
+        shadowsEnabled={shouldUseGrowthShadows(state.scene)}
       />
       <mesh ref={mound} position={[0, 0, 0]} scale={[0.115, 0.0001, 0.115]}>
         <sphereGeometry args={[1, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
@@ -344,6 +347,9 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
         runtime={runtime}
         growthProgress={moonlightProgress}
         environmentOpacity={environmentOpacity}
+        shadowsEnabled={shouldUseGrowthShadows(state.scene)}
+        scene={state.scene}
+        bloomDuration={getBloomSceneFrames(config.scenes.bloom).duration}
       />
     </group>
   </group>

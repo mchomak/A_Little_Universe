@@ -1,10 +1,9 @@
-import { readFileSync } from 'node:fs'
-import { Vector3 } from 'three'
+import { DirectionalLight, PCFShadowMap, PCFSoftShadowMap, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 import {
-  getGrowthMoonlightBeamLayout, getGrowthMoonlightLevels, growthContactShadowFragmentShader,
-  growthMoonBeamFragmentShader,
+  getGrowthMoonlightBeamLayout, getGrowthMoonlightLevels,
 } from './moonlight'
+import { configureGrowthDirectionalShadow, createGrowthShadowMapLease, shouldUseGrowthShadows, syncGrowthDirectionalShadow } from './sceneShadows'
 
 const defaultSettings = {
   islandRadius: 0.82,
@@ -15,15 +14,20 @@ const defaultSettings = {
 }
 
 describe('Scene 02 moonlight', () => {
-  it('keeps a soft lunar base before impact, adds the existing growth accent, and fades with the environment', () => {
+  it('keeps every lunar contribution off before impact and raises it smoothly afterward', () => {
     const beforeImpact = getGrowthMoonlightLevels(1.2, 0.55, 0, 1, 0.35)
+    const earlyRamp = getGrowthMoonlightLevels(1.2, 0.55, 0.25, 1, 0.35)
+    const lateRamp = getGrowthMoonlightLevels(1.2, 0.55, 0.75, 1, 0.35)
     const afterImpact = getGrowthMoonlightLevels(1.2, 0.55, 1, 1, 0.35)
     const duringHandoff = getGrowthMoonlightLevels(1.2, 0.55, 1, 0.35, 0.35)
 
-    expect(beforeImpact.key).toBeGreaterThan(0)
-    expect(afterImpact.key).toBeGreaterThan(beforeImpact.key)
-    expect(afterImpact.beam).toBeGreaterThan(beforeImpact.beam)
-    expect(beforeImpact.shadow).toBe(0)
+    expect(beforeImpact).toEqual({ key: 0, fill: 0, beam: 0, scattering: 0, shadow: 0 })
+    expect(earlyRamp.key).toBeCloseTo(0.3)
+    expect(earlyRamp.beam).toBeCloseTo(0.1375)
+    expect(lateRamp.key).toBeCloseTo(0.9)
+    expect(lateRamp.beam).toBeCloseTo(0.4125)
+    expect(afterImpact.key).toBeCloseTo(1.2)
+    expect(afterImpact.beam).toBeCloseTo(0.55)
     expect(afterImpact.shadow).toBe(1)
     expect(duringHandoff.key).toBeCloseTo(afterImpact.key * 0.35)
     expect(getGrowthMoonlightLevels(1.2, 0.55, 1, 0, 0.35).beam).toBe(0)
@@ -80,41 +84,59 @@ describe('Scene 02 moonlight', () => {
     expect(strongerShaft.beam).toBeGreaterThan(mutedScatter.beam)
   })
 
-  it('uses a local default scattering level when an older v14 config has no separate setting', () => {
+  it('uses a local default scattering level without turning on lunar light before impact', () => {
     const legacySettings = getGrowthMoonlightLevels(1.2, 0.55, 0, 1)
-    expect(legacySettings.scattering).toBeCloseTo(0.35 * 0.68)
+    expect(legacySettings.scattering).toBe(0)
   })
 
-  it('uses a continuous smooth shader with no spatial noise or dither layers', () => {
-    expect(growthMoonBeamFragmentShader).toContain('exp(-shaftAcross * shaftAcross')
-    expect(growthMoonBeamFragmentShader).toContain('exp(-hazeAcross * hazeAcross')
-    expect(growthMoonBeamFragmentShader).toContain('smoothstep(0.0, 0.08, vUv.y)')
-    expect(growthMoonBeamFragmentShader).toContain('smoothstep(0.96, 1.0, vUv.y)')
-    expect(growthMoonBeamFragmentShader).toContain('uSoftness')
-    expect(growthMoonBeamFragmentShader).toContain('uScatteringIntensity')
-    expect(growthMoonBeamFragmentShader).toContain('0.34 * shaftEnergy / (0.55 + shaftEnergy)')
-    expect(growthMoonBeamFragmentShader).toContain('0.30 * hazeEnergy / (0.4 + hazeEnergy)')
-    expect(growthMoonBeamFragmentShader).toContain('#include <colorspace_fragment>')
-    expect(growthMoonBeamFragmentShader).not.toContain('sin(')
-    expect(growthMoonBeamFragmentShader).not.toContain('noise')
-    expect(growthMoonBeamFragmentShader).not.toContain('dither')
-    expect(growthMoonBeamFragmentShader).not.toMatch(/if\s*\(.*vUv/)
+  it('rewinds the shadow ramp, keeps the Bloom handoff, and restores the renderer before Identity', () => {
+    const initiallyOff = { enabled: false, type: PCFShadowMap, needsUpdate: false }
+    const lease = createGrowthShadowMapLease(initiallyOff)
+    const light = { intensity: 0, castShadow: false }
+    expect(initiallyOff.type).toBe(PCFSoftShadowMap)
+    expect(initiallyOff.enabled).toBe(false)
+
+    syncGrowthDirectionalShadow(light, lease, getGrowthMoonlightLevels(1.2, 0.55, 0, 1, 0.35))
+    expect(light).toEqual({ intensity: 0, castShadow: false })
+    expect(initiallyOff.enabled).toBe(false)
+
+    syncGrowthDirectionalShadow(light, lease, getGrowthMoonlightLevels(1.2, 0.55, 0.25, 1, 0.35))
+    expect(light.intensity).toBeGreaterThan(0)
+    expect(light.castShadow).toBe(true)
+    expect(initiallyOff.enabled).toBe(true)
+    expect(initiallyOff.needsUpdate).toBe(true)
+
+    syncGrowthDirectionalShadow(light, lease, getGrowthMoonlightLevels(1.2, 0.55, 0, 1, 0.35))
+    expect(light).toEqual({ intensity: 0, castShadow: false })
+    expect(initiallyOff.enabled).toBe(false)
+
+    expect(shouldUseGrowthShadows('growth')).toBe(true)
+    const atGrowthEnd = getGrowthMoonlightLevels(1.2, 0.55, 1, 1, 0.35)
+    syncGrowthDirectionalShadow(light, lease, atGrowthEnd)
+    expect(shouldUseGrowthShadows('bloom')).toBe(true)
+    const firstBloomFrame = getGrowthMoonlightLevels(1.2, 0.55, 1, 1, 0.35)
+    syncGrowthDirectionalShadow(light, lease, firstBloomFrame)
+    expect(light.castShadow).toBe(true)
+    expect(initiallyOff.enabled).toBe(true)
+
+    expect(shouldUseGrowthShadows('identity')).toBe(false)
+    lease.restore()
+    expect(initiallyOff).toMatchObject({ enabled: false, type: PCFShadowMap, needsUpdate: true })
+
+    const initiallyOn = { enabled: true, type: PCFShadowMap, needsUpdate: false }
+    const onLease = createGrowthShadowMapLease(initiallyOn)
+    onLease.setEnabled(false)
+    expect(initiallyOn.enabled).toBe(true)
+    onLease.restore()
+    expect(initiallyOn).toMatchObject({ enabled: true, type: PCFShadowMap, needsUpdate: true })
   })
 
-  it('uses one soft local contact shadow and does not enable renderer-wide shadow maps', () => {
-    expect(growthContactShadowFragmentShader).toContain('exp(-radiusSquared * 3.4)')
-    expect(growthContactShadowFragmentShader).toContain('smoothstep(0.36, 1.0, radiusSquared)')
-    const source = readFileSync(new URL('./GrowthMoonlight.tsx', import.meta.url), 'utf8')
-    expect(source).toContain('rotation={[-Math.PI / 2, 0, 0]}')
-    expect(source).toContain('blending={NormalBlending}')
-    expect(source).toContain('side={DoubleSide}')
-    expect(source).not.toContain('gl.shadowMap')
-  })
-
-  it('replaces the old post-landing-only spotlight with the scene-local configurable moonlight component', () => {
-    const source = readFileSync(new URL('../GrowthScene.tsx', import.meta.url), 'utf8')
-    expect(source).toContain('<GrowthMoonlight')
-    expect(source).not.toContain('pose.moonlight * 4')
-    expect(source).not.toContain('<spotLight')
+  it('updates the directional shadow frustum when the source height changes while paused', () => {
+    const light = new DirectionalLight()
+    configureGrowthDirectionalShadow(light, 5.5)
+    expect(light.shadow.camera.far).toBeCloseTo(8.5)
+    configureGrowthDirectionalShadow(light, 8)
+    expect(light.shadow.camera.far).toBeCloseTo(11)
+    expect(light.shadow.needsUpdate).toBe(true)
   })
 })

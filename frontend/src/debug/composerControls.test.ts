@@ -138,10 +138,10 @@ describe('Scene Composer controls', () => {
       seedTrailLiftSpeed: 0.8, seedTrailParticleCount: 60, seedImpactStrength: 0.6, seedImpactRadius: 0.72,
       seedImpactParticles: 64, seedImpactLifetime: 0.85, moonScatteringIntensity: 0.35,
       seedCameraFollowSpeed: 3, seedSpinSpeed: 1, seedWobbleAmplitude: 0.08,
-      cloudCount: 18, cloudDensity: 0.8, cloudScale: 1, cloudDriftSpeed: 0.3,
-      cloudOpacity: 0.42, cloudLightIntensity: 0.7,
+      cloudCount: 20, cloudDensity: 0.9, cloudScale: 1, cloudDriftSpeed: 0.28,
+      cloudOpacity: 0.48, cloudLightIntensity: 0.7,
       cloudSizeVariation: 0.72, cloudLightVariation: 0.55, cloudPathDensity: 0.65,
-      cloudShapeVariation: 0.65, cloudDepthVariation: 0.65,
+      cloudShapeVariation: 0.72, cloudDepthVariation: 0.8,
       moonPositionX: 2.25, moonPositionY: 6.1, moonPositionZ: -1.75,
     })
 

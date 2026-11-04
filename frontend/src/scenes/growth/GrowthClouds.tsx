@@ -3,7 +3,7 @@ import { useThree } from '@react-three/fiber'
 import { Color, Group, Mesh, ShaderMaterial, SphereGeometry, Vector3 } from 'three'
 import type { FilmRuntime } from '../../engine/runtime'
 import {
-  createGrowthCloudVolumeMaterial, getGrowthCloudDrift, getGrowthCloudMasses, MAX_GROWTH_CLOUD_MASSES,
+  createGrowthCloudVolumeMaterial, getGrowthCloudDrift, getGrowthCloudLunarLight, getGrowthCloudMasses, MAX_GROWTH_CLOUD_MASSES,
   getGrowthCloudMotionTime, getGrowthCloudVisibility, setGrowthCloudMoonPosition,
 } from './growthCloudMath'
 import {
@@ -77,7 +77,7 @@ export function GrowthClouds({
         )
         material.uniforms.uOpacity!.value = opacity
         material.uniforms.uDensity!.value = settings.cloudDensity * (mass?.densityScale ?? 1)
-        material.uniforms.uLightIntensity!.value = settings.cloudLightIntensity * (mass?.lightScale ?? 1)
+        material.uniforms.uLightIntensity!.value = getGrowthCloudLunarLight(safeTime, frames, settings.cloudLightIntensity, settings.moonLightIntensity, mass?.lightScale ?? 1)
         material.uniforms.uShapeVariation!.value = settings.cloudShapeVariation
         material.uniforms.uMoonColor!.value.copy(moonColor)
         material.uniforms.uMoonPosition!.value.copy(moonPosition)
@@ -102,7 +102,7 @@ export function GrowthClouds({
     center, environmentOpacity, frames, invalidate, masses, materials, moonColor, moonPosition,
     reducedMotion, rootOrigin, runtime, settings.cloudDensity, settings.cloudDriftSpeed,
     settings.cloudLightIntensity, settings.cloudOpacity, settings.moonLightColor,
-    settings.moonPositionY, settings.cloudShapeVariation,
+    settings.moonPositionY, settings.moonLightIntensity, settings.cloudShapeVariation,
   ])
 
   return <group ref={root} dispose={null}>

@@ -1,10 +1,11 @@
 import { BackSide, NormalBlending, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 import { getConfig } from '../../systems/scene-config/config'
-import { getGrowthFrames, getSeedFallDistance } from './seedProcedure'
+import { getGrowthCameraPose, getGrowthFrames, getGrowthViewportHeight, getSeedFallDistance, SEED_ROOT } from './seedProcedure'
 import {
   createGrowthCloudVolumeMaterial,
   getGrowthCloudDrift,
+  getGrowthCloudLunarLight,
   getGrowthCloudMasses,
   getGrowthCloudMotionTime,
   getGrowthCloudVisibility,
@@ -12,6 +13,79 @@ import {
 } from './growthCloudMath'
 
 describe('Scene 02 independent clouds', () => {
+  it('frames a side cloud during early fall with the saved long-fall configuration', () => {
+    const settings = {
+      ...getConfig().scenes.growth,
+      formationDuration: 3.5, seedFallDuration: 8, seedFallAcceleration: 5, seedFallHeight: 6.4,
+      seedCameraLag: 0.15, seedCameraFollowSpeed: 3, cloudCount: 18, cloudScale: 1,
+      cloudSizeVariation: 0.72, cloudPathDensity: 0.65, cloudDepthVariation: 0.65,
+    }
+    const viewportHeight = getGrowthViewportHeight(1280, 720)
+    const camera = getGrowthCameraPose(7.47, false, settings, viewportHeight)
+    const masses = getGrowthCloudMasses(settings.cloudCount, settings.cloudScale, {
+      fallDistance: getSeedFallDistance(viewportHeight) * settings.seedFallHeight,
+      viewportHeight, sizeVariation: settings.cloudSizeVariation,
+      pathDensity: settings.cloudPathDensity, depthVariation: settings.cloudDepthVariation,
+    })
+    const visibleSide = masses.some((mass) => {
+      if (mass.pathCrossing || mass.position[2] <= 0) return false
+      const halfHeight = (camera.z - mass.position[2]) * Math.tan(19 * Math.PI / 180)
+      const halfWidth = halfHeight * 1280 / 720
+      const worldY = mass.position[1] + SEED_ROOT[1]
+      return Math.abs(mass.position[0] - camera.x) < halfWidth + mass.radii[0] * 0.5
+        && worldY + mass.radii[1] * 0.5 > camera.y - halfHeight
+        && worldY - mass.radii[1] < camera.y + halfHeight
+    })
+    expect(visibleSide).toBe(true)
+  })
+  it('keeps a near cloud mass in the camera frame around the middle of the falling seed', () => {
+    const settings = getConfig().scenes.growth
+    const viewportHeight = getGrowthViewportHeight(1280, 720)
+    const camera = getGrowthCameraPose(7.76, false, settings, viewportHeight)
+    const masses = getGrowthCloudMasses(settings.cloudCount, settings.cloudScale, {
+      fallDistance: getSeedFallDistance(viewportHeight) * settings.seedFallHeight,
+      viewportHeight, sizeVariation: settings.cloudSizeVariation,
+      pathDensity: settings.cloudPathDensity, depthVariation: settings.cloudDepthVariation,
+    })
+    const visibleNearBank = masses.some((mass) => {
+      if (mass.pathCrossing || mass.position[2] <= 0) return false
+      const halfHeight = (camera.z - mass.position[2]) * Math.tan(19 * Math.PI / 180)
+      return mass.position[1] + SEED_ROOT[1] + mass.radii[1] * 0.75 > camera.y - halfHeight
+        && mass.position[1] + SEED_ROOT[1] - mass.radii[1] < camera.y + halfHeight
+    })
+    expect(visibleNearBank).toBe(true)
+  })
+  it('keeps directional cloud illumination off until the impact cue and rewinds it with the scene', () => {
+    const frames = getGrowthFrames(getConfig().scenes.growth)
+    const sample = (time: number) => getGrowthCloudLunarLight(time, frames, 0.7, 1.2, 1)
+    expect(sample(frames.fall[1] - 0.01)).toBe(0)
+    expect(sample(frames.fall[1])).toBe(0)
+    expect(sample((frames.moonlight[0] + frames.moonlight[1]) / 2)).toBeCloseTo(0.42)
+    expect(sample(frames.moonlight[1])).toBeCloseTo(0.84)
+    expect(sample(frames.fall[0])).toBe(0)
+    expect(getGrowthCloudLunarLight(frames.moonlight[1], frames, 0.7, 0, 1)).toBe(0)
+  })
+  it('defaults to a denser set of soft layers that leave the flower center open', () => {
+    const settings = getConfig().scenes.growth
+    const field = getGrowthCloudMasses(settings.cloudCount, settings.cloudScale, {
+      depthVariation: settings.cloudDepthVariation,
+    })
+    const persistent = field.filter(({ persistent }) => persistent)
+    const depthRange = Math.max(...persistent.map(({ position }) => position[2]))
+      - Math.min(...persistent.map(({ position }) => position[2]))
+
+    expect(settings).toMatchObject({
+      cloudCount: 20, cloudDensity: 0.9, cloudOpacity: 0.48, cloudDriftSpeed: 0.28,
+      cloudShapeVariation: 0.72, cloudDepthVariation: 0.8,
+    })
+    expect(field).toHaveLength(20)
+    expect(persistent).toHaveLength(6)
+    expect(depthRange).toBeGreaterThan(1.5)
+    expect(field.filter(({ pathCrossing }) => !pathCrossing).every(({ position, radii }) =>
+      Math.abs(position[0]) - radii[0] > 0.18,
+    )).toBe(true)
+  })
+
   it('builds a layered deterministic set outside the flower center', () => {
     const flight = { fallDistance: 7.65, viewportHeight: 3.856, sizeVariation: 0.72, lightVariation: 0.55, pathDensity: 0.65 }
     const masses = getGrowthCloudMasses(4, 1, flight)
@@ -38,7 +112,8 @@ describe('Scene 02 independent clouds', () => {
     expect(fullField.filter(({ pathCrossing }) => pathCrossing).length).toBeGreaterThanOrEqual(8)
     expect(defaultField.filter(({ pathCrossing }) => pathCrossing).length).toBeGreaterThanOrEqual(6)
     expect(defaultField.filter(({ persistent }) => persistent).length).toBeGreaterThanOrEqual(3)
-    expect(defaultField.every(({ position, radii }) => position[1] + radii[1] < initialViewportBottom)).toBe(true)
+    expect(defaultField.filter(({ pathCrossing }) => pathCrossing)
+      .every(({ position, radii }) => position[1] + radii[1] < initialViewportBottom)).toBe(true)
     expect(masses.filter(({ pathCrossing }) => pathCrossing).every(({ position, radii }) =>
       (position[0] / radii[0]) ** 2 + (position[2] / radii[2]) ** 2 < 1,
     )).toBe(true)
@@ -48,7 +123,7 @@ describe('Scene 02 independent clouds', () => {
     expect(new Set(fullField.map(({ radii }) => radii[0].toFixed(2))).size).toBeGreaterThan(18)
     expect(Math.max(...maxDistanceField.map(({ position }) => position[1])))
       .toBeGreaterThan(Math.max(...defaultField.map(({ position }) => position[1])) + 3)
-    expect(maxDistanceField.every(({ position, radii }) => position[1] + radii[1]
+    expect(maxDistanceField.filter(({ pathCrossing }) => pathCrossing).every(({ position, radii }) => position[1] + radii[1]
       < 15.3 - flight.viewportHeight / 2)).toBe(true)
     expect(minimumDistanceField.every(({ position, radii }) => position[1] + radii[1]
       < minimumFallDistance - flight.viewportHeight / 2)).toBe(true)

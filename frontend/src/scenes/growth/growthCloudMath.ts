@@ -1,5 +1,5 @@
 import { BackSide, Color, NormalBlending, ShaderMaterial, Vector3 } from 'three'
-import type { GrowthFrames } from './seedProcedure'
+import { getGrowthProgress, type GrowthFrames } from './seedProcedure'
 
 export interface GrowthCloudMass {
   id: string
@@ -47,18 +47,18 @@ const GROWTH_CLOUD_LAYOUT: readonly GrowthCloudTemplate[] = [
   { id: 'path-crossing-06', seed: 67, position: [-0.22, 0, 0.1], radii: [0.68, 0.36, 0.6], fallProgress: 0.82, pathCrossing: true, densityScale: 0.16, lightScale: 1 },
   { id: 'path-crossing-07', seed: 71, position: [0.12, 0, -0.16], radii: [0.72, 0.33, 0.76], fallProgress: 0.89, pathCrossing: true, densityScale: 0.15, lightScale: 1 },
   { id: 'path-crossing-08', seed: 83, position: [-0.16, 0, -0.08], radii: [0.64, 0.35, 0.68], fallProgress: 0.95, pathCrossing: true, densityScale: 0.15, lightScale: 1 },
-  { id: 'near-group-left-high', seed: 97, position: [-3.15, 0, 2.45], radii: [1.15, 0.86, 1.22], fallProgress: 0.52, lightScale: 1 },
-  { id: 'far-group-right-upper', seed: 101, position: [3.45, 0, -5.25], radii: [1.38, 0.74, 1.34], fallProgress: 0.56, lightScale: 1 },
-  { id: 'near-group-right-upper', seed: 113, position: [3.45, 0, 2.8], radii: [0.96, 0.68, 1.02], fallProgress: 0.62, lightScale: 1 },
-  { id: 'far-group-left-mid', seed: 127, position: [-3.85, 0, -4.7], radii: [1.08, 0.9, 1.42], fallProgress: 0.66, lightScale: 1 },
+  { id: 'near-group-left-high', seed: 97, position: [-2.55, 0, 2.45], radii: [1.15, 0.86, 1.22], fallProgress: 0.52, lightScale: 1 },
+  { id: 'far-group-right-upper', seed: 101, position: [3.45, 0, -5.25], radii: [1.38, 0.74, 1.34], fallProgress: 0.56, persistent: true, lightScale: 1 },
+  { id: 'near-group-right-upper', seed: 113, position: [2.65, 0, 2.8], radii: [0.96, 0.68, 1.02], fallProgress: 0.62, lightScale: 1 },
+  { id: 'far-group-left-mid', seed: 127, position: [-3.85, 0, -4.7], radii: [1.08, 0.9, 1.42], fallProgress: 0.66, persistent: true, lightScale: 1 },
   { id: 'near-group-left-mid', seed: 131, position: [-3.55, 0, 3.15], radii: [1.3, 1.02, 0.88], fallProgress: 0.72, lightScale: 1 },
   { id: 'far-group-right-mid', seed: 149, position: [3.7, 0, -6.05], radii: [1.22, 0.77, 1.54], fallProgress: 0.75, lightScale: 1 },
   { id: 'near-group-right-low', seed: 157, position: [3.2, 0, 2.55], radii: [1.02, 0.7, 1.3], fallProgress: 0.84, lightScale: 1 },
   { id: 'far-group-left-low', seed: 163, position: [-4.05, 0, -5.55], radii: [1.4, 0.82, 1.18], fallProgress: 0.91, lightScale: 1 },
-  { id: 'island-back-left', seed: 179, position: [-3.75, -0.38, -5.75], radii: [1.12, 0.65, 1.18], persistent: true, lightScale: 1 },
-  { id: 'island-back-right', seed: 191, position: [3.65, -0.72, -6.25], radii: [1.28, 0.72, 1.34], persistent: true, lightScale: 1 },
-  { id: 'island-far-left', seed: 199, position: [-4.2, -1.12, -6.8], radii: [1.18, 0.76, 1.5], persistent: true, lightScale: 1 },
-  { id: 'island-far-right', seed: 211, position: [4.05, -1.46, -7.15], radii: [1.34, 0.73, 1.22], persistent: true, lightScale: 1 },
+  { id: 'island-back-left', seed: 179, position: [-3.75, -0.38, -5.75], radii: [1.55, 0.65, 1.18], persistent: true, lightScale: 1 },
+  { id: 'island-back-right', seed: 191, position: [3.65, -0.72, -6.25], radii: [1.65, 0.72, 1.34], persistent: true, lightScale: 1 },
+  { id: 'island-far-left', seed: 199, position: [-4.2, -1.12, -6.8], radii: [1.55, 0.76, 1.5], persistent: true, lightScale: 1 },
+  { id: 'island-far-right', seed: 211, position: [4.05, -1.46, -7.15], radii: [1.7, 0.73, 1.22], persistent: true, lightScale: 1 },
   { id: 'near-group-left-lower', seed: 223, position: [-3.35, 0, 2.6], radii: [1.24, 0.7, 1.1], fallProgress: 0.79, lightScale: 1 },
   { id: 'far-group-right-lower', seed: 227, position: [3.9, 0, -5.45], radii: [1.36, 0.92, 1.2], fallProgress: 0.8, lightScale: 1 },
   { id: 'near-group-right-deep', seed: 239, position: [3.45, 0, 3.45], radii: [1.06, 0.76, 1.16], fallProgress: 0.94, lightScale: 1 },
@@ -175,12 +175,12 @@ const cloudFragmentShader = `
       float silverRim = smoothstep(0.18, 0.72, cloudBody) * (1.0 - smoothstep(0.72, 0.98, cloudBody));
       float lunarAmount = clamp(uLightIntensity * (0.18 + moonFacing * 0.5 + silverRim * 0.62), 0.0, 1.15);
       float innerShade = 0.64 + broadNoise * 0.26 + (1.0 - length(localPoint)) * 0.1;
-      vec3 midnightBlue = vec3(0.035, 0.062, 0.12) * innerShade;
+      vec3 midnightBlue = vec3(0.16, 0.20, 0.29) * innerShade;
       vec3 silverBlue = mix(vec3(0.62, 0.72, 0.92), uMoonColor, 0.58);
       vec3 sampleColor = mix(midnightBlue, silverBlue, lunarAmount);
       sampleColor += silverBlue * silverRim * uLightIntensity * 0.35;
 
-      float opticalDepth = cloudDensity * uDensity * uOpacity * stepLength * 0.72;
+      float opticalDepth = cloudDensity * uDensity * uOpacity * stepLength * 1.15;
       float sampleAlpha = 1.0 - exp(-max(opticalDepth, 0.0));
       float contribution = transmittance * sampleAlpha;
       accumulatedColor += sampleColor * contribution;
@@ -201,6 +201,12 @@ export interface GrowthCloudMaterialOptions {
   seed: number
 }
 
+/** Directional cloud illumination follows the same impact-bound cue as the key light. */
+export function getGrowthCloudLunarLight(time: number, frames: GrowthFrames, cloudLight: number, moonLight: number, variation: number): number {
+  return clampFinite(cloudLight, 0, 2, 0) * clampFinite(moonLight, 0, 2, 0)
+    * clampFinite(variation, 0, 2, 1) * getGrowthProgress(time, frames.moonlight)
+}
+
 export function getGrowthCloudMasses(
   count: number,
   scale: number,
@@ -217,6 +223,8 @@ export function getGrowthCloudMasses(
   const depthSpread = 0.32 + depthVariation * 1.08
   const positionScale = 1 + (safeScale - 1) * 0.35
   const initialViewportBottom = fallDistance - viewportHeight / 2
+  // Side banks enter the upper fall view while the sparse central wisps remain below it.
+  const sideBankRise = fallDistance > viewportHeight * 1.5 ? viewportHeight * 0.75 : 0
   const maxPathRadius = Math.max(...GROWTH_CLOUD_LAYOUT.filter(({ pathCrossing }) => pathCrossing).map(({ radii }) => radii[1]))
     * safeScale * (1 + 0.4 * sizeVariation)
   const highestPathY = Math.min(fallDistance * 0.48, initialViewportBottom - maxPathRadius - 0.28)
@@ -229,9 +237,10 @@ export function getGrowthCloudMasses(
     const lightScale = clampFinite(1 + seededVariation(mass.seed, 7) * lightVariation * 0.72, 0.35, 1.65, 1)
     const radii = [mass.radii[0] * sizeFactors[0], mass.radii[1] * sizeFactors[1], mass.radii[2] * sizeFactors[2]] as const
     const fallProgress = mass.fallProgress
-    const highestMassY = mass.persistent
+    const anchoredBank = mass.persistent && fallProgress === undefined
+    const highestMassY = anchoredBank
       ? mass.position[1]
-      : Math.min(fallDistance * 0.48, initialViewportBottom - radii[1] * safeScale - 0.28)
+      : Math.min(fallDistance * 1.1, initialViewportBottom + sideBankRise - radii[1] * safeScale - 0.28)
     const lowestMassY = Math.min(0.12, highestMassY - Math.max(0.55, fallDistance * 0.34))
     const pathHigh = crossing ? highestPathY : highestMassY
     const pathLow = crossing ? 0.12 : lowestMassY
@@ -239,9 +248,9 @@ export function getGrowthCloudMasses(
       ? mass.position[1]
       : pathHigh + (pathLow - pathHigh) * clampFinite((fallProgress - 0.5) / 0.48, 0, 1, 0)
     const desiredY = pathY + yJitter * Math.max(0.5, pathHigh - pathLow)
-    const y = mass.persistent ? desiredY : crossing
+    const y = anchoredBank ? desiredY : crossing
       ? Math.max(pathLow, Math.min(pathHigh, desiredY))
-      : Math.min(desiredY, initialViewportBottom - radii[1] * safeScale - 0.28)
+      : Math.min(desiredY, initialViewportBottom + sideBankRise - radii[1] * safeScale - 0.28)
     return {
       ...mass,
       position: [mass.position[0] + xJitter, y, (mass.position[2] + zJitter) * depthSpread] as const,
@@ -261,7 +270,7 @@ export function getGrowthCloudMasses(
       ? Math.round(pathDensity)
       : Math.round(safeCount * pathDensity * 0.5)
     const pathCount = Math.min(pathCandidates.length, requestedPathCount)
-    const persistentCount = safeCount >= 8 ? Math.min(persistentCandidates.length, Math.round(safeCount * 0.22)) : 0
+    const persistentCount = safeCount >= 8 ? Math.min(persistentCandidates.length, Math.round(safeCount * 0.3)) : 0
     const reservedCount = Math.min(safeCount, pathCount + persistentCount)
     const selectedPath = spreadSelect(pathCandidates, Math.min(pathCount, reservedCount))
     const selectedPersistent = spreadSelect(persistentCandidates, Math.min(persistentCount, reservedCount - selectedPath.length))

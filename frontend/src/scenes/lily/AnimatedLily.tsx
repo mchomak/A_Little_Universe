@@ -14,6 +14,7 @@ import { subscribeLilyAnimationClock } from './animationClock'
 import { createLilyGeometryParticleSource, lilyDissolvePart, type LilySurfaceSource } from './particleSource'
 import { patchLilyMaterial, setLilySurfaceBounds, updateLilyDissolve, updateLilyParticleSettings, type LilyDissolveUniforms } from './dissolve'
 import { createLilyGrowthVfx, type LilyGrowthVfx } from './lilyGrowthVfx'
+import { enableGrowthObjectShadows, shouldUseGrowthShadows } from '../growth/sceneShadows'
 
 const MODEL_POSITION: [number, number, number] = [0, -1.45, 0]
 const MODEL_SCALE = 3
@@ -77,7 +78,12 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
   const growthVfxRef = useRef<LilyGrowthVfx | null>(null)
   const materialsRef = useRef<LilyMaterialState[]>([])
   const particleSourceRef = useRef<LilySurfaceSource | null>(null)
+  const growthWorldActive = shouldUseGrowthShadows(state.scene)
   useLayoutEffect(() => { stateRef.current = state }, [state])
+  useLayoutEffect(() => {
+    if (!growthWorldActive) return
+    return enableGrowthObjectShadows(model)
+  }, [growthWorldActive, model])
   useLayoutEffect(() => {
     const materials = cloneLilyMaterials(model, dissolveUniforms)
     materialsRef.current = materials
