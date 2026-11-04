@@ -246,10 +246,11 @@ const GALLERY_CONTROLS: readonly NumericControl[] = [
 
 const GALLERY_CLOUD_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
   ...([
-    { id: 'far', name: 'Far Clouds · дальний слой', maxCount: 14 },
+    { id: 'far', name: 'Far Clouds · дальний слой', maxCount: 12 },
     { id: 'mid', name: 'Mid Clouds · боковые массы', maxCount: 20 },
     { id: 'nearLow', name: 'Near Low Clouds · за фотографиями', maxCount: 24 },
     { id: 'waterline', name: 'Waterline Clouds · дымка над водой', maxCount: 32 },
+    { id: 'moon', name: 'Moon Clouds · облака у Луны', maxCount: 8 },
   ] as const).map(({ id, name, maxCount }) => ({
     name,
     controls: [
@@ -790,9 +791,9 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-gallery-archVisible">Показывать арку</label>{config.scenes.gallery.archVisible !== defaultAtPath('scenes.gallery.archVisible') && <button type="button" className="inspector-reset" aria-label="Сбросить видимость арки" onClick={() => { void resetField('scenes.gallery.archVisible') }}>↺</button>}</div><input id="composer-scenes-gallery-archVisible" data-testid="composer-scenes-gallery-archVisible" type="checkbox" checked={config.scenes.gallery.archVisible} onChange={(event) => { void changeField('scenes.gallery.archVisible', event.target.checked) }} /></div>
             {GALLERY_ARCH_CONTROLS.map(range)}
           </details>
-          {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.name.startsWith('Near Low') || group.name.startsWith('Waterline')}><summary>{group.name}</summary>
+          {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.name.startsWith('Near Low') || group.name.startsWith('Waterline') || group.name.startsWith('Moon Clouds')}><summary>{group.name}</summary>
             {group.controls.map(range)}
-            {group.name.startsWith('Waterline') && <p>Для устойчивого времени кадра сцена отображает не более 24 объёмных масс (16 в низком профиле); все четыре слоя сохраняют отдельные квоты.</p>}
+            {group.name.startsWith('Waterline') && <p>Счётчик управляет только этой группой; количество других облаков на него не влияет.</p>}
           </details>)}
           {GALLERY_CONTROLS.map(range)}
         </details>}

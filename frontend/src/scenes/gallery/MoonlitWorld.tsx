@@ -101,7 +101,7 @@ export function MoonlitWorld({
     const localDefinition = mass.layer === 'nearLow' ? 1 : mass.layer === 'waterline' ? 0.96 : 1
     return createGalleryCloudVolumeMaterial({
     kind: 'cloud',
-    center: getGalleryCloudPosition(mass, layerSettings),
+    center: getGalleryCloudPosition(mass, layerSettings, moonPosition),
     radii,
     seed: mass.seed,
     opacity: mass.opacity * layerSettings.opacity * (mass.moonInteraction || mass.layer === 'nearLow' || mass.layer === 'waterline' ? 1 : 0.82),
@@ -207,7 +207,7 @@ export function MoonlitWorld({
     if (lunarHalo && !Array.isArray(lunarHalo)) lunarHalo.opacity = Math.min(0.5, settings.moonHaloIntensity * 0.4) * (0.985 + 0.015 * Math.sin(time * 0.2 + 0.6))
     cloudMasses.forEach((mass, index) => {
       const layerSettings = settings.cloudLayers[mass.layer]
-      const basePosition = getGalleryCloudPosition(mass, layerSettings)
+      const basePosition = getGalleryCloudPosition(mass, layerSettings, moonPosition)
       const motionScale = mass.layer === 'nearLow' ? 1.2 : mass.layer === 'waterline' ? 1.1 : 1
       const drift = getGalleryCloudDrift(mass, time, reducedMotion ? 0 : layerSettings.driftSpeed * motionScale, settings.cloudDriftVariation)
       const x = basePosition[0] + drift[0]
@@ -251,7 +251,7 @@ export function MoonlitWorld({
     {cloudMasses.map((mass, index) => <mesh
       key={mass.id}
       ref={(mesh) => { cloudMeshes.current[index] = mesh }}
-      position={getGalleryCloudPosition(mass, settings.cloudLayers[mass.layer])}
+      position={getGalleryCloudPosition(mass, settings.cloudLayers[mass.layer], moonPosition)}
       scale={getGalleryCloudRadii(mass, settings.cloudLayers[mass.layer], quality)}
       visible={settings.cloudLayers[mass.layer].density > 0 && settings.cloudLayers[mass.layer].count > 0}
       raycast={ignoreRaycast}

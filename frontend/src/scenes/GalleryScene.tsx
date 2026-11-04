@@ -1,7 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useLoader, useThree } from '@react-three/fiber'
 import type { RefObject } from 'react'
-import { galleryDistanceOpacity, galleryFocusOpacity } from './gallery/visibility'
+import { galleryColumnOpacity, galleryDistanceOpacity, galleryFocusOpacity } from './gallery/visibility'
 import { galleryPhotoBlurAtFocus, galleryPhotoLightAtFocus } from './gallery/artDirection'
 import { createFrameParticleGeometry } from './gallery/frameParticles'
 import { createGalleryDustGeometry, getGalleryDustCount } from './gallery/dust'
@@ -309,8 +309,12 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     }
     const distanceAlpha = galleryDistanceOpacity(photoDistance)
     const focusAlpha = galleryFocusOpacity(m.focusMix, selected)
-    const alpha = visible * (1 - m.exit / GALLERY.exit) * focusAlpha * distanceAlpha
-    columnOpacity.current = alpha
+    const exitMix = m.exit / GALLERY.exit
+    const exitOpacity = 1 - exitMix
+    const alpha = visible * exitOpacity * focusAlpha * distanceAlpha
+    // Columns belong to the gallery architecture, so focusing a photo may fade
+    // neighboring photos but must not fade their columns with them.
+    columnOpacity.current = galleryColumnOpacity(visible, exitMix, distanceAlpha)
     for (const saved of materials.current) {
       setMaterialAlpha(saved, alpha)
       setFocusFog(saved.material, focusTarget)

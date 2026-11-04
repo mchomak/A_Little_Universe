@@ -1,5 +1,5 @@
 ﻿import { expect, it, vi } from 'vitest'
-import { galleryArchDistanceOpacity, galleryDistanceOpacity, galleryFocusOpacity, wakeOnVisible } from './visibility'
+import { galleryArchDistanceOpacity, galleryColumnOpacity, galleryDistanceOpacity, galleryFocusOpacity, wakeOnVisible } from './visibility'
 it('wakes a visible demand canvas and removes the listener on disposal', () => {
   const source = new EventTarget() as EventTarget & { hidden: boolean }; source.hidden = true
   const invalidate = vi.fn(); const dispose = wakeOnVisible(source as unknown as Document, invalidate)
@@ -31,4 +31,10 @@ it('preserves visible gallery context at full focus without a time-based fade to
   expect(galleryFocusOpacity(0, false)).toBe(1)
   expect(galleryFocusOpacity(1, false)).toBeGreaterThan(0)
   expect(galleryFocusOpacity(1, true)).toBe(1)
+})
+it('keeps column opacity tied to scene visibility, exit, and distance rather than photo focus', () => {
+  expect(galleryColumnOpacity(1, 0, 1)).toBe(1)
+  expect(galleryColumnOpacity(1, 0, 0.6)).toBeCloseTo(0.6)
+  expect(galleryColumnOpacity(1, 0.4, 0.6)).toBeCloseTo(0.36)
+  expect(galleryColumnOpacity(0.5, 0, 1)).toBe(0.5)
 })

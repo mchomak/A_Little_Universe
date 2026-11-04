@@ -39,3 +39,11 @@ export function galleryFocusOpacity(focusMix: number, selected: boolean) {
   const mix = Number.isFinite(focusMix) ? Math.max(0, Math.min(1, focusMix)) : 0
   return 1 - mix * (1 - MIN_CONTEXT_OPACITY)
 }
+
+/** Gallery columns follow scene presence and distance, never the photo focus fade. */
+export function galleryColumnOpacity(visible: number, exitMix: number, distanceOpacity: number) {
+  const visibleAlpha = Number.isFinite(visible) ? Math.max(0, Math.min(1, visible)) : 0
+  const safeExitMix = Number.isFinite(exitMix) ? Math.max(0, Math.min(1, exitMix)) : 0
+  const distanceAlpha = Number.isFinite(distanceOpacity) ? Math.max(0, Math.min(1, distanceOpacity)) : 0
+  return visibleAlpha * (1 - safeExitMix) * distanceAlpha
+}

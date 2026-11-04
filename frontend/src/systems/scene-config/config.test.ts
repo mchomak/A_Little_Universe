@@ -8,11 +8,11 @@ it('migrates saved schema v12 water controls and fills the independent polish co
     waterRippleSpeed: 0.2, waterNormalStrength: 0.25, moonHighlightStrength: 0.8, waterOpacity: 0.94,
   } } })
 
-  expect(saved.schemaVersion).toBe(18)
+  expect(saved.schemaVersion).toBe(19)
   expect(saved.scenes.gallery).toMatchObject({
     reflectionStrength: 0.36, reflectionBlur: 0.48, waterDistortion: 0.01,
     waterRippleSpeed: 0.2, waterNormalStrength: 0.25, moonHighlightStrength: 0.8, waterOpacity: 0.94,
-    waterBaseBrightness: 0.72, reflectionFalloff: 1.25, waterDistortionScale: 1.25, moonReflectionSpread: 1.6,
+    waterBaseBrightness: 0.72, reflectionFalloff: 1.25, waterDistortionScale: 0.87, moonReflectionSpread: 2,
   })
 })
 
@@ -26,7 +26,7 @@ it('migrates schema v13 cloud masters into four independently editable cloud lay
     waterNormalStrength: 0.31, moonHighlightStrength: 1.1, moonReflectionSpread: 1.42, waterOpacity: 0.82,
   } } })
 
-  expect(migrated.schemaVersion).toBe(18)
+  expect(migrated.schemaVersion).toBe(19)
   expect(migrated.scenes.gallery.cloudLayers).toMatchObject({
     far: { density: 1.4, scale: 1.2, brightness: 1.3, driftSpeed: 0.6 },
     mid: { density: 1.4, scale: 1.2, brightness: 1.3, driftSpeed: 0.6 },
@@ -45,7 +45,21 @@ it('retains the full waterline count range exposed by the Scene 05 controls', ()
   const fullCapacity = normalizeConfig({ schemaVersion: 14, scenes: { gallery: { cloudLayers: { waterline: { count: 32 } } } } })
   const aboveCapacity = normalizeConfig({ schemaVersion: 14, scenes: { gallery: { cloudLayers: { waterline: { count: 33 } } } } })
   expect(fullCapacity.scenes.gallery.cloudLayers.waterline.count).toBe(32)
-  expect(aboveCapacity.scenes.gallery.cloudLayers.waterline.count).toBe(10)
+  expect(aboveCapacity.scenes.gallery.cloudLayers.waterline.count).toBe(8)
+})
+
+it('adds an independently persisted lunar cloud layer and preserves schema v18 imports', () => {
+  const imported = normalizeConfig({ schemaVersion: 18, scenes: { gallery: {
+    cloudLayers: { far: { count: 12 }, mid: { count: 20 }, nearLow: { count: 24 }, waterline: { count: 32 } },
+  } } })
+  const disabledLegacyClouds = normalizeConfig({ schemaVersion: 18, scenes: { gallery: { cloudLayerCount: 0 } } })
+
+  expect(imported.schemaVersion).toBe(19)
+  expect(imported.scenes.gallery.cloudLayers).toMatchObject({
+    far: { count: 12 }, mid: { count: 20 }, nearLow: { count: 24 }, waterline: { count: 32 }, moon: { count: 2 },
+  })
+  expect(Object.values(imported.scenes.gallery.cloudLayers).reduce((sum, layer) => sum + layer.count, 0)).toBe(90)
+  expect(Object.values(disabledLegacyClouds.scenes.gallery.cloudLayers).reduce((sum, layer) => sum + layer.count, 0)).toBe(0)
 })
 
 it('migrates and bounds the adjustable gallery aisle width in schema v15', () => {
@@ -58,7 +72,7 @@ it('migrates and bounds the adjustable gallery aisle width in schema v15', () =>
   } } })
   const tooNarrow = normalizeConfig({ schemaVersion: 15, scenes: { gallery: { galleryWidth: 5.9, columnScale: 0.5 } } })
 
-  expect(oldSettings.schemaVersion).toBe(18)
+  expect(oldSettings.schemaVersion).toBe(19)
   expect(oldSettings.scenes.gallery).toMatchObject({
     galleryWidth: 7, columnVisible: true, columnScale: 1, columnDepth: 0.15, columnOffsetX: 0, columnOffsetY: 0,
   })
@@ -73,7 +87,7 @@ it('migrates and bounds the adjustable gallery aisle width in schema v15', () =>
   expect(tooNarrow.scenes.gallery.galleryWidth).toBe(7)
 })
 
-it('migrates gallery arch settings into schema v18 and bounds editor values', () => {
+it('migrates gallery arch settings into schema v19 and bounds editor values', () => {
   const legacy = normalizeConfig({ schemaVersion: 15, scenes: { gallery: { columnScale: 1.4 } } })
   const customized = normalizeConfig({ schemaVersion: 16, scenes: { gallery: {
     archVisible: false, archScale: 21.5, archOpacity: 0.64, archPositionX: 3.5, archPositionY: 2,
@@ -84,37 +98,37 @@ it('migrates gallery arch settings into schema v18 and bounds editor values', ()
     archPositionZ: -20, archRotationY: 4,
   } } })
 
-  expect(legacy.schemaVersion).toBe(18)
+  expect(legacy.schemaVersion).toBe(19)
   expect(legacy.scenes.gallery).toMatchObject({
-    columnScale: 1.4, archVisible: true, archScale: 16, archOpacity: 0.78,
-    archPositionX: 0, archPositionY: 0, archPositionZ: -84, archRotationY: 0,
+    columnScale: 1.4, archVisible: true, archScale: 19, archOpacity: 0.78,
+    archPositionX: 0, archPositionY: 0, archPositionZ: -82, archRotationY: 0,
   })
   expect(customized.scenes.gallery).toMatchObject({
     archVisible: false, archScale: 21.5, archOpacity: 0.64, archPositionX: 3.5,
     archPositionY: 2, archPositionZ: -91, archRotationY: 0.75,
   })
   expect(bounded.scenes.gallery).toMatchObject({
-    archVisible: true, archScale: 16, archOpacity: 0.78, archPositionX: 0,
-    archPositionY: 0, archPositionZ: -84, archRotationY: 0,
+    archVisible: true, archScale: 19, archOpacity: 0.78, archPositionX: 0,
+    archPositionY: 0, archPositionZ: -82, archRotationY: 0,
   })
 })
 
 it('defaults the gallery to a restrained deep blue moonlit palette', () => {
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery).toMatchObject({
     cloudCoolTint: 1.35, cloudWhiteHighlight: 0.24,
-    coldLightIntensity: 0.58, moonLightIntensity: 1.25, moonFillIntensity: 0.22,
+    coldLightIntensity: 0.58, moonLightIntensity: 1.4, moonFillIntensity: 0.22,
     moonCloudLightIntensity: 0.72, moonScatteringIntensity: 0.62,
     waterBaseBrightness: 0.72, reflectionStrength: 0.64, reflectionBlur: 0.62,
-    reflectionFalloff: 1.25, waterDistortion: 0.04, waterDistortionScale: 1.25,
-    waterRippleSpeed: 1.35, waterNormalStrength: 0.95, moonHighlightStrength: 0.92,
-    moonReflectionSpread: 1.6, waterOpacity: 1,
+    reflectionFalloff: 1.25, waterDistortion: 0.02, waterDistortionScale: 0.87,
+    waterRippleSpeed: 1, waterNormalStrength: 0.5, moonHighlightStrength: 1.1,
+    moonReflectionSpread: 2, waterOpacity: 1,
   })
 })
 
 it('loads moonlit gallery settings from legacy schemas and preserves schema v10 data in v15', () => {
   for (const schemaVersion of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) {
     const imported = normalizeConfig({ schemaVersion, scenes: { gallery: { moonBrightness: 1.1, cloudLayerCount: 7 } } })
-    expect(imported.schemaVersion).toBe(18)
+    expect(imported.schemaVersion).toBe(19)
     expect(imported.scenes.gallery).toMatchObject({ moonBrightness: 1.1 })
     expect(Object.values(imported.scenes.gallery.cloudLayers).reduce((sum, layer) => sum + layer.count, 0)).toBe(7)
     expect(imported.scenes.identity).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity)
@@ -132,16 +146,16 @@ it('loads moonlit gallery settings from legacy schemas and preserves schema v10 
 })
 
 it('migrates gallery water controls into schema v15, retaining saved reflections and validating bounds', () => {
-  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(18)
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(19)
   for (const schemaVersion of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]) {
     const migrated = normalizeConfig({ schemaVersion, scenes: { gallery: {
       moonBrightness: 1.1, reflectionStrength: 0.24, reflectionBlur: 0.8,
     } } })
-    expect(migrated.schemaVersion).toBe(18)
+    expect(migrated.schemaVersion).toBe(19)
     expect(migrated.scenes.gallery).toMatchObject({
       moonBrightness: 1.1, reflectionStrength: 0.24, reflectionBlur: 0.8,
-      waterDistortion: 0.04, waterDistortionScale: 1.25, waterRippleSpeed: 1.35, waterNormalStrength: 0.95,
-      moonHighlightStrength: 0.92, moonReflectionSpread: 1.6, waterOpacity: 1,
+      waterDistortion: 0.02, waterDistortionScale: 0.87, waterRippleSpeed: 1, waterNormalStrength: 0.5,
+      moonHighlightStrength: 1.1, moonReflectionSpread: 2, waterOpacity: 1,
       waterBaseBrightness: 0.72, reflectionFalloff: 1.25,
     })
   }
@@ -164,8 +178,8 @@ it('migrates gallery water controls into schema v15, retaining saved reflections
   } } })
   expect(invalid.scenes.gallery).toMatchObject({
     reflectionStrength: 0.64, reflectionBlur: 0.62, reflectionFalloff: 1.25, waterBaseBrightness: 0.72,
-    waterDistortion: 0.04, waterDistortionScale: 1.25, waterRippleSpeed: 1.35, waterNormalStrength: 0.95,
-    moonHighlightStrength: 0.92, moonReflectionSpread: 1.6, waterOpacity: 1,
+    waterDistortion: 0.02, waterDistortionScale: 0.87, waterRippleSpeed: 1, waterNormalStrength: 0.5,
+    moonHighlightStrength: 1.1, moonReflectionSpread: 2, waterOpacity: 1,
   })
 })
 
@@ -188,7 +202,7 @@ it('expands only the old schema v9 cloud maximum while preserving intentional lo
 
 it('normalizes schema v6 atmosphere controls and supplies them to schema v5 documents', () => {
   const oldGallery = normalizeConfig({ schemaVersion: 5, scenes: { gallery: { moonBrightness: 1.1, cloudDensity: 1.4 } } })
-  expect(oldGallery.schemaVersion).toBe(18)
+  expect(oldGallery.schemaVersion).toBe(19)
   expect(oldGallery.scenes.gallery).toMatchObject({
     moonBrightness: 1.1, hazeHeight: 0, moonCloudLightIntensity: 0.72,
   })
@@ -211,10 +225,10 @@ it('normalizes schema v6 atmosphere controls and supplies them to schema v5 docu
 
 it('migrates bounded moon source, color, halo radius, and godray controls into schema v15', () => {
   const migrated = normalizeConfig({ schemaVersion: 6, scenes: { gallery: { moonPositionX: 2.4, moonLightColor: '#abcde0' } } })
-  expect(migrated.schemaVersion).toBe(18)
+  expect(migrated.schemaVersion).toBe(19)
   expect(migrated.scenes.gallery).toMatchObject({
-    moonLightColor: '#ABCDE0', moonPositionX: 2.4, moonPositionY: 16, moonPositionZ: -126,
-    moonTargetX: 0, moonTargetY: -2.35, moonTargetZ: -34, moonHaloRadius: 1,
+    moonLightColor: '#ABCDE0', moonPositionX: 2.4, moonPositionY: 24, moonPositionZ: -126,
+    moonTargetX: 0, moonTargetY: 5.2, moonTargetZ: -34, moonHaloRadius: 1.7,
     moonGodRaysIntensity: 0.12,
   })
 
@@ -223,15 +237,15 @@ it('migrates bounded moon source, color, halo radius, and godray controls into s
     moonTargetX: 50, moonTargetY: 80, moonTargetZ: 120, moonHaloRadius: 8, moonGodRaysIntensity: 4,
   } } })
   expect(bounded.scenes.gallery).toMatchObject({
-    moonLightColor: '#C3D8F2', moonPositionX: 0.2, moonPositionY: 16, moonPositionZ: -126,
-    moonTargetX: 0, moonTargetY: -2.35, moonTargetZ: -34, moonHaloRadius: 1,
+    moonLightColor: '#C3D8F2', moonPositionX: 0.2, moonPositionY: 24, moonPositionZ: -126,
+    moonTargetX: 0, moonTargetY: 5.2, moonTargetZ: -34, moonHaloRadius: 1.7,
     moonGodRaysIntensity: 0.12,
   })
 })
 
 it('persists bounded cloud volume settings while keeping old settings compatible', () => {
   const migrated = normalizeConfig({ schemaVersion: 7, scenes: { gallery: { cloudLayerCount: 6 } } })
-  expect(migrated.schemaVersion).toBe(18)
+  expect(migrated.schemaVersion).toBe(19)
   expect(Object.values(migrated.scenes.gallery.cloudLayers).reduce((sum, layer) => sum + layer.count, 0)).toBe(6)
   expect(migrated.scenes.gallery.cloudLayers.far.driftSpeed).toBe(0.48)
 
@@ -385,7 +399,7 @@ it('normalizes capture limits and repairs turn ordering without losing legacy se
 })
 
 it('uses immutable schema v15 defaults and the local Great Vibes prologue face', () => {
-  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(18)
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(19)
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily).toBe('great-vibes')
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue).toMatchObject({
     interphraseInterval: 1.35,
@@ -425,7 +439,7 @@ it('migrates schema v1 particle settings and preserves compatible fields', () =>
     prologue: { fontSize: 72, particleCount: 120, particleSpeed: 2, particleSpread: 1.2, particleDuration: 9, particleReturnFraction: 0.9 },
   } })
 
-  expect(migrated.schemaVersion).toBe(18)
+  expect(migrated.schemaVersion).toBe(19)
   expect(migrated.global.quality).toBe('low')
   expect(migrated.scenes.prologue).toMatchObject({
     fontSize: 72, particleCount: 300, windStrength: 2.3, turbulence: 0.36,
@@ -464,7 +478,7 @@ it('falls back per field, drops unknown keys, and rejects unsupported versions',
   expect(malformed.global).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.global)
   expect(malformed.scenes.prologue).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)
   expect(Object.keys(malformed)).toEqual(['schemaVersion', 'global', 'scenes', 'preset'])
-  expect(normalizeConfig({ schemaVersion: 19, scenes: { prologue: { fontSize: 72 } } })).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
+  expect(normalizeConfig({ schemaVersion: 20, scenes: { prologue: { fontSize: 72 } } })).toEqual(DEFAULT_SCENE_COMPOSER_CONFIG)
 })
 
 it('accepts schema v2 inclusive bounds and defaults out-of-range or non-finite values', () => {
@@ -552,7 +566,7 @@ it('normalizes additive bloom camera and calligraphy fields while preserving old
 
 it('migrates schema v2 documents with galaxy defaults and bounds the new controls', () => {
   const migrated = normalizeConfig({ schemaVersion: 2, scenes: { growth: { seedScale: 1.2 } } })
-  expect(migrated.schemaVersion).toBe(18)
+  expect(migrated.schemaVersion).toBe(19)
   expect(migrated.scenes.galaxy).toMatchObject({ seed: 'andromeda', starCount: 32000, arms: 5, palette: 'spore', cameraEndAngle: 0.785 })
   const galaxy = normalizeConfig({ schemaVersion: 4, scenes: { galaxy: {
     starCount: 90000, arms: 8, quality: 'high', palette: 'custom', coreColor: '#A1B2C3', fogLayers: 8,
@@ -571,9 +585,9 @@ it('migrates schema v3 galaxy spin from turns to radians and converts schema v4 
     coreSize: 1.55, coreDensity: 0.4, thickness: 0.12,
   } } })
 
-  expect(legacy.schemaVersion).toBe(18)
+  expect(legacy.schemaVersion).toBe(19)
   expect(legacy.scenes.galaxy.spin).toBeCloseTo(1.2 * Math.PI * 2, 10)
-  expect(current.schemaVersion).toBe(18)
+  expect(current.schemaVersion).toBe(19)
   expect(current.scenes.galaxy).toMatchObject({
     seed: '154684308', spin: 4.6, armWidth: 0.16,
     coreSize: 1.55 / 8.2, coreDensity: 0.248, thickness: 0.12 / 8.2,
@@ -665,11 +679,11 @@ async function resetForFontTest() {
 
 it('migrates the current gallery width into independent A/B photo layout profiles', () => {
   const legacy = normalizeConfig({ schemaVersion: 16, scenes: { gallery: { galleryWidth: 9.4 } } })
-  expect(legacy.schemaVersion).toBe(18)
+  expect(legacy.schemaVersion).toBe(19)
   expect(legacy.scenes.gallery).toMatchObject({
-    galleryLayoutVariant: 'on-columns',
+    galleryLayoutVariant: 'between-columns',
     galleryLayoutA: { laneWidth: 9.4, offsetX: 0, offsetY: 0, offsetZ: 0 },
-    galleryLayoutB: { laneWidth: 9.4, offsetX: 0, offsetY: 0, offsetZ: 0 },
+    galleryLayoutB: { laneWidth: 9.4, offsetX: 2, offsetY: 0.75, offsetZ: 2.1 },
   })
   const customized = normalizeConfig({ schemaVersion: 17, scenes: { gallery: {
     galleryLayoutVariant: 'between-columns',
@@ -688,7 +702,7 @@ it('migrates the current gallery width into independent A/B photo layout profile
   const savedV17Profile = normalizeConfig({ schemaVersion: 17, scenes: { gallery: { galleryLayoutB: { offsetX: -3 } } } })
   expect(savedV17Profile.scenes.gallery.galleryLayoutB.offsetX).toBe(-2.5)
   const invalidBOffset = normalizeConfig({ schemaVersion: 17, scenes: { gallery: { galleryLayoutB: { laneWidth: 6, offsetX: -3.1 } } } })
-  expect(invalidBOffset.scenes.gallery.galleryLayoutB).toMatchObject({ laneWidth: 6, offsetX: 0 })
+  expect(invalidBOffset.scenes.gallery.galleryLayoutB).toMatchObject({ laneWidth: 6, offsetX: 2 })
 })
 
 it('migrates the B photo facing limit and keeps it within the Dev panel range', () => {
@@ -697,7 +711,7 @@ it('migrates the B photo facing limit and keeps it within the Dev panel range', 
   const bounded = normalizeConfig({ schemaVersion: 18, scenes: { gallery: { galleryPhotoFacingMaxDegrees: 90 } } })
   const belowRange = normalizeConfig({ schemaVersion: 18, scenes: { gallery: { galleryPhotoFacingMaxDegrees: -5 } } })
 
-  expect(legacy.schemaVersion).toBe(18)
+  expect(legacy.schemaVersion).toBe(19)
   expect(legacy.scenes.gallery.galleryPhotoFacingMaxDegrees).toBe(45)
   expect(customized.scenes.gallery.galleryPhotoFacingMaxDegrees).toBe(32)
   expect(bounded.scenes.gallery.galleryPhotoFacingMaxDegrees).toBe(45)
