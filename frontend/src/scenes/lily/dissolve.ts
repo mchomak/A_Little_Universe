@@ -83,6 +83,12 @@ export function getLilyParticlePortraitSettledProgress(time: number, arrivalTime
   return smoothstep(0, LILY_PORTRAIT_SETTLED_RAMP_SECONDS, Math.max(0, sceneTime - settledAt))
 }
 
+/** Fade portrait routes as the replacement photo appears; free vortex particles stay visible. */
+export function getLilyPortraitPhotoParticleOpacity(photoProgress: number, portraitRoute: boolean) {
+  if (!portraitRoute) return 1
+  return 1 - smoothstep(0, 1, clampFinite(photoProgress, 0, 1, 0))
+}
+
 export function getLilyParticleOrbitRadius(sourceRadius: number, targetRadius: number, rise: number, expansion: number, detach: number, flowerRadius: number, vortexRadius: number) {
   const blend = Math.min(1, Math.max(0, detach))
   const uncappedRadius = sourceRadius * (1 - blend) + (targetRadius + rise * expansion) * blend
@@ -127,6 +133,7 @@ export interface LilyDissolveUniforms {
   uLilyPortraitPhotoColorMix: { value: number }; uLilyPortraitOpacity: { value: number }
   uLilyPortraitMinimumBrightness: { value: number }; uLilyPortraitContrast: { value: number }
   uLilyPortraitGlow: { value: number }; uLilyPortraitPointMinSize: { value: number }; uLilyPortraitPointMaxSize: { value: number }
+  uLilyPortraitPhotoProgress: { value: number }
 }
 
 export interface LilyParticleSettings {
@@ -200,7 +207,8 @@ export function createLilyDissolveUniforms(): LilyDissolveUniforms {
     uLilyPortraitBrightness: { value: 1.8 }, uLilyPortraitSize: { value: 1.8 },
     uLilyPortraitPhotoColorMix: { value: 0 }, uLilyPortraitOpacity: { value: 1 },
     uLilyPortraitMinimumBrightness: { value: 0 }, uLilyPortraitContrast: { value: 1 },
-    uLilyPortraitGlow: { value: 1 }, uLilyPortraitPointMinSize: { value: 1 }, uLilyPortraitPointMaxSize: { value: LILY_PARTICLE_MAX_POINT_SIZE } }
+    uLilyPortraitGlow: { value: 1 }, uLilyPortraitPointMinSize: { value: 1 }, uLilyPortraitPointMaxSize: { value: LILY_PARTICLE_MAX_POINT_SIZE },
+    uLilyPortraitPhotoProgress: { value: 0 } }
 }
 
 export function setLilySurfaceBounds(uniforms: LilyDissolveUniforms, surface: LilySurfaceSource) {
@@ -220,6 +228,11 @@ export function updateLilyDissolve(uniforms: LilyDissolveUniforms, active: boole
 export function updateLilyParticleSize(uniforms: LilyDissolveUniforms, size: number, dpr: number) {
   uniforms.uLilySize.value = size
   uniforms.uLilyDpr.value = dpr
+}
+
+/** Shared by the photo mesh and particle material so their reveal stays in lockstep. */
+export function updateLilyPortraitPhotoProgress(uniforms: LilyDissolveUniforms, progress: number) {
+  uniforms.uLilyPortraitPhotoProgress.value = clampFinite(progress, 0, 1, 0)
 }
 
 /** Applies DEV portrait styling while keeping existing Scene 04 defaults unchanged. */
@@ -813,6 +826,7 @@ export function createLilyParticleMaterial(uniforms: LilyDissolveUniforms) {
       uniform float uLilyPortraitBrightness; uniform float uLilyPortraitSize;
       uniform float uLilyPortraitSteering; uniform float uLilyPortraitBraking;
       uniform float uLilyPortraitPointMinSize; uniform float uLilyPortraitPointMaxSize;
+      uniform float uLilyPortraitPhotoProgress;
       attribute float aPart; attribute float aSeed; attribute vec4 aPortraitTarget; attribute vec4 aPortraitMotion; attribute vec3 aPortraitSourceColor; attribute vec3 aPortraitSeedData; attribute float aPortraitRoute;
       varying float vAlpha; varying float vSeed; varying float vPart; varying float vPortraitMix; varying float vPortraitTone; varying float vPortraitContrast; varying float vPortraitSettled;
       varying float vPortraitTargetSeed; varying float vPortraitFeatureWeight;
@@ -900,7 +914,10 @@ export function createLilyParticleMaterial(uniforms: LilyDissolveUniforms) {
           portraitReveal = smoothstep(stageStart, max(stageStart + 0.001, stageEnd), uLilySceneTime);
           portraitMix = smoothstep(0.0, 1.0, travel);
         }
-        vAlpha = mix(baseAlpha, portraitReveal, portraitMix);
+        float photoFade = aPortraitRoute > 0.5
+          ? 1.0 - smoothstep(0.0, 1.0, clamp(uLilyPortraitPhotoProgress, 0.0, 1.0))
+          : 1.0;
+        vAlpha = mix(baseAlpha, portraitReveal, portraitMix) * photoFade;
         vPortraitMix = portraitMix;
         float settledElapsed = max(0.0, uLilySceneTime - aPortraitMotion.x - travelDuration);
         float portraitSettled = smoothstep(0.0, ${glslFloat(LILY_PORTRAIT_SETTLED_RAMP_SECONDS)}, settledElapsed);

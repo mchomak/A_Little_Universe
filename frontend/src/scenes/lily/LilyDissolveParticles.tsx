@@ -10,8 +10,9 @@ import type { LilySurfaceSource } from './particleSource'
 import { toLilyPortraitAppearanceSettings, toLilyPortraitUniformScales } from './portraitIntegration'
 import { APPROVED_PORTRAIT_SETTINGS, applyApprovedPortraitAppearance, loadApprovedPortrait } from './approvedPortrait'
 import { createLilyGeometryWorkerRequest, sampleLilySurfaceForWorker, serializeLilyPortraitTargets, type LilyGeometryWorkerSuccess } from './lilyGeometryWorkerClient'
-import { createLilyParticleGeometrySetup, lilyParticlePreparation } from './lilyParticlePreparation'
+import { createLilyParticleGeometrySetup, lilyParticlePreparation, type LilyParticleGeometrySetup } from './lilyParticlePreparation'
 import { ParticlePreparationStatus } from './ParticlePreparationStatus'
+import { LilyPortraitPhotoReveal } from './LilyPortraitPhotoReveal'
 
 type ParticleProps = {
   source: LilySurfaceSource
@@ -20,7 +21,11 @@ type ParticleProps = {
   low: boolean
   reducedMotion: boolean
   runtime: FilmRuntime
+  onRequiredSceneDuration: (duration: number, canResolve: boolean) => void
+  onIdentityPreparationPending: (pending: boolean) => void
 }
+
+type PreparedGeometry = { key: string; geometry: BufferGeometry; setup: LilyParticleGeometrySetup }
 
 /** Read the approved points without holding the film clock while async work runs. */
 export function LilyDissolveParticles(props: ParticleProps) {
@@ -50,7 +55,8 @@ export function LilyDissolveParticles(props: ParticleProps) {
     : <ParticlePreparationStatus message="Подготавливаем частицы для распада…" />
 }
 
-function ReadyLilyDissolveParticles({ source, uniforms, reducedMotion, runtime, portrait }: ParticleProps & {
+function ReadyLilyDissolveParticles({ source, uniforms, reducedMotion, runtime, portrait, onRequiredSceneDuration,
+  onIdentityPreparationPending }: ParticleProps & {
   portrait: Awaited<ReturnType<typeof loadApprovedPortrait>>
 }) {
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
@@ -59,8 +65,8 @@ function ReadyLilyDissolveParticles({ source, uniforms, reducedMotion, runtime, 
   const dpr = useThree((state) => state.viewport.dpr)
   const invalidate = useThree((state) => state.invalidate)
   const points = useRef<Points>(null)
-  const [localGeometry, setLocalGeometry] = useState<{ key: string; geometry: BufferGeometry } | null>(null)
-  const localGeometryRef = useRef<{ key: string; geometry: BufferGeometry } | null>(null)
+  const [readyGeometry, setReadyGeometry] = useState<PreparedGeometry | null>(null)
+  const readyGeometryRef = useRef<PreparedGeometry | null>(null)
   const [localFailure, setLocalFailure] = useState<{ key: string; message: string } | null>(null)
   const settings = config.scenes.identity
   const portraitUniformScales = useMemo(() => toLilyPortraitUniformScales(APPROVED_PORTRAIT_SETTINGS, settings.particleBrightness, settings.particleSize),
@@ -77,6 +83,9 @@ function ReadyLilyDissolveParticles({ source, uniforms, reducedMotion, runtime, 
   const cachedStatus = cached?.status
   const cachedGeometry = useMemo(() => cachedWorkerGeometry ? createBufferGeometry(cachedWorkerGeometry) : null,
     [cachedWorkerGeometry])
+  if (cachedGeometry && readyGeometry?.geometry !== cachedGeometry) {
+    setReadyGeometry({ key: setup.key, geometry: cachedGeometry, setup })
+  }
   const managerPreparing = preparationSnapshot.status === 'preparing'
     && (preparationSnapshot.key === setup.key || preparationSnapshot.key === setup.seedKey)
   const activeError = cachedGeometry ? null
@@ -84,15 +93,9 @@ function ReadyLilyDissolveParticles({ source, uniforms, reducedMotion, runtime, 
       : localFailure?.key === setup.key ? localFailure.message
     : cached?.status === 'error' ? cached.error ?? 'Не удалось подготовить световой вихрь.'
       : preparationSnapshot.status === 'error' && preparationSnapshot.key === setup.key ? preparationSnapshot.error : null
-  const displayedGeometry = cachedGeometry ?? (localGeometry?.key === setup.key ? localGeometry.geometry : null)
-
-  useLayoutEffect(() => {
-    const previous = localGeometryRef.current
-    if (previous && previous.key !== setup.key) {
-      previous.geometry.dispose()
-      localGeometryRef.current = null
-    }
-  }, [setup.key])
+  const displayedGeometry = cachedGeometry ?? readyGeometry?.geometry ?? null
+  const displayedSetup = cachedGeometry ? setup : readyGeometry?.setup
+  const geometryPending = !activeError && (!displayedGeometry || displayedSetup?.key !== setup.key)
 
   const retry = useCallback(() => {
     setLocalFailure(null)
@@ -134,11 +137,9 @@ function ReadyLilyDissolveParticles({ source, uniforms, reducedMotion, runtime, 
       return request.promise
     }).then((result) => {
       if (!result || cancelled) return
-      const next = { key: setup.key, geometry: createBufferGeometry(result) }
-      localGeometryRef.current?.geometry.dispose()
-      localGeometryRef.current = next
+      const next = { key: setup.key, geometry: createBufferGeometry(result), setup }
       setLocalFailure(null)
-      setLocalGeometry(next)
+      setReadyGeometry(next)
     }).catch((reason: unknown) => {
       if (cancelled || (reason instanceof Error && reason.name === 'AbortError')) return
       console.error('Scene 04 particle preparation failed.', reason)
@@ -150,11 +151,15 @@ function ReadyLilyDissolveParticles({ source, uniforms, reducedMotion, runtime, 
     }
   }, [cachedStatus, cachedWorkerGeometry, preparationSnapshot, portrait, setup, source])
 
+  useEffect(() => {
+    const previous = readyGeometryRef.current
+    readyGeometryRef.current = readyGeometry
+    if (previous && previous.geometry !== readyGeometry?.geometry) previous.geometry.dispose()
+  }, [readyGeometry])
   useEffect(() => () => {
-    localGeometryRef.current?.geometry.dispose()
-    localGeometryRef.current = null
+    readyGeometryRef.current?.geometry.dispose()
+    readyGeometryRef.current = null
   }, [])
-  useEffect(() => () => cachedGeometry?.dispose(), [cachedGeometry])
 
   const material = useMemo(() => {
     const next = createLilyParticleMaterial(uniforms)
@@ -168,6 +173,17 @@ function ReadyLilyDissolveParticles({ source, uniforms, reducedMotion, runtime, 
     for (let index = 0; index < route.length; index += 1) if (route[index]! > 0.5) return true
     return false
   }, [displayedGeometry])
+
+  useEffect(() => {
+    if (geometryPending) {
+      onIdentityPreparationPending(true)
+      return
+    }
+    if (!displayedGeometry || activeError || !hasPortrait) {
+      onRequiredSceneDuration(TIMING.identity.duration, true)
+      onIdentityPreparationPending(false)
+    }
+  }, [activeError, displayedGeometry, geometryPending, hasPortrait, onIdentityPreparationPending, onRequiredSceneDuration])
 
   useLayoutEffect(() => { updateLilyParticleSize(uniforms, settings.particleSize, dpr) }, [uniforms, settings.particleSize, dpr])
   useLayoutEffect(() => {
@@ -191,13 +207,29 @@ function ReadyLilyDissolveParticles({ source, uniforms, reducedMotion, runtime, 
   }, [runtime, invalidate, hasPortrait, uniforms, portraitUniformScales, settings.dissolveDuration, settings.portraitDuration, settings.portraitStartProgress])
   useEffect(() => () => material.dispose(), [material])
 
-  if (activeError) return <Html center><div role="alert" style={{ color: 'white', background: '#080914', padding: 16 }}>
+  if (activeError && !displayedGeometry) return <Html center><div role="alert" style={{ color: 'white', background: '#080914', padding: 16 }}>
     {activeError} <button type="button" onClick={retry}>Повторить</button>
   </div></Html>
 
   return <>
+    {activeError && displayedGeometry && <Html center><div role="alert" style={{ color: 'white', background: '#080914', padding: 16 }}>
+      {activeError} <button type="button" onClick={retry}>РџРѕРІС‚РѕСЂРёС‚СЊ</button>
+    </div></Html>}
     {displayedGeometry
-      ? <points ref={points} geometry={displayedGeometry} material={material} frustumCulled={false} />
+      ? <>
+        {hasPortrait && <LilyPortraitPhotoReveal
+          portrait={portrait}
+          cameraSettings={displayedSetup?.cameraSettings ?? setup.cameraSettings}
+          geometry={displayedGeometry}
+          braking={settings.portraitBraking}
+          runtime={runtime}
+          uniforms={uniforms}
+          canResolveSceneDuration={!geometryPending}
+          onRequiredSceneDuration={onRequiredSceneDuration}
+          onIdentityPreparationPending={onIdentityPreparationPending}
+        />}
+        <points ref={points} geometry={displayedGeometry} material={material} frustumCulled={false} renderOrder={1} />
+      </>
       : <ParticlePreparationStatus message="Подготавливаем частицы для распада…" />}
   </>
 }

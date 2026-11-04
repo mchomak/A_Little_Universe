@@ -2,7 +2,7 @@
 import { filmReducer, initialFilmState } from '../engine/film'
 import { getGreetingFrames, getSceneDuration, SCENES, TIMING } from '../engine/filmConfig'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../systems/scene-config/config'
-import { activeFrameIndex, canSeekTimeline, timelineFrames } from './timelineModel'
+import { activeFrameIndex, canSeekTimeline, timelineDuration, timelineFrames } from './timelineModel'
 import { getGrowthFrames } from '../scenes/growth/seedProcedure'
 
 describe('scene editor timeline', () => {
@@ -11,6 +11,16 @@ describe('scene editor timeline', () => {
     expect(frames.map((frame) => frame.start)).toEqual([0, 2, 6.85, 12.35, 18])
     expect(activeFrameIndex(frames, 10)).toBe(2)
     expect(timelineFrames('identity', DEFAULT_SCENE_COMPOSER_CONFIG).map((frame) => frame.start)).toEqual([0])
+  })
+  it('exposes the measured identity reveal tail to timeline bounds and seek', () => {
+    const identity = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'identity' }, true)
+    const extended = filmReducer(identity, {
+      type: 'extend-identity-duration', duration: 48, time: 34, revision: identity.revision,
+    })
+
+    expect(timelineDuration(extended, DEFAULT_SCENE_COMPOSER_CONFIG)).toBe(48)
+    expect(canSeekTimeline(extended, true, DEFAULT_SCENE_COMPOSER_CONFIG)).toBe(true)
+    expect(filmReducer(extended, { type: 'dev-seek', time: 47 }, true).elapsed).toBe(47)
   })
   it('maps the new seed stages to seekable positions inside the growth scene', () => {
     const frames = timelineFrames('growth', DEFAULT_SCENE_COMPOSER_CONFIG)

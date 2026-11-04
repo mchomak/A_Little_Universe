@@ -5,7 +5,7 @@ import { expect, it } from 'vitest'
 import { getBloomCloseupPose } from '../../engine/bloomCamera'
 import { getIdentityCameraMoveTarget } from '../../engine/identityCamera'
 import { createLilyGeometryParticleSource } from './particleSource'
-import { createLilyDissolveUniforms, createLilyParticleGeometry, createLilyParticleMaterial, getLilyParticleCaptureRiseAge, getLilyParticleFade, getLilyParticleOrbitRadius, getLilyParticlePortraitAlpha, getLilyParticlePortraitSettledProgress, getLilyParticlePortraitPosition, getLilyParticleVerticalRise, getLilyParticleVortexPosition, glslFloat, LILY_FIELD, LILY_PARTICLE_CAPTURE_FINAL_RISE_RATE, LILY_PARTICLE_CAPTURE_SLOWDOWN_DURATION, LILY_PARTICLE_CAPTURE_SLOWDOWN_START_AGE, LILY_PARTICLE_FADE_START_SECONDS, LILY_PARTICLE_MAX_POINT_SIZE, LILY_PARTICLE_MAX_SIZE_ACCENT, LILY_PARTICLE_TAIL_SECONDS, LILY_PORTRAIT_MIN_FEATURE_ACCENT, LILY_PORTRAIT_MIN_TONE_CONTRAST, LILY_PORTRAIT_SETTLED_RAMP_SECONDS, LILY_VORTEX_RADIUS_CAP_OFFSET, patchLilyMaterial, updateLilyDissolve, updateLilyParticleSettings, updateLilyPortraitAppearance, updateLilyPortraitSettings } from './dissolve'
+import { createLilyDissolveUniforms, createLilyParticleGeometry, createLilyParticleMaterial, getLilyParticleCaptureRiseAge, getLilyParticleFade, getLilyParticleOrbitRadius, getLilyParticlePortraitAlpha, getLilyParticlePortraitSettledProgress, getLilyParticlePortraitPosition, getLilyParticleVerticalRise, getLilyParticleVortexPosition, getLilyPortraitPhotoParticleOpacity, glslFloat, LILY_FIELD, LILY_PARTICLE_CAPTURE_FINAL_RISE_RATE, LILY_PARTICLE_CAPTURE_SLOWDOWN_DURATION, LILY_PARTICLE_CAPTURE_SLOWDOWN_START_AGE, LILY_PARTICLE_FADE_START_SECONDS, LILY_PARTICLE_MAX_POINT_SIZE, LILY_PARTICLE_MAX_SIZE_ACCENT, LILY_PARTICLE_TAIL_SECONDS, LILY_PORTRAIT_MIN_FEATURE_ACCENT, LILY_PORTRAIT_MIN_TONE_CONTRAST, LILY_PORTRAIT_SETTLED_RAMP_SECONDS, LILY_VORTEX_RADIUS_CAP_OFFSET, patchLilyMaterial, updateLilyDissolve, updateLilyParticleSettings, updateLilyPortraitAppearance, updateLilyPortraitSettings } from './dissolve'
 import type { LilySurfaceSource } from './particleSource'
 import { createPortraitCameraBasis, projectPortraitPoint } from './portraitTargets'
 import { placeLilyPortraitTargets } from './portraitIntegration'
@@ -158,6 +158,21 @@ it('keeps shared portrait appearance neutral by default and clamps optional appe
   expect(uniforms.uLilyPortraitContrast.value).toBe(0.5)
   expect(uniforms.uLilyPortraitPointMinSize.value).toBeLessThanOrEqual(uniforms.uLilyPortraitPointMaxSize.value)
   geometry.dispose()
+  material.dispose()
+})
+
+it('dissolves only landed portrait particles in step with the photo reveal', () => {
+  const uniforms = createLilyDissolveUniforms()
+  const material = createLilyParticleMaterial(uniforms)
+
+  expect(uniforms.uLilyPortraitPhotoProgress.value).toBe(0)
+  expect(getLilyPortraitPhotoParticleOpacity(0, true)).toBe(1)
+  expect(getLilyPortraitPhotoParticleOpacity(0.5, true)).toBeCloseTo(0.5)
+  expect(getLilyPortraitPhotoParticleOpacity(1, true)).toBe(0)
+  expect(getLilyPortraitPhotoParticleOpacity(0.8, false)).toBe(1)
+  expect(material.vertexShader).toContain('float photoFade = aPortraitRoute > 0.5')
+  expect(material.vertexShader).toContain('uLilyPortraitPhotoProgress')
+  expect(material.vertexShader).toContain('vAlpha = mix(baseAlpha, portraitReveal, portraitMix) * photoFade')
   material.dispose()
 })
 

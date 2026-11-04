@@ -37,7 +37,8 @@ function IdentitySourceError({ runtime, onRetry }: { runtime: FilmRuntime; onRet
 }
 
 export function SceneDirector(props: SceneProps) {
-  const { scene, elapsed } = props.state
+  const { dispatch, runtime, state } = props
+  const { scene, elapsed, revision } = state
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const openingScene = scene === 'prologue' || scene === 'growth' || scene === 'bloom' || scene === 'identity'
   const lighting = getSceneLighting(scene, config.scenes.gallery.coldLightIntensity)
@@ -55,6 +56,12 @@ export function SceneDirector(props: SceneProps) {
     setLilyParticleSourceError(false)
     setSourceAttempt((value) => value + 1)
   }, [])
+  const updateIdentityDuration = useCallback((duration: number, canResolve: boolean) => dispatch({
+    type: canResolve ? 'set-identity-duration' : 'extend-identity-duration', duration, time: runtime.time, revision,
+  }), [dispatch, runtime, revision])
+  const setIdentityPreparationPending = useCallback((pending: boolean) => dispatch({
+    type: 'set-identity-preparation-pending', pending, time: runtime.time, revision,
+  }), [dispatch, runtime, revision])
   // Keep the same world and its island, mound and moonlight through the
   // touch scene and the first seconds of the 04 handoff.
   const keepGrowthWorld = shouldKeepGrowthWorld(scene, elapsed, config.scenes.identity.dissolveDuration)
@@ -68,7 +75,7 @@ export function SceneDirector(props: SceneProps) {
     <BloomGestureTarget {...props} />
     <GalaxyExperience {...props} />
     {scene === 'identity' && (lilyParticleSource
-      ? <LilyDissolveParticles source={lilyParticleSource} uniforms={dissolveUniforms} runtime={props.runtime} low={props.state.quality === 'low' || props.reducedMotion} reducedMotion={props.reducedMotion} />
+      ? <LilyDissolveParticles source={lilyParticleSource} uniforms={dissolveUniforms} runtime={props.runtime} low={props.state.quality === 'low' || props.reducedMotion} reducedMotion={props.reducedMotion} onRequiredSceneDuration={updateIdentityDuration} onIdentityPreparationPending={setIdentityPreparationPending} />
       : lilyParticleSourceError
         ? <IdentitySourceError runtime={props.runtime} onRetry={retryLilyParticleSource} />
         : <IdentityLoading runtime={props.runtime} />)}

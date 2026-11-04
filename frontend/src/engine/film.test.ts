@@ -62,6 +62,71 @@ it('keeps configured full clip durations inside the scene endpoint and preserves
   }
 })
 
+it('extends the active Identity clock for a long portrait route and rejects its stale endpoint', () => {
+  const identity: FilmState = { ...initialFilmState, scene: 'identity', mode: 'playing' }
+  const extended = filmReducer(identity, {
+    type: 'extend-identity-duration', duration: 40, time: 12.3, revision: identity.revision,
+  })
+
+  expect(filmDuration(extended)).toBe(40)
+  expect(extended.elapsed).toBe(12.3)
+  expect(extended.revision).toBe(identity.revision + 1)
+  expect(filmReducer(extended, { type: 'timeline-update', time: 34, revision: identity.revision })).toBe(extended)
+  expect(filmReducer(extended, { type: 'timeline-complete', revision: identity.revision })).toBe(extended)
+
+  const nearEnd = filmReducer(extended, { type: 'timeline-update', time: 39.99, revision: extended.revision })
+  expect(nearEnd.scene).toBe('identity')
+  const complete = filmReducer(filmReducer(nearEnd, {
+    type: 'timeline-update', time: 40, revision: extended.revision,
+  }), { type: 'timeline-complete', revision: extended.revision })
+  expect(complete.scene).toBe('gallery')
+  expect(filmDuration(complete)).toBe(0)
+})
+
+it('bounds DEV seek by the dynamic Identity endpoint', () => {
+  let identity = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'identity' }, true)
+  identity = filmReducer(identity, {
+    type: 'extend-identity-duration', duration: 48, time: 0, revision: identity.revision,
+  })
+
+  identity = filmReducer(identity, { type: 'dev-seek', time: 46 }, true)
+  expect(identity.elapsed).toBe(46)
+  identity = filmReducer(identity, { type: 'dev-seek', time: 999 }, true)
+  expect(identity.elapsed).toBe(48)
+})
+
+it('keeps the film clock moving past its endpoint while new Identity geometry is pending', () => {
+  let identity = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'identity' }, true)
+  identity = filmReducer(identity, {
+    type: 'set-identity-preparation-pending', pending: true, time: 0, revision: identity.revision,
+  })
+  expect(identity.identityPreparationPending).toBe(true)
+
+  const firstEndpoint = filmDuration(identity)
+  identity = filmReducer(identity, {
+    type: 'timeline-update', time: firstEndpoint, revision: identity.revision,
+  })
+  expect(identity.scene).toBe('identity')
+  expect(identity.elapsed).toBe(firstEndpoint)
+  expect(filmDuration(identity)).toBeGreaterThan(firstEndpoint)
+  expect(identity.revision).toBeGreaterThan(1)
+
+  const nextEndpoint = filmDuration(identity)
+  identity = filmReducer(identity, {
+    type: 'timeline-update', time: nextEndpoint, revision: identity.revision,
+  })
+  expect(identity.scene).toBe('identity')
+  expect(identity.elapsed).toBe(nextEndpoint)
+  expect(filmDuration(identity)).toBeGreaterThan(nextEndpoint)
+
+  identity = filmReducer(identity, {
+    type: 'set-identity-duration', duration: 45, time: nextEndpoint, revision: identity.revision,
+  })
+  expect(identity.identityPreparationPending).toBe(false)
+  expect(filmDuration(identity)).toBe(45)
+  expect(identity.elapsed).toBe(nextEndpoint)
+})
+
 describe('film navigation', () => {
   it('waits indefinitely, accepts one touch and runs a pausable impulse before growth', () => {
     let state = complete(filmReducer(initialFilmState, { type: 'start' }))

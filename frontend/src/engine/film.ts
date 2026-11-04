@@ -16,12 +16,19 @@ export interface FilmState {
   returnToEnding: boolean
   /** Frozen at the deliberate touch; live tuning cannot move an in-flight endpoint. */
   prologueTouchDuration?: number
+  /** Raised when current Scene 04 geometry needs additional time to finish its photo reveal. */
+  identityDuration?: number | undefined
+  /** Keeps Scene 04's clock advancing in short endpoint increments while replacement geometry is pending. */
+  identityPreparationPending?: boolean | undefined
 }
 export type FilmAction =
   | { type: 'start' | 'toggle-pause' | 'replay' | 'replay-letter' | 'greeting-complete' | 'interact' | 'gallery-exit' | 'open-gallery' | 'open-reading' | 'close-reading' | 'finish' | 'dev-restart' | 'dev-skip' }
   | { type: 'gallery-finish' }
   | { type: 'gallery-step'; direction: -1 | 1 }
   | { type: 'gallery-focus'; index: number }
+  | { type: 'extend-identity-duration'; duration: number; time: number; revision: number }
+  | { type: 'set-identity-duration'; duration: number; time: number; revision: number }
+  | { type: 'set-identity-preparation-pending'; pending: boolean; time: number; revision: number }
   | { type: 'timeline-update'; time: number; revision: number }
   | { type: 'timeline-complete'; revision: number }
   | { type: 'dev-jump'; scene: SceneId }
@@ -34,13 +41,19 @@ export const initialFilmState: FilmState = {
   revision: 0, galleryIndex: 0, reading: false, quality: 'standard', returnToEnding: false,
 }
 
-export function filmDuration(state: FilmState) {
-  return getSceneDuration(state.scene) + (state.scene === 'prologue' && state.mode === 'transitioning'
-    ? state.prologueTouchDuration ?? getPrologueTouchDuration() : 0)
+const IDENTITY_PENDING_EXTENSION_SECONDS = 5
+
+export function filmDuration(state: FilmState, config?: Parameters<typeof getSceneDuration>[1]) {
+  const configuredDuration = getSceneDuration(state.scene, config)
+  const sceneDuration = state.scene === 'identity' && Number.isFinite(state.identityDuration)
+    ? Math.max(configuredDuration, state.identityDuration!) : configuredDuration
+  return sceneDuration + (state.scene === 'prologue' && state.mode === 'transitioning'
+    ? state.prologueTouchDuration ?? (config ? getPrologueTouchDuration(config.scenes.prologue) : getPrologueTouchDuration()) : 0)
 }
 
 function enter(state: FilmState, scene: SceneId): FilmState {
-  return { ...state, scene, mode: SCENES[scene].entryMode, elapsed: 0, revision: state.revision + 1, reading: false }
+  return { ...state, scene, mode: SCENES[scene].entryMode, elapsed: 0, revision: state.revision + 1,
+    reading: false, identityDuration: undefined, identityPreparationPending: undefined }
 }
 
 export function filmReducer(state: FilmState, action: FilmAction, allowDev = false): FilmState {
@@ -56,7 +69,7 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
     }
     case 'dev-seek': {
       if (!Number.isFinite(action.time)) return state
-      const duration = getSceneDuration(state.scene)
+      const duration = filmDuration(state)
       const closedBud = state.scene === 'bloom' && state.mode === 'waiting'
       const elapsed = closedBud ? 0 : Math.max(0, Math.min(action.time, duration))
       const resumeTimed = !closedBud && duration > 0 && (state.mode === 'waiting' || state.mode === 'ready')
@@ -95,9 +108,20 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
       return state
     case 'timeline-update':
       if ((state.mode !== 'playing' && state.mode !== 'transitioning') || state.paused || state.reading || action.revision !== state.revision || !Number.isFinite(action.time)) return state
-      return { ...state, elapsed: Math.max(0, Math.min(action.time, filmDuration(state))) }
+      {
+        const duration = filmDuration(state)
+        const elapsed = Math.max(0, Math.min(action.time, duration))
+        if (state.scene === 'identity' && state.identityPreparationPending
+          && duration - elapsed <= 1) {
+          return extendPendingIdentityEndpoint(state, elapsed)
+        }
+        return { ...state, elapsed }
+      }
     case 'timeline-complete': {
       if ((state.mode !== 'playing' && state.mode !== 'transitioning') || state.paused || state.reading || action.revision !== state.revision || state.elapsed < filmDuration(state)) return state
+      if (state.scene === 'identity' && state.identityPreparationPending) {
+        return extendPendingIdentityEndpoint(state, state.elapsed)
+      }
       if (state.scene === 'prologue' && state.mode === 'transitioning') return enter(state, 'growth')
       const next = { growth: 'bloom', bloom: 'identity', identity: 'gallery', eye: 'cosmos', cosmos: 'greeting' } as const
       if (state.scene in next) return enter(state, next[state.scene as keyof typeof next])
@@ -105,6 +129,36 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
     }
     case 'gallery-focus':
       return state.scene === 'gallery' && Number.isInteger(action.index) && action.index >= 0 && action.index < MEMORIES.length ? { ...state, galleryIndex: action.index } : state
+    case 'extend-identity-duration': {
+      if (state.scene !== 'identity' || action.revision !== state.revision
+        || !Number.isFinite(action.duration) || !Number.isFinite(action.time)) return state
+      const duration = Math.max(filmDuration(state), action.duration)
+      if (duration <= filmDuration(state)) return state
+      return { ...state, identityDuration: duration, elapsed: Math.min(duration, Math.max(0, action.time)), revision: state.revision + 1 }
+    }
+    case 'set-identity-duration': {
+      if (state.scene !== 'identity' || action.revision !== state.revision
+        || !Number.isFinite(action.duration) || !Number.isFinite(action.time)) return state
+      const duration = Math.max(getSceneDuration('identity'), action.duration)
+      if (duration === filmDuration(state) && !state.identityPreparationPending) return state
+      return {
+        ...state,
+        identityDuration: duration,
+        identityPreparationPending: false,
+        elapsed: Math.min(duration, Math.max(0, action.time)),
+        revision: state.revision + 1,
+      }
+    }
+    case 'set-identity-preparation-pending': {
+      if (state.scene !== 'identity' || action.revision !== state.revision || !Number.isFinite(action.time)) return state
+      if (Boolean(state.identityPreparationPending) === action.pending) return state
+      return {
+        ...state,
+        identityPreparationPending: action.pending,
+        elapsed: Math.min(filmDuration(state), Math.max(0, action.time)),
+        revision: state.revision + 1,
+      }
+    }
     case 'gallery-step': {
       if (state.scene !== 'gallery' || (action.direction !== -1 && action.direction !== 1)) return state
       const index = state.galleryIndex + action.direction
@@ -120,4 +174,9 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
       return state.scene === 'greeting' && state.mode === 'waiting' ? { ...enter(state, 'ending'), returnToEnding: false } : state
   }
   return state
+}
+
+function extendPendingIdentityEndpoint(state: FilmState, elapsed: number): FilmState {
+  const duration = Math.max(filmDuration(state), elapsed + IDENTITY_PENDING_EXTENSION_SECONDS)
+  return { ...state, identityDuration: duration, elapsed, revision: state.revision + 1 }
 }

@@ -2,9 +2,9 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, typ
 import type { FilmAction, FilmState } from '../engine/film'
 import type { FilmRuntime } from '../engine/runtime'
 import { useReviewNotes } from './useReviewNotes'
-import { getCreditsScrollDuration, getSceneDuration, SCENES, SCENE_ORDER } from '../engine/filmConfig'
+import { getCreditsScrollDuration, SCENES, SCENE_ORDER } from '../engine/filmConfig'
 import { getConfig, subscribeConfig, updateConfig } from '../systems/scene-config/config'
-import { activeFrameIndex, canSeekTimeline, timelineFrames } from './timelineModel'
+import { activeFrameIndex, canSeekTimeline, timelineDuration, timelineFrames } from './timelineModel'
 import { createLoopListener, validLoop } from './timelinePlayback'
 import './sceneTimeline.css'
 
@@ -45,7 +45,7 @@ export default function SceneTimeline({ state, dispatch, runtime, route, onPrelo
   const frames = timelineFrames(state.scene, config, creditsScrollDuration, state.returnToEnding)
   const index = activeFrameIndex(frames, state.elapsed)
   const nextFrame = frames[index + 1]
-  const duration = getSceneDuration(state.scene, config)
+  const duration = timelineDuration(state, config)
   const seekable = canSeekTimeline(state, filmVisible, config)
   const activeLoop = loop?.scene === state.scene && filmVisible ? loop : null
   const loopAllowed = seekable && state.mode === 'playing' && !state.reading
