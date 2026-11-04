@@ -12,6 +12,15 @@ describe('inspector history', () => {
     expect(h.redo('prologue')).toEqual({ size: 61 })
     expect(h.undo('growth')).toEqual({ spacing: 24 })
   })
+  it('undoes and redoes a scene preset with its opening background as one transaction', () => {
+    const h = createInspectorHistory()
+    h.recordPreset('growth', { duration: 2, count: 10 }, { duration: 4, count: 20 }, { zoom: 1, offsetX: 0 }, { zoom: 2, offsetX: 0.4 })
+    expect(h.undoTransaction('growth')).toEqual({ patch: { duration: 2, count: 10 }, relatedPatch: { zoom: 1, offsetX: 0 } })
+    expect(h.canUndo('growth')).toBe(false)
+    expect(h.canRedo('growth')).toBe(true)
+    expect(h.redoTransaction('growth')).toEqual({ patch: { duration: 4, count: 20 }, relatedPatch: { zoom: 2, offsetX: 0.4 } })
+    expect(h.canUndo('growth')).toBe(true)
+  })
   it('clears redo after a new edit and establishes a boundary on import', () => {
     const h = createInspectorHistory()
     h.record('prologue', { size: 48 }, { size: 61 })

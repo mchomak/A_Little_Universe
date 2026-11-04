@@ -1,5 +1,6 @@
-﻿import react from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react'
 import { reviewNotesPlugin } from './dev-review-store'
+import { scenePresetStorePlugin } from './dev-scene-preset-store'
 import { defineConfig } from 'vitest/config'
 import { createHash } from 'node:crypto'
 import type { Plugin } from 'vite'
@@ -132,7 +133,7 @@ self.addEventListener('fetch', event => {
 }
 
 export default defineConfig({
-  plugins: [react(), reviewNotesPlugin(), irisLabAssets(), offlineBuild()],
+  plugins: [react(), reviewNotesPlugin(), scenePresetStorePlugin(), irisLabAssets(), offlineBuild()],
   server: { port: 5173, strictPort: true },
   preview: { port: 4173, strictPort: true },
   test: { environment: 'node', include: ['src/**/*.test.ts'] },

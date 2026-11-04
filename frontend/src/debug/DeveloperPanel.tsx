@@ -27,6 +27,8 @@ import {
 import { createInspectorHistory, type InspectorScope } from './inspectorHistory'
 import { comparisonPointValid, type ComparisonPoint } from './inspectorCompare'
 import { editGalaxyColor, getGalaxyColors, selectGalaxyPalette, type GalaxyColorKey } from '../scenes/galaxy/palette'
+import ScenePresetControls from './ScenePresetControls'
+import { captureScenePreset, scenePresetPatch, type ScenePresetScope } from './scenePresetModel'
 
 type NumericControl = {
   path: ComposerFieldPath
@@ -542,15 +544,17 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const matchesPatch = (result: object, patch: object) => Object.entries(patch).every(([key, value]) => Object.is((result as Record<string, unknown>)[key], value))
 
   const travelHistory = async (scope: InspectorScope, direction: 'undo' | 'redo') => {
-    const patch = history[direction](scope)
-    if (!patch) return
+    const transaction = history[direction === 'undo' ? 'undoTransaction' : 'redoTransaction'](scope)
+    if (!transaction) return
+    const { patch, relatedPatch } = transaction
     try {
-      const next = await patchSection(scope, patch)
-      if (!matchesPatch(section(next, scope), patch)) throw new Error('Settings were not applied')
+      const configPatch = scope === 'global' ? { global: patch } : { scenes: { [scope]: patch, ...(relatedPatch ? { openingBackground: relatedPatch } : {}) } }
+      const next = await updateConfig(configPatch as SceneComposerConfigPatch)
+      if (!matchesPatch(section(next, scope), patch) || (relatedPatch && !matchesPatch(next.scenes.openingBackground, relatedPatch))) throw new Error('Settings were not applied')
       if (scope === 'global') syncFilmGlobals(next)
       setNotice(direction === 'undo' ? 'Изменение отменено.' : 'Изменение возвращено.')
     } catch {
-      history[direction === 'undo' ? 'redo' : 'undo'](scope)
+      history[direction === 'undo' ? 'redoTransaction' : 'undoTransaction'](scope)
       setNotice('Не удалось восстановить настройки; история сохранена.')
     }
     setHistoryRevision(value => value + 1)
@@ -850,6 +854,14 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             <button type="button" onClick={() => { void resetScope('galaxy') }}>Сбросить Galaxy</button>
           </details>
         </>}
+        {currentScope && <ScenePresetControls scope={currentScope as ScenePresetScope} capture={(name) => captureScenePreset(getConfig(), currentScope as ScenePresetScope, name)} onApply={async (preset) => {
+          const scope = currentScope as ScenePresetScope
+          const before = getConfig()
+          const next = await updateConfig(scenePresetPatch(preset, scope))
+          if (preset.openingBackground) history.recordPreset(scope, section(before, scope), section(next, scope), before.scenes.openingBackground, next.scenes.openingBackground)
+          else history.record(scope, section(before, scope), section(next, scope))
+          setHistoryRevision(value => value + 1)
+        }} />}
         {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
       </section>
       <details className="inspector-section"><summary>Диагностика</summary>

@@ -3,6 +3,7 @@ import { useThree } from '@react-three/fiber'
 import { AdditiveBlending, BufferGeometry, Color, Float32BufferAttribute, type ShaderMaterial } from 'three'
 import type { SceneProps } from '../../engine/sceneTypes'
 import { getConfig, subscribeConfig } from '../../systems/scene-config/config'
+import { getPrologueAtmosphereFrame } from './atmosphereFrame'
 
 const vertex = `varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy*2.,.999,1.);}`
 const fragment = `
@@ -34,13 +35,13 @@ const dustFragment=`uniform float uReveal; varying float vAlpha;
 void main(){float d=length(gl_PointCoord-.5)*2.;float a=exp(-d*d*4.)*vAlpha*uReveal;gl_FragColor=vec4(.76,.72,.84,a);}`
 
 /** A quiet near-black depth field; one veil and a handful of independent distant dust motes. */
-export function PrologueAtmosphere({ state, runtime, reducedMotion }: SceneProps) {
+export function PrologueAtmosphere({ state, reducedMotion }: SceneProps) {
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig).scenes.prologue
   const size = useThree(s => s.size)
   const dpr = useThree(s => s.gl.getPixelRatio())
-  const invalidate = useThree(s => s.invalidate)
   const haze = useRef<ShaderMaterial>(null)
   const dust = useRef<ShaderMaterial>(null)
+  const backgroundFrame = getPrologueAtmosphereFrame(state.elapsed)
   const count = reducedMotion ? 0 : Math.round(config.atmosphereDensity * (state.quality === 'low' ? .45 : 1))
   const geometry = useMemo(() => {
     const g = new BufferGeometry()
@@ -54,21 +55,8 @@ export function PrologueAtmosphere({ state, runtime, reducedMotion }: SceneProps
     g.setAttribute('position', new Float32BufferAttribute(positions, 3)); g.setAttribute('aPhase', new Float32BufferAttribute(phases, 1)); g.setAttribute('aSize', new Float32BufferAttribute(sizes, 1))
     return g
   }, [config.seed, count])
-  const hazeUniforms = useMemo(() => ({ uBlue: { value: new Color('#101A33') }, uPink: { value: new Color('#F4CDD9') }, uLavender: { value: new Color('#B9A4E8') }, uDepth: { value: config.spaceDepth }, uHaze: { value: config.hazeIntensity }, uReveal: { value: 0 }, uAspect: { value: size.width / size.height } }), [config.hazeIntensity, config.spaceDepth, size.height, size.width])
-  const dustUniforms = useMemo(() => ({ uTime: { value: 0 }, uSpeed: { value: config.driftSpeed }, uDpr: { value: dpr }, uReveal: { value: 0 }, uReduced: { value: reducedMotion ? 1 : 0 } }), [config.driftSpeed, dpr, reducedMotion])
-  useLayoutEffect(() => {
-    let previousReveal = -1
-    const draw = (time: number) => {
-      const reveal = Math.min(1, Math.max(0, (time - 2) / 7))
-      if (count === 0 && reveal === previousReveal) return
-      previousReveal = reveal
-      if (haze.current) haze.current.uniforms.uReveal!.value = reveal * reveal * (3 - 2 * reveal)
-      if (dust.current) { dust.current.uniforms.uReveal!.value = reveal; dust.current.uniforms.uTime!.value = time }
-      invalidate()
-    }
-    draw(runtime.presentationTime)
-    return runtime.subscribePresentation(draw)
-  }, [count, invalidate, runtime, hazeUniforms, dustUniforms])
+  const hazeUniforms = useMemo(() => ({ uBlue: { value: new Color('#101A33') }, uPink: { value: new Color('#F4CDD9') }, uLavender: { value: new Color('#B9A4E8') }, uDepth: { value: config.spaceDepth }, uHaze: { value: config.hazeIntensity }, uReveal: { value: backgroundFrame.reveal }, uAspect: { value: size.width / size.height } }), [backgroundFrame.reveal, config.hazeIntensity, config.spaceDepth, size.height, size.width])
+  const dustUniforms = useMemo(() => ({ uTime: { value: backgroundFrame.time }, uSpeed: { value: config.driftSpeed }, uDpr: { value: dpr }, uReveal: { value: backgroundFrame.reveal }, uReduced: { value: reducedMotion ? 1 : 0 } }), [backgroundFrame.reveal, backgroundFrame.time, config.driftSpeed, dpr, reducedMotion])
   useLayoutEffect(() => () => geometry.dispose(), [geometry])
   return <>
     <mesh frustumCulled={false} renderOrder={-10}>

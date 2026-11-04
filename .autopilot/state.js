@@ -1,28 +1,30 @@
 window.STATE =
 {
-  "slug": "macbook-production",
-  "dir": "2026-11-03-macbook-production",
-  "title": "Показ на MacBook и плавность сцен",
+  "slug": "scene-presets",
+  "dir": "2026-11-03-scene-presets--wip",
+  "title": "Пресеты настроек сцен",
   "mode": "full",
   "depth": "normal",
   "polish": null,
-  "tier": "T1",
+  "tier": "T2",
   "briefFile": "2026-11-03-brief.md",
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
-  "startedAt": "2026-11-03T14:53:22+03:00",
-  "updatedAt": "2026-11-03T15:18:43+03:00",
-  "finishedAt": "2026-11-03T15:18:43+03:00",
+  "startedAt": "2026-11-03T17:55:00+03:00",
+  "updatedAt": "2026-11-03T19:45:22+03:00",
+  "finishedAt": "2026-11-03T19:45:22+03:00",
   "stages": [
     {
       "id": "preflight",
       "status": "done",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "startedAt": "2026-11-03T17:55:00+03:00",
+      "finishedAt": "2026-11-03T18:02:20+03:00"
     },
     {
       "id": "manifest",
       "status": "done",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "startedAt": "2026-11-03T18:02:20+03:00",
+      "finishedAt": "2026-11-03T18:03:54+03:00"
     },
     {
       "id": "briefing",
@@ -32,33 +34,37 @@ window.STATE =
     {
       "id": "spec",
       "status": "done",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "startedAt": "2026-11-03T18:03:54+03:00",
+      "finishedAt": "2026-11-03T18:19:49+03:00"
     },
     {
       "id": "plan",
       "status": "done",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "startedAt": "2026-11-03T18:19:49+03:00",
+      "finishedAt": "2026-11-03T18:24:23+03:00",
+      "note": "4 таска, ярус T2"
     },
     {
       "id": "build",
       "status": "done",
-      "startedAt": "2026-11-03T14:56:36+03:00",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "startedAt": "2026-11-03T18:24:23+03:00",
+      "note": "Таск 01 из 4 — формат пресета и снимок сцены",
+      "finishedAt": "2026-11-03T19:45:22+03:00"
     },
     {
       "id": "review",
       "status": "done",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "finishedAt": "2026-11-03T19:45:22+03:00"
     },
     {
       "id": "final",
       "status": "done",
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "finishedAt": "2026-11-03T19:45:22+03:00"
     }
   ],
   "requirements": {
-    "total": 9,
-    "done": 9,
+    "total": 5,
+    "done": 5,
     "inTicket": 0,
     "inSpec": 0,
     "placeholder": 0,
@@ -68,80 +74,111 @@ window.STATE =
   "tickets": [
     {
       "id": "01",
-      "title": "Удаление подготовки и инструкции",
+      "title": "Формат и преобразование полного пресета сцены",
       "requirements": [
         "R02",
-        "R03"
+        "R04",
+        "R05"
       ],
       "blockedBy": [],
       "wave": 1,
       "zone": [
-        "Запуск и документация"
+        "frontend/src/debug/scenePresetModel.ts"
       ],
       "status": "done",
-      "startedAt": "2026-11-03T14:56:36+03:00",
       "retries": 0,
       "repairs": 0,
       "handoffs": 0,
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "startedAt": "2026-11-03T18:35:32+03:00",
+      "finishedAt": "2026-11-03T19:45:22+03:00"
     },
     {
       "id": "02",
-      "title": "Переход и взаимодействие",
+      "title": "Файловое хранилище и локальный API пресетов",
       "requirements": [
-        "R07",
-        "R08"
+        "R03",
+        "R05",
+        "R03.1",
+        "R03.2"
       ],
-      "blockedBy": [],
-      "wave": 1,
+      "blockedBy": [
+        "01"
+      ],
+      "wave": 2,
       "zone": [
-        "Сцены 02–03"
+        "frontend/dev-scene-preset-store.ts",
+        "frontend/vite.config.ts"
       ],
       "status": "done",
-      "startedAt": "2026-11-03T14:56:36+03:00",
       "retries": 0,
       "repairs": 0,
       "handoffs": 0,
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "finishedAt": "2026-11-03T19:45:22+03:00"
     },
     {
       "id": "03",
-      "title": "Движение фона",
+      "title": "Управление пресетами в Scene Editor",
       "requirements": [
+        "R01",
+        "R03",
         "R04",
-        "R05",
-        "R06"
+        "R01.1",
+        "R03.1",
+        "R03.2"
       ],
-      "blockedBy": [],
-      "wave": 1,
+      "blockedBy": [
+        "02"
+      ],
+      "wave": 3,
       "zone": [
-        "Фон"
+        "frontend/src/debug/scenePresetApi.ts",
+        "frontend/src/debug/ScenePresetControls.tsx"
       ],
       "status": "done",
-      "startedAt": "2026-11-03T14:56:36+03:00",
       "retries": 0,
       "repairs": 0,
       "handoffs": 0,
-      "finishedAt": "2026-11-03T15:18:43+03:00"
+      "finishedAt": "2026-11-03T19:45:22+03:00"
+    },
+    {
+      "id": "04",
+      "title": "Снимок и применение пресета выбранной сцены",
+      "requirements": [
+        "R01",
+        "R02",
+        "R04",
+        "R05",
+        "R04.1"
+      ],
+      "blockedBy": [
+        "03"
+      ],
+      "wave": 4,
+      "zone": [
+        "frontend/src/debug/DeveloperPanel.tsx"
+      ],
+      "status": "done",
+      "retries": 0,
+      "repairs": 0,
+      "handoffs": 0,
+      "finishedAt": "2026-11-03T19:45:22+03:00"
     }
   ],
   "singlePass": null,
-  "tests": {
-    "passed": 553,
-    "failed": 0
-  },
+  "tests": "npm run check: 566 tests, lint, typecheck, build passed",
   "debt": {
     "placeholders": [],
-    "assumptions": [
-      "Перемещение фона реализовано как панорамирование видимой области статичного изображения."
-    ],
+    "assumptions": [],
     "emptyEnv": []
   },
   "additions": [],
   "coverage": {
-    "found": 2,
-    "fixed": 2,
-    "deferred": 0
+    "found": 1,
+    "fixed": 1,
+    "deferred": 0,
+    "findings": [
+      "Независимая проверка: пропусков нет; половинчатых требований нет; все уточнения привязаны к R01–R05. Удалён лишний список не запрошенных функций из раздела «Вне рамок»."
+    ]
   },
   "concerns": [],
   "reviewers": {
@@ -149,6 +186,7 @@ window.STATE =
     "craft": null
   },
   "blind": {
-    "result": "Приёмка по брифу: устаревшая запись AGENTS.md исправлена; визуальная проверка на MacBook остаётся открытой."
+    "status": "passed",
+    "detail": "Browser: save, reload, apply, undo and redo verified for scene and background."
   }
 }
