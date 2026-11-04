@@ -63,6 +63,13 @@ interface GrowthVortexSeed extends GrowthVortexParticleSeed {
   glow: number
 }
 
+interface PollenAnchorMesh {
+  mesh: Mesh
+  vertexIndices: Uint32Array
+  localCentroid: Vector3
+  morphing: boolean
+}
+
 export interface BloomPollenParticleSeed {
   phase: number
   brightness: number
@@ -72,6 +79,8 @@ export interface BloomPollenParticleSeed {
   size: number
   angle: number
 }
+
+export type BloomPollenGroup = 'inner' | 'outer'
 
 export function getGrowthVortexDissipationAge(frame: LilyGrowthVfxFrame): number {
   const settleDuration = Math.max(0, frame.frames.duration - frame.frames.model[1])
@@ -97,7 +106,9 @@ export function getBloomPollenAge(seed: BloomPollenParticleSeed, bloomClipTime: 
   const duration = Math.max(0.001, Number.isFinite(bloomClipDuration) ? bloomClipDuration : 0.001)
   const contemplativeTime = Math.max(0, Number.isFinite(contemplateDuration) ? contemplateDuration : 0)
   const lifespan = Math.max(0.001, Number.isFinite(lifetime) ? lifetime : 0.001)
-  const firstAge = Math.max(0, bloomClipTime - seed.phase * duration) + Math.max(0, postOpenAge)
+  // Low-phase seeds must start at the visual reveal threshold instead of aging invisibly beforehand.
+  const birthPhase = Math.max(0.5, seed.phase)
+  const firstAge = Math.max(0, bloomClipTime - birthPhase * duration) + Math.max(0, postOpenAge)
   if (seed.phase < 0.84 || contemplativeTime <= 0) return { age: firstAge, terminalTail: false }
   const tailBirth = Math.max(seed.phase * contemplativeTime, contemplativeTime - lifespan * 0.35)
   const tailAge = postOpenAge - tailBirth
@@ -144,25 +155,53 @@ export function getGrowthVortexOpacity(progress: number, birthProgress: number, 
 }
 
 /** Pollen peaks before the final held-open pose, where only recent grains linger. */
-export function getBloomPollenOpacity(seed: BloomPollenParticleSeed, openProgress: number, age: number, settings: LilyBloomPollenSettings): number {
-  if (!settings.enabled || openProgress < seed.phase || age < 0 || age >= settings.lifetime) return 0
-  const fadeIn = smooth((openProgress - seed.phase) / 0.055) * smooth(age / Math.min(0.38, settings.lifetime * 0.25))
-  const fadeOut = 1 - smooth((age - settings.lifetime * 0.68) / Math.max(0.05, settings.lifetime * 0.32))
+export function getBloomPollenOpacity(seed: BloomPollenParticleSeed, openProgress: number, age: number,
+  settings: LilyBloomPollenSettings, group: BloomPollenGroup = 'outer'): number {
+  const particleAge = group === 'inner' && Number.isFinite(age) && age >= 0
+    ? Math.min(age, Math.min(1, settings.lifetime * 0.4))
+    : age
+  if (!settings.enabled || openProgress < 0.5 || openProgress < seed.phase
+    || !Number.isFinite(particleAge) || particleAge < 0 || particleAge >= settings.lifetime) return 0
+  const lateReveal = smooth((openProgress - 0.5) / 0.12)
+  const fadeIn = smooth((openProgress - seed.phase) / 0.055) * smooth(particleAge / Math.min(0.38, settings.lifetime * 0.25))
+  const fadeOut = 1 - smooth((particleAge - settings.lifetime * 0.68) / Math.max(0.05, settings.lifetime * 0.32))
   const bloomPeak = smooth(openProgress / 0.72) * (1 - 0.72 * smooth((openProgress - 0.9) / 0.1))
-  return clamp(fadeIn * fadeOut * bloomPeak * seed.brightness * settings.glowIntensity, 0, 1)
+  const groupBrightness = group === 'inner' ? 1.35 : 1
+  return clamp(fadeIn * fadeOut * bloomPeak * lateReveal * seed.brightness * settings.glowIntensity * groupBrightness, 0, 1)
 }
 
 export function getBloomPollenPosition(seed: BloomPollenParticleSeed, age: number, anchor: Vector3,
-  settings: LilyBloomPollenSettings, out: Vector3, worldScale = 1, motionScale = 1): Vector3 {
+  settings: LilyBloomPollenSettings, out: Vector3, worldScale = 1, motionScale = 1,
+  group: BloomPollenGroup = 'outer', innerAnchor: Vector3 = anchor): Vector3 {
   const scale = Math.max(0.001, Number.isFinite(worldScale) ? worldScale : 1)
   const spread = settings.spreadRadius / scale
-  const radius = spread * seed.radius
   const motionAge = Math.max(0, age) * clamp(motionScale, 0, 1)
-  const drift = motionAge * settings.riseSpeed / scale
+  if (group === 'inner') {
+    const approach = smooth(motionAge / 0.62)
+    const centerX = anchor.x + (innerAnchor.x - anchor.x) * approach
+    const centerY = anchor.y + (innerAnchor.y - anchor.y) * approach
+    const centerZ = anchor.z + (innerAnchor.z - anchor.z) * approach
+    const hoverRadius = spread * (0.08 + seed.radius * 0.04)
+    const orbit = seed.angle + motionAge * (0.42 + seed.drift * 0.24)
+    out.set(
+      centerX + Math.cos(orbit) * hoverRadius,
+      centerY + Math.sin(motionAge * 0.92 + seed.phase * Math.PI * 2) * hoverRadius * 0.42
+        + seed.depth * hoverRadius * 0.18,
+      centerZ + Math.sin(orbit) * hoverRadius,
+    )
+    return out
+  }
+
+  const lifetime = Math.max(0.001, Number.isFinite(settings.lifetime) ? settings.lifetime : 0.001)
+  const ageProgress = clamp(motionAge / lifetime)
+  const fanProgress = smooth((ageProgress - 0.12) / 0.58)
+  const radius = spread * (0.055 * seed.radius + fanProgress * (0.08 + seed.radius * 0.52))
+  const wrapAngle = seed.angle + (0.25 + seed.drift * 0.35) * Math.PI * ageProgress
+  const drift = spread * seed.drift * 0.025
   out.set(
-    anchor.x + Math.cos(seed.angle) * radius + Math.sin(motionAge * 0.63 + seed.angle) * spread * seed.drift * 0.2,
-    anchor.y + seed.depth * spread * 0.22 + drift,
-    anchor.z + Math.sin(seed.angle) * radius + Math.cos(motionAge * 0.49 + seed.angle) * spread * seed.drift * 0.16,
+    anchor.x + Math.cos(wrapAngle) * radius + Math.sin(motionAge * 0.63 + seed.angle) * drift,
+    anchor.y + seed.depth * spread * 0.02 + motionAge * settings.riseSpeed / scale,
+    anchor.z + Math.sin(wrapAngle) * radius + Math.cos(motionAge * 0.49 + seed.angle) * drift,
   )
   return out
 }
@@ -171,8 +210,11 @@ export function getGrowthVortexParticleLimit(count: number, quality: Quality, re
   return Math.round(clamp(count, 0, VORTEX_CAPACITY) * (quality === 'low' ? 0.5 : 1) * (reducedMotion ? 0.55 : 1))
 }
 
-export function getBloomPollenParticleLimit(count: number, quality: Quality, reducedMotion = false): number {
-  return Math.round(clamp(count, 0, POLLEN_CAPACITY) * (quality === 'low' ? 0.65 : 1) * (reducedMotion ? 0.55 : 1))
+export function getBloomPollenParticleLimit(count: number, quality: Quality, reducedMotion = false, group?: BloomPollenGroup): number {
+  const total = Math.round(clamp(count, 0, POLLEN_CAPACITY) * (quality === 'low' ? 0.65 : 1) * (reducedMotion ? 0.55 : 1))
+  if (!group) return total
+  const innerCount = total === 0 ? 0 : Math.max(1, Math.round(total * 0.25))
+  return group === 'inner' ? innerCount : total - innerCount
 }
 
 /** GLB leaf pivots scale from zero while their YoungFolded morph weight falls toward zero. */
@@ -418,6 +460,34 @@ function createBloomPollenSeeds(): BloomPollenParticleSeed[] {
   }))
 }
 
+function getPollenAnchorVertexIndices(mesh: Mesh): Uint32Array {
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+  const pollenMaterialIndices = new Set(materials.flatMap((material, index) =>
+    /anther|filament/i.test(material.name) ? [index] : []))
+  if (!pollenMaterialIndices.size) return new Uint32Array()
+
+  const position = mesh.geometry.getAttribute('position')
+  if (!position?.count) return new Uint32Array()
+  const index = mesh.geometry.getIndex()
+  const elementCount = index?.count ?? position.count
+  const vertexIndices = new Set<number>()
+  for (const group of mesh.geometry.groups) {
+    const materialIndex = group.materialIndex ?? 0
+    if (!pollenMaterialIndices.has(materialIndex)) continue
+    const start = Math.max(0, group.start)
+    const end = Math.min(elementCount, group.start + group.count)
+    for (let element = start; element < end; element++) {
+      const vertex = index?.getX(element) ?? element
+      if (vertex >= 0 && vertex < position.count) vertexIndices.add(vertex)
+    }
+  }
+
+  if (!mesh.geometry.groups.length && materials.length === 1 && pollenMaterialIndices.has(0)) {
+    for (let vertex = 0; vertex < position.count; vertex++) vertexIndices.add(vertex)
+  }
+  return Uint32Array.from(vertexIndices)
+}
+
 function findMesh(root: Object3D, name: string): Mesh | null {
   const found = root.getObjectByName(name)
   return found instanceof Mesh ? found : null
@@ -602,9 +672,20 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
   const bud = findMesh(model, 'Petals') ?? findMesh(model, 'Calyx')
   const head = model.getObjectByName('Head_Root')
   const cup = model.getObjectByName('Flower_Interior')
-  const anthers: Object3D[] = []
+  const anthers: PollenAnchorMesh[] = []
   model.traverse(object => {
-    if (object instanceof Mesh && /anther|filament/i.test(object.name)) anthers.push(object)
+    if (!(object instanceof Mesh)) return
+    const position = object.geometry.getAttribute('position')
+    const vertexIndices = getPollenAnchorVertexIndices(object)
+    if (!position?.count || !vertexIndices.length) return
+    const localCentroid = new Vector3()
+    const vertex = new Vector3()
+    for (const index of vertexIndices) {
+      object.getVertexPosition(index, vertex)
+      localCentroid.add(vertex)
+    }
+    localCentroid.multiplyScalar(1 / vertexIndices.length)
+    anthers.push({ mesh: object, vertexIndices, localCentroid, morphing: !!object.morphTargetInfluences?.length })
   })
   const curve = Array.from({ length: 32 }, () => new Vector3())
   const stemVertexCount = stem?.geometry.getAttribute('position')?.count ?? 0
@@ -633,6 +714,7 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
   const anchor = new Vector3()
   const groundAnchor = new Vector3()
   const cupAnchor = new Vector3()
+  const pollenSourceAnchor = new Vector3()
   const antherAnchor = new Vector3()
   const worldScale = new Vector3()
   const pathPoint = new Vector3()
@@ -850,34 +932,56 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
     if (cup) cup.getWorldPosition(cupAnchor)
     else if (head) head.getWorldPosition(cupAnchor)
     else cupAnchor.set(0, 0, 0)
-    antherAnchor.set(0, 0, 0)
+    pollenSourceAnchor.copy(cupAnchor)
+    antherAnchor.copy(cupAnchor)
     if (anthers.length) {
-      for (const anther of anthers) {
-        anther.getWorldPosition(pathPoint)
-        antherAnchor.add(pathPoint)
+      antherAnchor.set(0, 0, 0)
+      let antherVertexCount = 0
+      for (const source of anthers) {
+        if (source.morphing) {
+          source.localCentroid.set(0, 0, 0)
+          for (const index of source.vertexIndices) {
+            source.mesh.getVertexPosition(index, pathPoint)
+            source.localCentroid.add(pathPoint)
+          }
+          source.localCentroid.multiplyScalar(1 / source.vertexIndices.length)
+        }
+        pathPoint.copy(source.localCentroid)
+        source.mesh.localToWorld(pathPoint)
+        antherAnchor.addScaledVector(pathPoint, source.vertexIndices.length)
+        antherVertexCount += source.vertexIndices.length
       }
-      antherAnchor.multiplyScalar(1 / anthers.length)
-      cupAnchor.lerp(antherAnchor, 0.34)
+      if (antherVertexCount) {
+        antherAnchor.multiplyScalar(1 / antherVertexCount)
+        cupAnchor.lerp(antherAnchor, 0.34)
+      } else antherAnchor.copy(cupAnchor)
     }
     parent.worldToLocal(cupAnchor)
+    parent.worldToLocal(pollenSourceAnchor)
+    parent.worldToLocal(antherAnchor)
     const postOpenAge = Math.max(0, frame.time - frame.bloomFrames.opening[1])
     const handoffFade = 1 - smooth((frame.time - (frame.bloomFrames.duration - 1.4)) / 1.4)
     const pollenBase = MAGIC_PARTICLE_OFFSET + VORTEX_CAPACITY
+    const pollenInnerCount = getBloomPollenParticleLimit(pollenSettings.particleCount, frame.quality, frame.reducedMotion, 'inner')
     for (let index = 0; index < POLLEN_CAPACITY; index++) {
       const seed = pollenSeeds[index]!
       const slot = pollenBase + index
+      const group: BloomPollenGroup = index < pollenInnerCount ? 'inner' : 'outer'
       const ageSample = getBloomPollenAge(seed, frame.bloomClipTime, frame.bloomClipDuration, postOpenAge,
         frame.bloomFrames.contemplate[1] - frame.bloomFrames.contemplate[0], pollenSettings.lifetime)
       const handoffOpacity = ageSample.terminalTail
         ? 1 - 0.55 * smooth((frame.time - (frame.bloomFrames.duration - 1.4)) / 1.4)
         : handoffFade
       const opacity = pollenEnabled && index < pollenCount
-        ? getBloomPollenOpacity(seed, openProgress, ageSample.age, pollenSettings) * handoffOpacity
+        ? getBloomPollenOpacity(seed, openProgress, ageSample.age, pollenSettings, group) * handoffOpacity
         : 0
-      getBloomPollenPosition(seed, ageSample.age, cupAnchor, pollenSettings, pathPoint, scaleY, frame.reducedMotion ? 0.35 : 1)
+      getBloomPollenPosition(seed, ageSample.age, pollenSourceAnchor, pollenSettings, pathPoint, scaleY,
+        frame.reducedMotion ? 0.35 : 1, group, antherAnchor)
       particleColor.copy(pollenGold).lerp(pollenPearl, seed.brightness * 0.54)
+      // `aSize` maps directly to `gl_PointSize`; doubling the 1.6 px default keeps the outer grains readable at the wide bloom camera.
+      const groupSize = group === 'inner' ? 3 : 2
       writePoint(positions, sizes, opacities, colors, glows, slot, pathPoint,
-        pollenSettings.particleSize * (0.78 + seed.size * 0.36), opacity,
+        pollenSettings.particleSize * (0.78 + seed.size * 0.36) * groupSize, opacity,
         particleColor, 0.35 + pollenSettings.glowIntensity * 0.4)
     }
     const cupGlowAlpha = pollenEnabled

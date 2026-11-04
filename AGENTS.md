@@ -17,29 +17,24 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 <!-- autopilot:start -->
 # A Little Universe for You
 
-Локальный интерактивный 3D-фильм на React, TypeScript, Vite и Three.js.
+Локальный интерактивный 3D-фильм на React, TypeScript, Vite и Three.js. README.md описывает актуальный маршрут и запуск; художественные требования и кадры — в storyboard и `references/keyframes/README.md`.
 
-## Фон и кадрирование
-
-`images/phone_1.png` — DOM/CSS-фон загрузки 00 и сцен 01–04; при входе в галерею 05 он скрывается. Начальный кадр увеличен, во время падения семени видимая область плавно движется вниз и сохраняет положение в сценах 03–04. `cover` заполняет экран без пустых краёв. DEV Scene Editor в development или в локальном production preview (`http://127.0.0.1:4173/?debug`) меняет общий профиль `scenes.openingBackground.{zoom, offsetX, offsetY}`; в секции «00–04 · Кадрирование фона» доступны живой предпросмотр и сброс. Масштаб: 1–3, смещения: −1…1, по умолчанию: 1/0/0.
-
-Схема Scene Composer v15 принимает JSON v1–v15; отсутствующие поля кропа получают значения по умолчанию, экспортируется версия 15.
-
-## Команды (PowerShell 5, из корня проекта)
+## Команды (PowerShell из корня проекта)
 
 | Действие | Команда |
 |---|---|
-| Первый запуск нового checkout | `Set-Location .\frontend; npm ci` |
-| Запуск (http://127.0.0.1:5173) | `Set-Location .\frontend; npm run dev` |
-| Проверка в отдельном терминале | `Set-Location .\frontend; npm run check` |
+| Первый запуск checkout | `Set-Location .\frontend; npm ci` |
+| Запуск dev-сервера | `Set-Location .\frontend; npm run dev` |
+| Проверки frontend | `Set-Location .\frontend; npm run check` |
 
-`npm run check` выполняет lint, Vitest, typecheck и production build.
+`npm run check` запускает lint, Vitest, typecheck и production build.
 
-## Как здесь работает Autopilot
+## Структура и runtime
 
-Сборки фиксируются в `.autopilot/`; прогресс — в `.autopilot/dashboard.html`. Требование из manifest снимается только пользователем. Продолжение прогона: «продолжи автопилот».
+- `frontend/src/app/` — приложение и состояние фильма; `frontend/src/engine/` — постоянный `FilmCanvas`, `FilmRuntime`, камера и `SceneDirector`.
+- `frontend/src/components/PhoneBackground.tsx` — DOM/CSS-фон загрузки и opening/growth/bloom/identity; профиль кадрирования хранится в `scenes.openingBackground`.
+- `frontend/src/scenes/` — сцены; `frontend/src/scenes/lily/` — общий экземпляр анимированной лилии и её VFX. `frontend/src/systems/scene-config/` — Scene Composer schema v21, нормализация и store; принимаются частичные JSON v1–v21. `frontend/src/debug/` — DEV Scene Editor.
+- `backend/` — необязательный FastAPI-сервис только с `/health`; фильм его не вызывает.
 
-## Подводные камни
-
-В Windows `.autopilot/sync.py` не запускает dashboard-сервер: он вызывает POSIX `ps`. `python .autopilot/sync.py --no-serve` обновляет снимок страницы без сервера.
+`SceneDirector` сохраняет один клонированный `AnimatedLily` при переходах growth → bloom → identity. В `frontend/src/scenes/lily/lilyGrowthVfx.ts` пыльца внутри цветка ориентируется на реальные вершины GLB: выбираются вершины геометрических групп, чей `materialIndex` указывает на материал с именем, содержащим `anther` или `filament`; для морфящихся мешей центроид позы пересчитывается через `Mesh.getVertexPosition` и переводится в пространство общего родителя. Внутренняя пыльца движется от чаши к этой позе, а не к фиксированной точке.
 <!-- autopilot:end -->

@@ -23,3 +23,12 @@ SceneDirector держит один AnimatedLily без scene key. FilmRuntime �
 - Bloom cup origin около (.27,1.019,.54). Flower_Interior содержит Flower_Details, anthers/filaments идут материалами Anther_SoftGold/Filament_Ivory. При необходимости deformed sampling: Mesh.getVertexPosition(index,target) уже учитывает morphs; scene04 full sampling helper не копировать на каждый кадр.
 - FilmRuntime presentationTime продолжает идти в waiting, time остаётся0. Оба freeze на paused/hold. createBloomTextClock показывает wait-origin + carried elapsed и reset по revision; DEV seek создаёт новый runtime clock и revision. После interaction время bloom уже seekable. Абсолютная particle identity/time — без delta-интеграции.
 - Предварительный конфиг согласован: growth.lilyBudGlow(enabled,intensity,color,rimStrength,bloomBoost); growth.lilyLeafMaterial(translucencyStrength,edgeLightIntensity,colorVariation); growth.growthVortex(enabled,particleCount,particleSize,sizeVariation,brightness,orbitRadius,rotationSpeed,verticalSpread,spiralTightness,dissipationDuration,dissipationSpread,color); bloom.lilyBloomPollen(enabled,particleCount,particleSize,glowIntensity,riseSpeed,spreadRadius,lifetime,innerCupGlow). Все пути ниже config.scenes. Финальный контракт таска01 имеет приоритет над предварительным.
+
+
+## Из таска 03 — две группы bloom pollen
+
+- `BloomPollenGroup = 'inner' | 'outer'` разделяет парящие в чаше и обходящие лепестки частицы.
+- `getBloomPollenParticleLimit(count, quality, reducedMotion?, group?)` делит общий count budget между группами, сохраняя суммарный лимит.
+- `getBloomPollenOpacity(seed, openProgress, age, settings, group?)` задаёт детерминированное позднее проявление и время затухания группы.
+- `getBloomPollenPosition(seed, age, anchor, settings, out, worldScale?, motionScale?, group?, innerAnchor?)` вычисляет позу абсолютного времени: ограниченное парение внутри чаши либо восходящий обход и боковое рассеивание снаружи.
+- Тестовый шов: эти же evaluator-функции, используемые persistent Lily VFX update; без накопленной delta-интеграции.

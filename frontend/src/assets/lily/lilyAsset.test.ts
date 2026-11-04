@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs'
-import { AnimationClip, Group, LoopOnce, LoopRepeat, Mesh, Vector3, type Object3D } from 'three'
+import { AnimationClip, BufferGeometry, Float32BufferAttribute, Group, LoopOnce, LoopRepeat, Mesh, MeshBasicMaterial, Vector3, type Object3D } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import { expect, it } from 'vitest'
 import { getBloomSceneFrames, getGrowthSceneFrames } from '../../engine/filmConfig'
 import { getGrowthClipTime, getSyncedBloomClipTime } from '../../scenes/lily/animationTiming'
 import { LilyAnimationPlayer } from '../../scenes/lily/animationPlayer'
-import { createLilyGrowthVfx, getGrowthVfxBirthTime } from '../../scenes/lily/lilyGrowthVfx'
+import { createLilyGrowthVfx, getBloomPollenParticleLimit, getGrowthVfxBirthTime } from '../../scenes/lily/lilyGrowthVfx'
 import { createLilyGeometryParticleSource } from '../../scenes/lily/particleSource'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 
@@ -334,21 +334,59 @@ it('keeps the growth tail at the held pose and reveals pollen around the posed f
   expect(activeIndices.length).toBeLessThan(bloomConfig.particleCount)
 
   const cup = model.getObjectByName('Flower_Interior')!
-  const anthers: Object3D[] = []
-  model.traverse(object => { if (object instanceof Mesh && /anther|filament/i.test(object.name)) anthers.push(object) })
-  model.updateWorldMatrix(true, true)
-  wrapper.updateWorldMatrix(true, false)
-  const cupPosition = cup.getWorldPosition(new Vector3())
-  if (anthers.length) {
-    const antherPosition = new Vector3()
-    for (const anther of anthers) antherPosition.add(anther.getWorldPosition(new Vector3()))
-    cupPosition.lerp(antherPosition.multiplyScalar(1 / anthers.length), 0.34)
+  const anthers: Mesh[] = []
+  const getSingleMaterial = (mesh: Mesh) => {
+    if (!Array.isArray(mesh.material)) return mesh.material
+    return mesh.material.length === 1 ? mesh.material[0] : undefined
   }
-  wrapper.worldToLocal(cupPosition)
+  model.traverse(object => {
+    if (!(object instanceof Mesh)) return
+    const material = getSingleMaterial(object)
+    if (!material || !/anther|filament/i.test(material.name)) return
+    expect(object.geometry.groups).toHaveLength(0)
+    anthers.push(object)
+  })
+  expect(anthers.map(mesh => {
+    const material = getSingleMaterial(mesh)
+    if (!material) throw new Error('Expected an anther mesh to have one material')
+    return material.name
+  }).sort()).toEqual(['Anther_SoftGold', 'Filament_Ivory'])
+  const getPosedAnchors = () => {
+    model.updateWorldMatrix(true, true)
+    wrapper.updateWorldMatrix(true, false)
+    const cupPosition = cup.getWorldPosition(new Vector3())
+    const antherPosition = new Vector3()
+    let vertexCount = 0
+    if (anthers.length) {
+      const vertex = new Vector3()
+      for (const anther of anthers) {
+        const positions = anther.geometry.getAttribute('position')
+        for (let index = 0; index < positions.count; index++) {
+          anther.getVertexPosition(index, vertex)
+          anther.localToWorld(vertex)
+          antherPosition.add(vertex)
+        }
+        vertexCount += positions.count
+      }
+    }
+    if (vertexCount) antherPosition.multiplyScalar(1 / vertexCount)
+    else antherPosition.copy(cupPosition)
+    wrapper.worldToLocal(cupPosition)
+    wrapper.worldToLocal(antherPosition)
+    return { cupPosition, antherPosition }
+  }
+  const innerCount = getBloomPollenParticleLimit(bloomConfig.particleCount, 'standard', false, 'inner')
+  const openingAnchors = getPosedAnchors()
   const positions = effect.geometry.getAttribute('position')
   for (const index of activeIndices) {
     const pointIndex = pollenStart + index
-    expect(new Vector3(positions.getX(pointIndex), positions.getY(pointIndex), positions.getZ(pointIndex)).distanceTo(cupPosition)).toBeLessThan(0.2)
+    const point = new Vector3(positions.getX(pointIndex), positions.getY(pointIndex), positions.getZ(pointIndex))
+    if (index < innerCount) {
+      const cupToAnthers = openingAnchors.antherPosition.clone().sub(openingAnchors.cupPosition)
+      const alongCup = Math.max(0, Math.min(1, point.clone().sub(openingAnchors.cupPosition).dot(cupToAnthers) / cupToAnthers.lengthSq()))
+      const nearestCupPoint = openingAnchors.cupPosition.clone().addScaledVector(cupToAnthers, alongCup)
+      expect(point.distanceTo(nearestCupPoint)).toBeLessThan(0.04)
+    } else expect(point.distanceTo(openingAnchors.cupPosition)).toBeLessThan(0.2)
   }
   const openingPositions = Array.from(positions.array).slice(pollenStart * 3, pollenEnd * 3)
 
@@ -358,6 +396,15 @@ it('keeps the growth tail at the held pose and reveals pollen around the posed f
     bloomClipTime: fullOpenTime, bloomOpen: true }, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, bloomConfig)
   const settledCount = Array.from(opacity.array).slice(pollenStart, pollenEnd).filter(value => value > 0.015).length
   expect(settledCount).toBeLessThan(activeIndices.length)
+  const fullOpenAnchors = getPosedAnchors()
+  const fullOpenInnerIndices = Array.from(opacity.array).slice(pollenStart, pollenStart + innerCount)
+    .flatMap((value, index) => value > 0.015 ? [index] : [])
+  expect(fullOpenInnerIndices.length).toBeGreaterThan(0)
+  for (const index of fullOpenInnerIndices) {
+    const pointIndex = pollenStart + index
+    const point = new Vector3(positions.getX(pointIndex), positions.getY(pointIndex), positions.getZ(pointIndex))
+    expect(point.distanceTo(fullOpenAnchors.antherPosition)).toBeLessThan(0.04)
+  }
 
   const readyTime = bloomFrames.duration
   player.seek(bloomClip.duration)
@@ -410,6 +457,49 @@ it('keeps the growth tail at the held pose and reveals pollen around the posed f
   effect.dispose()
 })
 
+it('centroids only anther material groups for indexed and non-indexed meshes', () => {
+  const growthFrames = getGrowthSceneFrames()
+  const bloomFrames = getBloomSceneFrames()
+  const pollenSettings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen
+  const frame = {
+    scene: 'bloom' as const, time: 16, clipTime: 0, clipDuration: 9,
+    frames: growthFrames, bloomFrames, bloomClipTime: 16, bloomClipDuration: 16,
+    bloomOpen: true, bloomElapsed: 0, pixelRatio: 1, reducedMotion: false, quality: 'standard' as const,
+  }
+
+  for (const indexed of [true, false]) {
+    const model = new Group()
+    const cup = new Group()
+    cup.name = 'Flower_Interior'
+    model.add(cup)
+    const wrapper = new Group()
+    wrapper.add(model)
+    const geometry = new BufferGeometry()
+    geometry.setAttribute('position', new Float32BufferAttribute([
+      0, 1, 0, 0.06, 1, 0, 0, 1.06, 0,
+      9, 9, 9, 10, 9, 9, 9, 10, 9,
+    ], 3))
+    if (indexed) geometry.setIndex([0, 1, 2, 3, 4, 5])
+    geometry.addGroup(0, 3, 0)
+    geometry.addGroup(3, 3, 1)
+    const materials = [new MeshBasicMaterial({ name: 'Anther_SoftGold' }), new MeshBasicMaterial({ name: 'Petal_Satin' })]
+    model.add(new Mesh(geometry, materials))
+
+    const effect = createLilyGrowthVfx(wrapper, model, new AnimationClip('Growth', 9, []))
+    effect.update(frame, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, pollenSettings)
+    const pollenStart = 30 + effect.particleSources.length + 1600
+    const positions = effect.geometry.getAttribute('position')
+    const firstInnerPollen = new Vector3(positions.getX(pollenStart), positions.getY(pollenStart), positions.getZ(pollenStart))
+
+    expect(effect.geometry.getAttribute('aOpacity').getX(pollenStart)).toBeGreaterThan(0.015)
+    expect(firstInnerPollen.distanceTo(new Vector3(0.02, 1.02, 0))).toBeLessThan(0.05)
+
+    effect.dispose()
+    geometry.dispose()
+    materials.forEach(material => material.dispose())
+  }
+})
+
 async function parseAnimationFixture(source: Buffer): Promise<{ scene: Object3D; animations: AnimationClip[] }> {
   // The real model is parsed without texture and material payloads so this node test
   // exercises its animation channels without requiring browser image APIs.
@@ -417,13 +507,12 @@ async function parseAnimationFixture(source: Buffer): Promise<{ scene: Object3D;
   const document = JSON.parse(source.toString('utf8', 20, 20 + sourceJsonLength)) as {
     images?: unknown[]
     textures?: unknown[]
-    materials?: unknown[]
+    materials?: Array<{ name?: string }>
     meshes?: Array<{ primitives?: Array<{ material?: number }> }>
   }
   delete document.images
   delete document.textures
-  delete document.materials
-  for (const mesh of document.meshes ?? []) for (const primitive of mesh.primitives ?? []) delete primitive.material
+  if (document.materials) document.materials = document.materials.map(({ name }) => name === undefined ? {} : { name })
 
   const json = Buffer.from(JSON.stringify(document))
   const paddedJsonLength = (json.length + 3) & ~3

@@ -1,9 +1,10 @@
 import { expect, it } from 'vitest'
-import { Vector3 } from 'three'
+import { AnimationClip, Group, Vector3 } from 'three'
 import { createBloomTextClock, getBloomTextStartDelay } from './bloomGesture'
 import { getBloomSceneFrames, getGrowthSceneFrames } from '../../engine/filmConfig'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 import {
+  createLilyGrowthVfx,
   getBloomPollenOpacity,
   getGrowthVortexOpacity,
   getGrowthVortexParticleLimit,
@@ -13,6 +14,7 @@ import {
   getGrowthVortexElapsed,
   getGrowthVortexSizeScale,
   getBloomPollenAge,
+  getBloomPollenPosition,
   type GrowthVortexParticleSeed,
 } from './lilyGrowthVfx'
 
@@ -126,6 +128,30 @@ it('reveals pollen with the opening, peaks before full bloom, then leaves a spar
   expect(expired).toBe(0)
 })
 
+it('keeps pollen hidden below half bloom and reveals it smoothly after the threshold', () => {
+  const seed = { phase: 0.35, brightness: 0.8, radius: 0.5, depth: 0.4, drift: 0.3, size: 0.6, angle: 0.7 }
+  const settings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen
+  const beforeThreshold = getBloomPollenOpacity(seed, 0.49, 0.9, settings)
+  const atThreshold = getBloomPollenOpacity(seed, 0.5, 0.9, settings)
+  const beginning = getBloomPollenOpacity(seed, 0.55, 0.9, settings)
+  const furtherOpen = getBloomPollenOpacity(seed, 0.62, 0.9, settings)
+
+  expect(beforeThreshold).toBe(0)
+  expect(atThreshold).toBe(0)
+  expect(beginning).toBeGreaterThan(0)
+  expect(beginning).toBeLessThan(furtherOpen)
+})
+
+it('starts each pollen trajectory at the half-bloom boundary even for an early seed phase', () => {
+  const seed = { phase: 0.2, brightness: 0.8, radius: 0.5, depth: 0.4, drift: 0.3, size: 0.6, angle: 0.7 }
+  const atThreshold = getBloomPollenAge(seed, 8, 16, 0, 6, 3.8)
+  const afterThreshold = getBloomPollenAge(seed, 8.8, 16, 0, 6, 3.8)
+
+  expect(atThreshold.age).toBe(0)
+  expect(afterThreshold.age).toBeCloseTo(0.8)
+  expect(atThreshold.terminalTail).toBe(false)
+})
+
 it('gives only a few late pollen seeds a new, short-lived birth in the held-open pose', () => {
   const tailSeed = { phase: 0.9, brightness: 0.8, radius: 0.5, depth: 0.4, drift: 0.3, size: 0.6, angle: 0.7 }
   const ordinarySeed = { ...tailSeed, phase: 0.5 }
@@ -149,4 +175,121 @@ it('caps the added workload by quality and reduces motion without disabling the 
   expect(getBloomPollenParticleLimit(48, 'low', true)).toBe(17)
   expect(getGrowthVortexParticleLimit(0, 'standard')).toBe(0)
   expect(getBloomPollenParticleLimit(0, 'standard')).toBe(0)
+})
+
+it('splits the pollen budget between an inner quarter and the outer flow', () => {
+  expect(getBloomPollenParticleLimit(100, 'standard', false, 'inner')).toBe(25)
+  expect(getBloomPollenParticleLimit(100, 'standard', false, 'outer')).toBe(75)
+  expect(getBloomPollenParticleLimit(1, 'standard', false, 'inner')).toBe(1)
+  expect(getBloomPollenParticleLimit(1, 'standard', false, 'outer')).toBe(0)
+  expect(getBloomPollenParticleLimit(0, 'standard', false, 'inner')).toBe(0)
+  expect(getBloomPollenParticleLimit(0, 'standard', false, 'outer')).toBe(0)
+})
+
+it('keeps default pollen point sizes visibly distinct from the flower at standard quality', () => {
+  const wrapper = new Group()
+  const model = new Group()
+  const cup = new Group()
+  cup.name = 'Flower_Interior'
+  model.add(cup)
+  wrapper.add(model)
+
+  const defaults = DEFAULT_SCENE_COMPOSER_CONFIG
+  const settings = defaults.scenes.bloom.lilyBloomPollen
+  const effect = createLilyGrowthVfx(wrapper, model, new AnimationClip('Growth', 9, []))
+  effect.update({
+    scene: 'bloom', time: 11, clipTime: 0, clipDuration: 9,
+    frames: getGrowthSceneFrames(defaults.scenes.growth), bloomFrames: getBloomSceneFrames(defaults.scenes.bloom),
+    bloomClipTime: 10, bloomClipDuration: 16, bloomOpen: true, bloomElapsed: 0,
+    pixelRatio: 1, reducedMotion: false, quality: 'standard',
+  }, defaults.scenes.growth, settings)
+
+  const pollenStart = 30 + effect.particleSources.length + 1600
+  const innerCount = getBloomPollenParticleLimit(settings.particleCount, 'standard', false, 'inner')
+  const outerCount = getBloomPollenParticleLimit(settings.particleCount, 'standard', false, 'outer')
+  const pointSizes = effect.geometry.getAttribute('aSize')
+  const opacities = effect.geometry.getAttribute('aOpacity')
+  const activeInnerIndices = Array.from({ length: innerCount }, (_, index) => pollenStart + index)
+    .filter(index => opacities.getX(index) > 0)
+  const activeOuterIndices = Array.from({ length: outerCount }, (_, index) => pollenStart + innerCount + index)
+    .filter(index => opacities.getX(index) > 0)
+  const innerSizes = activeInnerIndices.map(index => pointSizes.getX(index))
+  const outerSizes = activeOuterIndices.map(index => pointSizes.getX(index))
+
+  expect(activeInnerIndices.length).toBeGreaterThan(0)
+  expect(activeOuterIndices.length).toBeGreaterThan(0)
+  expect(Math.min(...outerSizes)).toBeGreaterThan(2.4)
+  expect(Math.min(...innerSizes)).toBeGreaterThan(Math.max(...outerSizes))
+
+  effect.dispose()
+})
+
+it('moves inner pollen from the cup base to a bounded hover around anthers', () => {
+  const seed = { phase: 0.6, brightness: 0.8, radius: 0.5, depth: 0.2, drift: 0.4, size: 0.5, angle: 0.5 }
+  const settings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen
+  const source = new Vector3(0, 0, 0)
+  const anthers = new Vector3(0, 0.42, 0)
+  const atBirth = getBloomPollenPosition(seed, 0, source, settings, new Vector3(), 1, 1, 'inner', anthers)
+
+  expect(atBirth.distanceTo(source)).toBeLessThan(0.05)
+  for (const age of [0.8, 2, 3.7]) {
+    const hovering = getBloomPollenPosition(seed, age, source, settings, new Vector3(), 1, 1, 'inner', anthers)
+    expect(hovering.distanceTo(anthers)).toBeLessThan(0.1)
+  }
+})
+
+it('lifts outer pollen around the petal silhouette and fans it sideways smoothly', () => {
+  const seed = { phase: 0.6, brightness: 0.8, radius: 0.3, depth: 0, drift: 0.35, size: 0.5, angle: 0 }
+  const settings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen
+  const source = new Vector3(0, 0, 0)
+  const position = (age: number) => getBloomPollenPosition(seed, age, source, settings, new Vector3())
+  const born = position(0)
+  const middle = position(1.5)
+  const fanning = position(2.8)
+  const beforeFan = position(2.2)
+  const afterFan = position(2.21)
+  const sideRadius = (point: Vector3) => Math.hypot(point.x - source.x, point.z - source.z)
+
+  expect(sideRadius(born)).toBeLessThan(0.03)
+  expect(fanning.y).toBeGreaterThan(middle.y)
+  expect(sideRadius(fanning)).toBeGreaterThan(sideRadius(middle) + 0.03)
+  expect(beforeFan.distanceTo(afterFan)).toBeLessThan(0.01)
+})
+
+it('makes inner pollen brighter while preserving the configured glow as its base', () => {
+  const seed = { phase: 0.4, brightness: 0.5, radius: 0.5, depth: 0, drift: 0.4, size: 0.5, angle: 0.7 }
+  const settings = { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen, glowIntensity: 0.5 }
+  const outer = getBloomPollenOpacity(seed, 0.75, 0.7, settings, 'outer')
+  const inner = getBloomPollenOpacity(seed, 0.75, 0.7, settings, 'inner')
+
+  expect(outer).toBeGreaterThan(0)
+  expect(inner).toBeCloseTo(outer * 1.35)
+})
+
+it('keeps inner pollen present through the open hold while outer pollen expires', () => {
+  const seed = { phase: 0.6, brightness: 0.8, radius: 0.5, depth: 0, drift: 0.4, size: 0.5, angle: 0.7 }
+  const settings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen
+  const heldAge = settings.lifetime + 4
+
+  expect(getBloomPollenOpacity(seed, 1, heldAge, settings, 'outer')).toBe(0)
+  expect(getBloomPollenOpacity(seed, 1, heldAge, settings, 'inner')).toBeGreaterThan(0)
+})
+
+it('rebuilds both pollen paths from the same absolute bloom sample after a seek', () => {
+  const seed = { phase: 0.58, brightness: 0.8, radius: 0.5, depth: 0.2, drift: 0.4, size: 0.5, angle: 0.7 }
+  const settings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen
+  const source = new Vector3(0, 0, 0)
+  const anthers = new Vector3(0, 0.42, 0)
+  const sample = (progress: number, group: 'inner' | 'outer') => {
+    const age = getBloomPollenAge(seed, progress * 16, 16, 0, 6, settings.lifetime).age
+    return getBloomPollenPosition(seed, age, source, settings, new Vector3(), 1, 1, group, anthers).toArray()
+  }
+  const openingInner = sample(0.72, 'inner')
+  const openingOuter = sample(0.72, 'outer')
+  sample(0.96, 'inner')
+  sample(0.96, 'outer')
+
+  expect(sample(0.72, 'inner')).toEqual(openingInner)
+  expect(sample(0.72, 'outer')).toEqual(openingOuter)
+  expect(openingInner).not.toEqual(openingOuter)
 })
