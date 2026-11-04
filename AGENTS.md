@@ -25,6 +25,12 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 
 Схема Scene Composer v15 принимает JSON v1–v15; отсутствующие поля кропа получают значения по умолчанию, экспортируется версия 15.
 
+## Подготовка частиц сцены 04
+
+Предварительная подготовка запускается на экране 00.1 и перезапускается при изменении влияющих на неё настроек или размеров film surface; начало фильма ждёт геометрию для текущего ключа. `LilyParticlePreparationManager` хранит захваченную поверхность отдельно от геометрии worker: поверхность повторно используется при актуальной сигнатуре позы, геометрия — только при точном совпадении ключа конфигурации, размеров, `reducedMotion` и источника. DEV-баннер показывает только подготовку и ошибку; при состояниях idle и ready он скрыт.
+
+Пределы `scenes.identity`: `particleCount` 1 000–100 000; `portraitStartProgress` 0–100%; `portraitDuration` 2–16 с, расчёт ограничивает её остатком времени сцены, но не ниже 2 с; `portraitFraction` 0–45%; min/max turns 0–4 (max повышается до min при обратном порядке); `portraitSteering` 0–2, `portraitBraking` 0,25–2, `portraitSettledBrightness` 1–2.
+
 ## Команды (PowerShell 5, из корня проекта)
 
 | Действие | Команда |
