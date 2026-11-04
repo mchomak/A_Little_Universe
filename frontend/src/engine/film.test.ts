@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { filmDuration, filmReducer, initialFilmState, type FilmAction, type FilmState } from './film'
-import { MEMORIES } from './filmConfig'
+import { getGrowthSceneFrames, MEMORIES } from './filmConfig'
 import { resetConfig, updateConfig } from '../systems/scene-config/config'
 
 const complete = (state: FilmState) => filmReducer(
@@ -39,7 +39,7 @@ it('captures touch duration once so editing the composer cannot change an active
   }
 })
 
-it('keeps configured full clip durations inside the scene endpoint and preserves the Bloom gate', async () => {
+it('starts Bloom automatically after the growth settle and keeps configured clip durations inside the scene endpoint', async () => {
   await resetConfig('all')
   try {
     let growth = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'growth' }, true)
@@ -47,13 +47,14 @@ it('keeps configured full clip durations inside the scene endpoint and preserves
     expect(filmDuration(growth)).toBe(21.1)
     growth = filmReducer(growth, { type: 'dev-seek', time: 999 }, true)
     expect(growth.elapsed).toBe(21.1)
+    expect(getGrowthSceneFrames().duration - getGrowthSceneFrames().model[1]).toBeCloseTo(1.9)
     growth = filmReducer(growth, { type: 'timeline-complete', revision: growth.revision })
-    expect([growth.scene, growth.mode, growth.elapsed]).toEqual(['bloom', 'waiting', 0])
+    expect([growth.scene, growth.mode, growth.elapsed]).toEqual(['bloom', 'playing', 0])
 
     await updateConfig({ scenes: { bloom: { flowerBloomDuration: 12 } } })
     expect(filmDuration(growth)).toBe(18)
-    growth = filmReducer(growth, { type: 'interact' })
-    expect([growth.scene, growth.mode, filmDuration(growth)]).toEqual(['bloom', 'playing', 18])
+    growth = filmReducer(growth, { type: 'timeline-update', time: 0.5, revision: growth.revision })
+    expect([growth.scene, growth.mode, growth.elapsed, filmDuration(growth)]).toEqual(['bloom', 'playing', 0.5, 18])
     growth = filmReducer(growth, { type: 'timeline-update', time: 18, revision: growth.revision })
     growth = filmReducer(growth, { type: 'timeline-complete', revision: growth.revision })
     expect(growth.scene).toBe('identity')
@@ -83,15 +84,13 @@ describe('film navigation', () => {
     expect([state.scene, state.elapsed]).toEqual(['growth', 0])
     expect(filmReducer(state, { type: 'timeline-complete', revision })).toBe(state)
   })
-  it('seeks backwards into timed playback without bypassing the closed-bud gate', () => {
+  it('seeks within the automatic Bloom playback', () => {
     let state = complete(filmReducer(initialFilmState, { type: 'start' }))
     state = filmReducer(state, { type: 'dev-seek', time: 4 }, true)
     expect([state.mode, state.elapsed]).toEqual(['playing', 4])
     state = filmReducer(state, { type: 'dev-jump', scene: 'bloom' }, true)
     state = filmReducer(state, { type: 'dev-seek', time: 22 }, true)
-    expect([state.mode, state.elapsed]).toEqual(['waiting', 0])
-    state = filmReducer(state, { type: 'interact' })
-    expect([state.mode, state.elapsed]).toEqual(['playing', 0])
+    expect([state.mode, state.elapsed]).toEqual(['playing', 22])
     state = complete(state)
     expect(state.scene).toBe('identity')
   })
@@ -167,10 +166,7 @@ describe('film navigation', () => {
     state = filmReducer(state, { type: 'timeline-complete', revision: state.revision })
     expect(state.scene).toBe('growth')
     state = complete(state)
-    expect([state.scene, state.mode, state.elapsed]).toEqual(['bloom', 'waiting', 0])
-    expect(complete(state)).toBe(state)
-    state = filmReducer(state, { type: 'interact' })
-    expect([state.scene, state.mode]).toEqual(['bloom', 'playing'])
+    expect([state.scene, state.mode, state.elapsed]).toEqual(['bloom', 'playing', 0])
     state = complete(state)
     expect(state.scene).toBe('identity')
     state = complete(state)

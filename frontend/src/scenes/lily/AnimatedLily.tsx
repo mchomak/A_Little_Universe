@@ -4,7 +4,6 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useSyncExternalStore } f
 import { LoopOnce, Material, Mesh, type Group } from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import type { SceneProps } from '../../engine/sceneTypes'
-import { useBloomPointerHandler } from './BloomPointerContext'
 import { getBloomSceneFrames, getGrowthSceneFrames } from '../../engine/filmConfig'
 import { getConfig, subscribeConfig } from '../../systems/scene-config/config'
 import { LILY_MODEL_URL } from '../../assets/lily/lilyAsset'
@@ -63,13 +62,12 @@ function setLilyOpacity(states: LilyMaterialState[], opacity: number) {
   }
 }
 
-/** A single GLB instance spans scene 02's growth and scene 03's touch gate. */
+/** A single GLB instance spans scene 02's growth and scene 03's automatic bloom. */
 export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, dissolveUniforms }: SceneProps & { onParticleSource?: (source: LilySurfaceSource) => void; dissolveUniforms: LilyDissolveUniforms }) {
   const gltf = useGLTF(LILY_MODEL_URL)
   const invalidate = useThree(({ invalidate }) => invalidate)
   const pixelRatio = useThree(({ viewport }) => viewport.dpr)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
-  const onBloomPointerDown = useBloomPointerHandler()
   const model = useMemo(() => clone(gltf.scene) as Group, [gltf.scene])
   const stateRef = useRef(state)
   const playerRef = useRef<LilyAnimationPlayer | null>(null)
@@ -144,24 +142,14 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
     } else if (scene === 'bloom') {
       modelObject.visible = true
       setLilyOpacity(materialsRef.current, 1)
-      if (currentState.mode === 'waiting') {
-        // Hold the exact terminal Growth pose until the touch. A global-clock
-        // idle phase used to start at an arbitrary frame and visibly pop here.
-        const clip = growthClip
-        if (clip) {
-          player.play('Growth', LoopOnce, 1)
-          player.seek(getGrowthClipTime(growthFrames.duration, growthFrames, clip.duration))
-        }
-      } else {
-        const clip = gltf.animations.find((animation) => animation.name === 'Bloom')
-        if (clip) {
-          const frames = getBloomSceneFrames(config.scenes.bloom)
-          player.play('Bloom', LoopOnce, 1)
-          player.seek(getSyncedBloomClipTime(
-            time, frames.opening, clip.duration, reducedMotion,
-            config.scenes.bloom.cameraApproachDuration, config.scenes.bloom.cameraBloomSync,
-          ))
-        }
+      const clip = gltf.animations.find((animation) => animation.name === 'Bloom')
+      if (clip) {
+        const frames = getBloomSceneFrames(config.scenes.bloom)
+        player.play('Bloom', LoopOnce, 1)
+        player.seek(getSyncedBloomClipTime(
+          time, frames.opening, clip.duration, reducedMotion,
+          config.scenes.bloom.cameraApproachDuration, config.scenes.bloom.cameraBloomSync,
+        ))
       }
     } else if (scene === 'identity') {
       const clip = gltf.animations.find((animation) => animation.name === 'Bloom')
@@ -188,10 +176,10 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
   useLayoutEffect(() => {
     const sync = () => draw(runtime.time)
     sync()
-    return subscribeLilyAnimationClock(runtime, sync, false, reducedMotion)
+    return subscribeLilyAnimationClock(runtime, sync)
   }, [draw, model, runtime, state.scene, state.mode, reducedMotion])
 
-  return <group ref={wrapperRef} position={MODEL_POSITION} scale={MODEL_SCALE} onPointerDown={onBloomPointerDown}>
+  return <group ref={wrapperRef} position={MODEL_POSITION} scale={MODEL_SCALE}>
     <primitive ref={modelRef} object={model} dispose={null} />
   </group>
 }

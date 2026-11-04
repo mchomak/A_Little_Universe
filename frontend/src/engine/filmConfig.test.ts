@@ -160,7 +160,7 @@ describe('Lily scene timing', () => {
       .toBeCloseTo(afterFrames.handoff[1] + clipProgress * (afterFrames.model[1] - afterFrames.handoff[1]))
     expect(2 / 3.2).toBeCloseTo(retimeSceneElapsed('growth', 2, previous, next, 'playing') / 3.5)
     expect(retimeSceneElapsed('bloom', 8, previous, next, 'playing')).toBe(6)
-    expect(retimeSceneElapsed('bloom', 0, previous, next, 'waiting')).toBe(0)
+    expect(retimeSceneElapsed('bloom', 0, previous, next, 'playing')).toBe(0)
   })
 
   it('keeps the fixed seed handoff stable when Growth duration changes in either direction', () => {

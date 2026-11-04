@@ -1,6 +1,7 @@
 import type { SceneProps } from '../engine/sceneTypes'
-import { BloomCalligraphyMatter } from './BloomCalligraphyMatter'
 
-export function BloomScene(props: SceneProps) {
-  return <BloomCalligraphyMatter {...props} />
+/** The persistent GrowthScene world renders the lily as it opens on its timeline. */
+export function BloomScene(_props: SceneProps) {
+  void _props
+  return null
 }

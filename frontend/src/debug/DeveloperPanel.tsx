@@ -213,11 +213,6 @@ const BLOOM_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.bloom.cameraTargetY', label: 'Цель камеры · Y', unit: '', min: -0.5, max: 3, step: 0.02 },
   { path: 'scenes.bloom.cameraApproachDuration', label: 'Длительность приближения камеры', unit: 'с', min: 1, max: 22, step: 0.1 },
   { path: 'scenes.bloom.cameraBloomSync', label: 'Раскрытие к финалу приближения', unit: '%', min: 50, max: 85, step: 1, displayScale: 100 },
-  { path: 'scenes.bloom.textPositionX', label: 'Положение текста · X', unit: '%', min: 5, max: 48, step: 1, displayScale: 100 },
-  { path: 'scenes.bloom.textPositionY', label: 'Положение текста · Y', unit: '%', min: 10, max: 90, step: 1, displayScale: 100 },
-  { path: 'scenes.bloom.textSize', label: 'Размер текста', unit: 'px', min: 26, max: 100, step: 1 },
-  { path: 'scenes.bloom.textWritingDuration', label: 'Длительность письма', unit: 'с', min: 1, max: 12, step: 0.1 },
-  { path: 'scenes.bloom.textParticleCount', label: 'Частицы растворения текста', unit: 'шт.', min: 300, max: 6000, step: 100 },
 ]
 
 const DISSOLVE_CONTROLS: readonly NumericControl[] = [
@@ -810,9 +805,8 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           </details>
         </>}
         {selected === 'bloom' && <details open><summary>Анимация раскрытия</summary>
-          <details open><summary>Камера · CameraDirector</summary>{BLOOM_CONTROLS.slice(0, 7).map(range)}</details>
-          <details open><summary>Текст ожидания</summary>{BLOOM_CONTROLS.slice(7).map(range)}{color('scenes.bloom.textColor', 'Цвет текста')}</details>
-          <p>IdleClosed ждёт завершения письма и жеста. Камера доезжает до крупного плана на заданной доле раскрытия.</p>
+          <details open><summary>Камера · CameraDirector</summary>{BLOOM_CONTROLS.map(range)}</details>
+          <p>Раскрытие начинается автоматически после короткой паузы роста. Камера плавно приближается к цветку.</p>
         </details>}
         {selected === 'identity' && <>
           <details open><summary>Растворение лилии и вихрь</summary>{DISSOLVE_CONTROLS.map(range)}</details>

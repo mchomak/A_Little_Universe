@@ -10,7 +10,6 @@ import { CosmosScene } from '../scenes/CosmosScene'
 import { GreetingScene } from '../scenes/GreetingScene'
 import { EndingScene } from '../scenes/EndingScene'
 import { AnimatedLily } from '../scenes/lily/AnimatedLily'
-import { BloomGestureTarget } from '../scenes/lily/BloomGestureTarget'
 import type { LilySurfaceSource } from '../scenes/lily/particleSource'
 import { LilyDissolveParticles } from '../scenes/lily/LilyDissolveParticles'
 import { createLilyDissolveUniforms } from '../scenes/lily/dissolve'
@@ -38,18 +37,15 @@ export function SceneDirector(props: SceneProps) {
   const publishLilyParticleSource = useCallback((source: LilySurfaceSource) => {
     setLilyParticleSource((current) => current ?? source)
   }, [])
-  // Keep the same world and its island, mound and moonlight through the
-  // touch scene and the first seconds of the 04 handoff.
+  // Keep the same world, lily and moonlight through the bloom and early 04 handoff.
   const keepGrowthWorld = shouldKeepGrowthWorld(scene, elapsed, config.scenes.identity.dissolveDuration)
   return <>
     {!openingScene && <color attach="background" args={['#080914']} />}
     <ambientLight intensity={lighting.ambientIntensity} />
     <directionalLight position={[-3, 5, 4]} intensity={lighting.keyIntensity} color={lighting.keyColor} />
     <directionalLight position={[3, 1, -2]} intensity={lighting.fillIntensity} color={lighting.fillColor} />
-    <BloomGestureTarget {...props}>
-      {keepGrowthWorld && <GrowthScene key="persistent-growth-world" {...props} environmentOnly={scene !== 'growth'} />}
-      <Suspense fallback={null}><AnimatedLily {...props} onParticleSource={publishLilyParticleSource} dissolveUniforms={dissolveUniforms} /></Suspense>
-    </BloomGestureTarget>
+    {keepGrowthWorld && <GrowthScene key="persistent-growth-world" {...props} environmentOnly={scene !== 'growth'} />}
+    <Suspense fallback={null}><AnimatedLily {...props} onParticleSource={publishLilyParticleSource} dissolveUniforms={dissolveUniforms} /></Suspense>
     <GalaxyExperience {...props} />
     {scene === 'identity' && (lilyParticleSource
       ? <LilyDissolveParticles source={lilyParticleSource} uniforms={dissolveUniforms} runtime={props.runtime} low={props.state.quality === 'low' || props.reducedMotion} reducedMotion={props.reducedMotion} />

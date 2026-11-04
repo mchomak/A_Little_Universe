@@ -4,7 +4,6 @@ import { COPY } from '../engine/filmConfig'
 import type { FilmRuntime } from '../engine/runtime'
 import { GreetingOverlay } from './GreetingOverlay'
 import { PrologueOverlay } from './PrologueOverlay'
-import { BloomOverlay } from './BloomOverlay'
 import { GalleryOverlay } from './GalleryOverlay'
 
 interface Props { state: FilmState; dispatch: Dispatch<FilmAction>; runtime: FilmRuntime; reducedMotion: boolean }
@@ -12,7 +11,6 @@ interface Props { state: FilmState; dispatch: Dispatch<FilmAction>; runtime: Fil
 export function SceneOverlay({ state, dispatch, runtime, reducedMotion }: Props) {
   const { scene } = state
   if (scene === 'prologue') return <PrologueOverlay state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} />
-  if (scene === 'bloom') return <BloomOverlay state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} />
   if (scene === 'identity') return null
   if (scene === 'gallery') return <GalleryOverlay paused={state.paused} />
   if (scene === 'eye') return <p className="simulation-note">Взгляд реагирует на указатель · симуляция без камеры</p>

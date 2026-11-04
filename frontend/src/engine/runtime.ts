@@ -32,7 +32,7 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
   let completed = false
   let lastDispatch = -Infinity
   const revision = initial.revision
-  const waiting = initial.mode === 'waiting' && (initial.scene === 'prologue' || initial.scene === 'bloom')
+  const waiting = initial.mode === 'waiting' && initial.scene === 'prologue'
   const start = initial.scene === 'prologue' && initial.mode === 'waiting' ? filmDuration(initial) : initial.mode === 'transitioning' ? initial.elapsed : 0
   const ambientEnding = initial.scene === 'ending' && initial.mode === 'ended'
   const duration = ambientEnding ? 3600 : waiting ? 1 : filmDuration(initial) - start
