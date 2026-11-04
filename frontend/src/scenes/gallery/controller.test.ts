@@ -7,9 +7,9 @@ import { galleryFocusOpacity } from './visibility'
 function enter() { advanceGallery(GALLERY.intro); expect(gallerySnapshot().phase).toBe('instruction'); galleryStart() }
 describe('gallery travel', () => {
   beforeEach(() => { resetGalleryInstruction(); resetGallery(); enter() })
-  it('has twelve alternating, independently positioned exhibits', () => {
-    expect(GALLERY_MEMORIES).toHaveLength(12)
-    expect(new Set(GALLERY_MEMORIES.map(m => m.id)).size).toBe(12)
+  it('has unique, alternating, independently positioned exhibits', () => {
+    expect(GALLERY_MEMORIES.length).toBeGreaterThan(0)
+    expect(new Set(GALLERY_MEMORIES.map(m => m.id)).size).toBe(GALLERY_MEMORIES.length)
     GALLERY_MEMORIES.forEach((m, i) => {
       const [x, , z] = memoryPosition(m, GALLERY.width)
       expect(m.side).toBe(i % 2 ? 1 : -1)
@@ -75,7 +75,7 @@ describe('gallery travel', () => {
       .flatMap(memory => galleryColumnPositions(memory, GALLERY.width, 'between-columns', layout))
       .filter(([x]) => Math.sign(x) === side)
       .map(([, , z]) => z))].sort((a, b) => b - a))
-    for (let row = 0; row < GALLERY_MEMORIES.length / 2; row += 1) {
+    for (let row = 0; row < Math.floor(GALLERY_MEMORIES.length / 2); row += 1) {
       const left = GALLERY_MEMORIES[row * 2]!
       const right = GALLERY_MEMORIES[row * 2 + 1]!
       for (const [sideIndex, memory] of [[0, left], [1, right]] as const) {
@@ -92,7 +92,7 @@ describe('gallery travel', () => {
       .map(([, , z]) => z))].sort((a, b) => b - a))
     const scaledColumns = { columnScale: 1.8, columnDepth: 0.63 }
     const scaledOffset = galleryColumnPhotoCenterOffsetZ(scaledColumns)
-    for (let row = 0; row < GALLERY_MEMORIES.length / 2; row += 1) {
+    for (let row = 0; row < Math.floor(GALLERY_MEMORIES.length / 2); row += 1) {
       const memory = GALLERY_MEMORIES[row * 2]!
       const photoZ = memoryPosition(memory, GALLERY.width, 'between-columns', layout, scaledColumns)[2]
       const anchors = widerSupports[0]!
@@ -226,7 +226,10 @@ describe('gallery travel', () => {
       .flatMap(memory => galleryColumnPositions(memory, GALLERY.width, 'between-columns'))
       .filter(([x]) => Math.sign(x) === side)
       .map(([, , supportZ]) => supportZ))].sort((a, b) => b - a))
-    expect(supportsBySide.map(supports => supports.length)).toEqual([7, 7])
+    expect(supportsBySide.map(supports => supports.length)).toEqual([
+      Math.ceil(GALLERY_MEMORIES.length / 2) + 1,
+      Math.ceil(GALLERY_MEMORIES.length / 2) + 1,
+    ])
     for (const supports of supportsBySide) {
       for (let index = 1; index < supports.length; index++) {
         expect(supports[index - 1]! - supports[index]!).toBeCloseTo(GALLERY.spacing * 2, 8)
@@ -234,7 +237,8 @@ describe('gallery travel', () => {
     }
 
     const rowCenters: number[] = []
-    for (let row = 0; row < 6; row++) {
+    const completePairs = Math.floor(GALLERY_MEMORIES.length / 2)
+    for (let row = 0; row < completePairs; row++) {
       const leftPhoto = memoryPosition(GALLERY_MEMORIES[row * 2]!, GALLERY.width, 'between-columns')
       const rightPhoto = memoryPosition(GALLERY_MEMORIES[row * 2 + 1]!, GALLERY.width, 'between-columns')
       rowCenters.push(leftPhoto[2])
@@ -246,7 +250,8 @@ describe('gallery travel', () => {
     for (let row = 1; row < rowCenters.length; row++) {
       expect(rowCenters[row - 1]! - rowCenters[row]!).toBeCloseTo(GALLERY.spacing * 2, 8)
     }
-    expect(rowCenters.at(-1)).toBeCloseTo(GALLERY.startZ - (GALLERY.travel - 4) + galleryColumnPhotoCenterOffsetZ(), 8)
+    const lastPairZ = GALLERY.firstZ - GALLERY.spacing - (completePairs - 1) * GALLERY.spacing * 2
+    expect(rowCenters.at(-1)).toBeCloseTo(lastPairZ + galleryColumnPhotoCenterOffsetZ(), 8)
   })
   it('keeps B column adjustments mirrored and photo yaw eases toward the viewer with distance', () => {
     const left = GALLERY_MEMORIES[0]!

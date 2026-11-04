@@ -10,12 +10,49 @@ import image9 from '../../assets/gallery-placeholders/10-meadow.webp'
 import image10 from '../../assets/gallery-placeholders/11-window.webp'
 import image11 from '../../assets/gallery-placeholders/12-stars.webp'
 import photo from '../../assets/start_img.jpg'
+import galleryCaptions from '../../data/galleryCaptions.json'
 import type { GalleryPhotoLayout } from '../../systems/scene-config/config'
-export interface GalleryMemory { id: string; image: string | undefined; caption: string; aspect: number; side: -1 | 1; order: number; palette: [string, string] }
-const images = [image1, image2, image3, image4, image5, image6, image7, image8, image9, image10, image11]
-const captions = ['С этого всё началось', 'Портрет · пример', 'Вместе · пример', 'Путешествие · пример', 'Город · пример', 'Пейзаж · пример', 'Встреча · пример', 'Дорога · пример', 'Тёплый вечер · пример', 'Место · пример', 'Момент · пример', 'А помнишь, как мы смотрели на звёзды?']
+import { createGalleryEventMemories, GALLERY_EVENT_ORDER } from './catalog'
+export interface GalleryMemory { id: string; image: string | undefined; images: Array<string | undefined>; caption: string; aspect: number; side: -1 | 1; order: number; palette: [string, string] }
+const demoImages = [image1, image2, image3, image4, image5, image6, image7, image8, image9, image10, image11]
 const palettes: [string, string][] = [['#765c68','#c59e8c'],['#7b5267','#e1ad91'],['#84655c','#d6a685'],['#3d6975','#d5ae87'],['#555a75','#e1a78d'],['#476d71','#a3b3a1'],['#805d67','#e1b394'],['#5b7486','#c4a28d'],['#7c5260','#d99e82'],['#4e657b','#d7a58e'],['#6c656d','#d5b59d'],['#223750','#967fa2']]
-export const GALLERY_MEMORIES: GalleryMemory[] = captions.map((caption, order) => ({ id: `memory-${order + 1}`, image: order === 0 ? photo : images[order - 1], caption, order, side: order % 2 === 0 ? -1 : 1, aspect: [1, .72, 1.36, 1.4, .75, 1.3, 1, 1.4, .76, 1.25, 1, 1.4][order] ?? 1, palette: palettes[order % palettes.length]! }))
+const captionsById: Readonly<Record<string, { caption: string }>> = galleryCaptions
+const demoCaptionIds = ['demo-start-photo', 'demo-memory-2', 'demo-memory-3', 'demo-memory-4', 'demo-memory-5', 'demo-memory-6', 'demo-memory-7', 'demo-memory-8', 'demo-memory-9', 'demo-memory-10', 'demo-memory-11', 'demo-memory-12']
+const demoAspects = [1, .72, 1.36, 1.4, .75, 1.3, 1, 1.4, .76, 1.25, 1, 1.4]
+const demoGalleryMemories: GalleryMemory[] = demoCaptionIds.map((id, order) => {
+  const image = order === 0 ? photo : demoImages[order - 1]
+  return {
+    id,
+    image,
+    images: [image, undefined, undefined, undefined],
+    caption: captionsById[id]?.caption ?? '',
+    order,
+    side: order % 2 === 0 ? -1 : 1,
+    aspect: demoAspects[order] ?? 1,
+    palette: palettes[order % palettes.length]!,
+  }
+})
+const eventPhotos = import.meta.glob<string>('../../../../images/*/*.{jpg,jpeg,png,webp,avif}', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+})
+const placeholderMarkers = import.meta.glob<string>('../../../../images/*/.gallery-placeholder', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+})
+const placeholderEventIds = Object.keys(placeholderMarkers)
+  .map((path) => path.replaceAll('\\', '/').split('/').at(-2))
+  .filter((eventId): eventId is string => Boolean(eventId))
+const eventGalleryMemories = createGalleryEventMemories(
+  GALLERY_EVENT_ORDER,
+  eventPhotos,
+  captionsById,
+  palettes,
+  placeholderEventIds,
+)
+export const GALLERY_MEMORIES: GalleryMemory[] = eventGalleryMemories.length > 0 ? eventGalleryMemories : demoGalleryMemories
 export const GALLERY = { spacing: 5.4, width: 7, firstZ: -4.5, startZ: 6.15, travel: 6.15 + 4.5 + (GALLERY_MEMORIES.length - 1) * 5.4 + 4, intro: 4.4, exit: 3.2, sensitivity: .045 } as const
 export const GALLERY_B_MIN_PHOTO_X = 0.5
 export const GALLERY_PHOTO_FACING_NEAR_DISTANCE = 0

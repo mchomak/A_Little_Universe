@@ -326,7 +326,7 @@ describe('the supplied ionic column GLB', () => {
         centerZ: anchorZ + placement.position[2] + bounds.shaftCenterZ * placement.scale[2],
       })
 
-      for (let row = 0; row < GALLERY_MEMORIES.length / 2; row += 1) {
+      for (let row = 0; row < Math.floor(GALLERY_MEMORIES.length / 2); row += 1) {
         for (const [sideIndex, memory] of [[0, GALLERY_MEMORIES[row * 2]!], [1, GALLERY_MEMORIES[row * 2 + 1]!] ] as const) {
           const anchors = anchorsBySide[sideIndex]!
           const nearColumn = worldShaft(anchors[row]!)

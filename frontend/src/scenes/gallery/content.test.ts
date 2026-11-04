@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { Group, Vector3 } from 'three'
-import { gallerySupportGroupScale, gallerySupportLocalPositions } from './content'
+import { GALLERY, GALLERY_MEMORIES, gallerySupportGroupScale, gallerySupportLocalPositions } from './content'
+import { GALLERY_EVENT_ORDER } from './catalog'
+import galleryCaptions from '../../data/galleryCaptions.json'
 
 describe('gallery support transforms', () => {
   it('keeps both B column rails mirrored through the first-memory intro scale', () => {
@@ -42,5 +44,21 @@ describe('gallery support transforms', () => {
     expect(photoPosition).toEqual([-2.1, 0.2, -1.4])
     expect(scale).toBe(1.35)
     expect(localPositions).toEqual([[0, 0, 0]])
+  })
+})
+
+describe('gallery event content', () => {
+  it('keeps available photo or placeholder events in explicit order with compact placement', () => {
+    const orderIndex = new Map<string, number>(GALLERY_EVENT_ORDER.map((id, index) => [id, index]))
+    const indices = GALLERY_MEMORIES.map(({ id }) => orderIndex.get(id))
+    const captionsById = galleryCaptions as Readonly<Record<string, { caption: string } | undefined>>
+
+    expect(indices.every((index): index is number => index !== undefined)).toBe(true)
+    expect(indices).toEqual([...indices].sort((left, right) => left! - right!))
+    expect(GALLERY_MEMORIES.map(({ side }) => side)).toEqual(
+      GALLERY_MEMORIES.map((_, index) => index % 2 === 0 ? -1 : 1),
+    )
+    expect(GALLERY_MEMORIES.every(({ id, caption }) => caption === (captionsById[id]?.caption ?? ''))).toBe(true)
+    expect(GALLERY.travel).toBeGreaterThan(GALLERY_MEMORIES.length * GALLERY.spacing)
   })
 })
