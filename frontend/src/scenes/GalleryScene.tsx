@@ -11,6 +11,7 @@ import { GALLERY_WORLD } from './gallery/world'
 import { createGalleryWaterReflectionBackplate } from './gallery/galleryBackplate'
 import { getMoonFrameTintStrength, getMoonPhotoIllumination } from './gallery/moonLighting'
 import { advanceCollageRevealTimeline, createCollageRevealGeometry, DEFAULT_COLLAGE_REVEAL_SETTINGS, getCollageRevealFrame, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout, type CollageRevealSettings } from './gallery/collage'
+import { getGalleryCollageConfig } from './gallery/galleryCollageConfig'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, ClampToEdgeWrapping, Color, DataTexture, DoubleSide, Group, LinearFilter, Material, Mesh, MeshBasicMaterial, NoColorSpace, Points, PointsMaterial, RedFormat, SRGBColorSpace, Texture, TextureLoader, UnsignedByteType, Vector2, Vector3, ShaderMaterial } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
 import { useSyncExternalStore } from 'react'
@@ -448,6 +449,27 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     () => getFocusedGalleryCollagePhotos(memory.images, memory.order, focusedOrder),
     [focusedOrder, memory.images, memory.order],
   )
+  const collageSettings = useMemo<Readonly<CollageRevealSettings>>(() => ({
+    particleCount: settings.collageParticleCount,
+    particleSize: settings.collageParticleSize,
+    noiseStrength: settings.collageNoiseStrength,
+    depth: settings.collageDepth,
+    glow: settings.collageGlow,
+    assembleDuration: settings.collageAssembleDuration,
+    revealDuration: settings.collageRevealDuration,
+    staggerDelay: settings.collageStaggerDelay,
+    particleEnabled: getGalleryCollageConfig(memory.id).particleEnabled,
+  }), [
+    memory.id,
+    settings.collageAssembleDuration,
+    settings.collageDepth,
+    settings.collageGlow,
+    settings.collageNoiseStrength,
+    settings.collageParticleCount,
+    settings.collageParticleSize,
+    settings.collageRevealDuration,
+    settings.collageStaggerDelay,
+  ])
   const backplate = useMemo(() => createGalleryWaterReflectionBackplate(width, height), [height, width])
   useEffect(() => () => {
     backplate.geometry.dispose()
@@ -620,6 +642,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
         fallback={image ?? firstPhoto}
         focusVisual={visual}
         seed={memory.order * 37 + slot * 101}
+        settings={collageSettings}
         reducedMotion={reducedMotion}
         paused={paused}
       />)}

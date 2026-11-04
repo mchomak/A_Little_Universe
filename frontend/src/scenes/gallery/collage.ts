@@ -13,6 +13,8 @@ export interface GalleryCollagePhoto {
   url: string
 }
 
+const MAX_COLLAGE_PHOTO_HEIGHT = 0.68
+
 export interface CollageRevealSettings {
   readonly particleCount: number
   readonly particleSize: number
@@ -62,7 +64,7 @@ export function getGalleryCollagePhotoLayout(
   aspect: number,
 ): GalleryCollagePhotoLayout {
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1
-  const width = 1.02
+  const width = Math.min(1.02, safeAspect * MAX_COLLAGE_PHOTO_HEIGHT)
   const height = width / safeAspect
   const gap = 0.16
   const wallYaw = -side * 1.15

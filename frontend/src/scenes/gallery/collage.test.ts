@@ -55,6 +55,26 @@ describe('gallery collage layout', () => {
     expect(rightSlot2.position[2]).toBeLessThan(rightSlot3.position[2])
   })
 
+  it('keeps portrait and wide photos compact and centered above or beside the main photo', () => {
+    const maxPhotoHeight = 0.68
+    for (const mainHeight of [2.15, 3.3]) {
+      for (const side of [-1, 1] as const) {
+        for (const aspect of [0.55, 0.75, 1.4, 2.4]) {
+          const sideSlot = side < 0 ? 2 : 3
+          const lower = getGalleryCollagePhotoLayout(sideSlot, side, 2.6, mainHeight, aspect)
+          const upper = getGalleryCollagePhotoLayout(4, side, 2.6, mainHeight, aspect)
+
+          expect(lower.height).toBeLessThanOrEqual(maxPhotoHeight)
+          expect(upper.height).toBeLessThanOrEqual(maxPhotoHeight)
+          expect(upper.position[0]).toBe(0)
+          expect(upper.position[1] - upper.height / 2).toBeCloseTo(mainHeight / 2 + 0.16)
+          expect(lower.position[0] * side).toBeGreaterThan(0)
+          expect(Math.abs(lower.position[0]) - lower.width / 2).toBeGreaterThan(2.6 / 2)
+        }
+      }
+    }
+  })
+
   it('uses reproducible particles and eases from particles into the image on focus', () => {
     const first = createCollageRevealGeometry(1.02, 1.36, 31, 48)
     const second = createCollageRevealGeometry(1.02, 1.36, 31, 48)
