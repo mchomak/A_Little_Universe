@@ -5,7 +5,7 @@ import type { MediaSession } from '../systems/media/MediaSession'
 import { resetConfig, updateConfig } from '../systems/scene-config/config'
 import { PreparationScreen } from './PreparationScreen'
 
-function renderPreparation(step: 'settings' | 'checking' | 'ready' = 'settings') {
+function renderPreparation(step: 'settings' | 'checking' | 'ready' = 'settings', startError?: { source: 'gift' | 'particles'; message: string }) {
   const session = {
     subscribe: () => () => undefined,
     getSnapshot: () => ({ options: { gaze: false, recording: false, upload: false } }),
@@ -16,6 +16,7 @@ function renderPreparation(step: 'settings' | 'checking' | 'ready' = 'settings')
     preparation: { ready: true, offline: 'verified', warnings: [], errors: [] },
     checked: false,
     starting: false,
+    ...(startError ? { startError } : {}),
     onOptions: () => undefined,
     onPrepare: () => undefined,
     onContinue: () => undefined,
@@ -60,6 +61,25 @@ it('does not create a second point inside the ready screen', () => {
   const markup = renderPreparation('ready')
 
   expect(markup).not.toContain('class="ready-light"')
+})
+
+it('explains an early particle preparation failure and labels the next start as a retry', () => {
+  const markup = renderPreparation('ready', { source: 'particles', message: 'worker unavailable' })
+
+  expect(markup).toContain('role="alert"')
+  expect(markup).toContain('Не удалось подготовить световой вихрь')
+  expect(markup).toContain('worker unavailable')
+  expect(markup).toContain('Повторить')
+})
+
+it('explains gift-opening failures separately from particle preparation', () => {
+  const markup = renderPreparation('ready', { source: 'gift', message: 'Audio unavailable' })
+
+  expect(markup).toContain('role="alert"')
+  expect(markup).toContain('Не удалось открыть подарок')
+  expect(markup).toContain('Audio unavailable')
+  expect(markup).not.toContain('Не удалось подготовить световой вихрь')
+  expect(markup).toContain('Повторить')
 })
 
 it('applies the active preparation typography and card values as live CSS variables', async () => {

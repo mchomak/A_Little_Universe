@@ -2,6 +2,8 @@ import { Mesh, Vector3, type Object3D } from 'three'
 import type { LilyParticleSource } from '../shared/identityParticles'
 
 export interface LilySurfaceSource extends LilyParticleSource {
+  /** Identifies the model asset and exact authored pose used for this surface. */
+  readonly signature?: string
   readonly center: readonly [number, number, number]
   readonly radius: number
   readonly minY: number

@@ -4,6 +4,7 @@ import type { PreparationResult } from '../systems/assets/AssetManager'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { ART_FONT_CATALOG } from '../systems/scene-config/fontCatalog'
 import { PhoneBackground } from '../components/PhoneBackground'
+import type { FilmStartupError } from './filmStartup'
 import './preparation.css'
 
 export type PreparationStep = 'settings' | 'checking' | 'ready'
@@ -13,6 +14,7 @@ interface Props {
   preparation: PreparationResult
   checked: boolean
   starting: boolean
+  startError?: FilmStartupError | null
   onOptions(options: MediaOptions): void
   onPrepare(): void
   onContinue(): void
@@ -29,7 +31,7 @@ function OptionIcon({ kind }: { kind: 'gaze' | 'recording' | 'upload' }) {
   </svg>
 }
 
-export function PreparationScreen({ step, session, preparation, checked, starting, onOptions, onPrepare, onContinue, onWithoutMedia, onEdit, onStart }: Props) {
+export function PreparationScreen({ step, session, preparation, checked, starting, startError, onOptions, onPrepare, onContinue, onWithoutMedia, onEdit, onStart }: Props) {
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const heading = useRef<HTMLHeadingElement>(null)
@@ -80,9 +82,12 @@ export function PreparationScreen({ step, session, preparation, checked, startin
         <button type="button" className="preparation-link" onClick={onEdit}>Изменить настройки</button>
       </> : <>
         <p className="preparation-subtitle">Маленькая вселенная ждёт твоего прикосновения.</p>
-        {snapshot.error && <p className="permission-error" role="status">{snapshot.error}</p>}
+        {(startError || snapshot.error) && <p className={`permission-error${startError ? ' start-error-message' : ''}`} role={startError ? 'alert' : 'status'} data-testid={startError ? `start-error-${startError.source}` : undefined}>
+          {startError && <>{startError.source === 'particles' ? 'Не удалось подготовить световой вихрь' : 'Не удалось открыть подарок'}: {startError.message}</>}
+          {snapshot.error && <span>{startError ? ` ${snapshot.error}` : snapshot.error}</span>}
+        </p>}
         {options.recording && snapshot.recordingStatus === 'ready' && <p className="permission-note">При открытии подарка начнётся локальная запись видео и звука.</p>}
-        <button type="button" className="preparation-primary" data-testid="start" disabled={starting} onClick={onStart}>{starting ? 'Открываем…' : 'Открыть подарок'}<span aria-hidden="true">→</span></button>
+        <button type="button" className="preparation-primary" data-testid="start" disabled={starting} onClick={onStart}>{starting ? 'Открываем…' : startError ? 'Повторить' : 'Открыть подарок'}<span aria-hidden="true">→</span></button>
         <button type="button" className="preparation-link" disabled={starting} onClick={onEdit}>Изменить настройки</button>
       </>}
       {preparation.offline !== 'verified' && <p className="offline-note">{preparation.offline === 'development' ? 'Режим разработки: автономный запуск проверяется в production-сборке.' : 'Фильм загружен. Запуск после перезагрузки без сети пока не подтверждён.'}</p>}

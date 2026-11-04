@@ -1,4 +1,5 @@
 ﻿import { lazy, Suspense, useCallback, useEffect, useRef, useState, type Dispatch } from 'react'
+import { useSyncExternalStore } from 'react'
 import { FilmCanvas } from '../engine/FilmCanvas'
 import { resetGalleryInstruction } from '../scenes/gallery/controller'
 import { useFilm } from '../engine/useFilm'
@@ -18,6 +19,10 @@ import { PreparationScreen, type PreparationStep } from './PreparationScreen'
 import { PhoneBackground } from '../components/PhoneBackground'
 import { openGift } from './openGift'
 import { getImplementationStatus } from './filmStatus'
+import { getConfig, subscribeConfig } from '../systems/scene-config/config'
+import { awaitFilmStartup, isFilmStartupFailure, type FilmStartupError } from './filmStartup'
+import { LilyParticlePreparationBanner } from './LilyParticlePreparationBanner'
+import { createLilyParticlePreparationSeedKey, getLilyFilmSurfaceDimensions, lilyParticlePreparation, prepareLilyParticleGeometryForStart, subscribeLilyFilmSurfaceDimensions } from '../scenes/lily/lilyParticlePreparation'
 import { LILY_MODEL_RUNTIME_ASSET, preloadLilyModel } from '../assets/lily/lilyAsset'
 
 // Application-lifetime ownership survives scene changes and StrictMode effect replay.
@@ -39,11 +44,38 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   const [prepared, setPrepared] = useState(preparation)
   const [checked, setChecked] = useState(false)
   const [starting, setStarting] = useState(false)
+  const [startError, setStartError] = useState<FilmStartupError | null>(null)
   const [mountedFilm, setMountedFilm] = useState(false)
   const [debug, setDebug] = useState(() => import.meta.env.DEV && new URLSearchParams(window.location.search).has('debug'))
   const operation = useRef(0)
   const opening = useRef(false)
+  const particlePreparation = useSyncExternalStore(lilyParticlePreparation.subscribe, lilyParticlePreparation.getSnapshot, lilyParticlePreparation.getSnapshot)
   useAudioDirector(audio, state, runtime)
+  const getParticlePreparationInput = useCallback(() => ({
+    config: getConfig(),
+    ...getLilyFilmSurfaceDimensions(),
+    reducedMotion,
+  }), [reducedMotion])
+  const currentParticleSeedKey = createLilyParticlePreparationSeedKey(getParticlePreparationInput())
+  const currentParticleRecord = particlePreparation.status === 'ready'
+    ? lilyParticlePreparation.getForKey(particlePreparation.key)
+    : undefined
+  const visibleStartError = startError?.source === 'particles'
+    ? startError.seedKey === currentParticleSeedKey
+      && !(currentParticleRecord?.seedKey === currentParticleSeedKey && currentParticleRecord.status === 'ready')
+      ? startError
+      : null
+    : startError
+  useEffect(() => {
+    const prepareParticles = () => { void lilyParticlePreparation.prepare(getParticlePreparationInput()).catch(() => undefined) }
+    prepareParticles()
+    const unsubscribeConfig = subscribeConfig(prepareParticles)
+    const unsubscribeSize = subscribeLilyFilmSurfaceDimensions(prepareParticles)
+    return () => { unsubscribeConfig(); unsubscribeSize(); lilyParticlePreparation.cancel() }
+  }, [getParticlePreparationInput])
+  const retryParticlePreparation = useCallback(() => {
+    void lilyParticlePreparation.retry(getParticlePreparationInput()).catch(() => undefined)
+  }, [getParticlePreparationInput])
   useEffect(() => { preloadLilyModel() }, [])
   useEffect(() => { if (state.scene === 'prologue') resetGalleryInstruction() }, [state.scene, state.revision])
 
@@ -80,11 +112,38 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     if (opening.current) return
     opening.current = true
     setStarting(true)
+    setStartError(null)
     const request = ++operation.current
-    void openGift({ audio, media, onStart: () => {
-      if (request !== operation.current) return
+    let giftReady = false
+    let particlesReady = false
+    const enterFilm = () => {
+      if (!giftReady || !particlesReady || request !== operation.current) return
       resetGalleryInstruction(); setMountedFilm(true); setRoute('film'); dispatch({ type: state.mode === 'ready' ? 'start' : 'replay' })
-    } }).finally(() => { opening.current = false; setStarting(false) })
+    }
+    // Start the gesture-sensitive audio unlock synchronously; keep the user on
+    // preparation until the matching scene-04 geometry is actually ready.
+    const giftPromise = openGift({ audio, media, onStart: () => { giftReady = true; enterFilm() } })
+    const particlePromise = prepareLilyParticleGeometryForStart(
+      lilyParticlePreparation,
+      getParticlePreparationInput,
+      () => request === operation.current,
+    )
+    void awaitFilmStartup(giftPromise, particlePromise).then(() => {
+      particlesReady = true
+      enterFilm()
+    }).catch((failure: unknown) => {
+      if (request !== operation.current) return
+      const tagged = isFilmStartupFailure(failure) ? failure : { source: 'gift' as const, reason: failure }
+      if (tagged.source === 'particles' && tagged.reason instanceof Error && tagged.reason.name === 'AbortError'
+        && lilyParticlePreparation.getSnapshot().status !== 'error') return
+      console.error(tagged.source === 'gift' ? 'Gift opening failed.' : 'Scene 04 particle preparation failed.', tagged.reason)
+      const message = tagged.reason instanceof Error ? tagged.reason.message : String(tagged.reason)
+      if (tagged.source === 'gift') {
+        setStartError({ source: 'gift', message })
+      } else {
+        setStartError({ source: 'particles', seedKey: createLilyParticlePreparationSeedKey(getParticlePreparationInput()), message })
+      }
+    }).finally(() => { opening.current = false; setStarting(false) })
   }
   const devDispatch: Dispatch<FilmAction> = (action) => {
     if (action.type === 'dev-jump' || action.type === 'dev-restart') {
@@ -110,6 +169,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     && (state.scene === 'prologue' || state.scene === 'growth' || state.scene === 'bloom' || state.scene === 'identity')
 
   return <main className={`universe${cinematic ? ' cinematic' : ''}`} data-route={route} data-scene={state.scene} data-mode={state.mode} data-reading={state.reading} data-paused={state.paused} data-debug={import.meta.env.DEV && debug ? 'true' : undefined}>
+    <LilyParticlePreparationBanner snapshot={particlePreparation} development={import.meta.env.DEV} onRetry={retryParticlePreparation} />
     {mountedFilm && <div className="film-presentation" hidden={route !== 'film'}>
       <div className="film-surface">
         <PhoneBackground active={showOpeningBackground} />
@@ -120,7 +180,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
       {cinematic ? <button className="cinematic-pause" type="button" data-testid="pause" aria-label={state.paused ? 'Продолжить фильм' : 'Пауза'} aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Ⅱ'}</button>
         : <footer className="page-footer" aria-label="Управление фильмом"><span className="film-status">{state.paused ? 'На паузе' : reducedMotion ? 'Уменьшенное движение' : import.meta.env.DEV ? implementationStatus : ''}</span><div className="playback-controls">{state.scene !== 'greeting' && state.mode !== 'ended' && <button type="button" data-testid="pause" aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Пауза'}</button>}<label className="quality-control">Качество<select aria-label="Качество графики" value={state.quality} onChange={(event) => dispatch({ type: 'set-quality', quality: event.target.value === 'low' ? 'low' : 'standard' })}><option value="standard">Обычное</option><option value="low">Низкое</option></select></label></div></footer>}
     </div>}
-    {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} onOptions={changeOptions} onPrepare={() => { void prepare() }} onContinue={() => setRoute('ready')} onWithoutMedia={withoutMedia} onEdit={edit} onStart={start} />}
+    {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} startError={visibleStartError} onOptions={changeOptions} onPrepare={() => { void prepare() }} onContinue={() => setRoute('ready')} onWithoutMedia={withoutMedia} onEdit={edit} onStart={start} />}
     <PersistentLight phase={lightPhase} interactive={lightInteractive} reducedMotion={reducedMotion} runtime={runtime} state={state} onActivate={() => dispatch({ type: 'interact' })} />
     <RecordingControls session={media} />
     <RecoveryPanel session={media} />
