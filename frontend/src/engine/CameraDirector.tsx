@@ -7,17 +7,17 @@ import type { SceneProps } from './sceneTypes'
 import { getBloomSceneFrames, getGrowthSceneFrames, TIMING } from './filmConfig'
 import { useSceneTimeline } from './useSceneTimeline'
 import type { CameraPose } from '../scenes/shared/galleryMotion'
-import { GALLERY, GALLERY_MEMORIES, memoryPosition } from '../scenes/gallery/content'
-import { advanceGallery, galleryMotion, gallerySnapshot } from '../scenes/gallery/controller'
-import { configureCameraFarPlane, focusCamera } from '../scenes/gallery/camera'
-import { GALLERY_ART } from '../scenes/gallery/artDirection'
+import { GALLERY } from '../scenes/gallery/content'
+import { galleryMotion, gallerySnapshot } from '../scenes/gallery/controller'
+import { configureCameraFarPlane } from '../scenes/gallery/camera'
 import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
 import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthViewportHeight } from '../scenes/growth/seedProcedure'
-import { getBloomCameraMoveDuration, getBloomCloseupPose, getBloomEntryCameraPose } from './bloomCamera'
+import { getBloomCameraApproach, getBloomCloseupPose, getBloomEntryCameraPose } from './bloomCamera'
 import { galaxyCameraPose, interpolateCameraPose } from '../scenes/galaxy/camera'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { getIdentityCameraMoveTarget } from './identityCamera'
+import { updateGalleryCameraPose } from './galleryCameraPose'
 
 /** Camera settings belong here, never inside an artistic scene module. */
 export function CameraDirector({ state, dispatch, runtime, reducedMotion }: SceneProps) {
@@ -32,7 +32,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
   const galaxySettings = config.scenes.galaxy
   const pose = useRef<CameraPose>({ x: 0, y: 0, z: 5.6, tx: 0, ty: 0, tz: 0 })
   const galleryRevision = useRef<number | null>(null)
-  const { scene, revision, paused, reading, speed } = state
+  const { scene, mode, revision, paused, reading, speed } = state
   const lastBuiltScene = useRef(scene)
   const hasBuiltScene = useRef(false)
   const render = useCallback(() => {
@@ -54,6 +54,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const flowerSide = getGrowthBloomEntryCameraPose(growthSettings, reducedMotion, growthViewportHeight)
     const bloomFrames = getBloomSceneFrames(bloomSettings)
     const flowerCloseup = getBloomCloseupPose(bloomSettings)
+    const bloomApproach = scene === 'bloom' ? getBloomCameraApproach(mode, bloomSettings, bloomFrames.opening) : null
     const timeline = gsap.timeline({ onUpdate: render })
     if (scene === 'gallery') {
       if (galleryRevision.current !== revision) {
@@ -94,9 +95,9 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       return timeline.to(cursor, { time: duration, duration, ease: 'none' })
     }
     if (reducedMotion) return timeline
-    if (scene === 'bloom') timeline.to(p, {
-      ...flowerCloseup,
-      duration: getBloomCameraMoveDuration(bloomSettings, bloomFrames.opening),
+    if (bloomApproach) timeline.to(p, {
+      ...bloomApproach.pose,
+      duration: bloomApproach.duration,
       ease: 'sine.inOut',
     })
     if (scene === 'identity') timeline.to(p, {
@@ -114,7 +115,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       if (slowdown > 0) timeline.to(p, { ...finish, duration: slowdown, ease: 'sine.out' })
     }
     return timeline
-  }, [bloomSettings, galaxySettings, growthSettings, growthViewportHeight, identitySettings, reducedMotion, render, revision, scene])
+  }, [bloomSettings, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, reducedMotion, render, revision, scene])
   useSceneTimeline(build, { runtime })
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return
@@ -126,28 +127,13 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
   useEffect(() => scene === 'gallery' ? wakeOnVisible(document, invalidate) : undefined, [scene, invalidate])
 
   useFrame((_, delta) => {
-    if (scene !== 'gallery' || paused || reading || document.hidden) return
-    const dt = Math.min(delta, .05) * speed
-    advanceGallery(dt)
-    const m = galleryMotion
-    const opening = Math.min(1, m.intro / (reducedMotion ? .35 : GALLERY.intro))
-    const eased = opening * opening * (3 - 2 * opening)
-    const exit = Math.min(1, m.exit / GALLERY.exit)
-    const z = GALLERY.startZ - m.progress - exit * 2
-    const memory = GALLERY_MEMORIES[m.focusIndex]!
-    const [x, y, mz] = memoryPosition(memory)
-    const focal = m.focusMix
+    if (scene !== 'gallery' || reading || document.hidden) return
     const p = pose.current
-    const initial = firstMemoryCamera(34, reducedMotion)
-    const initialFit = aspect < 1 ? Math.min(2.5, 1 / Math.max(.3, aspect)) : 1
-    p.x = initial.x * initialFit * (1 - eased); p.y = initial.y * initialFit * (1 - eased)
-    p.z = z + (initial.z * initialFit - GALLERY.startZ) * (1 - eased)
-    p.tx = x * focal; p.ty = (y - .2) * focal
-    p.tz = (z - 8) * (1 - focal) + mz * focal
-    if (opening < 1) { p.tx *= eased; p.ty *= eased; p.tz = -8 * eased }
-    const focused = focusCamera([p.x, p.y, p.z], [x, y, mz], focal, -memory.side * GALLERY_ART.wallYaw)
+    const { camera: focused, target, memory, eased, focal } = updateGalleryCameraPose(p, config.scenes.gallery, {
+      delta, speed, paused, reducedMotion, aspect,
+    })
     camera.position.set(focused.x, focused.y, focused.z)
-    camera.lookAt(p.tx, p.ty, p.tz)
+    camera.lookAt(...target)
     if (camera instanceof PerspectiveCamera) {
       const portraitFov = Math.min(82, Math.max(70, 2 * Math.atan(5.1 / (10.65 * Math.max(.3, aspect))) * 180 / Math.PI))
       const initialFov = aspect < 1 ? 42 : 38
@@ -159,7 +145,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       camera.setFocalLength(camera.getFilmHeight() / (2 * Math.tan(fov * Math.PI / 360))); camera.updateProjectionMatrix()
     }
     invalidate()
-    if (gallerySnapshot().phase === 'exit' && m.exit >= GALLERY.exit) dispatch({ type: 'gallery-finish' })
+    if (gallerySnapshot().phase === 'exit' && galleryMotion.exit >= GALLERY.exit) dispatch({ type: 'gallery-finish' })
   })
   return null
 }

@@ -4,7 +4,7 @@ import type { FilmRuntime } from '../engine/runtime'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { getPrologueLightPose } from '../scenes/prologue/lightPose'
 
-export type PersistentLightPhase = 'hidden' | 'prologue' | 'growth'
+export type PersistentLightPhase = 'hidden' | 'ready' | 'prologue' | 'growth'
 
 export interface PersistentLightProps {
   phase: PersistentLightPhase
@@ -15,7 +15,7 @@ export interface PersistentLightProps {
   onActivate?(): void
 }
 
-/** One viewport anchored light: cinematic awakening, then transfer into the seed. */
+/** One viewport anchored light: ready, cinematic awakening, then transfer into the seed. */
 export function PersistentLight({ phase, interactive = false, reducedMotion = false, runtime, state, onActivate }: PersistentLightProps) {
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const settings = config.scenes.prologue

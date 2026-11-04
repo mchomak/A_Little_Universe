@@ -1,8 +1,7 @@
 # Scene Composer configuration
 
-`SceneComposerConfig` is an immutable schema version 20. `normalizeConfig(input)` accepts partial schema v1-v20 JSON; unknown keys are discarded and missing or invalid values use current defaults. Schema v3 galaxy `spin` values are migrated from turns to radians; schema v4 and later store winding in radians. Schema v9's old `cloudLayerCount: 12` default migrates to 18, while intentionally lower counts (including zero) are preserved; schema v10 and later retain an explicit count of 12. Schema v11 contains the gallery and identity controls; schema v12 adds the first gallery water settings; schema v13 adds independent water base brightness, reflection falloff, micro-normal scale, and moon reflection spread. Schema v14 adds the `far`, `mid`, `nearLow`, and `waterline` cloud layer settings. Schema v15 adds the shared `scenes.openingBackground` crop profile (`zoom`, `offsetX`, `offsetY`) for the opening screens and scenes 01-04. Schema v20 adds the Lily growth VFX controls. Partial v14 JSON remains accepted and receives the new crop defaults. The dev-only Lily VFX draft keeps its existing localStorage key and is overlaid so restoring particle settings cannot reset island, seed, lighting, or crop settings. Legacy cloud density, scale, opacity, brightness, drift speed, and count values migrate into active layer settings; saved water controls remain unchanged. The store publishes font changes only after the selected local font is ready.
-
-The shared crop profile covers the preload and scenes 01–04; the retired preparation screen is omitted from normalized configurations. Older files containing its keys remain importable because unknown fields are discarded.
+`SceneComposerConfig` is immutable schema version 23. `normalizeConfig(input)` accepts partial JSON from schema versions 1–23, discards unknown keys, and fills missing or invalid values with current defaults. The merged configuration preserves known legacy prologue, growth, gallery, identity, and galaxy settings. It includes the opening-background crop profile, current scene 02 growth and seed controls, Lily appearance, growth vortex and bloom pollen, and gallery controls for water and clouds, Ionic columns, the arch, and independent A/B photo layouts. Older saved presets remain importable and are normalized to the current defaults.
+Schema v23 adds bounded collage particle settings for the focused gallery memory: count, size, noise, depth, glow, assembly duration, photo reveal duration, and stagger delay.
 
 The public store is:
 
@@ -13,7 +12,7 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v20. Scene 02 schemas v12-v19 are also accepted, including island, wind, moonlight, seed, trail and cloud controls. Old Scene 02 default fall duration and height migrate to current defaults; custom values remain within the supported range.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v23. Schema v20 has two parallel histories: the scene 05 branch introduced bounded photo-collage controls under that version, while the candidate configuration had already assigned v20 to its own accumulated settings. The merged normalizer recognizes fields from both shapes and exports v23, preserving collage settings alongside crop, growth, pollen, and gallery A/B values. Schema v21 gallery presets remain importable with their existing water, photo-layout, and crop values, while the Lily groups receive current defaults unless explicitly saved.
 
 Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its 0.1–20 second travel-window meaning, with the cinematic default now 2.2 seconds; `particleFadeDuration` controls individual dust fade and defaults to 1.2 seconds. `particleReturnFraction` is ignored. The light, atmosphere, typography and interaction fields are additive schema-v2 fields: missing fields in both v1 and v2 files receive current defaults.
 
@@ -21,7 +20,7 @@ An optional production override can contain only values that differ from the def
 
 ```json
 {
-  "schemaVersion": 20,
+  "schemaVersion": 23,
   "global": { "quality": "low" },
   "scenes": {
     "openingBackground": {
@@ -53,6 +52,8 @@ An optional production override can contain only values that differ from the def
 }
 ```
 
+Lily settings are stored under `scenes.growth.lilyBudGlow`, `scenes.growth.lilyLeafMaterial`, `scenes.growth.growthVortex`, and `scenes.bloom.lilyBloomPollen`. Scene Composer bounds each field before it reaches the render loop. In local DEV mode, these groups share the existing Lily VFX draft and restore without replacing unrelated growth, crop, or gallery settings.
+
 ## Normalization ranges
 
 | Section | Field | Accepted range / default |
@@ -69,9 +70,9 @@ An optional production override can contain only values that differ from the def
 | Gallery light | Moon position X / Y / Z | −12–12 / 4–24 / −180–−80 world units |
 | Gallery light | Light target X / Y / Z | −40–40 / −12–14 / −180–40 world units |
 | Gallery water | Base brightness | 0–1.5 (0.72) |
-| Gallery water | Reflection strength / blur / falloff | 0–0.6 (0.5) / 0.3–1 (0.52) / 0.25–2.5 (1.25) |
-| Gallery water | Distortion / micro-normal scale / ripple speed | 0–0.05 (0.008) / 0.25–3 (1) / 0–1 (0.12) |
-| Gallery water | Normal strength / moon highlight / moon spread | 0–1 (0.22) / 0–2 (0.92) / 0.25–2.5 (1.15) |
+| Gallery water | Reflection strength / blur / falloff | 0–0.9 (0.64) / 0.3–1.5 (0.62) / 0.25–2.5 (1.25) |
+| Gallery water | Distortion / micro-normal scale / ripple speed | 0–0.14 (0.04) / 0.25–4.5 (1.25) / 0–3 (1.35) |
+| Gallery water | Normal strength / moon highlight / moon spread | 0–3 (0.95) / 0–2 (0.92) / 0.25–4 (1.6) |
 | Gallery water | Water opacity | 0–1 (1) |
 | Prologue | Font size, line height, position Y | 16–160, 0.8–2.5, 10–80 |
 | Prologue | Handwriting duration/rhythm, phrase interval, readable hold | 0.5–20, 0.1–3, 0–8, 0–30 |
@@ -122,3 +123,7 @@ Default breathing uses amplitude `0.035` and frequency `0.22` Hz (about 4.5 seco
 The existing `Moonlit Letter` and `Stardust` presets remain available; `Vasilisa Cinematic` presets Scene 07's palette, star density and lighting. The galaxy section stores seeded geometry, live shader values, background and foreground gas, reveal timing, camera staging, and an independent custom palette. Geometry controls rebuild after a 280 ms quiet interval; shader uniforms update live. Geometry and materials are disposed when replaced or unmounted. Scene 07, 08, and 09 share one persistent scene graph and one renderer. The ending uses the shared FilmClock presentation channel for slow motion while its film state remains ended. Global quality, DPR and playback settings remain global and are not changed by prologue-specific controls. The store owns neither a playback clock nor a canvas.
 
 The only accepted art font IDs are `great-vibes`, `marck-script`, `bad-script`, `caveat`, and `cormorant-garamond`. They are declared in `fontIds.ts`; `fontCatalog.ts` defines the corresponding local CSS family, readiness call, and checked Russian glyph set. Font files use SIL Open Font License 1.1; see `src/assets/typography/` for license texts and attribution.
+
+
+
+

@@ -1,4 +1,5 @@
 import { ramp, smooth } from './progress'
+import { progressivePhotoRevealGLSL } from './progressivePhotoReveal'
 
 /** Source UV (top down). Three travelling fronts share one immutable arrival map. */
 export function restorationStart(u: number, v: number) {
@@ -52,6 +53,7 @@ uniform float uTime;
 uniform float uOpacity;
 varying vec2 vUv;
 ${restorationGLSL}
+${progressivePhotoRevealGLSL}
 void main() {
   vec3 original = texture2D(uPhoto, vUv).rgb;
   float alpha = uOpacity;
@@ -59,12 +61,8 @@ void main() {
     float restored = photographicRecovery(vec2(vUv.x, 1.0 - vUv.y), uTime);
     // Fine photographic cells resolve only at the moving front. The final
     // sample is exactly the original UV: no warp, recolouring or resynthesis.
-    float cells = mix(112.0, 640.0, restored);
-    vec2 cellUv = (floor(vUv * cells) + .5) / cells;
-    vec3 pixel = texture2D(uPhoto, cellUv).rgb;
-    float front = 4.0 * restored * (1.0 - restored);
-    original = mix(original, pixel, front * .55);
-    alpha = .35 + .65 * restored;
+    original = progressivePhotoCellColor(vUv, restored, original);
+    alpha = progressivePhotoRevealAlpha(restored);
   }
   gl_FragColor = vec4(original, alpha);
   #include <colorspace_fragment>

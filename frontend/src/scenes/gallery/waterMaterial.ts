@@ -13,6 +13,7 @@ import {
   Vector3,
 } from 'three'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
+import { GALLERY } from './content'
 import { GALLERY_WORLD } from './world'
 
 export type GalleryWaterSettings = SceneComposerConfig['scenes']['gallery']
@@ -25,63 +26,72 @@ export interface GalleryMoonReflectionTrack {
   readonly length: number
 }
 
+const MOON_TRACK_START_FADE_DISTANCE = 3
+const MOON_TRACK_END_FADE_DISTANCE = 6
+const MOON_TRACK_CORE_WIDTH = 3.8
+const MOON_TRACK_TAIL_MIN_LENGTH = 24
+const MOON_TRACK_TAIL_LENGTH_FACTOR = 0.75
+const MOON_TRACK_TAIL_GAIN = 0.62
+
+function smoothstepValue(edge0: number, edge1: number, value: number) {
+  const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)))
+  return t * t * (3 - 2 * t)
+}
+
+/** Reference mask for the shader's longitudinal lunar band, independent of the localized glint position. */
+export function calculateGalleryMoonTrackLongitudinal(trackAlong: number, trackLength: number, hotspot: number) {
+  const safeLength = Math.max(trackLength, 1)
+  const startFade = smoothstepValue(-MOON_TRACK_START_FADE_DISTANCE, 0, trackAlong)
+  const endFade = 1 - smoothstepValue(safeLength, safeLength + MOON_TRACK_END_FADE_DISTANCE, Math.max(trackAlong, 0))
+  const moonCore = Math.exp(-Math.pow((trackAlong - hotspot) / MOON_TRACK_CORE_WIDTH, 2))
+  const moonTail = Math.exp(-Math.max(trackAlong, 0) / Math.max(MOON_TRACK_TAIL_MIN_LENGTH, safeLength * MOON_TRACK_TAIL_LENGTH_FACTOR)) * MOON_TRACK_TAIL_GAIN
+  return Math.max(moonCore, moonTail) * startFade * endFade
+}
+
 /** Keeps the localized moon glint off when the shared reflection control is set to zero. */
 export function calculateWaterMoonReflectionGain(reflectionStrength: number) {
   if (!Number.isFinite(reflectionStrength)) return 0
   return Math.max(0, Math.min(1.2, reflectionStrength / 0.5))
 }
 
-/** Projects the moon's virtual image onto the floor, then follows the view ray toward the camera. */
+/** Keeps the moonlit band anchored to the moon and gallery entrance as the camera moves. */
 export function calculateMoonReflectionTrack(
   moon: WorldPoint,
   target: WorldPoint,
-  camera: WorldPoint,
   floorY: number,
 ): GalleryMoonReflectionTrack {
-  const virtualMoonY = 2 * floorY - moon.y
-  const projectionDenominator = camera.y - virtualMoonY
-  const projectionT = Math.abs(projectionDenominator) < 0.0001
-    ? 0.5
-    : Math.max(0, Math.min(1, (camera.y - floorY) / projectionDenominator))
-  const reflectedX = camera.x + (moon.x - camera.x) * projectionT
-  const reflectedZ = camera.z + (moon.z - camera.z) * projectionT
-
   const aimVertical = target.y - moon.y
-  const aimT = Math.abs(aimVertical) < 0.0001
+  const floorProjectionT = Math.abs(aimVertical) < 0.0001
     ? 1
     : Math.max(0, Math.min(2, (floorY - moon.y) / aimVertical))
-  const aimX = moon.x + (target.x - moon.x) * aimT
-  const aimZ = moon.z + (target.z - moon.z) * aimT
-  const originX = aimX
-  const originZ = aimZ
+  const floorPointX = moon.x + (target.x - moon.x) * floorProjectionT
+  const floorPointZ = moon.z + (target.z - moon.z) * floorProjectionT
+  const originX = moon.x
+  const originZ = moon.z
+  let directionX = floorPointX - originX
+  let directionZ = floorPointZ - originZ
+  let aimLength = Math.hypot(directionX, directionZ)
 
-  const towardCameraX = camera.x - originX
-  const towardCameraZ = camera.z - originZ
-  const cameraLength = Math.hypot(towardCameraX, towardCameraZ)
-  const cameraDirectionX = cameraLength > 0.0001 ? towardCameraX / cameraLength : 0
-  const cameraDirectionZ = cameraLength > 0.0001 ? towardCameraZ / cameraLength : 1
-
-  const aimDirectionX = target.x - moon.x
-  const aimDirectionZ = target.z - moon.z
-  const aimLength = Math.hypot(aimDirectionX, aimDirectionZ)
-  const blendedX = cameraDirectionX * 0.82 + (aimLength > 0.0001 ? aimDirectionX / aimLength : 0) * 0.18
-  const blendedZ = cameraDirectionZ * 0.82 + (aimLength > 0.0001 ? aimDirectionZ / aimLength : 1) * 0.18
-  const blendedLength = Math.hypot(blendedX, blendedZ)
-  let directionX = blendedLength > 0.0001 ? blendedX / blendedLength : cameraDirectionX
-  let directionZ = blendedLength > 0.0001 ? blendedZ / blendedLength : cameraDirectionZ
-
-  if (towardCameraX * directionX + towardCameraZ * directionZ < 0) {
-    directionX = cameraDirectionX
-    directionZ = cameraDirectionZ
+  // The configured aim can be moved off the gallery path. Keep the band aimed
+  // through the entrance in that case so it never turns away from the water.
+  if (aimLength < 0.0001 || directionZ <= 0.0001) {
+    directionX = -originX
+    directionZ = GALLERY.startZ - originZ
+    aimLength = Math.hypot(directionX, directionZ)
   }
+  directionX /= aimLength
+  directionZ /= aimLength
 
-  const hotspot = (reflectedX - originX) * directionX + (reflectedZ - originZ) * directionZ
-  const cameraReach = towardCameraX * directionX + towardCameraZ * directionZ
+  const hotspot = Math.max(0, Math.min(
+    (GALLERY.startZ - originZ) / directionZ,
+    (floorPointX - originX) * directionX + (floorPointZ - originZ) * directionZ,
+  ))
+  const trackLength = Math.max(0.5, (GALLERY.startZ - originZ) / directionZ)
   return {
     origin: [originX, originZ],
     direction: [directionX, directionZ],
     hotspot,
-    length: Math.min(250, Math.max(1, cameraReach + 6, hotspot + 76)),
+    length: trackLength,
   }
 }
 
@@ -89,10 +99,10 @@ const TAU = Math.PI * 2
 
 function waterHeight(u: number, v: number) {
   return Math.sin(TAU * (2 * u + v)) * 0.28
-    + Math.sin(TAU * (5 * v - 3 * u)) * 0.15
+    + Math.sin(TAU * (5 * v - 3 * u)) * 0.18
     + Math.sin(TAU * (9 * u + 7 * v)) * 0.04
-    + Math.sin(TAU * (15 * u - 11 * v)) * 0.014
-    + Math.sin(TAU * (19 * v + 13 * u)) * 0.008
+    + Math.sin(TAU * (15 * u - 11 * v)) * 0.022
+    + Math.sin(TAU * (19 * v + 13 * u)) * 0.014
 }
 
 export function createGalleryWaterNormalTexture(size = 128) {
@@ -102,8 +112,8 @@ export function createGalleryWaterNormalTexture(size = 128) {
     for (let x = 0; x < size; x += 1) {
       const u = x * step
       const v = y * step
-      const slopeX = (waterHeight(u - step, v) - waterHeight(u + step, v)) * size * 0.0125
-      const slopeZ = (waterHeight(u, v - step) - waterHeight(u, v + step)) * size * 0.0125
+      const slopeX = (waterHeight(u - step, v) - waterHeight(u + step, v)) * size * 0.016
+      const slopeZ = (waterHeight(u, v - step) - waterHeight(u, v + step)) * size * 0.016
       const offset = (y * size + x) * 4
       data[offset] = Math.round(128 + Math.max(-0.62, Math.min(0.62, slopeX)) * 145)
       data[offset + 1] = Math.round(128 + Math.max(-0.62, Math.min(0.62, slopeZ)) * 145)
@@ -172,7 +182,7 @@ const waterFragmentShader = `
   }
 
   void main() {
-    vec2 waveTime = vec2(uTime * uRippleSpeed * 0.018, -uTime * uRippleSpeed * 0.013);
+    vec2 waveTime = vec2(uTime * uRippleSpeed * 0.095, -uTime * uRippleSpeed * 0.073);
     vec2 normalUvA = vWorldPosition.xz * vec2(0.23, 0.17) * uDistortionScale + waveTime;
     vec2 normalUvB = vWorldPosition.xz * vec2(-0.64, 0.51) * uDistortionScale - waveTime * 0.63;
     vec2 slopeA = texture2D(uNormalMap, normalUvA).rg * 2.0 - 1.0;
@@ -183,8 +193,9 @@ const waterFragmentShader = `
     vec2 reflectedUv = vReflectionCoord.xy / max(vReflectionCoord.w, 0.0001);
     reflectedUv += slope * uWaterDistortion;
     reflectedUv = clamp(reflectedUv, vec2(0.001), vec2(0.999));
-    vec2 blurRadius = uReflectionTexelSize * mix(0.65, 4.5, clamp(uReflectionBlur, 0.0, 1.0));
-    vec3 rawReflection = blurredReflection(reflectedUv, blurRadius);
+    float blurRadius = mix(0.65, 4.5, clamp(uReflectionBlur, 0.0, 1.0)) + max(uReflectionBlur - 1.0, 0.0) * 3.5;
+    vec2 blurOffset = uReflectionTexelSize * blurRadius;
+    vec3 rawReflection = blurredReflection(reflectedUv, blurOffset);
     vec3 reflection = pow(clamp(rawReflection, vec3(0.0), vec3(1.0)), vec3(1.45));
     vec3 viewDirection = normalize(uCameraPosition - vWorldPosition);
     float facing = max(dot(viewDirection, surfaceNormal), 0.0);
@@ -211,16 +222,16 @@ const waterFragmentShader = `
     reflection *= 1.0 - lunarWash * broadAmbient * 0.88;
     color = mix(color, reflection * vec3(0.78, 0.91, 1.04), reflectionMix);
 
-    float startFade = smoothstep(uMoonTrackHotspot - 11.0, uMoonTrackHotspot - 3.0, trackAlong);
-    float endFade = 1.0 - smoothstep(trackLength * 0.82, trackLength, max(trackAlong, 0.0));
-    float moonCore = exp(-pow((trackAlong - uMoonTrackHotspot) / 3.8, 2.0));
-    float moonTail = exp(-max(trackAlong - uMoonTrackHotspot, 0.0) / max(24.0, trackLength * 0.75)) * 0.5;
+    float startFade = smoothstep(-${MOON_TRACK_START_FADE_DISTANCE.toFixed(1)}, 0.0, trackAlong);
+    float endFade = 1.0 - smoothstep(trackLength, trackLength + ${MOON_TRACK_END_FADE_DISTANCE.toFixed(1)}, max(trackAlong, 0.0));
+    float moonCore = exp(-pow((trackAlong - uMoonTrackHotspot) / ${MOON_TRACK_CORE_WIDTH.toFixed(1)}, 2.0));
+    float moonTail = exp(-max(trackAlong, 0.0) / max(${MOON_TRACK_TAIL_MIN_LENGTH.toFixed(1)}, trackLength * ${MOON_TRACK_TAIL_LENGTH_FACTOR.toFixed(2)})) * ${MOON_TRACK_TAIL_GAIN.toFixed(2)};
     float longitudinal = max(moonCore, moonTail) * startFade * endFade;
-    float trackWidth = uMoonReflectionSpread * mix(0.5, 1.1, clamp(max(trackAlong, 0.0) / trackLength, 0.0, 1.0));
+    float trackWidth = uMoonReflectionSpread * mix(0.55, 1.25, clamp(max(trackAlong, 0.0) / trackLength, 0.0, 1.0));
     float core = exp(-trackAcross / max(trackWidth, 0.01));
     float glow = exp(-trackAcross / max(trackWidth * 2.6, 0.01));
-    float moonGrainA = sin(dot(vWorldPosition.xz, vec2(0.47, 0.31)) + uTime * uRippleSpeed * 0.045);
-    float moonGrainB = cos(dot(vWorldPosition.xz, vec2(-0.29, 0.71)) - uTime * uRippleSpeed * 0.032);
+    float moonGrainA = sin(dot(vWorldPosition.xz, vec2(0.47, 0.31)) + uTime * uRippleSpeed * 0.18);
+    float moonGrainB = cos(dot(vWorldPosition.xz, vec2(-0.29, 0.71)) - uTime * uRippleSpeed * 0.135);
     float moonShimmer = 0.92 + moonGrainA * 0.045 + moonGrainB * 0.025 + (slope.x - slope.y) * 0.015;
     float moonTrail = (core * 0.68 + glow * 0.15) * longitudinal * breakup * moonShimmer;
     vec3 moonTone = mix(vec3(0.18, 0.34, 0.61), vec3(0.78, 0.87, 1.0), clamp(core * 0.46 + moonCore * 0.54, 0.0, 1.0));
@@ -309,10 +320,10 @@ export function updateGalleryWaterMaterial(
 }
 
 export function updateGalleryWaterCamera(material: ShaderMaterial, camera: Camera) {
-  const cameraPosition = camera.getWorldPosition(material.uniforms.uCameraPosition!.value as Vector3)
+  camera.getWorldPosition(material.uniforms.uCameraPosition!.value as Vector3)
   const moon = material.uniforms.uMoonPosition!.value as Vector3
   const target = material.uniforms.uMoonTarget!.value as Vector3
-  const track = calculateMoonReflectionTrack(moon, target, cameraPosition, GALLERY_WORLD.floor.y)
+  const track = calculateMoonReflectionTrack(moon, target, GALLERY_WORLD.floor.y)
   ;(material.uniforms.uMoonTrackOrigin!.value as Vector2).set(track.origin[0], track.origin[1])
   ;(material.uniforms.uMoonTrackDirection!.value as Vector2).set(track.direction[0], track.direction[1])
   material.uniforms.uMoonTrackHotspot!.value = track.hotspot

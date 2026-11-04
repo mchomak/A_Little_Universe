@@ -2,7 +2,7 @@
 import { filmReducer, initialFilmState } from '../engine/film'
 import { getGreetingFrames, getSceneDuration, SCENES, TIMING } from '../engine/filmConfig'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../systems/scene-config/config'
-import { activeFrameIndex, canSeekTimeline, timelineFrames } from './timelineModel'
+import { activeFrameIndex, canSeekTimeline, timelineDuration, timelineFrames } from './timelineModel'
 import { getGrowthFrames } from '../scenes/growth/seedProcedure'
 
 describe('scene editor timeline', () => {
@@ -11,6 +11,16 @@ describe('scene editor timeline', () => {
     expect(frames.map((frame) => frame.start)).toEqual([0, 2, 6.85, 12.35, 18])
     expect(activeFrameIndex(frames, 10)).toBe(2)
     expect(timelineFrames('identity', DEFAULT_SCENE_COMPOSER_CONFIG).map((frame) => frame.start)).toEqual([0])
+  })
+  it('exposes the measured identity reveal tail to timeline bounds and seek', () => {
+    const identity = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'identity' }, true)
+    const extended = filmReducer(identity, {
+      type: 'extend-identity-duration', duration: 48, time: 34, revision: identity.revision,
+    })
+
+    expect(timelineDuration(extended, DEFAULT_SCENE_COMPOSER_CONFIG)).toBe(48)
+    expect(canSeekTimeline(extended, true, DEFAULT_SCENE_COMPOSER_CONFIG)).toBe(true)
+    expect(filmReducer(extended, { type: 'dev-seek', time: 47 }, true).elapsed).toBe(47)
   })
   it('maps the new seed stages to seekable positions inside the growth scene', () => {
     const frames = timelineFrames('growth', DEFAULT_SCENE_COMPOSER_CONFIG)
@@ -41,6 +51,7 @@ describe('scene editor timeline', () => {
     } }
     const frames = timelineFrames('bloom', config)
     expect(frames.map(({ start }) => start)).toEqual([0, 11])
+    expect(frames[0]?.label).toBe('03 Раскрытие лилии')
     expect(getSceneDuration('bloom', config)).toBe(17)
   })
   it('shows the active galaxy slowdown and greeting beats without the retired bouquet marker', () => {
@@ -60,10 +71,10 @@ describe('scene editor timeline', () => {
     expect(replayLetter.map(({ start }) => start)).toEqual([0, 30, 30])
     expect(replayLetter.map(({ label }) => label)).toEqual(['08.6 Повторное письмо', '08.7 Завершение титров', '09 Постоянный финал'])
   })
-it('does not seek through waiting for a bud, gallery, preload, transition or reading', () => {
+it('allows seeking during automatic bloom and blocks gallery, preload, transition or reading', () => {
     const bloom = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'bloom' }, true)
-    expect(canSeekTimeline(bloom, true)).toBe(false)
-    expect(canSeekTimeline(filmReducer(bloom, { type: 'interact' }), true)).toBe(true)
+    expect(canSeekTimeline(bloom, true)).toBe(true)
+    expect(filmReducer(bloom, { type: 'dev-seek', time: 3 }, true).elapsed).toBe(3)
     expect(canSeekTimeline(filmReducer(bloom, { type: 'dev-jump', scene: 'gallery' }, true), true)).toBe(false)
     expect(canSeekTimeline({ ...initialFilmState, mode: 'playing' }, false)).toBe(false)
     expect(canSeekTimeline({ ...initialFilmState, mode: 'transitioning' }, true)).toBe(false)

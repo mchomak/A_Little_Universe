@@ -32,7 +32,7 @@ it('leaves defaults active when the optional startup file is missing or malforme
   }
 })
 
-it('persists Lily growth particle and pulse controls in DEV storage and restores them after reload', async () => {
+it('persists Lily appearance, growth VFX, and pollen controls in DEV storage and restores them after reload', async () => {
   vi.resetModules()
   const values = new Map<string, string>()
   const storage = {
@@ -48,7 +48,10 @@ it('persists Lily growth particle and pulse controls in DEV storage and restores
         vfxCoreIntensity: 1.2,
         vfxPulseEnabled: false, vfxPulseBrightness: 1.8, vfxPulseWidth: 0.24, vfxPulseSpeed: 1.5,
         vfxPulseTrailFade: 1.9, vfxPulseColor: '#F8DCB5', vfxPulseLeafBoost: 0.75, vfxPulseBudBoost: 0.9,
+        lilyBudGlow: { intensity: 1.1 }, lilyLeafMaterial: { edgeLightIntensity: 0.5 },
+        growthVortex: { particleCount: 800 },
       },
+      bloom: { lilyBloomPollen: { particleCount: 72, innerCupGlow: 0.85 } },
       prologue: { fontSize: 66 },
     } })
 
@@ -59,8 +62,11 @@ it('persists Lily growth particle and pulse controls in DEV storage and restores
       vfxCoreIntensity: 1.2,
       vfxPulseEnabled: false, vfxPulseBrightness: 1.8, vfxPulseWidth: 0.24, vfxPulseSpeed: 1.5,
       vfxPulseTrailFade: 1.9, vfxPulseColor: '#F8DCB5', vfxPulseLeafBoost: 0.75, vfxPulseBudBoost: 0.9,
+      lilyBudGlow: { intensity: 1.1 }, lilyLeafMaterial: { edgeLightIntensity: 0.5 },
+      growthVortex: { particleCount: 800 }, lilyBloomPollen: { particleCount: 72, innerCupGlow: 0.85 },
     })
     expect(Object.keys(saved).sort()).toEqual([
+      'growthVortex', 'lilyBloomPollen', 'lilyBudGlow', 'lilyLeafMaterial',
       'vfxCoreIntensity', 'vfxParticleBrightness', 'vfxParticleCount', 'vfxParticleGlow', 'vfxParticleLifetime',
       'vfxParticleSize', 'vfxParticleSizeVariation', 'vfxParticleSpeed', 'vfxParticleSpread', 'vfxParticleTint',
       'vfxPulseBrightness', 'vfxPulseBudBoost', 'vfxPulseColor', 'vfxPulseEnabled', 'vfxPulseLeafBoost',
@@ -70,7 +76,9 @@ it('persists Lily growth particle and pulse controls in DEV storage and restores
 
     vi.resetModules()
     const reloaded = await import('./config')
-    expect(reloaded.getConfig().scenes.growth).toMatchObject(saved)
+    const { lilyBloomPollen, ...savedGrowth } = saved
+    expect(reloaded.getConfig().scenes.growth).toMatchObject(savedGrowth)
+    expect(reloaded.getConfig().scenes.bloom.lilyBloomPollen).toMatchObject(lilyBloomPollen)
     expect(reloaded.getConfig().scenes.prologue.fontSize).toBe(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontSize)
   } finally {
     vi.unstubAllGlobals()

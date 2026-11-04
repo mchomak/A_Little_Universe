@@ -1,4 +1,4 @@
-﻿# AGENTS.md — A Little Universe for You
+# AGENTS.md — A Little Universe for You
 
 Keep this file compact. Current project status, setup, and architecture are in [README.md](README.md). Narrative, shot order, timing, and creative direction are in the [storyboard](A_Little_Universe_for_Vasilisa_Storyboard_v3.0.md). Approved keyframes are indexed in [references/keyframes/README.md](references/keyframes/README.md).
 
@@ -23,11 +23,25 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 
 `images/phone_1.png` — DOM/CSS-фон загрузки 00 и сцен 01–04; при входе в галерею 05 он скрывается. Начальный кадр увеличен, во время падения семени видимая область плавно движется вниз и сохраняет положение в сценах 03–04. `cover` заполняет экран без пустых краёв. DEV Scene Editor в development или в локальном production preview (`http://127.0.0.1:4173/?debug`) меняет общий профиль `scenes.openingBackground.{zoom, offsetX, offsetY}`; в секции «00–04 · Кадрирование фона» доступны живой предпросмотр и сброс. Масштаб: 1–3, смещения: −1…1, по умолчанию: 1/0/0.
 
-Схема Scene Composer v15 принимает JSON v1–v15; отсутствующие поля кропа получают значения по умолчанию, экспортируется версия 15.
+Схема Scene Composer v23 принимает JSON v1–v23; старые файлы сцен 02 и 05 мигрируются с сохранением известных настроек, а Lily appearance/pollen остаются совместимы со всеми предыдущими версиями. Экспортируется версия 23.
 
 ## Пресеты Scene Editor
 
 В локальной DEV-панели выберите сцену, введите имя и нажмите «Сохранить». Чтобы повторно использовать настройки, выберите пресет по имени в списке; применение доступно через undo/redo. Повторное сохранение под тем же именем попросит подтверждение замены. JSON пресетов хранятся в `frontend/scene-presets/<scope>/<id>.json`; для 00–04 снимок также содержит общий фон. `cosmos` использует scope `galaxy`.
+
+## Подготовка частиц сцены 04
+
+Предварительная подготовка запускается на экране 00.1 и перезапускается при изменении влияющих на неё настроек или размеров film surface; начало фильма ждёт геометрию для текущего ключа. `LilyParticlePreparationManager` хранит захваченную поверхность отдельно от геометрии worker: поверхность повторно используется при актуальной сигнатуре позы, геометрия — только при точном совпадении ключа конфигурации, размеров, `reducedMotion` и источника. DEV-баннер показывает только подготовку и ошибку; при состояниях idle и ready он скрыт.
+
+Пределы `scenes.identity`: `particleCount` 1 000–100 000; `portraitStartProgress` 0–100%; `portraitDuration` 2–16 с, расчёт ограничивает её остатком времени сцены, но не ниже 2 с; `portraitFraction` 0–45%; min/max turns 0–4 (max повышается до min при обратном порядке); `portraitSteering` 0–2, `portraitBraking` 0,25–2, `portraitSettledBrightness` 1–2.
+
+## Портретная фотография сцены 04
+
+Используется существующий отслеживаемый оригинал `frontend/src/assets/start_img.jpg`. Плоскость фото и частицы должны совпадать по UV и камере через `portraitIntegration.ts` (`createLilyPortraitCameraBasisAtTime`, `placeLilyPortraitTargets`); точки интеграции — `LilyDissolveParticles` и `SceneDirector` в общей WebGL-канве. Проявление рассчитывается от фактической посадки последней портретной частицы, начинается от лица после отдельной паузы и завершается точным совпадением с оригиналом. `identityRestoration.ts` — исторический ориентир; фиксированный тайминг и ранние фронты старого алгоритма не подходят.
+
+## Рост и раскрытие лилии
+
+`AnimatedLily` остаётся одним экземпляром GLB для сцен 02–04; appearance uniforms совмещаются с dissolve shader. Рост, bloom, вихрь и пыльца обновляются по film time, с posed anchors цветка и тычинок. Настройки `scenes.growth.{lilyBudGlow,lilyLeafMaterial,growthVortex}` и `scenes.bloom.lilyBloomPollen` доступны в DEV Scene Editor и сохраняются в отдельном локальном черновике без сброса остальных полей.
 
 ## Команды (PowerShell 5, из корня проекта)
 
@@ -39,6 +53,10 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 
 `npm run check` выполняет lint, Vitest, typecheck и production build.
 
+
+## Scene 05: gallery of memories
+
+`GalleryScene`, `MoonlitWorld` and `WetFloor` share the persistent WebGL canvas and use `galleryMotion.time`; camera pose for rendering and photo selection comes from `frontend/src/engine/galleryCameraPose.ts`. Event order is defined by `GALLERY_EVENT_ORDER` in `frontend/src/scenes/gallery/catalog.ts`; data comes from `images/<event ID>/`, with captions in `frontend/src/data/galleryCaptions.json`. Empty folders are omitted unless they contain `.gallery-placeholder`; each memory can show up to four images. Gallery configuration is stored in `scenes.gallery`, with independent layouts A and B and the B layout selected by default. Gallery data and collages do not own film timing or lighting.
 ## Как здесь работает Autopilot
 
 Сборки фиксируются в `.autopilot/`; прогресс — в `.autopilot/dashboard.html`. Требование из manifest снимается только пользователем. Продолжение прогона: «продолжи автопилот».
@@ -46,4 +64,12 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 ## Подводные камни
 
 В Windows `.autopilot/sync.py` не запускает dashboard-сервер: он вызывает POSIX `ps`. `python .autopilot/sync.py --no-serve` обновляет снимок страницы без сервера.
+
+## Scene 05 photo particle reveal
+
+`GalleryScene` reveals additional photos only for the focused memory. Particles assemble on the seconds-based `galleryMotion.time` timeline before the original photo becomes visible. A slot waits for its texture before starting, and repeated focus changes, reduced motion, and GPU cleanup must remain safe. Shared reveal timing lives in `frontend/src/scenes/shared/progressivePhotoReveal.ts`; deterministic particle geometry and slot timing live in `frontend/src/scenes/gallery/collage.ts`.
+
+Gallery collage settings live under `scenes.gallery` in Scene Composer schema v23. Per-memory opt-out uses stable event IDs in `frontend/src/scenes/gallery/galleryCollageConfig.ts`. The eight DEV controls cover count, size, noise, depth, glow, assembly duration, photo reveal duration, and stagger. Keep all particles limited to the focused memory and the shared WebGL renderer.
 <!-- autopilot:end -->
+
+

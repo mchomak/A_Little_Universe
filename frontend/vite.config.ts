@@ -15,6 +15,16 @@ function irisLabAssets(): Plugin {
     apply: 'serve',
     configureServer(server) {
       const directory = resolve(server.config.root, 'dev-assets/iris/vasilisa')
+      const sourceEye = resolve(server.config.root, '..', 'images', 'eye_3_1.png')
+      server.middlewares.use('/__iris-assets/source-eye.png', (_request, response, next) => {
+        try {
+          const file = realpathSync(sourceEye)
+          if (!statSync(file).isFile()) { response.statusCode = 404; response.end(); return }
+          response.setHeader('Content-Type', 'image/png')
+          response.setHeader('Cache-Control', 'no-store')
+          createReadStream(file).on('error', next).pipe(response)
+        } catch { response.statusCode = 404; response.end('Local source eye not found') }
+      })
       server.middlewares.use('/__iris-assets/vasilisa/', (request, response, next) => {
         const name = (request.url ?? '').split('?')[0] ?? ''
         if (!/^\/[A-Za-z0-9_-]+\.(?:json|png|bin)$/.test(name)) { response.statusCode = 404; response.end(); return }

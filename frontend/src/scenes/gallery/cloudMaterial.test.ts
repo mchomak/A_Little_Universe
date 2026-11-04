@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BackSide, FrontSide, NormalBlending } from 'three'
 import { GALLERY_WORLD } from './world'
-import { createGalleryCloudVolumeMaterial, getGalleryVolumeDepthFade, setGalleryAtmosphereTime } from './cloudMaterial'
+import { createGalleryCloudVolumeMaterial, getGalleryVolumeDepthFade, getGalleryVolumeRaySamples, setGalleryAtmosphereTime, setGalleryAtmosphereView } from './cloudMaterial'
 
 const cloudOptions = {
   kind: 'cloud' as const,
@@ -27,6 +27,8 @@ describe('gallery volumetric atmosphere material', () => {
     expect(material.side).toBe(BackSide)
     expect(material.blending).toBe(NormalBlending)
     expect(material.defines?.CLOUD_STEPS).toBe(8)
+    expect(material.uniforms.uStepCount!.value).toBe(8)
+    expect(material.uniforms.uVisibilityFade!.value).toBe(1)
     expect(material.uniforms.uCenter!.value.toArray()).toEqual([...cloudOptions.center])
     expect(material.uniforms.uRadii!.value.toArray()).toEqual([...cloudOptions.radii])
     expect(material.uniforms.uMoonPosition!.value.toArray()).toEqual([...GALLERY_WORLD.moon.position])
@@ -38,7 +40,8 @@ describe('gallery volumetric atmosphere material', () => {
     expect(material.uniforms.uCoolTint!.value).toBe(1)
     expect(material.uniforms.uWhiteHighlight!.value).toBe(0.48)
     expect(material.uniforms.uSeed!.value).toBe(cloudOptions.seed)
-    expect(material.fragmentShader).toContain('float opticalDepth = density * uOpacity * segmentLength * 0.16')
+    expect(material.fragmentShader).toContain('float stepCount = clamp(uStepCount, 2.0, float(CLOUD_STEPS))')
+    expect(material.fragmentShader).toContain('if (uVisibilityFade <= 0.001) discard')
     expect(material.fragmentShader).toContain('mix(coolBase * innerShade, uMoonColor, lunarLift) * uCloudIntensity')
     expect(material.fragmentShader).toContain('uCloudDensity * 0.18')
     expect(material.fragmentShader).toContain('uWhiteHighlight')
@@ -50,6 +53,25 @@ describe('gallery volumetric atmosphere material', () => {
     expect(material.fragmentShader).toContain('float silverEdge = smoothstep')
     expect(material.fragmentShader).toContain('transmittance *= 1.0 - sampleAlpha')
     material.dispose()
+  })
+
+  it('keeps the weighted final fractional sample inside the ray and preserves integrated length', () => {
+    const rayStart = 5
+    const rayEnd = 17
+    const stepCount = 2.4
+    const samples = getGalleryVolumeRaySamples(rayStart, rayEnd, stepCount)
+    const segmentLength = (rayEnd - rayStart) / stepCount
+
+    expect(samples).toHaveLength(3)
+    expect(samples[0]!.distance).toBeCloseTo(7.5)
+    expect(samples[1]!.distance).toBeCloseTo(12.5)
+    expect(samples[2]!.distance).toBeCloseTo(16)
+    expect(samples[0]!.weight).toBe(1)
+    expect(samples[1]!.weight).toBe(1)
+    expect(samples[2]!.weight).toBeCloseTo(0.4)
+    expect(samples.every((sample) => sample.distance >= rayStart && sample.distance <= rayEnd)).toBe(true)
+    expect(samples.reduce((integratedLength, sample) => integratedLength + segmentLength * sample.weight, 0))
+      .toBeCloseTo(rayEnd - rayStart)
   })
 
   it('fades short ray segments but keeps haze visible when the camera begins inside it', () => {
@@ -70,7 +92,8 @@ describe('gallery volumetric atmosphere material', () => {
       opacity: 8,
     })
     expect(material.defines?.CLOUD_STEPS).toBe(12)
-    expect(material.uniforms.uDriftSpeed!.value).toBe(2)
+    expect(material.uniforms.uStepCount!.value).toBe(12)
+    expect(material.uniforms.uDriftSpeed!.value).toBe(3)
     expect(material.uniforms.uOpacity!.value).toBe(1.5)
     material.dispose()
   })
@@ -121,6 +144,7 @@ describe('gallery volumetric atmosphere material', () => {
     expect(material.uniforms.uCenter!.value.toArray()).toEqual([0, -1, -67])
     expect(material.uniforms.uSeed!.value).toBe(0)
     expect(material.defines?.CLOUD_STEPS).toBe(6)
+    expect(material.uniforms.uStepCount!.value).toBe(6)
     expect(material.fragmentShader).toContain('noisePosition = sampleWorld * 0.045 + eddies + flow')
     expect(material.fragmentShader).toContain('float sampleDepthFade = smoothstep(3.0, 16.0, distanceAlongRay)')
     expect(material.fragmentShader).toContain('softBoundary = 1.0 - smoothstep(0.5, 1.0, radius)')
@@ -132,6 +156,28 @@ describe('gallery volumetric atmosphere material', () => {
     const overlappingHaze = createGalleryCloudVolumeMaterial({ ...cloudOptions, kind: 'haze', seed: 227 })
     expect(overlappingHaze.uniforms.uSeed!.value).toBe(material.uniforms.uSeed!.value)
     overlappingHaze.dispose()
+    material.dispose()
+  })
+
+  it('restores main-view step count after the reduced mirror pass', () => {
+    const material = createGalleryCloudVolumeMaterial(cloudOptions)
+
+    setGalleryAtmosphereView(material, 'standard', 'nearLow', 50, true)
+    expect(material.uniforms.uStepCount!.value).toBe(4)
+    expect(material.uniforms.uVisibilityFade!.value).toBe(1)
+
+    const visibility = setGalleryAtmosphereView(material, 'standard', 'nearLow', 50)
+    expect(material.uniforms.uStepCount!.value).toBeGreaterThan(4)
+    expect(material.uniforms.uStepCount!.value).toBeLessThan(12)
+    expect(material.uniforms.uVisibilityFade!.value).toBe(visibility)
+    expect(visibility).toBe(1)
+
+    setGalleryAtmosphereView(material, 'standard', 'haze', 50, false, false, 0.25)
+    expect(material.uniforms.uVisibilityFade!.value).toBe(0.25)
+    setGalleryAtmosphereView(material, 'standard', 'haze', 50, true, false, 0.25)
+    expect(material.uniforms.uVisibilityFade!.value).toBe(0.25)
+    setGalleryAtmosphereView(material, 'standard', 'haze', 50)
+    expect(material.uniforms.uVisibilityFade!.value).toBe(1)
     material.dispose()
   })
 })

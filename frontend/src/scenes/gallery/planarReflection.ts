@@ -17,6 +17,7 @@ import {
 } from 'three'
 
 export type GalleryReflectionQuality = 'low' | 'standard'
+export const GALLERY_WATER_REFLECTION_EXCLUDED = 'galleryWaterReflectionExcluded'
 
 export interface GalleryPlanarReflectionPass {
   readonly target: WebGLRenderTarget
@@ -123,10 +124,16 @@ export function createGalleryPlanarReflectionPass(options: {
       const previousXrEnabled = renderer.xr.enabled
       const previousShadowAutoUpdate = renderer.shadowMap.autoUpdate
       const previousVisibility = reflector.visible
+      const excludedObjects: { object: Scene['children'][number]; visible: boolean }[] = []
 
       rendering = true
       try {
         reflector.visible = false
+        scene.traverse((object) => {
+          if (!object.userData[GALLERY_WATER_REFLECTION_EXCLUDED]) return
+          excludedObjects.push({ object, visible: object.visible })
+          object.visible = false
+        })
         renderer.xr.enabled = false
         renderer.shadowMap.autoUpdate = false
         renderer.setRenderTarget(target)
@@ -134,6 +141,7 @@ export function createGalleryPlanarReflectionPass(options: {
         renderer.render(scene, mirrorCamera)
       } finally {
         reflector.visible = previousVisibility
+        excludedObjects.forEach(({ object, visible }) => { object.visible = visible })
         renderer.xr.enabled = previousXrEnabled
         renderer.shadowMap.autoUpdate = previousShadowAutoUpdate
         rendering = false

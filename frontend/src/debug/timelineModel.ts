@@ -1,6 +1,6 @@
-import { getBloomSceneFrames, getGreetingFrames, getGrowthSceneFrames, getPrologueFrames, getSceneDuration, TIMING, type SceneId } from '../engine/filmConfig'
+﻿import { getBloomSceneFrames, getGreetingFrames, getGrowthSceneFrames, getPrologueFrames, TIMING, type SceneId } from '../engine/filmConfig'
 import { getGalaxyRevealState } from '../scenes/galaxy/animation'
-import type { FilmState } from '../engine/film'
+import { filmDuration, type FilmState } from '../engine/film'
 import type { SceneComposerConfig } from '../systems/scene-config/config'
 
 export interface TimelineFrame { label: string; start: number }
@@ -23,7 +23,7 @@ export function timelineFrames(scene: SceneId, config: SceneComposerConfig, cred
       { label: '02.4 Рост и передача', start: g.handoff[0] },
       { label: '02.5 Завершение роста', start: g.settle[0] },
     ]
-    case 'bloom': return [{ label: '03 Ожидание / раскрытие', start: 0 }, { label: '03.6 Созерцание', start: getBloomSceneFrames(config.scenes.bloom).contemplate[0] }]
+    case 'bloom': return [{ label: '03 Раскрытие лилии', start: 0 }, { label: '03.6 Созерцание', start: getBloomSceneFrames(config.scenes.bloom).contemplate[0] }]
     case 'identity': return [{ label: '04.1 Растворение лилии', start: 0 }]
     case 'gallery': return [{ label: '05 Галерея · свободный просмотр', start: 0 }]
     case 'eye': return [{ label: '06 Голубой глаз', start: 0 }, { label: '06.5 Приближение', start: TIMING.eye.approach[0] }]
@@ -58,8 +58,13 @@ export function timelineFrames(scene: SceneId, config: SceneComposerConfig, cred
 }
 
 export function canSeekTimeline(state: FilmState, filmVisible: boolean, config?: SceneComposerConfig): boolean {
-  return filmVisible && getSceneDuration(state.scene, config) > 0 && state.mode !== 'ready' && state.mode !== 'transitioning'
+  return filmVisible && timelineDuration(state, config) > 0 && state.mode !== 'ready' && state.mode !== 'transitioning'
     && !(state.scene === 'bloom' && state.mode === 'waiting') && !state.reading
+}
+
+/** Effective timeline endpoint, including the measured Scene 04 photo reveal and any pending extension. */
+export function timelineDuration(state: FilmState, config?: SceneComposerConfig) {
+  return filmDuration(state, config)
 }
 
 export function activeFrameIndex(frames: TimelineFrame[], elapsed: number): number {

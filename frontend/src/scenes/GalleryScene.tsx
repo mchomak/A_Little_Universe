@@ -1,23 +1,29 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useLoader, useThree } from '@react-three/fiber'
 import type { RefObject } from 'react'
-import { galleryDistanceOpacity, galleryFocusOpacity } from './gallery/visibility'
-import { galleryPhotoBlurAtFocus, galleryPhotoLightAtFocus, GALLERY_ART } from './gallery/artDirection'
+import { galleryColumnOpacity, galleryDistanceOpacity, galleryFocusOpacity } from './gallery/visibility'
+import { galleryPhotoBlurAtFocus, galleryPhotoLightAtFocus } from './gallery/artDirection'
 import { createFrameParticleGeometry } from './gallery/frameParticles'
 import { createGalleryDustGeometry, getGalleryDustCount } from './gallery/dust'
 import type { GalleryArtSettings } from './gallery/reflections'
 import { createMemoryThreadAccentGeometry, createMemoryThreadGeometry, createMemoryThreadMaterial, createMemoryThreadPaths, GALLERY_MEMORY_RENDER_ORDER, GALLERY_THREAD_RENDER_ORDER, memoryThreadOpacity, updateMemoryThreadMaterial } from './gallery/threads'
 import { GALLERY_WORLD } from './gallery/world'
+import { createGalleryWaterReflectionBackplate } from './gallery/galleryBackplate'
 import { getMoonFrameTintStrength, getMoonPhotoIllumination } from './gallery/moonLighting'
-import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, Color, DoubleSide, Group, Material, Mesh, MeshBasicMaterial, Points, PointsMaterial, SRGBColorSpace, Texture, TextureLoader, Vector3, ShaderMaterial } from 'three'
+import { advanceCollageRevealPlayback, createCollageRevealGeometry, createCollageRevealPlayback, DEFAULT_COLLAGE_REVEAL_SETTINGS, getCollageRevealPlaybackFrame, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout, markCollageRevealTextureReady, type CollageRevealPlayback, type CollageRevealSettings } from './gallery/collage'
+import { getGalleryCollageConfig } from './gallery/galleryCollageConfig'
+import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, ClampToEdgeWrapping, Color, DataTexture, DoubleSide, Group, LinearFilter, Material, Mesh, MeshBasicMaterial, NoColorSpace, Points, PointsMaterial, RedFormat, SRGBColorSpace, Texture, TextureLoader, UnsignedByteType, Vector2, Vector3, ShaderMaterial } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
 import { useSyncExternalStore } from 'react'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
-import { GALLERY, GALLERY_MEMORIES, memoryPosition, type GalleryMemory } from './gallery/content'
-import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, resetGallery } from './gallery/controller'
+import { GALLERY, GALLERY_MEMORIES, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, gallerySupportGroupScale, gallerySupportLocalPositions, memoryPosition, type GalleryMemory } from './gallery/content'
+import { GalleryColumn } from './gallery/GalleryColumn'
+import { GalleryArch } from './gallery/GalleryArch'
+import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, resetGallery, subscribeGallery } from './gallery/controller'
 import { bindGalleryGestures } from './gallery/gestures'
 import { MoonlitWorld } from './gallery/MoonlitWorld'
+import { createProgressivePhotoRevealMap, progressivePhotoRevealGLSL } from './shared/progressivePhotoReveal'
 import firstPhotoUrl from '../assets/start_img.jpg'
 
 function canvasTexture(draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void, w = 768, h = 768) {
@@ -36,6 +42,8 @@ function placeholder(memory: GalleryMemory) {
 }
 function captionTexture(text: string) { return canvasTexture((ctx, w, h) => { ctx.fillStyle = '#f5dbc9'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '42px Georgia'; ctx.fillText(text, w / 2, h / 2, w - 20) }, 1024, 100) }
 function setColorSpace(texture: Texture) { texture.colorSpace = SRGBColorSpace; texture.needsUpdate = true }
+function getFocusedGalleryOrder() { return gallerySnapshot().focus }
+function getServerFocusedGalleryOrder() { return null }
 function setShaderUniform(material: ShaderMaterial | null, name: string, value: unknown) {
   const uniform = material?.uniforms[name]
   if (uniform) uniform.value = value
@@ -126,6 +134,258 @@ function photoShaderMaterial(map: Texture) {
     toneMapped: false,
   })
 }
+const collageParticleVertexShader = `
+  uniform sampler2D uPhoto;
+  uniform sampler2D uRevealMap;
+  uniform float uTime;
+  uniform float uReveal;
+  uniform float uPhotoReveal;
+  uniform float uAlpha;
+  uniform float uParticleSize;
+  uniform float uNoiseStrength;
+  uniform float uDpr;
+  uniform vec2 uBounds;
+  attribute vec3 targetPosition;
+  attribute float size;
+  attribute float phase;
+  attribute vec2 photoUv;
+  varying vec2 vPhotoUv;
+  varying vec3 vPhotoColor;
+  varying float vBrightness;
+  varying float vAlpha;
+  ${progressivePhotoRevealGLSL}
+  void main() {
+    float reveal = smoothstep(0.0, 1.0, uReveal);
+    vec3 moved = mix(position, targetPosition, reveal);
+    float phaseTime = uTime * 1.7 + phase;
+    vec2 drift = vec2(sin(phaseTime), cos(phaseTime * 0.83)) * uNoiseStrength * (1.0 - reveal);
+    moved.xy = clamp(moved.xy + drift, -uBounds * 0.5, uBounds * 0.5);
+    moved.z += sin(phaseTime * 0.7) * uNoiseStrength * 0.2 * (1.0 - reveal);
+    vec3 photoColor = texture2D(uPhoto, photoUv).rgb;
+    float brightness = dot(photoColor, vec3(0.2126, 0.7152, 0.0722));
+    float arrival = texture2D(uRevealMap, photoUv).r;
+    float particleVisibility = progressivePhotoParticleOpacity(uPhotoReveal, arrival);
+    vPhotoUv = photoUv;
+    vPhotoColor = photoColor;
+    vBrightness = brightness;
+    vec4 view = modelViewMatrix * vec4(moved, 1.0);
+    gl_Position = projectionMatrix * view;
+    gl_PointSize = uParticleSize * uDpr * size * mix(0.62, 1.32, brightness);
+    vAlpha = uAlpha * smoothstep(0.015, 0.2, brightness) * particleVisibility;
+  }
+`
+const collageParticleFragmentShader = `
+  uniform sampler2D uPhoto;
+  uniform float uGlow;
+  varying vec2 vPhotoUv;
+  varying vec3 vPhotoColor;
+  varying float vBrightness;
+  varying float vAlpha;
+  void main() {
+    float radius = length(gl_PointCoord - 0.5);
+    float point = 1.0 - smoothstep(0.08, 0.5, radius);
+    vec3 sampledColor = texture2D(uPhoto, vPhotoUv).rgb;
+    vec3 color = mix(vPhotoColor, sampledColor, 0.5) * (0.75 + uGlow * 0.45);
+    gl_FragColor = vec4(color, point * vAlpha * mix(0.2, 1.0, vBrightness));
+    #include <colorspace_fragment>
+  }
+`
+function collageParticleMaterial(map: Texture, bounds: Vector2) {
+  return new ShaderMaterial({
+    uniforms: {
+      uPhoto: { value: map }, uRevealMap: { value: null }, uTime: { value: 0 }, uReveal: { value: 0 }, uPhotoReveal: { value: 0 }, uAlpha: { value: 0 },
+      uParticleSize: { value: DEFAULT_COLLAGE_REVEAL_SETTINGS.particleSize },
+      uNoiseStrength: { value: DEFAULT_COLLAGE_REVEAL_SETTINGS.noiseStrength },
+      uDpr: { value: 1 }, uBounds: { value: bounds }, uGlow: { value: DEFAULT_COLLAGE_REVEAL_SETTINGS.glow },
+    },
+    vertexShader: collageParticleVertexShader,
+    fragmentShader: collageParticleFragmentShader,
+    transparent: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+    toneMapped: false,
+  })
+}
+const collagePhotoFragmentShader = `
+  uniform sampler2D uPhoto;
+  uniform sampler2D uRevealMap;
+  uniform float uAlpha;
+  uniform float uReveal;
+  varying vec2 vUv;
+  ${progressivePhotoRevealGLSL}
+  void main() {
+    vec3 original = texture2D(uPhoto, vUv).rgb;
+    vec3 photo = progressivePhotoCellColor(vUv, uReveal, original);
+    float arrival = texture2D(uRevealMap, vUv).r;
+    float coverage = progressivePhotoRevealCoverage(uReveal, arrival);
+    gl_FragColor = vec4(photo, uAlpha * progressivePhotoRevealAlpha(uReveal) * coverage);
+    #include <colorspace_fragment>
+  }
+`
+function collagePhotoMaterial(map: Texture) {
+  return new ShaderMaterial({
+    uniforms: { uPhoto: { value: map }, uRevealMap: { value: null }, uAlpha: { value: 0 }, uReveal: { value: 0 } },
+    vertexShader: photoVertexShader,
+    fragmentShader: collagePhotoFragmentShader,
+    transparent: true,
+    depthWrite: false,
+    side: DoubleSide,
+    toneMapped: false,
+  })
+}
+function CollageExtraPhoto({ url, slot, side, mainWidth, mainHeight, fallback, focusVisual, seed, settings = DEFAULT_COLLAGE_REVEAL_SETTINGS, reducedMotion, paused }: {
+  url: string
+  slot: 2 | 3 | 4
+  side: -1 | 1
+  mainWidth: number
+  mainHeight: number
+  fallback: Texture
+  focusVisual: RefObject<{ alpha: number; focusAmount: number; timelineDirection: -1 | 0 | 1 }>
+  seed: number
+  settings?: Readonly<CollageRevealSettings>
+  reducedMotion: boolean
+  paused: boolean
+}) {
+  const [aspect, setAspect] = useState(1)
+  const photoSession = useMemo(() => ({ url, fallback }), [fallback, url])
+  const [photoResult, setPhotoResult] = useState<{ session: object; failed: boolean } | null>(null)
+  const photoReady = photoResult?.session === photoSession
+  const dpr = useThree((state) => state.viewport.dpr)
+  const backplateMaterial = useRef<MeshBasicMaterial>(null)
+  const layout = useMemo(() => getGalleryCollagePhotoLayout(slot, side, mainWidth, mainHeight, aspect), [aspect, mainHeight, mainWidth, side, slot])
+  const revealMap = useMemo(() => {
+    const size = 128
+    const texture = new DataTexture(createProgressivePhotoRevealMap(size, aspect), size, size, RedFormat, UnsignedByteType)
+    texture.colorSpace = NoColorSpace
+    texture.wrapS = ClampToEdgeWrapping
+    texture.wrapT = ClampToEdgeWrapping
+    texture.minFilter = LinearFilter
+    texture.magFilter = LinearFilter
+    texture.generateMipmaps = false
+    texture.needsUpdate = true
+    return texture
+  }, [aspect])
+  const photoMaterial = useMemo(() => collagePhotoMaterial(fallback), [fallback])
+  const particlesEnabled = settings.particleEnabled && !reducedMotion
+  const particleCount = settings.particleCount
+  const particleGeometrySettings = useMemo(() => ({ depth: settings.depth }), [settings.depth])
+  const particles = useMemo(() => particlesEnabled
+    ? createCollageRevealGeometry(layout.width, layout.height, seed, particleCount, particleGeometrySettings)
+    : new BufferGeometry(), [layout.height, layout.width, particleCount, particleGeometrySettings, particlesEnabled, seed])
+  const bounds = useMemo(() => new Vector2(), [])
+  const revealMaterial = useMemo(() => particlesEnabled ? collageParticleMaterial(fallback, bounds) : null, [bounds, fallback, particlesEnabled])
+  const revealMaterialRef = useRef<ShaderMaterial | null>(null)
+  const loadedPhoto = useRef<Texture>(fallback)
+  const initialPlayback = useMemo(() => createCollageRevealPlayback(photoSession), [photoSession])
+  const playback = useRef<CollageRevealPlayback>(initialPlayback)
+  const previousFilmTime = useRef(galleryMotion.time)
+
+  useEffect(() => {
+    revealMaterialRef.current = revealMaterial
+    setShaderUniform(revealMaterial, 'uPhoto', loadedPhoto.current)
+    setShaderUniform(revealMaterial, 'uRevealMap', revealMap)
+    return () => { if (revealMaterialRef.current === revealMaterial) revealMaterialRef.current = null }
+  }, [revealMap, revealMaterial])
+  useEffect(() => { setShaderUniform(photoMaterial, 'uRevealMap', revealMap) }, [photoMaterial, revealMap])
+
+  useEffect(() => {
+    let active = true
+    let loaded: Texture | null = null
+    let request: Texture | null = null
+    let disposed = false
+    const disposeRequest = () => {
+      if (disposed) return
+      disposed = true
+      request?.dispose()
+    }
+    loadedPhoto.current = fallback
+    setShaderUniform(photoMaterial, 'uPhoto', fallback)
+    setShaderUniform(revealMaterialRef.current, 'uPhoto', fallback)
+    request = new TextureLoader().load(url, (value) => {
+      if (!active) { disposeRequest(); return }
+      loaded = value
+      loadedPhoto.current = value
+      setColorSpace(value)
+      setShaderUniform(photoMaterial, 'uPhoto', value)
+      setShaderUniform(revealMaterialRef.current, 'uPhoto', value)
+      const image = value.image as HTMLImageElement
+      if (image.naturalWidth && image.naturalHeight) setAspect(image.naturalWidth / image.naturalHeight)
+      playback.current = markCollageRevealTextureReady(playback.current, photoSession, 'loaded')
+      setPhotoResult({ session: photoSession, failed: false })
+    }, undefined, () => {
+      disposeRequest()
+      if (active) {
+        setShaderUniform(photoMaterial, 'uPhoto', fallback)
+        setShaderUniform(revealMaterialRef.current, 'uPhoto', fallback)
+        loadedPhoto.current = fallback
+        playback.current = markCollageRevealTextureReady(playback.current, photoSession, 'error')
+        setPhotoResult({ session: photoSession, failed: true })
+      }
+    })
+    if (disposed) request.dispose()
+    return () => {
+      active = false
+      disposeRequest()
+      if (loadedPhoto.current === loaded) {
+        loadedPhoto.current = fallback
+        setShaderUniform(photoMaterial, 'uPhoto', fallback)
+        setShaderUniform(revealMaterialRef.current, 'uPhoto', fallback)
+      }
+    }
+  }, [fallback, photoMaterial, photoSession, url])
+  useEffect(() => () => particles.dispose(), [particles])
+  useEffect(() => () => photoMaterial.dispose(), [photoMaterial])
+  useEffect(() => () => revealMaterial?.dispose(), [revealMaterial])
+  useEffect(() => () => revealMap.dispose(), [revealMap])
+  useFrame(() => {
+    const now = galleryMotion.time
+    const delta = Math.max(0, now - previousFilmTime.current)
+    previousFilmTime.current = now
+    if (playback.current.session !== photoSession) playback.current = createCollageRevealPlayback(photoSession)
+    if (photoReady && !playback.current.textureReady) {
+      playback.current = markCollageRevealTextureReady(playback.current, photoSession, photoResult?.failed ? 'error' : 'loaded')
+    }
+    const { alpha, focusAmount, timelineDirection } = focusVisual.current
+    playback.current = advanceCollageRevealPlayback(
+      playback.current,
+      delta,
+      timelineDirection,
+      focusAmount,
+      slot,
+      settings,
+      reducedMotion,
+      paused || document.hidden,
+    )
+    const frame = getCollageRevealPlaybackFrame(playback.current, slot, settings, reducedMotion)
+    const photoAlpha = photoReady ? alpha * frame.photoOpacity : 0
+    if (backplateMaterial.current) backplateMaterial.current.opacity = photoAlpha * 0.92
+    setShaderUniform(photoMaterial, 'uAlpha', photoAlpha)
+    setShaderUniform(photoMaterial, 'uReveal', frame.photoProgress)
+    setShaderUniform(revealMaterial, 'uTime', reducedMotion ? 0 : galleryMotion.time)
+    setShaderUniform(revealMaterial, 'uParticleSize', settings.particleSize)
+    setShaderUniform(revealMaterial, 'uNoiseStrength', settings.noiseStrength)
+    setShaderUniform(revealMaterial, 'uDpr', dpr)
+    setShaderUniform(revealMaterial, 'uGlow', settings.glow)
+    setShaderUniform(revealMaterial, 'uReveal', frame.assemblyProgress)
+    setShaderUniform(revealMaterial, 'uPhotoReveal', frame.photoProgress)
+    setShaderUniform(revealMaterial, 'uAlpha', photoReady ? alpha * frame.particleOpacity : 0)
+    bounds.set(layout.width, layout.height)
+  })
+
+  return <group position={layout.position} visible={photoReady}>
+    <mesh position={[0, 0, -0.025]} raycast={() => undefined} userData={{ galleryOpacityManaged: true }}>
+      <planeGeometry args={[layout.width + 0.08, layout.height + 0.08]} />
+      <meshBasicMaterial ref={backplateMaterial} color="#17141d" transparent opacity={0} depthWrite={false} />
+    </mesh>
+    <mesh raycast={() => undefined} renderOrder={GALLERY_MEMORY_RENDER_ORDER + 1} userData={{ galleryOpacityManaged: true }}>
+      <planeGeometry args={[layout.width, layout.height]} />
+      <primitive object={photoMaterial} attach="material" />
+    </mesh>
+    {particlesEnabled && revealMaterial && <points geometry={particles} raycast={() => undefined} renderOrder={GALLERY_MEMORY_RENDER_ORDER + 2} userData={{ galleryOpacityManaged: true }}>
+      <primitive object={revealMaterial} attach="material" />
+    </points>}
+  </group>
+}
 function frameShaderMaterial() {
   return new ShaderMaterial({
     uniforms: {
@@ -140,7 +400,7 @@ function frameShaderMaterial() {
     toneMapped: false,
   })
 }
-function Photo({ url, width, height, fallback, onAspect, material }: { url: string; width: number; height: number; fallback: CanvasTexture | null; onAspect: (value: number) => void; material: RefObject<ShaderMaterial | null> }) {
+function Photo({ url, width, height, fallback, onAspect, material }: { url: string; width: number; height: number; fallback: Texture | null; onAspect: (value: number) => void; material: RefObject<ShaderMaterial | null> }) {
   const [texture, setTexture] = useState<Texture | null>(null)
   useEffect(() => {
     let active = true; let loaded: Texture | null = null
@@ -155,6 +415,8 @@ function setFocusFog(material: Material, focus: boolean) { if (material instance
 function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: GalleryMemory; reducedMotion: boolean; halo: CanvasTexture; paused: boolean; settings: GalleryArtSettings }) {
   const materials = useRef<{ material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[]>([])
   const group = useRef<Group>(null)
+  const supportGroup = useRef<Group>(null)
+  const visualGroup = useRef<Group>(null)
   const glow = useRef<MeshBasicMaterial>(null)
   const captionMaterial = useRef<MeshBasicMaterial>(null)
   const contourMaterials = useRef<(MeshBasicMaterial | null)[]>([])
@@ -165,27 +427,30 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   const photoNormal = useMemo(() => new Vector3(), [])
   const moonColor = useMemo(() => new Color(), [])
   const firstPhoto = useLoader(TextureLoader, firstPhotoUrl)
-  const image = useMemo(() => memory.order === 0 ? null : placeholder(memory), [memory])
-  const caption = useMemo(() => captionTexture(memory.caption), [memory.caption])
-  const photoMaterial = useMemo(() => photoShaderMaterial(memory.order === 0 ? firstPhoto : image ?? firstPhoto), [firstPhoto, image, memory.order])
+  const image = useMemo(() => memory.order === 0 && memory.image ? null : placeholder(memory), [memory])
+  const captionText = memory.caption.trim()
+  const caption = useMemo(() => captionText ? captionTexture(captionText) : null, [captionText])
+  const photoMaterial = useMemo(() => photoShaderMaterial(image ?? firstPhoto), [firstPhoto, image])
   const photoMaterialRef = useRef(photoMaterial)
   const frameMaterial = useMemo(() => frameShaderMaterial(), [])
   const frameMaterialRef = useRef(frameMaterial)
-  const visual = useRef({ alpha: 0, focusAmount: 0 })
+  const visual = useRef({ alpha: 0, focusAmount: 0, timelineDirection: 0 as -1 | 0 | 1 })
+  const columnOpacity = useRef(0)
 
   useEffect(() => {
     photoMaterialRef.current = photoMaterial
   }, [photoMaterial])
   useEffect(() => () => {
     image?.dispose()
-    caption.dispose()
+    caption?.dispose()
     photoMaterial.dispose()
     frameMaterial.dispose()
   }, [image, caption, photoMaterial, frameMaterial])
   useEffect(() => { setColorSpace(firstPhoto) }, [firstPhoto])
   useEffect(() => {
     const saved: { material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[] = []
-    group.current?.traverse((child) => {
+    visualGroup.current?.traverse((child) => {
+      if (child.userData.galleryOpacityManaged) return
       if (!(child instanceof Mesh) && !(child instanceof Points)) return
       const list = Array.isArray(child.material) ? child.material : [child.material]
       for (const material of list) saved.push({ material, opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite })
@@ -194,10 +459,10 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     return () => { materials.current = [] }
   }, [])
   useEffect(() => {
-    const root = group.current
-    if (!root) return
+    const photoRoot = visualGroup.current
+    if (!photoRoot) return
     const restore: (() => void)[] = []
-    root.traverse((object) => {
+    photoRoot.traverse((object) => {
       if (!(object instanceof Mesh) && !(object instanceof Points)) return
       const original = object.raycast
       const gated = galleryPhotoRaycast(memory.order, original, () => Boolean(group.current?.visible))
@@ -211,12 +476,50 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   const [aspect, setAspect] = useState(memory.aspect)
   const width = aspect >= 1 ? size : size * aspect
   const height = aspect >= 1 ? size / aspect : size
+  const focusedOrder = useSyncExternalStore(subscribeGallery, getFocusedGalleryOrder, getServerFocusedGalleryOrder)
+  const collagePhotos = useMemo(
+    () => getFocusedGalleryCollagePhotos(memory.images, memory.order, focusedOrder),
+    [focusedOrder, memory.images, memory.order],
+  )
+  const collageSettings = useMemo<Readonly<CollageRevealSettings>>(() => ({
+    particleCount: settings.collageParticleCount,
+    particleSize: settings.collageParticleSize,
+    noiseStrength: settings.collageNoiseStrength,
+    depth: settings.collageDepth,
+    glow: settings.collageGlow,
+    assembleDuration: settings.collageAssembleDuration,
+    revealDuration: settings.collageRevealDuration,
+    staggerDelay: settings.collageStaggerDelay,
+    particleEnabled: getGalleryCollageConfig(memory.id).particleEnabled,
+  }), [
+    memory.id,
+    settings.collageAssembleDuration,
+    settings.collageDepth,
+    settings.collageGlow,
+    settings.collageNoiseStrength,
+    settings.collageParticleCount,
+    settings.collageParticleSize,
+    settings.collageRevealDuration,
+    settings.collageStaggerDelay,
+  ])
+  const backplate = useMemo(() => createGalleryWaterReflectionBackplate(width, height), [height, width])
+  useEffect(() => () => {
+    backplate.geometry.dispose()
+    backplate.material.dispose()
+  }, [backplate])
   const frameParticles = useMemo(
     () => createFrameParticleGeometry(width, height, memory.order + 17, { frameIntensity: settings.frameIntensity }),
     [height, memory.order, settings.frameIntensity, width],
   )
   useEffect(() => () => frameParticles.dispose(), [frameParticles])
-  const [x, y, z] = memoryPosition(memory)
+  const layout = settings.galleryLayoutVariant === 'between-columns' ? settings.galleryLayoutB : settings.galleryLayoutA
+  const [x, y, z] = memoryPosition(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout, settings)
+  const supportPositions = galleryColumnPositions(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
+  const photoYaw = galleryPhotoYaw(memory, settings.galleryLayoutVariant)
+  const supportLocalPositions = useMemo(
+    () => gallerySupportLocalPositions(settings.galleryLayoutVariant, [x, y, z], supportPositions),
+    [settings.galleryLayoutVariant, x, y, z, supportPositions],
+  )
 
   const applyArtSettings = useCallback((alpha = visual.current.alpha, focusAmount = visual.current.focusAmount) => {
     const frameIntensity = Math.max(0, Math.min(2, settings.frameIntensity))
@@ -234,24 +537,48 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   useEffect(() => { applyArtSettings() }, [applyArtSettings])
 
   useFrame(({ camera }) => {
-    if (!group.current || paused || document.hidden) return
+    if (!group.current || !supportGroup.current || !visualGroup.current || document.hidden) return
     const m = galleryMotion
     const t = Math.min(1, m.intro / (reducedMotion ? 0.35 : GALLERY.intro))
     const e = t * t * (3 - 2 * t)
     const first = memory.order === 0
-    group.current.position.set(first ? x * e : x, y + (reducedMotion ? 0 : Math.sin(m.time * 0.3 + memory.order) * 0.025), first ? z * e : z)
-    if (first) group.current.scale.setScalar(1 + 0.35 * e)
-    if (first) group.current.rotation.set(reducedMotion ? 0 : -0.022 * (1 - e), (reducedMotion ? 0 : 0.065 * (1 - e)) - memory.side * GALLERY_ART.wallYaw * e, reducedMotion ? 0 : -0.009 * (1 - e))
-    else group.current.rotation.y = -memory.side * GALLERY_ART.wallYaw
+    group.current.position.set(first ? x * e : x, y, first ? z * e : z)
+    group.current.scale.setScalar(first ? 1 + 0.35 * e : 1)
+    const photoOffsetZ = camera.position.z - (first ? z * e : z)
+    const photoFocusMix = m.focusIndex === memory.order ? m.focusMix : 0
+    const approachYaw = galleryPhotoApproachYaw(memory, settings.galleryLayoutVariant, photoOffsetZ, settings.galleryPhotoFacingMaxDegrees, photoFocusMix)
+    group.current.rotation.set(0, first && settings.galleryLayoutVariant === 'on-columns' ? (reducedMotion ? 0 : 0.065 * (1 - e)) + photoYaw * e : approachYaw, 0)
+    const [columnX, columnY, columnZ] = settings.galleryLayoutVariant === 'between-columns'
+      ? [x, y, z]
+      : supportPositions[0]!
+    const animateSupportsWithPhoto = first && settings.galleryLayoutVariant === 'on-columns'
+    supportGroup.current.position.set(
+      animateSupportsWithPhoto ? columnX * e : columnX,
+      animateSupportsWithPhoto ? columnY * e : columnY,
+      animateSupportsWithPhoto ? columnZ * e : columnZ,
+    )
+    supportGroup.current.scale.setScalar(gallerySupportGroupScale(
+      settings.galleryLayoutVariant,
+      first ? 1 + 0.35 * e : 1,
+    ))
+    supportGroup.current.rotation.set(0, settings.galleryLayoutVariant === 'between-columns' ? 0 : group.current.rotation.y, 0)
+    visualGroup.current.position.set(0, reducedMotion ? 0 : Math.sin(m.time * 0.3 + memory.order) * 0.025, 0)
+    visualGroup.current.scale.setScalar(1)
+    visualGroup.current.rotation.set(first && !reducedMotion ? -0.022 * (1 - e) : 0, 0, first && !reducedMotion ? -0.009 * (1 - e) : 0)
 
     const visible = first ? 1 : Math.max(0, Math.min(1, (m.intro - memory.order * 0.15) / 1.4))
-    const selected = gallerySnapshot().focus === memory.order
+    const snapshot = gallerySnapshot()
+    const selected = snapshot.focus === memory.order
     const focusTarget = m.focusMix > 0.001 && m.focusIndex === memory.order
     const focusAmount = m.focusIndex === memory.order ? Math.max(0, Math.min(1, m.focusMix)) : 0
-    const photoPosition = group.current.getWorldPosition(worldPosition)
+    const timelineDirection: -1 | 0 | 1 = selected
+      ? snapshot.interaction === 'returning' ? -1 : snapshot.interaction === 'focusing' || snapshot.interaction === 'focused' ? 1 : 0
+      : 0
+    const photoPosition = visualGroup.current.getWorldPosition(worldPosition)
+    const photoDistance = camera.position.distanceTo(photoPosition)
     moonPosition.set(settings.moonPositionX, settings.moonPositionY, settings.moonPositionZ)
     moonDirection.subVectors(moonPosition, photoPosition)
-    group.current.getWorldDirection(photoNormal)
+    visualGroup.current.getWorldDirection(photoNormal)
     const moonIllumination = getMoonPhotoIllumination(
       photoNormal,
       moonDirection,
@@ -269,16 +596,21 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     for (const material of frameHaloMaterials.current) {
       material?.color.copy(FRAME_HALO_BASE_COLOR).lerp(configuredMoonColor, tintStrength)
     }
-    const photoDistance = camera.position.distanceTo(photoPosition)
     const distanceAlpha = galleryDistanceOpacity(photoDistance)
     const focusAlpha = galleryFocusOpacity(m.focusMix, selected)
-    const alpha = visible * (1 - m.exit / GALLERY.exit) * focusAlpha * distanceAlpha
+    const exitMix = m.exit / GALLERY.exit
+    const exitOpacity = 1 - exitMix
+    const alpha = visible * exitOpacity * focusAlpha * distanceAlpha
+    // Columns belong to the gallery architecture, so focusing a photo may fade
+    // neighboring photos but must not fade their columns with them.
+    columnOpacity.current = galleryColumnOpacity(visible, exitMix, distanceAlpha)
     for (const saved of materials.current) {
       setMaterialAlpha(saved, alpha)
       setFocusFog(saved.material, focusTarget)
     }
     group.current.visible = visible > 0 && distanceAlpha > 0 && alpha > 0.001
-    visual.current = { alpha, focusAmount }
+    supportGroup.current.visible = group.current.visible && settings.columnVisible
+    visual.current = { alpha, focusAmount, timelineDirection }
 
     setShaderUniform(photoMaterialRef.current, 'uAlpha', alpha)
     setShaderUniform(photoMaterialRef.current, 'uBlur', galleryPhotoBlurAtFocus(photoDistance, focusAmount))
@@ -290,10 +622,30 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   })
 
   return <>
+    <group ref={supportGroup} renderOrder={GALLERY_MEMORY_RENDER_ORDER}>
+      {supportPositions.map(([supportX], index) => <group
+        key={index}
+        position={supportLocalPositions[index] ?? [0, 0, 0]}
+      >
+        <GalleryColumn
+          visible={settings.columnVisible}
+          scale={settings.columnScale}
+          depth={settings.columnDepth}
+          offsetX={gallerySupportColumnOffsetX(supportX, settings.galleryLayoutVariant, settings.columnOffsetX)}
+          offsetY={settings.columnOffsetY}
+          opacity={columnOpacity}
+        />
+      </group>)}
+    </group>
     <group ref={group} renderOrder={GALLERY_MEMORY_RENDER_ORDER} onClick={(event) => { event.stopPropagation(); if (!paused) galleryFocus(memory.order) }}>
-      <mesh position={[0, 0, -0.04]}><boxGeometry args={[width + 0.08, height + 0.08, 0.07]} /><meshStandardMaterial color="#171b23" roughness={0.96} metalness={0.02} /></mesh>
+      <group ref={visualGroup}>
+      <primitive object={backplate} />
       <mesh position={[0, 0, -0.07]}><planeGeometry args={[width + 0.36, height + 0.36]} /><meshBasicMaterial ref={glow} map={halo} color="#ffd7b0" transparent opacity={0.2} depthWrite={false} blending={AdditiveBlending} toneMapped={false} /></mesh>
-      {memory.order === 0 ? <FirstMemoryCard photoMaterial={photoMaterial} frameTone="moonlight" /> : memory.image ? <Photo url={memory.image} width={width} height={height} fallback={image} onAspect={setAspect} material={photoMaterialRef} /> : <mesh><planeGeometry args={[width, height]} /><primitive object={photoMaterial} attach="material" /></mesh>}
+      {memory.order === 0 && memory.id === 'demo-start-photo'
+        ? <FirstMemoryCard photoMaterial={photoMaterial} frameTone="moonlight" />
+        : memory.image
+          ? <Photo url={memory.image} width={width} height={height} fallback={image ?? firstPhoto} onAspect={setAspect} material={photoMaterialRef} />
+          : <mesh><planeGeometry args={[width, height]} /><primitive object={photoMaterial} attach="material" /></mesh>}
       {([-1, 1] as const).map(side => <group key={side}>
         <mesh position={[0, side * (height / 2 + 0.025), 0.01]}>
           <planeGeometry args={[width + 0.36, 0.16]} />
@@ -312,8 +664,24 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
           <meshBasicMaterial ref={(material) => { contourMaterials.current[side === -1 ? 2 : 3] = material }} color="#f4dcc0" transparent opacity={0.62} depthWrite={false} toneMapped={false} blending={AdditiveBlending} />
         </mesh>
       </group>)}
+      {collagePhotos.map(({ slot, url }) => <CollageExtraPhoto
+        key={slot}
+        url={url}
+        slot={slot}
+        side={memory.side}
+        mainWidth={width}
+        mainHeight={height}
+        fallback={image ?? firstPhoto}
+        focusVisual={visual}
+        seed={memory.order * 37 + slot * 101}
+        settings={collageSettings}
+        reducedMotion={reducedMotion}
+        paused={paused}
+      />)}
       <points geometry={frameParticles}><primitive object={frameMaterial} attach="material" /></points>
-      <mesh position={[0, -height / 2 - 0.34, 0.02]}><planeGeometry args={[3.4, 0.33]} /><meshBasicMaterial ref={captionMaterial} map={caption} transparent opacity={0.65} depthWrite={false} toneMapped={false} /></mesh>
+      {caption && <mesh position={[0, -height / 2 - 0.34, 0.02]}><planeGeometry args={[3.4, 0.33]} /><meshBasicMaterial ref={captionMaterial} map={caption} transparent opacity={0.65} depthWrite={false} toneMapped={false} />
+      </mesh>}
+      </group>
     </group>
   </>
 }
@@ -365,7 +733,15 @@ function Dust({ low, reducedMotion, settings }: { low: boolean; reducedMotion: b
   </points>
 }
 function MemoryThreads({ settings, low, paused, halo }: { settings: GalleryArtSettings; low: boolean; paused: boolean; halo: CanvasTexture }) {
-  const paths = useMemo(() => createMemoryThreadPaths(GALLERY_MEMORIES), [])
+  const layout = settings.galleryLayoutVariant === 'between-columns' ? settings.galleryLayoutB : settings.galleryLayoutA
+  const { columnDepth, columnScale, galleryLayoutVariant, galleryWidth } = settings
+  const paths = useMemo(() => createMemoryThreadPaths(
+    GALLERY_MEMORIES,
+    galleryWidth,
+    galleryLayoutVariant,
+    layout,
+    { columnDepth, columnScale },
+  ), [columnDepth, columnScale, galleryLayoutVariant, galleryWidth, layout])
   const geometries = useMemo(
     () => paths.map(path => createMemoryThreadGeometry(path, { segments: low ? 22 : 38, radius: 0.01, radialSegments: 4 })),
     [low, paths],
@@ -423,6 +799,7 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
     <color attach="background" args={[skyColor]} />
     <fog attach="fog" args={[skyColor, 55, 208 - settings.hazeDensity * 14]} />
     <MoonlitWorld settings={settings} quality={quality} halo={halo} reducedMotion={reducedMotion} />
+    <GalleryArch settings={settings} />
     <Dust low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
     {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} />)}
     <MemoryThreads settings={settings} low={quality === 'low'} paused={state.paused} halo={halo} />

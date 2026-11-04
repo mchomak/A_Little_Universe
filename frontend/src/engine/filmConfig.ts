@@ -261,7 +261,7 @@ export interface SceneConfig {
 export const SCENES: Record<SceneId, SceneConfig> = {
   prologue: { id: 'prologue', label: 'Пролог', duration: TIMING.prologue.duration, entryMode: 'playing' },
   growth: { id: 'growth', label: 'Рост', duration: TIMING.growth.duration, entryMode: 'playing' },
-  bloom: { id: 'bloom', label: 'Раскрытие', duration: TIMING.bloom.duration, entryMode: 'waiting' },
+  bloom: { id: 'bloom', label: 'Раскрытие', duration: TIMING.bloom.duration, entryMode: 'playing' },
   identity: { id: 'identity', label: 'Василиса', duration: TIMING.identity.duration, entryMode: 'playing' },
   gallery: { id: 'gallery', label: 'Галерея', duration: TIMING.gallery.duration, entryMode: 'exploring' },
   eye: { id: 'eye', label: 'Глаз', duration: TIMING.eye.duration, entryMode: 'playing' },
@@ -274,7 +274,7 @@ export const COPY = {
   prologueFirst: 'Я долго думал, что тебе подарить…',
   prologueSecond: 'И решил начать с одной маленькой искры.',
   prologueSecondLegacy: 'И решил, что ты заслуживаешь чего-то особенного:',
-  seedPrompt: 'Прикоснись к свету', flowerPrompt: 'Прикоснись к бутону', name: 'ВАСИЛИСА',
+  seedPrompt: 'Прикоснись к свету', name: 'ВАСИЛИСА',
   portrait: 'Портрет — временный placeholder', photo: 'Фотография — временный placeholder',
   photoCaption: 'С этого всё началось', greetingTitle: 'С днём рождения, Василиса!',
   greetingWish: 'Пусть в твоей жизни всегда будет место для чего-то по-настоящему волшебного',
