@@ -2,7 +2,7 @@ window.STATE =
 {
   "slug": "lily-a1-final",
   "dir": "2026-11-01-lily-a1-final--wip",
-  "title": "A1 — Финальная доработка лилии",
+  "title": "A1 — материалы лилии",
   "mode": "full",
   "depth": "normal",
   "polish": null,
@@ -10,53 +10,53 @@ window.STATE =
   "briefFile": "2026-11-01-brief.md",
   "memoryFile": "AGENTS.md",
   "skillDir": "C:\\Users\\McHomak\\.agents\\skills\\autopilot",
-  "startedAt": "2026-11-01T22:06:51+03:00",
-  "updatedAt": "2026-11-01T22:43:05+03:00",
-  "finishedAt": "2026-11-01T22:43:05+03:00",
+  "startedAt": "2026-11-01T23:18:07+03:00",
+  "updatedAt": "2026-11-02T00:21:08+03:00",
+  "finishedAt": "2026-11-02T00:21:08+03:00",
   "stages": [
     {
       "id": "preflight",
       "status": "done",
-      "startedAt": "2026-11-01T22:06:51+03:00"
+      "startedAt": "2026-11-01T23:18:07+03:00"
     },
     {
       "id": "manifest",
       "status": "done",
-      "startedAt": "2026-11-01T22:06:51+03:00"
+      "startedAt": "2026-11-01T23:18:07+03:00"
     },
     {
       "id": "briefing",
       "status": "skipped",
-      "startedAt": "2026-11-01T22:06:51+03:00"
+      "startedAt": "2026-11-01T23:18:07+03:00"
     },
     {
       "id": "spec",
       "status": "done",
-      "startedAt": "2026-11-01T22:06:51+03:00"
+      "startedAt": "2026-11-01T23:18:07+03:00"
     },
     {
       "id": "plan",
-      "status": "skipped",
-      "startedAt": "2026-11-01T22:06:51+03:00"
+      "status": "done",
+      "startedAt": "2026-11-01T23:18:07+03:00"
     },
     {
       "id": "build",
       "status": "failed",
-      "startedAt": "2026-11-01T22:06:51+03:00",
-      "finishedAt": "2026-11-01T22:43:05+03:00",
-      "note": "Доработка остановлена до изменений модели"
+      "startedAt": "2026-11-01T23:18:07+03:00",
+      "finishedAt": "2026-11-02T00:21:08+03:00"
     },
     {
       "id": "review",
-      "status": "skipped",
-      "startedAt": "2026-11-01T22:06:51+03:00",
-      "note": "Модель не изменена"
+      "status": "failed",
+      "startedAt": "2026-11-01T23:18:07+03:00",
+      "finishedAt": "2026-11-02T00:21:08+03:00",
+      "note": "Финальный GLB несовместим"
     },
     {
       "id": "final",
       "status": "done",
-      "startedAt": "2026-11-01T22:43:05+03:00",
-      "finishedAt": "2026-11-01T22:43:05+03:00"
+      "startedAt": "2026-11-02T00:21:08+03:00",
+      "finishedAt": "2026-11-02T00:21:08+03:00"
     }
   ],
   "requirements": {
@@ -71,12 +71,12 @@ window.STATE =
   "tickets": [],
   "singlePass": {
     "status": "failed",
-    "reason": "Остановлено по условию брифа: существующие тёмные промежутки в раскрытой модели требуют рискованного изменения анимированной геометрии; модель не менялась.",
-    "finishedAt": "2026-11-01T22:43:05+03:00"
+    "finishedAt": "2026-11-02T00:21:08+03:00",
+    "reason": "Финальный GLB изменил данные клипов и morph defaults; остановлено по брифу."
   },
   "tests": {
-    "baseline": "npm run check: 89 files, 421 tests, build passed",
-    "candidate": "не проводились: доработка не выполнялась"
+    "runtime": "npm run check: 89 файлов, 421 тест, сборка успешна",
+    "candidate": "не пройдено: структура, позы, частицы"
   },
   "debt": {
     "placeholders": [],
