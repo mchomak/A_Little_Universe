@@ -373,13 +373,6 @@ export function useReviewNotes(state: FilmState, dispatch: Dispatch<FilmAction>,
             await waitForState(() => stateRef.current.scene === 'prologue' && stateRef.current.paused, controller.signal)
             await saveShot('prologue', 'Переход после касания · середина', runtime.time)
           }
-        } else if (sceneId === 'bloom' && sceneState.mode === 'waiting') {
-          await saveShot('bloom', 'Закрытый бутон · ожидание касания', 0)
-          setProgress('Нажмите на бутон лилии в фильме, чтобы снять раскрытие')
-          await waitForState(() => stateRef.current.scene === 'bloom' && stateRef.current.mode === 'playing', controller.signal, 120000)
-          dispatch({ type: 'toggle-pause' })
-          await waitForState(() => stateRef.current.scene === 'bloom' && stateRef.current.paused, controller.signal)
-          for (const checkpoint of frameExportCheckpoints('bloom', config).filter(point => point.time > 0)) await seekAndCapture('bloom', checkpoint)
         } else {
           const checkpoint = frameExportCheckpoints(sceneId, config)[0]!
           await saveShot(sceneId, checkpoint.label, runtime.time)

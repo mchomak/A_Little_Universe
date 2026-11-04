@@ -1,6 +1,6 @@
 import { gsap } from 'gsap'
 import { expect, it, vi } from 'vitest'
-import { filmReducer, initialFilmState, type FilmAction } from './film'
+import { filmDuration, filmReducer, initialFilmState, type FilmAction } from './film'
 import { createFilmClock, createFilmRuntime } from './runtime'
 
 it('holds the scene clock while its pending resources load and respects user pause on release', () => {
@@ -71,26 +71,15 @@ it('keeps canonical waiting time at eighteen while one controlled presentation c
   impulse.dispose()
 })
 
-it('runs IdleClosed presentation time while bloom waits without advancing the film timeline', async () => {
+it('runs the Bloom scene clock automatically after growth hands off', () => {
   const runtime = createFilmRuntime()
   const actions: FilmAction[] = []
-  const state = { ...initialFilmState, scene: 'bloom' as const, mode: 'waiting' as const }
-  const waiting = createFilmClock({ state, runtime, dispatch: (action) => actions.push(action) })
+  let state = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'growth' }, true)
+  state = filmReducer(state, { type: 'timeline-update', time: filmDuration(state), revision: state.revision })
+  state = filmReducer(state, { type: 'timeline-complete', revision: state.revision })
+  expect([state.scene, state.mode, state.elapsed]).toEqual(['bloom', 'playing', 0])
 
-  waiting.timeline.totalTime(2.25)
-  expect(runtime.time).toBe(0)
-  expect(runtime.presentationTime).toBeCloseTo(2.25)
-  expect(actions).toEqual([])
-  waiting.sync({ ...state, paused: true })
-  const frozenPresentation = runtime.presentationTime
-  expect(runtime.presentationTime).toBe(frozenPresentation)
-  expect(waiting.timeline.paused()).toBe(true)
-  await new Promise((resolve) => setTimeout(resolve, 40))
-  expect(runtime.presentationTime).toBe(frozenPresentation)
-  waiting.dispose()
-
-  const opening = filmReducer(state, { type: 'interact' })
-  const bloom = createFilmClock({ state: opening, runtime, dispatch: (action) => actions.push(action) })
+  const bloom = createFilmClock({ state, runtime, dispatch: (action) => actions.push(action) })
   bloom.timeline.time(1.5)
   expect(runtime.time).toBeCloseTo(1.5)
   expect(actions.at(-1)).toMatchObject({ type: 'timeline-update', time: 1.5 })

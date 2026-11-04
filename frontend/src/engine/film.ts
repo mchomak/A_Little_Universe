@@ -57,9 +57,8 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
     case 'dev-seek': {
       if (!Number.isFinite(action.time)) return state
       const duration = getSceneDuration(state.scene)
-      const closedBud = state.scene === 'bloom' && state.mode === 'waiting'
-      const elapsed = closedBud ? 0 : Math.max(0, Math.min(action.time, duration))
-      const resumeTimed = !closedBud && duration > 0 && (state.mode === 'waiting' || state.mode === 'ready')
+      const elapsed = Math.max(0, Math.min(action.time, duration))
+      const resumeTimed = duration > 0 && (state.mode === 'waiting' || state.mode === 'ready')
       return { ...state, elapsed, mode: resumeTimed || state.mode === 'transitioning' ? 'playing' : state.mode, revision: state.revision + 1 }
     }
     case 'set-speed':
@@ -91,7 +90,6 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
       if (state.mode !== 'waiting' || state.paused || state.reading) return state
       if (state.scene === 'prologue') return { ...state, mode: 'transitioning', elapsed: TIMING.prologue.duration,
         prologueTouchDuration: getPrologueTouchDuration(), revision: state.revision + 1 }
-      if (state.scene === 'bloom') return { ...state, elapsed: 0, mode: 'playing', revision: state.revision + 1 }
       return state
     case 'timeline-update':
       if ((state.mode !== 'playing' && state.mode !== 'transitioning') || state.paused || state.reading || action.revision !== state.revision || !Number.isFinite(action.time)) return state

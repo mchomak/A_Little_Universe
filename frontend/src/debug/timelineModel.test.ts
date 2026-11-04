@@ -41,6 +41,7 @@ describe('scene editor timeline', () => {
     } }
     const frames = timelineFrames('bloom', config)
     expect(frames.map(({ start }) => start)).toEqual([0, 11])
+    expect(frames[0]?.label).toBe('03 Раскрытие лилии')
     expect(getSceneDuration('bloom', config)).toBe(17)
   })
   it('shows the active galaxy slowdown and greeting beats without the retired bouquet marker', () => {
@@ -60,10 +61,10 @@ describe('scene editor timeline', () => {
     expect(replayLetter.map(({ start }) => start)).toEqual([0, 30, 30])
     expect(replayLetter.map(({ label }) => label)).toEqual(['08.6 Повторное письмо', '08.7 Завершение титров', '09 Постоянный финал'])
   })
-it('does not seek through waiting for a bud, gallery, preload, transition or reading', () => {
+it('allows seeking during automatic bloom and blocks gallery, preload, transition or reading', () => {
     const bloom = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'bloom' }, true)
-    expect(canSeekTimeline(bloom, true)).toBe(false)
-    expect(canSeekTimeline(filmReducer(bloom, { type: 'interact' }), true)).toBe(true)
+    expect(canSeekTimeline(bloom, true)).toBe(true)
+    expect(filmReducer(bloom, { type: 'dev-seek', time: 3 }, true).elapsed).toBe(3)
     expect(canSeekTimeline(filmReducer(bloom, { type: 'dev-jump', scene: 'gallery' }, true), true)).toBe(false)
     expect(canSeekTimeline({ ...initialFilmState, mode: 'playing' }, false)).toBe(false)
     expect(canSeekTimeline({ ...initialFilmState, mode: 'transitioning' }, true)).toBe(false)

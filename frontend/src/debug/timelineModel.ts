@@ -23,7 +23,7 @@ export function timelineFrames(scene: SceneId, config: SceneComposerConfig, cred
       { label: '02.4 Рост и передача', start: g.handoff[0] },
       { label: '02.5 Завершение роста', start: g.settle[0] },
     ]
-    case 'bloom': return [{ label: '03 Ожидание / раскрытие', start: 0 }, { label: '03.6 Созерцание', start: getBloomSceneFrames(config.scenes.bloom).contemplate[0] }]
+    case 'bloom': return [{ label: '03 Раскрытие лилии', start: 0 }, { label: '03.6 Созерцание', start: getBloomSceneFrames(config.scenes.bloom).contemplate[0] }]
     case 'identity': return [{ label: '04.1 Растворение лилии', start: 0 }]
     case 'gallery': return [{ label: '05 Галерея · свободный просмотр', start: 0 }]
     case 'eye': return [{ label: '06 Голубой глаз', start: 0 }, { label: '06.5 Приближение', start: TIMING.eye.approach[0] }]
@@ -59,7 +59,7 @@ export function timelineFrames(scene: SceneId, config: SceneComposerConfig, cred
 
 export function canSeekTimeline(state: FilmState, filmVisible: boolean, config?: SceneComposerConfig): boolean {
   return filmVisible && getSceneDuration(state.scene, config) > 0 && state.mode !== 'ready' && state.mode !== 'transitioning'
-    && !(state.scene === 'bloom' && state.mode === 'waiting') && !state.reading
+    && !state.reading
 }
 
 export function activeFrameIndex(frames: TimelineFrame[], elapsed: number): number {

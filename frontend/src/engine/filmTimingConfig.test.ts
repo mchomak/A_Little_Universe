@@ -70,14 +70,16 @@ it('retimes a paused Growth scene from its frozen canonical runtime time when th
   }
 })
 
-it('keeps the Bloom touch gate at time zero while retiming its configured opening', async () => {
+it('retimes the automatic Bloom opening when its configured duration changes', async () => {
   const dispatch = vi.fn()
-  const state = { ...initialFilmState, scene: 'bloom' as const, mode: 'waiting' as const, paused: true }
+  const state = { ...initialFilmState, scene: 'bloom' as const, mode: 'playing' as const, paused: true, elapsed: 5 }
   const unsubscribe = subscribeFilmTimingConfig({ getState: () => state, getRuntimeTime: () => 5, dispatch, enabled: true })
 
   try {
+    const before = getConfig()
     await updateConfig({ scenes: { bloom: { flowerBloomDuration: 12 } } })
-    expect(dispatch).toHaveBeenCalledWith({ type: 'dev-seek', time: 0 })
+    const after = getConfig()
+    expect(dispatch).toHaveBeenCalledWith({ type: 'dev-seek', time: retimeSceneElapsed('bloom', 5, before, after, 'playing') })
   } finally {
     unsubscribe()
   }

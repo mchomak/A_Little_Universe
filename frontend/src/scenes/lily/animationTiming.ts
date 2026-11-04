@@ -51,12 +51,3 @@ export function getSyncedBloomClipTime(
     : sync * clipEnd + ((elapsed - approach) / Math.max(0.001, duration - approach)) * (1 - sync) * clipEnd
   return Math.min(clipEnd, Math.max(0, clipTime))
 }
-
-export function getIdleClosedClipTime(presentationTime: number, clipDuration: number, reducedMotion: boolean): number {
-  return reducedMotion ? 0 : getLoopingClipTime(presentationTime, clipDuration)
-}
-
-export function getLoopingClipTime(presentationTime: number, clipDuration: number): number {
-  if (!Number.isFinite(presentationTime) || !Number.isFinite(clipDuration) || clipDuration <= 0) return 0
-  return ((presentationTime % clipDuration) + clipDuration) % clipDuration
-}

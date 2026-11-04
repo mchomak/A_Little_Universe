@@ -1,4 +1,4 @@
-import { createElement, Fragment, Suspense, type ReactNode } from 'react'
+import { createElement, Suspense } from 'react'
 import { renderToString } from 'react-dom/server'
 import { expect, it, vi } from 'vitest'
 
@@ -16,7 +16,6 @@ vi.mock('../scenes/CosmosScene', () => ({ CosmosScene: () => null }))
 vi.mock('../scenes/GreetingScene', () => ({ GreetingScene: () => null }))
 vi.mock('../scenes/EndingScene', () => ({ EndingScene: () => null }))
 vi.mock('../scenes/lily/AnimatedLily', () => ({ AnimatedLily: () => createElement('span', null, 'persistent-lily') }))
-vi.mock('../scenes/lily/BloomGestureTarget', () => ({ BloomGestureTarget: ({ children }: { children?: ReactNode }) => createElement(Fragment, null, children) }))
 vi.mock('../scenes/galaxy/GalaxyExperience', () => ({ GalaxyExperience: () => null }))
 
 import { SceneDirector } from './SceneDirector'
