@@ -19,3 +19,24 @@ export function getLilyPortraitPhotoLastArrivalTime(
 
   return latestArrival
 }
+
+export const LILY_PORTRAIT_PHOTO_PAUSE_SECONDS = 0.85
+export const LILY_PORTRAIT_PHOTO_REVEAL_SECONDS = 3.2
+export const LILY_PORTRAIT_PHOTO_FINAL_HOLD_SECONDS = 1.25
+
+/** An absolute-time reveal clock stays reversible under pause, seek, resize and replay. */
+export function getLilyPortraitPhotoRevealProgress(
+  time: number,
+  lastArrival: number,
+  pause = LILY_PORTRAIT_PHOTO_PAUSE_SECONDS,
+  duration = LILY_PORTRAIT_PHOTO_REVEAL_SECONDS,
+) {
+  const sceneTime = Number.isFinite(time) ? Math.max(0, time) : 0
+  const arrival = Number.isFinite(lastArrival) ? Math.max(0, lastArrival) : 0
+  const pauseDuration = Number.isFinite(pause) ? Math.max(0, pause) : LILY_PORTRAIT_PHOTO_PAUSE_SECONDS
+  const revealDuration = Number.isFinite(duration) ? Math.max(0, duration) : LILY_PORTRAIT_PHOTO_REVEAL_SECONDS
+  const revealStart = arrival + pauseDuration
+  if (sceneTime <= revealStart) return 0
+  if (revealDuration === 0) return 1
+  return Math.min(1, Math.max(0, (sceneTime - revealStart) / revealDuration))
+}
