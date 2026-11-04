@@ -23,7 +23,7 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 
 `images/phone_1.png` — DOM/CSS-фон загрузки 00 и сцен 01–04; при входе в галерею 05 он скрывается. Начальный кадр увеличен, во время падения семени видимая область плавно движется вниз и сохраняет положение в сценах 03–04. `cover` заполняет экран без пустых краёв. DEV Scene Editor в development или в локальном production preview (`http://127.0.0.1:4173/?debug`) меняет общий профиль `scenes.openingBackground.{zoom, offsetX, offsetY}`; в секции «00–04 · Кадрирование фона» доступны живой предпросмотр и сброс. Масштаб: 1–3, смещения: −1…1, по умолчанию: 1/0/0.
 
-Схема Scene Composer v21 принимает JSON v1–v21; старые файлы сцен 02 и 05 мигрируются с сохранением известных настроек, экспортируется версия 21.
+Схема Scene Composer v22 принимает JSON v1–v22; старые файлы сцен 02 и 05 мигрируются с сохранением известных настроек, а Lily appearance/pollen остаются совместимы со всеми предыдущими версиями. Экспортируется версия 22.
 
 ## Пресеты Scene Editor
 
@@ -38,6 +38,10 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 ## Портретная фотография сцены 04
 
 Используется существующий отслеживаемый оригинал `frontend/src/assets/start_img.jpg`. Плоскость фото и частицы должны совпадать по UV и камере через `portraitIntegration.ts` (`createLilyPortraitCameraBasisAtTime`, `placeLilyPortraitTargets`); точки интеграции — `LilyDissolveParticles` и `SceneDirector` в общей WebGL-канве. Проявление рассчитывается от фактической посадки последней портретной частицы, начинается от лица после отдельной паузы и завершается точным совпадением с оригиналом. `identityRestoration.ts` — исторический ориентир; фиксированный тайминг и ранние фронты старого алгоритма не подходят.
+
+## Рост и раскрытие лилии
+
+`AnimatedLily` остаётся одним экземпляром GLB для сцен 02–04; appearance uniforms совмещаются с dissolve shader. Рост, bloom, вихрь и пыльца обновляются по film time, с posed anchors цветка и тычинок. Настройки `scenes.growth.{lilyBudGlow,lilyLeafMaterial,growthVortex}` и `scenes.bloom.lilyBloomPollen` доступны в DEV Scene Editor и сохраняются в отдельном локальном черновике без сброса остальных полей.
 
 ## Команды (PowerShell 5, из корня проекта)
 

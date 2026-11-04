@@ -135,6 +135,20 @@ it('shows only the active scene controls and keeps playback in the timeline', ()
   expect(markup).toMatch(/id="composer-scenes-growth-vfxParticleLifetime"[^>]*value="2\.3"/)
   expect(markup).toMatch(/id="composer-scenes-growth-vfxParticleSpread"[^>]*value="0\.65"/)
   expect(markup).toContain('id="composer-scenes-growth-vfxParticleTint"')
+  expect(markup).toContain('<summary>Lily Bud Glow</summary>')
+  expect(markup).toMatch(/id="composer-scenes-growth-lilyBudGlow-enabled"[^>]*type="checkbox"[^>]*checked=""/)
+  expect(markup).toMatch(/id="composer-scenes-growth-lilyBudGlow-intensity"[^>]*min="0" max="2" step="0\.05" value="0\.48"/)
+  expect(markup).toContain('id="composer-scenes-growth-lilyBudGlow-color"')
+  expect(markup).toContain('<summary>Lily Leaf Material</summary>')
+  expect(markup).toContain('id="composer-scenes-growth-lilyLeafMaterial-translucencyStrength"')
+  expect(markup).toContain('id="composer-scenes-growth-lilyLeafMaterial-edgeLightIntensity"')
+  expect(markup).toContain('id="composer-scenes-growth-lilyLeafMaterial-colorVariation"')
+  expect(markup).toContain('<summary>Lily Growth Vortex</summary>')
+  expect(markup).toMatch(/id="composer-scenes-growth-growthVortex-enabled"[^>]*type="checkbox"[^>]*checked=""/)
+  expect(markup).toMatch(/id="composer-scenes-growth-growthVortex-particleCount"[^>]*min="0" max="1600" step="10" value="360"/)
+  expect(markup).toContain('id="composer-scenes-growth-growthVortex-rotationSpeed"')
+  expect(markup).toContain('id="composer-scenes-growth-growthVortex-dissipationDuration"')
+  expect(markup).toContain('id="composer-scenes-growth-growthVortex-color"')
   expect(markup).toContain('id="composer-scenes-growth-pearlColor"')
   expect(markup).not.toContain('composer-scenes-growth-moonPositionX')
   expect(markup).not.toContain('composer-scenes-growth-moonPositionZ')
@@ -145,6 +159,23 @@ it('shows only the active scene controls and keeps playback in the timeline', ()
   expect(markup).not.toContain('composer-scenes-prologue-windStrength')
   expect(markup).not.toContain('dev-seek')
   expect(markup).toContain('Auto')
+})
+
+it('exposes the Lily bloom pollen controls in Scene 03', () => {
+  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'bloom' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    route: 'film',
+  }))
+
+  expect(markup).toContain('<summary>Lily Bloom Pollen</summary>')
+  expect(markup).toMatch(/id="composer-scenes-bloom-lilyBloomPollen-enabled"[^>]*type="checkbox"[^>]*checked=""/)
+  expect(markup).toMatch(/id="composer-scenes-bloom-lilyBloomPollen-particleCount"[^>]*min="0" max="600" step="4" value="48"/)
+  expect(markup).toContain('id="composer-scenes-bloom-lilyBloomPollen-glowIntensity"')
+  expect(markup).toContain('id="composer-scenes-bloom-lilyBloomPollen-riseSpeed"')
+  expect(markup).toContain('id="composer-scenes-bloom-lilyBloomPollen-innerCupGlow"')
 })
 
 it('exposes bounded portrait assembly controls in the Scene 04 Inspector', () => {

@@ -1,6 +1,6 @@
 ﻿# Scene Composer configuration
 
-`SceneComposerConfig` is immutable schema version 21. `normalizeConfig(input)` accepts partial JSON from schema versions 1–21, discards unknown keys, and fills missing or invalid values with current defaults. The merged configuration preserves known legacy prologue, growth, gallery, identity, and galaxy settings. It includes the opening-background crop profile, current scene 02 growth and seed controls, and gallery controls for water and clouds, Ionic columns, the arch, and independent A/B photo layouts. Older saved presets remain importable and are normalized to the current defaults.
+`SceneComposerConfig` is immutable schema version 22. `normalizeConfig(input)` accepts partial JSON from schema versions 1–22, discards unknown keys, and fills missing or invalid values with current defaults. The merged configuration preserves known legacy prologue, growth, gallery, identity, and galaxy settings. It includes the opening-background crop profile, current scene 02 growth and seed controls, Lily appearance, growth vortex and bloom pollen, and gallery controls for water and clouds, Ionic columns, the arch, and independent A/B photo layouts. Older saved presets remain importable and are normalized to the current defaults.
 The public store is:
 
 - `normalizeConfig(input: unknown): SceneComposerConfig`
@@ -10,7 +10,7 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v21.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v22. Schema v21 gallery presets remain importable with their existing water, photo-layout, and crop values, while the new Lily groups receive current defaults unless explicitly saved.
 
 Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its 0.1–20 second travel-window meaning, with the cinematic default now 2.2 seconds; `particleFadeDuration` controls individual dust fade and defaults to 1.2 seconds. `particleReturnFraction` is ignored. The light, atmosphere, typography and interaction fields are additive schema-v2 fields: missing fields in both v1 and v2 files receive current defaults.
 
@@ -18,7 +18,7 @@ An optional production override can contain only values that differ from the def
 
 ```json
 {
-  "schemaVersion": 21,
+  "schemaVersion": 22,
   "global": { "quality": "low" },
   "scenes": {
     "openingBackground": {
@@ -49,6 +49,8 @@ An optional production override can contain only values that differ from the def
   }
 }
 ```
+
+Lily settings are stored under `scenes.growth.lilyBudGlow`, `scenes.growth.lilyLeafMaterial`, `scenes.growth.growthVortex`, and `scenes.bloom.lilyBloomPollen`. Scene Composer bounds each field before it reaches the render loop. In local DEV mode, these groups share the existing Lily VFX draft and restore without replacing unrelated growth, crop, or gallery settings.
 
 ## Normalization ranges
 

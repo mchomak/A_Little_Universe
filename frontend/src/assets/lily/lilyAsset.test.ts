@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs'
-import { AnimationClip, Group, LoopOnce, LoopRepeat, Mesh, Vector3, type Object3D } from 'three'
+import { AnimationClip, BufferGeometry, Float32BufferAttribute, Group, LoopOnce, LoopRepeat, Mesh, MeshBasicMaterial, Vector3, type Object3D } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import { expect, it } from 'vitest'
 import { getBloomSceneFrames, getGrowthSceneFrames } from '../../engine/filmConfig'
 import { getGrowthClipTime, getSyncedBloomClipTime } from '../../scenes/lily/animationTiming'
 import { LilyAnimationPlayer } from '../../scenes/lily/animationPlayer'
-import { createLilyGrowthVfx, getGrowthVfxBirthTime } from '../../scenes/lily/lilyGrowthVfx'
+import { createLilyGrowthVfx, getBloomPollenParticleLimit, getGrowthVfxBirthTime } from '../../scenes/lily/lilyGrowthVfx'
 import { createLilyGeometryParticleSource } from '../../scenes/lily/particleSource'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 
@@ -151,14 +151,20 @@ it('samples actual Growth geometry deterministically after forward and backward 
   expect(secondLeafBirth).toBeLessThan(firstLeafBirth)
   expect(firstLeafBirth).toBeLessThan(budBirth)
   const frames = getGrowthSceneFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth)
+  const bloomFrames = getBloomSceneFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom)
   const sample = (time: number, settings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth) => {
     const clipTime = getGrowthClipTime(time, frames, clip.duration)
     player.play('Growth', LoopOnce, 1)
     player.seek(clipTime)
-    effect.update({ scene: 'growth', time, clipTime, clipDuration: clip.duration, frames, pixelRatio: 1.5, reducedMotion: false, quality: 'standard' }, settings)
+    effect.update({
+      scene: 'growth', time, clipTime, clipDuration: clip.duration, frames, bloomFrames,
+      bloomClipTime: 0, bloomClipDuration: 16, bloomOpen: false, bloomElapsed: 0,
+      pixelRatio: 1.5, reducedMotion: false, quality: 'standard',
+    }, settings, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen)
     const opacity = Array.from(effect.geometry.getAttribute('aOpacity').array)
     const points = Array.from(effect.geometry.getAttribute('position').array)
     const glow = Array.from(effect.geometry.getAttribute('aGlow').array)
+    const magicParticleOffset = 30 + effect.particleSources.length
     const stemMesh = model.getObjectByName('Stem') as Mesh
     const stemPoint = new Vector3()
     let stemMinY = Infinity, stemMaxY = -Infinity
@@ -170,7 +176,8 @@ it('samples actual Growth geometry deterministically after forward and backward 
       stemMinY = Math.min(stemMinY, stemPoint.y); stemMaxY = Math.max(stemMaxY, stemPoint.y)
     }
     const visibleStemY: number[] = [], visibleLeafY: number[] = [], visibleBudY: number[] = []
-    for (let index = 30; index < glow.length; index++) {
+    const legacyParticleEnd = 30 + effect.particleSources.length
+    for (let index = 30; index < legacyParticleEnd; index++) {
       if (glow[index]! <= 0) continue
       const source = effect.particleSources[index - 30]
       if (opacity[index]! <= 0.1) continue
@@ -182,15 +189,16 @@ it('samples actual Growth geometry deterministically after forward and backward 
     return {
       positions: points,
       opacity,
-      particlePositions: points.slice(30 * 3),
-      particleOpacity: opacity.slice(30),
+      particlePositions: points.slice(30 * 3, legacyParticleEnd * 3),
+      particleOpacity: opacity.slice(30, legacyParticleEnd),
+      vortexOpacity: opacity.slice(magicParticleOffset, magicParticleOffset + 1600),
       pulsePositions: points.slice(0, 28 * 3),
       pulseOpacity: opacity.slice(0, 28),
       pulseColors: Array.from(effect.geometry.getAttribute('color').array).slice(0, 28 * 3),
       sizes: Array.from(effect.geometry.getAttribute('aSize').array),
       colors: Array.from(effect.geometry.getAttribute('color').array),
       glowStrength: effect.material.uniforms.uGlowStrength!.value as number,
-      visibleParticles: opacity.slice(30)
+      visibleParticles: opacity.slice(30, legacyParticleEnd)
         .reduce((total, value, index) => total + (value > 0.1 && effect.geometry.getAttribute('aGlow').getX(index + 30) > 0 ? 1 : 0), 0),
       visibleHeight: visibleStemY.length > 1 ? Math.max(...visibleStemY) - Math.min(...visibleStemY) : 0,
       stemHeight: stemMaxY - stemMinY,
@@ -209,6 +217,7 @@ it('samples actual Growth geometry deterministically after forward and backward 
   const early = sample(earlyTime)
   expect(early.visibleParticles).toBeGreaterThanOrEqual(40)
   expect(early.visibleParticles).toBeLessThanOrEqual(80)
+  expect(early.vortexOpacity.some(value => value > 0)).toBe(true)
   expect(early.visibleHeight / early.stemHeight).toBeGreaterThan(0.35)
   expect(early.lowerStemParticles).toBeGreaterThan(25)
   expect(early.upperStemParticles).toBeGreaterThan(25)
@@ -244,6 +253,11 @@ it('samples actual Growth geometry deterministically after forward and backward 
   expect(held).toEqual(middle)
   const later = sample(frames.model[1] - 0.3)
   expect(later.positions).not.toEqual(middle.positions)
+  const mutedVortex = sample(frames.model[1] - 0.3, {
+    ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth,
+    growthVortex: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex, enabled: false },
+  })
+  expect(mutedVortex.vortexOpacity.every(value => value === 0)).toBe(true)
   const rewind = sample(frames.handoff[1] + 1.2)
   expect(rewind).toEqual(middle)
   expect(rewind.opacity.some(value => value > 0)).toBe(true)
@@ -277,6 +291,215 @@ it('samples actual Growth geometry deterministically after forward and backward 
   player.dispose()
 })
 
+it('keeps the growth tail at the held pose and reveals pollen around the posed flower cup', async () => {
+  const source = readFileSync(new URL('./lily_004_final.glb', import.meta.url))
+  const gltf = await parseAnimationFixture(source)
+  const model = clone(gltf.scene) as Group
+  const wrapper = new Group()
+  wrapper.position.set(0, -1.45, 0)
+  wrapper.scale.setScalar(3)
+  wrapper.add(model)
+  const player = new LilyAnimationPlayer(model, gltf.animations)
+  const growthClip = gltf.animations.find(({ name }) => name === 'Growth')!
+  const bloomClip = gltf.animations.find(({ name }) => name === 'Bloom')!
+  const growthFrames = getGrowthSceneFrames()
+  const bloomFrames = getBloomSceneFrames()
+  const effect = createLilyGrowthVfx(wrapper, model, growthClip)
+  const bloomConfig = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen
+  const baseFrame = {
+    clipDuration: growthClip.duration, frames: growthFrames, bloomFrames, bloomClipDuration: bloomClip.duration,
+    bloomElapsed: 0,
+    pixelRatio: 1.5, reducedMotion: false, quality: 'standard' as const,
+  }
+  const opacity = effect.geometry.getAttribute('aOpacity')
+  const magicOffset = 30 + effect.particleSources.length
+  const pollenStart = magicOffset + 1600
+  const pollenEnd = pollenStart + 600
+
+  player.play('Growth', LoopOnce, 1)
+  player.seek(growthClip.duration)
+  effect.update({ ...baseFrame, scene: 'bloom', time: 0, clipTime: growthClip.duration, bloomClipTime: 0, bloomOpen: false },
+    DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, bloomConfig)
+  expect(Array.from(opacity.array).slice(pollenStart, pollenEnd).every(value => value === 0)).toBe(true)
+  expect(Array.from(opacity.array).slice(magicOffset, pollenStart).some(value => value > 0)).toBe(true)
+
+  player.play('Bloom', LoopOnce, 1)
+  const openingSample = 14.4
+  player.seek(openingSample)
+  effect.update({ ...baseFrame, scene: 'bloom', time: openingSample, clipTime: growthClip.duration,
+    bloomClipTime: openingSample, bloomOpen: true }, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, bloomConfig)
+  const openingPollen = Array.from(opacity.array).slice(pollenStart, pollenEnd)
+  const activeIndices = openingPollen.flatMap((value, index) => value > 0.015 ? [index] : [])
+  expect(activeIndices.length).toBeGreaterThan(0)
+  expect(activeIndices.length).toBeLessThan(bloomConfig.particleCount)
+
+  const cup = model.getObjectByName('Flower_Interior')!
+  const anthers: Mesh[] = []
+  const getSingleMaterial = (mesh: Mesh) => {
+    if (!Array.isArray(mesh.material)) return mesh.material
+    return mesh.material.length === 1 ? mesh.material[0] : undefined
+  }
+  model.traverse(object => {
+    if (!(object instanceof Mesh)) return
+    const material = getSingleMaterial(object)
+    if (!material || !/anther|filament/i.test(material.name)) return
+    expect(object.geometry.groups).toHaveLength(0)
+    anthers.push(object)
+  })
+  expect(anthers.map(mesh => {
+    const material = getSingleMaterial(mesh)
+    if (!material) throw new Error('Expected an anther mesh to have one material')
+    return material.name
+  }).sort()).toEqual(['Anther_SoftGold', 'Filament_Ivory'])
+  const getPosedAnchors = () => {
+    model.updateWorldMatrix(true, true)
+    wrapper.updateWorldMatrix(true, false)
+    const cupPosition = cup.getWorldPosition(new Vector3())
+    const antherPosition = new Vector3()
+    let vertexCount = 0
+    if (anthers.length) {
+      const vertex = new Vector3()
+      for (const anther of anthers) {
+        const positions = anther.geometry.getAttribute('position')
+        for (let index = 0; index < positions.count; index++) {
+          anther.getVertexPosition(index, vertex)
+          anther.localToWorld(vertex)
+          antherPosition.add(vertex)
+        }
+        vertexCount += positions.count
+      }
+    }
+    if (vertexCount) antherPosition.multiplyScalar(1 / vertexCount)
+    else antherPosition.copy(cupPosition)
+    wrapper.worldToLocal(cupPosition)
+    wrapper.worldToLocal(antherPosition)
+    return { cupPosition, antherPosition }
+  }
+  const innerCount = getBloomPollenParticleLimit(bloomConfig.particleCount, 'standard', false, 'inner')
+  const openingAnchors = getPosedAnchors()
+  const positions = effect.geometry.getAttribute('position')
+  for (const index of activeIndices) {
+    const pointIndex = pollenStart + index
+    const point = new Vector3(positions.getX(pointIndex), positions.getY(pointIndex), positions.getZ(pointIndex))
+    if (index < innerCount) {
+      const cupToAnthers = openingAnchors.antherPosition.clone().sub(openingAnchors.cupPosition)
+      const alongCup = Math.max(0, Math.min(1, point.clone().sub(openingAnchors.cupPosition).dot(cupToAnthers) / cupToAnthers.lengthSq()))
+      const nearestCupPoint = openingAnchors.cupPosition.clone().addScaledVector(cupToAnthers, alongCup)
+      expect(point.distanceTo(nearestCupPoint)).toBeLessThan(0.04)
+    } else expect(point.distanceTo(openingAnchors.cupPosition)).toBeLessThan(0.2)
+  }
+  const openingPositions = Array.from(positions.array).slice(pollenStart * 3, pollenEnd * 3)
+
+  const fullOpenTime = 16
+  player.seek(fullOpenTime)
+  effect.update({ ...baseFrame, scene: 'bloom', time: fullOpenTime, clipTime: growthClip.duration,
+    bloomClipTime: fullOpenTime, bloomOpen: true }, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, bloomConfig)
+  const settledCount = Array.from(opacity.array).slice(pollenStart, pollenEnd).filter(value => value > 0.015).length
+  expect(settledCount).toBeLessThan(activeIndices.length)
+  const fullOpenAnchors = getPosedAnchors()
+  const fullOpenInnerIndices = Array.from(opacity.array).slice(pollenStart, pollenStart + innerCount)
+    .flatMap((value, index) => value > 0.015 ? [index] : [])
+  expect(fullOpenInnerIndices.length).toBeGreaterThan(0)
+  for (const index of fullOpenInnerIndices) {
+    const pointIndex = pollenStart + index
+    const point = new Vector3(positions.getX(pointIndex), positions.getY(pointIndex), positions.getZ(pointIndex))
+    expect(point.distanceTo(fullOpenAnchors.antherPosition)).toBeLessThan(0.04)
+  }
+
+  const readyTime = bloomFrames.duration
+  player.seek(bloomClip.duration)
+  effect.update({ ...baseFrame, scene: 'bloom', time: readyTime, clipTime: growthClip.duration,
+    bloomClipTime: bloomClip.duration, bloomOpen: true }, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, bloomConfig)
+  const readyPollenCount = Array.from(opacity.array).slice(pollenStart, pollenEnd).filter(value => value > 0.015).length
+  expect(readyPollenCount).toBeGreaterThan(0)
+  expect(readyPollenCount).toBeLessThan(bloomConfig.particleCount / 4)
+  const readyPositions = Array.from(positions.array).slice(pollenStart * 3, pollenEnd * 3)
+
+  const vortexEnd = magicOffset + 1600
+  effect.update({ ...baseFrame, scene: 'bloom', time: 0, clipTime: growthClip.duration,
+    bloomClipTime: 0, bloomOpen: false, bloomElapsed: 0 },
+  DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, bloomConfig)
+  const vortexStartSize = effect.geometry.getAttribute('aSize').getX(magicOffset)
+  expect(opacity.getX(magicOffset)).toBeGreaterThan(0)
+  effect.update({ ...baseFrame, scene: 'bloom', time: 0, clipTime: growthClip.duration,
+    bloomClipTime: 0, bloomOpen: false, bloomElapsed: 2.5 },
+  DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, bloomConfig)
+  expect(effect.geometry.getAttribute('aSize').getX(magicOffset)).toBeLessThan(vortexStartSize)
+  expect(opacity.getX(magicOffset)).toBe(0)
+  const dissipatedPositions = Array.from(positions.array).slice(magicOffset * 3, vortexEnd * 3)
+  effect.update({ ...baseFrame, scene: 'bloom', time: 0, clipTime: growthClip.duration,
+    bloomClipTime: 0, bloomOpen: false, bloomElapsed: 0 },
+  DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, bloomConfig)
+  effect.update({ ...baseFrame, scene: 'bloom', time: 0, clipTime: growthClip.duration,
+    bloomClipTime: 0, bloomOpen: false, bloomElapsed: 2.5 },
+  DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, bloomConfig)
+  expect(Array.from(positions.array).slice(magicOffset * 3, vortexEnd * 3)).toEqual(dissipatedPositions)
+
+  const noVortex = { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth,
+    growthVortex: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex, particleCount: 0 } }
+  effect.update({ ...baseFrame, scene: 'bloom', time: readyTime, clipTime: growthClip.duration,
+    bloomClipTime: bloomClip.duration, bloomOpen: true }, noVortex, { ...bloomConfig, particleCount: 0 })
+  expect(Array.from(opacity.array).slice(magicOffset, vortexEnd).every(value => value === 0)).toBe(true)
+  expect(Array.from(opacity.array).slice(pollenStart, pollenEnd).every(value => value === 0)).toBe(true)
+
+  player.seek(openingSample)
+  effect.update({ ...baseFrame, scene: 'bloom', time: openingSample, clipTime: growthClip.duration,
+    bloomClipTime: openingSample, bloomOpen: true }, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, bloomConfig)
+  expect(Array.from(positions.array).slice(pollenStart * 3, pollenEnd * 3)).toEqual(openingPositions)
+  player.seek(bloomClip.duration)
+  effect.update({ ...baseFrame, scene: 'bloom', time: readyTime, clipTime: growthClip.duration,
+    bloomClipTime: bloomClip.duration, bloomOpen: true }, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, bloomConfig)
+  expect(Array.from(positions.array).slice(pollenStart * 3, pollenEnd * 3)).toEqual(readyPositions)
+  effect.update({ ...baseFrame, scene: 'identity', time: 0, clipTime: growthClip.duration,
+    bloomClipTime: bloomClip.duration, bloomOpen: false }, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, bloomConfig)
+  expect(Array.from(opacity.array).slice(magicOffset, pollenEnd + 1).every(value => value === 0)).toBe(true)
+  player.dispose()
+  effect.dispose()
+})
+
+it('centroids only anther material groups for indexed and non-indexed meshes', () => {
+  const growthFrames = getGrowthSceneFrames()
+  const bloomFrames = getBloomSceneFrames()
+  const pollenSettings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen
+  const frame = {
+    scene: 'bloom' as const, time: 16, clipTime: 0, clipDuration: 9,
+    frames: growthFrames, bloomFrames, bloomClipTime: 16, bloomClipDuration: 16,
+    bloomOpen: true, bloomElapsed: 0, pixelRatio: 1, reducedMotion: false, quality: 'standard' as const,
+  }
+
+  for (const indexed of [true, false]) {
+    const model = new Group()
+    const cup = new Group()
+    cup.name = 'Flower_Interior'
+    model.add(cup)
+    const wrapper = new Group()
+    wrapper.add(model)
+    const geometry = new BufferGeometry()
+    geometry.setAttribute('position', new Float32BufferAttribute([
+      0, 1, 0, 0.06, 1, 0, 0, 1.06, 0,
+      9, 9, 9, 10, 9, 9, 9, 10, 9,
+    ], 3))
+    if (indexed) geometry.setIndex([0, 1, 2, 3, 4, 5])
+    geometry.addGroup(0, 3, 0)
+    geometry.addGroup(3, 3, 1)
+    const materials = [new MeshBasicMaterial({ name: 'Anther_SoftGold' }), new MeshBasicMaterial({ name: 'Petal_Satin' })]
+    model.add(new Mesh(geometry, materials))
+
+    const effect = createLilyGrowthVfx(wrapper, model, new AnimationClip('Growth', 9, []))
+    effect.update(frame, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth, pollenSettings)
+    const pollenStart = 30 + effect.particleSources.length + 1600
+    const positions = effect.geometry.getAttribute('position')
+    const firstInnerPollen = new Vector3(positions.getX(pollenStart), positions.getY(pollenStart), positions.getZ(pollenStart))
+
+    expect(effect.geometry.getAttribute('aOpacity').getX(pollenStart)).toBeGreaterThan(0.015)
+    expect(firstInnerPollen.distanceTo(new Vector3(0.02, 1.02, 0))).toBeLessThan(0.05)
+
+    effect.dispose()
+    geometry.dispose()
+    materials.forEach(material => material.dispose())
+  }
+})
+
 async function parseAnimationFixture(source: Buffer): Promise<{ scene: Object3D; animations: AnimationClip[] }> {
   // The real model is parsed without texture and material payloads so this node test
   // exercises its animation channels without requiring browser image APIs.
@@ -284,13 +507,12 @@ async function parseAnimationFixture(source: Buffer): Promise<{ scene: Object3D;
   const document = JSON.parse(source.toString('utf8', 20, 20 + sourceJsonLength)) as {
     images?: unknown[]
     textures?: unknown[]
-    materials?: unknown[]
+    materials?: Array<{ name?: string }>
     meshes?: Array<{ primitives?: Array<{ material?: number }> }>
   }
   delete document.images
   delete document.textures
-  delete document.materials
-  for (const mesh of document.meshes ?? []) for (const primitive of mesh.primitives ?? []) delete primitive.material
+  if (document.materials) document.materials = document.materials.map(({ name }) => name === undefined ? {} : { name })
 
   const json = Buffer.from(JSON.stringify(document))
   const paddedJsonLength = (json.length + 3) & ~3

@@ -1,9 +1,22 @@
 import type { CameraPose } from '../scenes/shared/galleryMotion'
 import type { SceneId } from './film'
+import type { FilmState } from './film'
 import type { SceneComposerConfig } from '../systems/scene-config/config'
 import { getBloomCameraApproachDuration } from '../scenes/lily/animationTiming'
 
 type BloomCameraSettings = SceneComposerConfig['scenes']['bloom']
+
+export interface BloomCameraApproach {
+  pose: CameraPose
+  duration: number
+}
+
+/** Keep the Scene 02 framing until the automatic bloom animation begins. */
+export function getBloomCameraApproach(mode: FilmState['mode'], settings: BloomCameraSettings,
+  openingRange: readonly [number, number]): BloomCameraApproach | null {
+  if (mode !== 'playing') return null
+  return { pose: getBloomCloseupPose(settings), duration: getBloomCameraMoveDuration(settings, openingRange) }
+}
 
 /** World-space close-up centered on the GLB flower cup. CameraDirector owns its motion. */
 export function getBloomCloseupPose(settings: Pick<BloomCameraSettings, 'cameraTargetX' | 'cameraTargetY' | 'cameraFinalDistance' | 'cameraFinalHeight'>): CameraPose {

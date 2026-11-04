@@ -35,11 +35,51 @@ export interface GalleryPhotoLayout {
   offsetZ: number
 }
 
+export interface LilyBudGlowSettings {
+  enabled: boolean
+  intensity: number
+  color: string
+  rimStrength: number
+  bloomBoost: number
+}
+
+export interface LilyLeafMaterialSettings {
+  translucencyStrength: number
+  edgeLightIntensity: number
+  colorVariation: number
+}
+
+export interface LilyGrowthVortexSettings {
+  enabled: boolean
+  particleCount: number
+  particleSize: number
+  sizeVariation: number
+  brightness: number
+  orbitRadius: number
+  rotationSpeed: number
+  verticalSpread: number
+  spiralTightness: number
+  dissipationDuration: number
+  dissipationSpread: number
+  color: string
+}
+
+export interface LilyBloomPollenSettings {
+  enabled: boolean
+  particleCount: number
+  particleSize: number
+  glowIntensity: number
+  riseSpeed: number
+  spreadRadius: number
+  lifetime: number
+  innerCupGlow: number
+}
+
 type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T[Key]> : T[Key] }
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 21
+  readonly schemaVersion: 22
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -123,6 +163,9 @@ export interface SceneComposerConfig {
       vfxParticleLifetime: number
       vfxParticleSpread: number
       vfxParticleTint: string
+      lilyBudGlow: Readonly<LilyBudGlowSettings>
+      lilyLeafMaterial: Readonly<LilyLeafMaterialSettings>
+      growthVortex: Readonly<LilyGrowthVortexSettings>
       seedScale: number
       flowerGrowthDuration: number
       islandRadius: number
@@ -190,6 +233,7 @@ export interface SceneComposerConfig {
       textColor: string
       textWritingDuration: number
       textParticleCount: number
+      lilyBloomPollen: Readonly<LilyBloomPollenSettings>
     }>
     identity: Readonly<{
       dissolveDuration: number
@@ -359,7 +403,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 21,
+  schemaVersion: 22,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     openingBackground: { zoom: 1, offsetX: 0, offsetY: 0 },
@@ -388,6 +432,13 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       vfxParticleCount: 440, vfxParticleSize: 3.4, vfxParticleSizeVariation: 0.65,
       vfxParticleSpeed: 0.95, vfxParticleBrightness: 1.15, vfxParticleGlow: 1.35,
       vfxParticleLifetime: 2.3, vfxParticleSpread: 0.65, vfxParticleTint: '#FFF4E8',
+      lilyBudGlow: { enabled: true, intensity: 0.48, color: '#E9B9CE', rimStrength: 0.28, bloomBoost: 0.7 },
+      lilyLeafMaterial: { translucencyStrength: 0.32, edgeLightIntensity: 0.2, colorVariation: 0.24 },
+      growthVortex: {
+        enabled: true, particleCount: 360, particleSize: 1.8, sizeVariation: 0.55, brightness: 1,
+        orbitRadius: 0.42, rotationSpeed: 1.55, verticalSpread: 0.9, spiralTightness: 1.4,
+        dissipationDuration: 2.3, dissipationSpread: 1.35, color: '#EBD4A7',
+      },
       seedScale: 1, flowerGrowthDuration: 9,
       islandRadius: 0.82, islandThickness: 0.24, islandDepth: 0.58, islandRoughness: 0.5,
       grassDensity: 360, grassHeight: 0.14, windStrength: 1, windSpeed: 0.8,
@@ -413,6 +464,10 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       cameraFinalDistance: 2.3, cameraFinalHeight: 2.55, cameraTargetX: 0.27, cameraTargetY: 1.25,
       textPositionX: 0.1, textPositionY: 0.52, textSize: 36, textColor: '#C7AD77',
       textWritingDuration: 4.2, textParticleCount: 1800,
+      lilyBloomPollen: {
+        enabled: true, particleCount: 48, particleSize: 1.6, glowIntensity: 0.75,
+        riseSpeed: 0.09, spreadRadius: 0.28, lifetime: 3.8, innerCupGlow: 0.35,
+      },
     },
     identity: {
       dissolveDuration: 12, particleCount: 80000, particleSize: 2.3, edgeWidth: 0.035,
@@ -519,7 +574,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 21) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 22) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -527,6 +582,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const preloadInput = asRecord(scenesInput?.preload)
   const prologueInput = asRecord(scenesInput?.prologue)
   const rawGrowthInput = asRecord(scenesInput?.growth)
+  const bloomInput = asRecord(scenesInput?.bloom)
   const identityInput = asRecord(scenesInput?.identity)
   const rawGalleryInput = asRecord(scenesInput?.gallery)
   // Schema v9 allowed at most 12 cloud banks; expand that old default while
@@ -549,6 +605,10 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
         ...(Number(inputVersion) < 17 && rawGrowthInput?.seedFallDuration === 3.6 ? { seedFallDuration: 8 } : {}),
       }
     : growthV17Input
+  const lilyBudGlowInput = asRecord(growthInput?.lilyBudGlow)
+  const lilyLeafMaterialInput = asRecord(growthInput?.lilyLeafMaterial)
+  const growthVortexInput = asRecord(growthInput?.growthVortex)
+  const lilyBloomPollenInput = asRecord(bloomInput?.lilyBloomPollen)
   const galaxyInput = asRecord(scenesInput?.galaxy)
   const galaxySettingsInput = migrateGalaxySettings(galaxyInput, inputVersion)
   const legacyParticleSpeed = numberValue(prologueInput?.particleSpeed, 1, 0.1, 10)
@@ -661,6 +721,32 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       vfxParticleLifetime: numberValue(growthInput?.vfxParticleLifetime, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleLifetime, 0.3, 3),
       vfxParticleSpread: numberValue(growthInput?.vfxParticleSpread, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleSpread, 0, 1.5),
       vfxParticleTint: colorValue(growthInput?.vfxParticleTint, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.vfxParticleTint),
+      lilyBudGlow: {
+        enabled: typeof lilyBudGlowInput?.enabled === 'boolean' ? lilyBudGlowInput.enabled : DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lilyBudGlow.enabled,
+        intensity: numberValue(lilyBudGlowInput?.intensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lilyBudGlow.intensity, 0, 2),
+        color: colorValue(lilyBudGlowInput?.color, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lilyBudGlow.color),
+        rimStrength: numberValue(lilyBudGlowInput?.rimStrength, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lilyBudGlow.rimStrength, 0, 2),
+        bloomBoost: numberValue(lilyBudGlowInput?.bloomBoost, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lilyBudGlow.bloomBoost, 0, 2),
+      },
+      lilyLeafMaterial: {
+        translucencyStrength: numberValue(lilyLeafMaterialInput?.translucencyStrength, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lilyLeafMaterial.translucencyStrength, 0, 1),
+        edgeLightIntensity: numberValue(lilyLeafMaterialInput?.edgeLightIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lilyLeafMaterial.edgeLightIntensity, 0, 1),
+        colorVariation: numberValue(lilyLeafMaterialInput?.colorVariation, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lilyLeafMaterial.colorVariation, 0, 1),
+      },
+      growthVortex: {
+        enabled: typeof growthVortexInput?.enabled === 'boolean' ? growthVortexInput.enabled : DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex.enabled,
+        particleCount: numberValue(growthVortexInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex.particleCount, 0, 1600, true),
+        particleSize: numberValue(growthVortexInput?.particleSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex.particleSize, 0.2, 8),
+        sizeVariation: numberValue(growthVortexInput?.sizeVariation, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex.sizeVariation, 0, 1),
+        brightness: numberValue(growthVortexInput?.brightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex.brightness, 0, 3),
+        orbitRadius: numberValue(growthVortexInput?.orbitRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex.orbitRadius, 0.02, 1.5),
+        rotationSpeed: numberValue(growthVortexInput?.rotationSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex.rotationSpeed, 0, 4),
+        verticalSpread: numberValue(growthVortexInput?.verticalSpread, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex.verticalSpread, 0.02, 2),
+        spiralTightness: numberValue(growthVortexInput?.spiralTightness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex.spiralTightness, 0.1, 6),
+        dissipationDuration: numberValue(growthVortexInput?.dissipationDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex.dissipationDuration, 0.2, 12),
+        dissipationSpread: numberValue(growthVortexInput?.dissipationSpread, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex.dissipationSpread, 0, 3),
+        color: colorValue(growthVortexInput?.color, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.growthVortex.color),
+      },
       seedScale: numberValue(growthInput?.seedScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedScale, 0.65, 1.4),
       flowerGrowthDuration: numberValue(growthInput?.flowerGrowthDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.flowerGrowthDuration, 4, 14),
       islandRadius: numberValue(growthInput?.islandRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandRadius, 0.55, 1.05),
@@ -715,19 +801,29 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       cloudDepthVariation: numberValue(growthInput?.cloudDepthVariation, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudDepthVariation, 0, 1),
     },
     bloom: {
-      flowerBloomDuration: numberValue(asRecord(scenesInput?.bloom)?.flowerBloomDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.flowerBloomDuration, 6, 24),
-      cameraApproachDuration: numberValue(asRecord(scenesInput?.bloom)?.cameraApproachDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraApproachDuration, 1, 22),
-      cameraBloomSync: numberValue(asRecord(scenesInput?.bloom)?.cameraBloomSync, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraBloomSync, 0.5, 0.85),
-      cameraFinalDistance: numberValue(asRecord(scenesInput?.bloom)?.cameraFinalDistance, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraFinalDistance, 1.5, 5),
-      cameraFinalHeight: numberValue(asRecord(scenesInput?.bloom)?.cameraFinalHeight, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraFinalHeight, 0.5, 4),
-      cameraTargetX: numberValue(asRecord(scenesInput?.bloom)?.cameraTargetX, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraTargetX, -1, 1),
-      cameraTargetY: numberValue(asRecord(scenesInput?.bloom)?.cameraTargetY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraTargetY, -0.5, 3),
-      textPositionX: numberValue(asRecord(scenesInput?.bloom)?.textPositionX, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textPositionX, 0.05, 0.48),
-      textPositionY: numberValue(asRecord(scenesInput?.bloom)?.textPositionY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textPositionY, 0.1, 0.9),
-      textSize: numberValue(asRecord(scenesInput?.bloom)?.textSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textSize, 26, 100),
-      textColor: colorValue(asRecord(scenesInput?.bloom)?.textColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textColor),
-      textWritingDuration: numberValue(asRecord(scenesInput?.bloom)?.textWritingDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textWritingDuration, 1, 12),
-      textParticleCount: numberValue(asRecord(scenesInput?.bloom)?.textParticleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textParticleCount, 300, 6000, true),
+      flowerBloomDuration: numberValue(bloomInput?.flowerBloomDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.flowerBloomDuration, 6, 24),
+      cameraApproachDuration: numberValue(bloomInput?.cameraApproachDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraApproachDuration, 1, 22),
+      cameraBloomSync: numberValue(bloomInput?.cameraBloomSync, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraBloomSync, 0.5, 0.85),
+      cameraFinalDistance: numberValue(bloomInput?.cameraFinalDistance, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraFinalDistance, 1.5, 5),
+      cameraFinalHeight: numberValue(bloomInput?.cameraFinalHeight, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraFinalHeight, 0.5, 4),
+      cameraTargetX: numberValue(bloomInput?.cameraTargetX, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraTargetX, -1, 1),
+      cameraTargetY: numberValue(bloomInput?.cameraTargetY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.cameraTargetY, -0.5, 3),
+      textPositionX: numberValue(bloomInput?.textPositionX, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textPositionX, 0.05, 0.48),
+      textPositionY: numberValue(bloomInput?.textPositionY, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textPositionY, 0.1, 0.9),
+      textSize: numberValue(bloomInput?.textSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textSize, 26, 100),
+      textColor: colorValue(bloomInput?.textColor, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textColor),
+      textWritingDuration: numberValue(bloomInput?.textWritingDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textWritingDuration, 1, 12),
+      textParticleCount: numberValue(bloomInput?.textParticleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.textParticleCount, 300, 6000, true),
+      lilyBloomPollen: {
+        enabled: typeof lilyBloomPollenInput?.enabled === 'boolean' ? lilyBloomPollenInput.enabled : DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen.enabled,
+        particleCount: numberValue(lilyBloomPollenInput?.particleCount, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen.particleCount, 0, 600, true),
+        particleSize: numberValue(lilyBloomPollenInput?.particleSize, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen.particleSize, 0.2, 6),
+        glowIntensity: numberValue(lilyBloomPollenInput?.glowIntensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen.glowIntensity, 0, 3),
+        riseSpeed: numberValue(lilyBloomPollenInput?.riseSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen.riseSpeed, 0, 0.5),
+        spreadRadius: numberValue(lilyBloomPollenInput?.spreadRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen.spreadRadius, 0.01, 0.8),
+        lifetime: numberValue(lilyBloomPollenInput?.lifetime, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen.lifetime, 0.5, 12),
+        innerCupGlow: numberValue(lilyBloomPollenInput?.innerCupGlow, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen.innerCupGlow, 0, 2),
+      },
     },
     identity: {
       dissolveDuration: numberValue(identityInput?.dissolveDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity.dissolveDuration, 2, 18),
@@ -771,7 +867,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 21, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 22, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
@@ -1121,7 +1217,13 @@ function deepFreeze<T>(value: T): T {
 
 function persistLilyGrowthVfx(config: SceneComposerConfig) {
   if (!isDeveloperMode() || typeof window === 'undefined') return
-  const settings = Object.fromEntries(LILY_GROWTH_VFX_FIELDS.map((field) => [field, config.scenes.growth[field]]))
+  const settings = {
+    ...Object.fromEntries(LILY_GROWTH_VFX_FIELDS.map((field) => [field, config.scenes.growth[field]])),
+    lilyBudGlow: config.scenes.growth.lilyBudGlow,
+    lilyLeafMaterial: config.scenes.growth.lilyLeafMaterial,
+    growthVortex: config.scenes.growth.growthVortex,
+    lilyBloomPollen: config.scenes.bloom.lilyBloomPollen,
+  }
   try { window.localStorage.setItem(LILY_GROWTH_VFX_STORAGE_KEY, JSON.stringify(settings)) }
   catch { /* Browser storage may be disabled; the live config remains usable. */ }
 }
@@ -1135,7 +1237,12 @@ function restoreLilyGrowthVfx() {
     if (!storedGrowth) return
     // Overlay the Lily-only draft on the complete mainline config so restoring
     // effect controls never resets island, seed, lighting, or background values.
-    activeConfig = normalizeConfig(mergePartial(activeConfig, { scenes: { growth: storedGrowth } }))
+    activeConfig = normalizeConfig(mergePartial(activeConfig, {
+      scenes: {
+        growth: storedGrowth,
+        bloom: { lilyBloomPollen: storedGrowth.lilyBloomPollen },
+      },
+    }))
   } catch {
     // A corrupt or unavailable local draft should leave the expressive defaults active.
   }

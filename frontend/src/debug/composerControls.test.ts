@@ -26,10 +26,45 @@ describe('Scene Composer controls', () => {
       vfxCoreIntensity: 1.1, vfxPulseEnabled: false, vfxPulseSpeed: 1.4, vfxPulseColor: '#D8C994',
       vfxParticleCount: 224, vfxParticleSize: 3.2, vfxParticleTint: '#EEDDAA' })
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { openingBackground: object; growth: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(21)
+    expect(exported.schemaVersion).toBe(22)
     expect(exported.scenes.openingBackground).toEqual({ zoom: 1.6, offsetX: -0.2, offsetY: 0.15 })
     expect(exported.scenes.growth).toMatchObject({ seedFallDuration: 11, islandRadius: 0.95, moonLightIntensity: 1.4,
       vfxPulseEnabled: false, vfxParticleCount: 224 })
+    expect((await importComposerJson(JSON.stringify(exported))).ok).toBe(true)
+  })
+
+  it('imports, exports, edits, and resets the nested Lily appearance controls in schema v22', async () => {
+    const result = await importComposerJson(JSON.stringify({ schemaVersion: 21, scenes: {
+      growth: {
+        lilyBudGlow: { enabled: false, intensity: 1.2, color: '#D9AFC2', rimStrength: 0.8, bloomBoost: 1.1 },
+        lilyLeafMaterial: { translucencyStrength: 0.7, edgeLightIntensity: 0.55, colorVariation: 0.4 },
+        growthVortex: { enabled: false, particleCount: 720, particleSize: 3.2, sizeVariation: 0.7, brightness: 1.8,
+          orbitRadius: 0.8, rotationSpeed: 2.4, verticalSpread: 1.3, spiralTightness: 3.4,
+          dissipationDuration: 6, dissipationSpread: 1.5, color: '#DCC797' },
+      },
+      bloom: { lilyBloomPollen: { enabled: false, particleCount: 90, particleSize: 2.4, glowIntensity: 1.4,
+        riseSpeed: 0.22, spreadRadius: 0.42, lifetime: 5.5, innerCupGlow: 0.9 } },
+    } }))
+
+    expect(result.ok).toBe(true)
+    expect(getConfig().scenes.growth).toMatchObject({
+      lilyBudGlow: { enabled: false, intensity: 1.2, color: '#D9AFC2' },
+      lilyLeafMaterial: { translucencyStrength: 0.7, edgeLightIntensity: 0.55, colorVariation: 0.4 },
+      growthVortex: { enabled: false, particleCount: 720, rotationSpeed: 2.4 },
+    })
+    expect(getConfig().scenes.bloom.lilyBloomPollen).toMatchObject({ enabled: false, particleCount: 90, innerCupGlow: 0.9 })
+
+    await setComposerField('scenes.growth.growthVortex.rotationSpeed', 3)
+    await resetComposerField('scenes.growth.lilyBudGlow.intensity')
+    await resetComposerField('scenes.bloom.lilyBloomPollen.innerCupGlow')
+    const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: {
+      growth: { growthVortex: Record<string, unknown>; lilyBudGlow: Record<string, unknown> }
+      bloom: { lilyBloomPollen: Record<string, unknown> }
+    } }
+    expect(exported.schemaVersion).toBe(22)
+    expect(exported.scenes.growth.growthVortex).toMatchObject({ rotationSpeed: 3, particleCount: 720 })
+    expect(exported.scenes.growth.lilyBudGlow).toMatchObject({ intensity: DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.lilyBudGlow.intensity })
+    expect(exported.scenes.bloom.lilyBloomPollen).toMatchObject({ innerCupGlow: DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen.innerCupGlow })
   })
 
   it('round-trips the shared opening background crop through schema v14 JSON', async () => {
@@ -39,6 +74,11 @@ describe('Scene Composer controls', () => {
     expect(imported.ok).toBe(true)
     expect(getConfig().scenes.openingBackground).toEqual(profile)
     expect(JSON.parse(exportComposerJson()).scenes.openingBackground).toEqual(profile)
+  })
+
+  it('accepts schema v22 and rejects unsupported schema v23', async () => {
+    expect((await importComposerJson('{"schemaVersion":22,"scenes":{"bloom":{"lilyBloomPollen":{"particleCount":48}}}}')).ok).toBe(true)
+    expect(await importComposerJson('{"schemaVersion":23,"scenes":{}}')).toEqual({ ok: false, reason: 'version' })
   })
 
   it('maps a prologue font-size control to the shared config store', async () => {
@@ -87,7 +127,7 @@ describe('Scene Composer controls', () => {
     await setComposerField('scenes.growth.grassHeight', 0.22)
     await setComposerField('scenes.growth.windStrength', 1.7)
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { growth: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(21)
+    expect(exported.schemaVersion).toBe(22)
     expect(exported.scenes.growth).toMatchObject({
       islandThickness: 0.38, islandDepth: 1.1, islandRoughness: 0.8, grassHeight: 0.22, windStrength: 1.7,
     })
@@ -116,7 +156,7 @@ describe('Scene Composer controls', () => {
     await setComposerField('scenes.growth.moonPositionZ', -2.25)
 
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { growth: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(21)
+    expect(exported.schemaVersion).toBe(22)
     expect(exported.scenes.growth).toMatchObject({
       moonLightIntensity: 1.1, moonLightColor: '#D0DCF5', moonBeamRadius: 3.1,
       moonBeamSoftness: 0.4, moonBeamIntensity: 0.7,
@@ -181,7 +221,7 @@ describe('Scene Composer controls', () => {
     await setComposerField('scenes.growth.cloudLightIntensity', 1.5)
 
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { growth: Record<string, unknown>; gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(21)
+    expect(exported.schemaVersion).toBe(22)
     expect(exported.scenes.growth).toMatchObject({
       seedOrbitCount: 4, seedOrbitRadius: 0.5, seedOrbitTilt: 0.8, seedOrbitSpeed: 1.3,
       seedFallDuration: 3.4, seedCameraLag: 0.5, islandRevealDuration: 2.2,
@@ -255,7 +295,7 @@ describe('Scene Composer controls', () => {
     await setComposerField('scenes.gallery.moonSize', 1.4)
     expect(getConfig().scenes.gallery.moonSize).toBe(1.4)
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(21)
+    expect(exported.schemaVersion).toBe(22)
     expect(exported.scenes.gallery).toMatchObject({ moonSize: 1.4, cloudDriftVariation: 0.85, cloudCoolTint: 1.2, reflectionStrength: 0.4 })
     expect(exported.scenes.gallery.cloudLayers).toMatchObject(getConfig().scenes.gallery.cloudLayers)
 
@@ -299,7 +339,7 @@ describe('Scene Composer controls', () => {
     await setComposerField('scenes.gallery.waterDistortion', 0.02)
     expect(getConfig().scenes.gallery.waterDistortion).toBe(0.02)
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(21)
+    expect(exported.schemaVersion).toBe(22)
     expect(exported.scenes.gallery).toMatchObject({ ...waterSettings, waterDistortion: 0.02 })
     expect((await importComposerJson(JSON.stringify(exported))).ok).toBe(true)
     expect(getConfig().scenes.gallery).toMatchObject({ ...waterSettings, waterDistortion: 0.02 })
@@ -348,7 +388,7 @@ describe('Scene Composer controls', () => {
     await setComposerField('scenes.gallery.archPositionZ', -91)
     await setComposerField('scenes.gallery.archRotationY', 0.75)
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: { cloudLayers: Record<string, unknown> } & Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(21)
+    expect(exported.schemaVersion).toBe(22)
     expect(exported.scenes.gallery.cloudLayers).toMatchObject({
       ...clouds,
       nearLow: { ...clouds.nearLow, density: 1.18 },
@@ -385,7 +425,7 @@ describe('Scene Composer controls', () => {
       scenes: { prologue: Record<string, unknown> }
     }
 
-    expect(exported.schemaVersion).toBe(21)
+    expect(exported.schemaVersion).toBe(22)
 
     expect(exported.global.quality).toBe('low')
     expect(exported.scenes.prologue).not.toHaveProperty('particleSpeed')
@@ -407,7 +447,7 @@ describe('Scene Composer controls', () => {
     expect(getConfig().scenes.gallery.cloudLayers.far).toMatchObject({ density: 1.2, brightness: 1.35 })
 
     const exported = JSON.parse(exportComposerJson()) as { schemaVersion: number; scenes: { gallery: Record<string, unknown> } }
-    expect(exported.schemaVersion).toBe(21)
+    expect(exported.schemaVersion).toBe(22)
     expect(exported.scenes.gallery).toMatchObject({ hazeHeight: -1.1, moonCloudLightIntensity: 1.4 })
     expect(exported.scenes.gallery.cloudLayers).toMatchObject(getConfig().scenes.gallery.cloudLayers)
 
