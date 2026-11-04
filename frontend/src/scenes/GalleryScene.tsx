@@ -10,7 +10,7 @@ import { createMemoryThreadAccentGeometry, createMemoryThreadGeometry, createMem
 import { GALLERY_WORLD } from './gallery/world'
 import { createGalleryWaterReflectionBackplate } from './gallery/galleryBackplate'
 import { getMoonFrameTintStrength, getMoonPhotoIllumination } from './gallery/moonLighting'
-import { advanceCollageRevealTimeline, createCollageRevealGeometry, DEFAULT_COLLAGE_REVEAL_SETTINGS, getCollageRevealFrame, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout, type CollageRevealSettings } from './gallery/collage'
+import { advanceCollageRevealPlayback, createCollageRevealGeometry, createCollageRevealPlayback, DEFAULT_COLLAGE_REVEAL_SETTINGS, getCollageRevealPlaybackFrame, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout, markCollageRevealTextureReady, type CollageRevealPlayback, type CollageRevealSettings } from './gallery/collage'
 import { getGalleryCollageConfig } from './gallery/galleryCollageConfig'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, ClampToEdgeWrapping, Color, DataTexture, DoubleSide, Group, LinearFilter, Material, Mesh, MeshBasicMaterial, NoColorSpace, Points, PointsMaterial, RedFormat, SRGBColorSpace, Texture, TextureLoader, UnsignedByteType, Vector2, Vector3, ShaderMaterial } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
@@ -247,6 +247,9 @@ function CollageExtraPhoto({ url, slot, side, mainWidth, mainHeight, fallback, f
   paused: boolean
 }) {
   const [aspect, setAspect] = useState(1)
+  const photoSession = useMemo(() => ({ url, fallback }), [fallback, url])
+  const [photoResult, setPhotoResult] = useState<{ session: object; failed: boolean } | null>(null)
+  const photoReady = photoResult?.session === photoSession
   const dpr = useThree((state) => state.viewport.dpr)
   const backplateMaterial = useRef<MeshBasicMaterial>(null)
   const layout = useMemo(() => getGalleryCollagePhotoLayout(slot, side, mainWidth, mainHeight, aspect), [aspect, mainHeight, mainWidth, side, slot])
@@ -273,7 +276,8 @@ function CollageExtraPhoto({ url, slot, side, mainWidth, mainHeight, fallback, f
   const revealMaterial = useMemo(() => particlesEnabled ? collageParticleMaterial(fallback, bounds) : null, [bounds, fallback, particlesEnabled])
   const revealMaterialRef = useRef<ShaderMaterial | null>(null)
   const loadedPhoto = useRef<Texture>(fallback)
-  const revealTime = useRef(0)
+  const initialPlayback = useMemo(() => createCollageRevealPlayback(photoSession), [photoSession])
+  const playback = useRef<CollageRevealPlayback>(initialPlayback)
   const previousFilmTime = useRef(galleryMotion.time)
 
   useEffect(() => {
@@ -287,11 +291,18 @@ function CollageExtraPhoto({ url, slot, side, mainWidth, mainHeight, fallback, f
   useEffect(() => {
     let active = true
     let loaded: Texture | null = null
+    let request: Texture | null = null
+    let disposed = false
+    const disposeRequest = () => {
+      if (disposed) return
+      disposed = true
+      request?.dispose()
+    }
     loadedPhoto.current = fallback
     setShaderUniform(photoMaterial, 'uPhoto', fallback)
     setShaderUniform(revealMaterialRef.current, 'uPhoto', fallback)
-    new TextureLoader().load(url, (value) => {
-      if (!active) { value.dispose(); return }
+    request = new TextureLoader().load(url, (value) => {
+      if (!active) { disposeRequest(); return }
       loaded = value
       loadedPhoto.current = value
       setColorSpace(value)
@@ -299,19 +310,29 @@ function CollageExtraPhoto({ url, slot, side, mainWidth, mainHeight, fallback, f
       setShaderUniform(revealMaterialRef.current, 'uPhoto', value)
       const image = value.image as HTMLImageElement
       if (image.naturalWidth && image.naturalHeight) setAspect(image.naturalWidth / image.naturalHeight)
+      playback.current = markCollageRevealTextureReady(playback.current, photoSession, 'loaded')
+      setPhotoResult({ session: photoSession, failed: false })
     }, undefined, () => {
+      disposeRequest()
       if (active) {
         setShaderUniform(photoMaterial, 'uPhoto', fallback)
         setShaderUniform(revealMaterialRef.current, 'uPhoto', fallback)
         loadedPhoto.current = fallback
+        playback.current = markCollageRevealTextureReady(playback.current, photoSession, 'error')
+        setPhotoResult({ session: photoSession, failed: true })
       }
     })
+    if (disposed) request.dispose()
     return () => {
       active = false
-      loaded?.dispose()
-      if (loadedPhoto.current === loaded) loadedPhoto.current = fallback
+      disposeRequest()
+      if (loadedPhoto.current === loaded) {
+        loadedPhoto.current = fallback
+        setShaderUniform(photoMaterial, 'uPhoto', fallback)
+        setShaderUniform(revealMaterialRef.current, 'uPhoto', fallback)
+      }
     }
-  }, [fallback, photoMaterial, url])
+  }, [fallback, photoMaterial, photoSession, url])
   useEffect(() => () => particles.dispose(), [particles])
   useEffect(() => () => photoMaterial.dispose(), [photoMaterial])
   useEffect(() => () => revealMaterial?.dispose(), [revealMaterial])
@@ -320,12 +341,23 @@ function CollageExtraPhoto({ url, slot, side, mainWidth, mainHeight, fallback, f
     const now = galleryMotion.time
     const delta = Math.max(0, now - previousFilmTime.current)
     previousFilmTime.current = now
-    const { alpha, focusAmount, timelineDirection } = focusVisual.current
-    if (!paused && !document.hidden) {
-      revealTime.current = advanceCollageRevealTimeline(revealTime.current, delta, timelineDirection, focusAmount, slot, settings, reducedMotion)
+    if (playback.current.session !== photoSession) playback.current = createCollageRevealPlayback(photoSession)
+    if (photoReady && !playback.current.textureReady) {
+      playback.current = markCollageRevealTextureReady(playback.current, photoSession, photoResult?.failed ? 'error' : 'loaded')
     }
-    const frame = getCollageRevealFrame(revealTime.current, slot, settings, reducedMotion)
-    const photoAlpha = alpha * frame.photoOpacity
+    const { alpha, focusAmount, timelineDirection } = focusVisual.current
+    playback.current = advanceCollageRevealPlayback(
+      playback.current,
+      delta,
+      timelineDirection,
+      focusAmount,
+      slot,
+      settings,
+      reducedMotion,
+      paused || document.hidden,
+    )
+    const frame = getCollageRevealPlaybackFrame(playback.current, slot, settings, reducedMotion)
+    const photoAlpha = photoReady ? alpha * frame.photoOpacity : 0
     if (backplateMaterial.current) backplateMaterial.current.opacity = photoAlpha * 0.92
     setShaderUniform(photoMaterial, 'uAlpha', photoAlpha)
     setShaderUniform(photoMaterial, 'uReveal', frame.photoProgress)
@@ -336,11 +368,11 @@ function CollageExtraPhoto({ url, slot, side, mainWidth, mainHeight, fallback, f
     setShaderUniform(revealMaterial, 'uGlow', settings.glow)
     setShaderUniform(revealMaterial, 'uReveal', frame.assemblyProgress)
     setShaderUniform(revealMaterial, 'uPhotoReveal', frame.photoProgress)
-    setShaderUniform(revealMaterial, 'uAlpha', alpha * frame.particleOpacity)
+    setShaderUniform(revealMaterial, 'uAlpha', photoReady ? alpha * frame.particleOpacity : 0)
     bounds.set(layout.width, layout.height)
   })
 
-  return <group position={layout.position}>
+  return <group position={layout.position} visible={photoReady}>
     <mesh position={[0, 0, -0.025]} raycast={() => undefined} userData={{ galleryOpacityManaged: true }}>
       <planeGeometry args={[layout.width + 0.08, layout.height + 0.08]} />
       <meshBasicMaterial ref={backplateMaterial} color="#17141d" transparent opacity={0} depthWrite={false} />

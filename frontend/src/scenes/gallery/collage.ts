@@ -148,6 +148,15 @@ export interface CollageRevealFrame {
   readonly particleOpacity: number
 }
 
+export interface CollageRevealPlayback {
+  readonly session: object
+  readonly textureReady: boolean
+  readonly usingFallback: boolean
+  readonly startPending: boolean
+  readonly focusedSeconds: number
+  readonly elapsedSeconds: number
+}
+
 function smoothstep01(value: number) {
   const t = Math.max(0, Math.min(1, value))
   return t * t * (3 - 2 * t)
@@ -155,6 +164,68 @@ function smoothstep01(value: number) {
 
 function safeTimelineDuration(value: number, fallback: number) {
   return Math.max(0.25, Number.isFinite(value) ? value : fallback)
+}
+
+function getCollageRevealStagger(slot: GalleryCollageSlot, settings: Readonly<CollageRevealSettings>, reducedMotion: boolean) {
+  const enabled = settings.particleEnabled && !reducedMotion
+  return enabled ? (slot - 2) * Math.max(0, Number.isFinite(settings.staggerDelay) ? settings.staggerDelay : DEFAULT_COLLAGE_REVEAL_SETTINGS.staggerDelay) : 0
+}
+
+export function createCollageRevealPlayback(session: object): CollageRevealPlayback {
+  return { session, textureReady: false, usingFallback: false, startPending: false, focusedSeconds: 0, elapsedSeconds: 0 }
+}
+
+/** Resolves only the active URL generation; errors are ready with the caller's fallback image. */
+export function markCollageRevealTextureReady(
+  playback: CollageRevealPlayback,
+  session: object,
+  result: 'loaded' | 'error',
+): CollageRevealPlayback {
+  if (playback.session !== session) return playback
+  return { ...playback, textureReady: true, usingFallback: result === 'error', startPending: true }
+}
+
+/** Holds reveal time while its matching image is pending and while a slot waits for its stagger. */
+export function advanceCollageRevealPlayback(
+  playback: CollageRevealPlayback,
+  deltaSeconds: number,
+  direction: -1 | 0 | 1,
+  focusMix: number,
+  slot: GalleryCollageSlot,
+  settings: Readonly<CollageRevealSettings> = DEFAULT_COLLAGE_REVEAL_SETTINGS,
+  reducedMotion = false,
+  paused = false,
+): CollageRevealPlayback {
+  const delta = Math.max(0, Number.isFinite(deltaSeconds) ? deltaSeconds : 0)
+  if (paused || delta === 0) return playback
+
+  const stagger = getCollageRevealStagger(slot, settings, reducedMotion)
+  const focusedSeconds = direction > 0
+    ? playback.focusedSeconds + delta
+    : direction < 0 ? Math.max(0, playback.focusedSeconds - delta) : playback.focusedSeconds
+
+  if (!playback.textureReady) return { ...playback, focusedSeconds, elapsedSeconds: 0 }
+  if (playback.startPending) return { ...playback, startPending: false }
+
+  let elapsedSeconds = playback.elapsedSeconds
+  if (direction > 0) {
+    const activeDelta = Math.max(0, focusedSeconds - Math.max(playback.focusedSeconds, stagger))
+    if (activeDelta > 0) elapsedSeconds = advanceCollageRevealTimeline(elapsedSeconds, activeDelta, 1, focusMix, 2, settings, reducedMotion)
+  } else if (direction < 0 && elapsedSeconds > 0) {
+    elapsedSeconds = advanceCollageRevealTimeline(elapsedSeconds, delta, -1, focusMix, 2, settings, reducedMotion)
+  }
+
+  return { ...playback, focusedSeconds, elapsedSeconds }
+}
+
+/** Converts local post-stagger time into the existing slot-aware frame contract. */
+export function getCollageRevealPlaybackFrame(
+  playback: CollageRevealPlayback,
+  slot: GalleryCollageSlot,
+  settings: Readonly<CollageRevealSettings> = DEFAULT_COLLAGE_REVEAL_SETTINGS,
+  reducedMotion = false,
+) {
+  return getCollageRevealFrame(playback.elapsedSeconds + getCollageRevealStagger(slot, settings, reducedMotion), slot, settings, reducedMotion)
 }
 
 /** Returns the number of film-clock seconds needed to complete this slot's reveal. */

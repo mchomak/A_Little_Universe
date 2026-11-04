@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { advanceCollageRevealTimeline, collageParticleOpacity, collagePhotoOpacity, createCollageRevealGeometry, DEFAULT_COLLAGE_REVEAL_SETTINGS, getCollageRevealFrame, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout, getGalleryCollagePhotos } from './collage'
+import { advanceCollageRevealPlayback, advanceCollageRevealTimeline, collageParticleOpacity, collagePhotoOpacity, createCollageRevealPlayback, createCollageRevealGeometry, DEFAULT_COLLAGE_REVEAL_SETTINGS, getCollageRevealPlaybackFrame, getCollageRevealFrame, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout, getGalleryCollagePhotos, markCollageRevealTextureReady } from './collage'
 
 describe('gallery collage layout', () => {
   it('keeps only available extra photo slots and preserves their numbered positions', () => {
@@ -143,5 +143,94 @@ describe('gallery collage layout', () => {
     expect(advanceCollageRevealTimeline(partlyReturned, 0.1, 1, 0.5, 4, settings)).toBeGreaterThan(partlyReturned)
     expect(advanceCollageRevealTimeline(0.2, 0.5, -1, 0.001, 4, settings)).toBe(0)
     expect(advanceCollageRevealTimeline(0.2, 0.1, 0, 1, 4, settings)).toBe(0.2)
+  })
+
+  it('waits for the matching image load before advancing a staggered timeline, without jumping on late load', async () => {
+    const settings = { ...DEFAULT_COLLAGE_REVEAL_SETTINGS, assembleDuration: 0.5, revealDuration: 0.5, staggerDelay: 0.1 }
+    const session = {}
+    let playback = createCollageRevealPlayback(session)
+    let resolveImage!: (result: 'loaded' | 'error') => void
+    const imageLoad = new Promise<'loaded' | 'error'>(resolve => { resolveImage = resolve })
+
+    playback = advanceCollageRevealPlayback(playback, 0.4, 1, 1, 4, settings)
+    expect(playback.elapsedSeconds).toBe(0)
+    expect(getCollageRevealPlaybackFrame(playback, 4, settings).assemblyProgress).toBe(0)
+
+    resolveImage('loaded')
+    const result = await imageLoad
+    playback = markCollageRevealTextureReady(playback, session, result)
+    expect(getCollageRevealPlaybackFrame(playback, 4, settings)).toMatchObject({
+      assemblyProgress: 0,
+      photoOpacity: 0,
+      particleOpacity: 0,
+    })
+
+    playback = advanceCollageRevealPlayback(playback, 0.1, 1, 1, 4, settings)
+    expect(playback.elapsedSeconds).toBe(0)
+    playback = advanceCollageRevealPlayback(playback, 0.1, 1, 1, 4, settings)
+    const firstVisibleStep = getCollageRevealPlaybackFrame(playback, 4, settings)
+    expect(firstVisibleStep.assemblyProgress).toBeGreaterThan(0)
+    expect(firstVisibleStep.assemblyProgress).toBeLessThan(1)
+    expect(firstVisibleStep.photoOpacity).toBe(0)
+  })
+
+  it('ignores stale URL completions, treats load errors as fallback-ready, and pauses without advancing', () => {
+    const oldSession = {}
+    const session = {}
+    const settings = { ...DEFAULT_COLLAGE_REVEAL_SETTINGS, staggerDelay: 0.2 }
+    let playback = createCollageRevealPlayback(session)
+
+    expect(markCollageRevealTextureReady(playback, oldSession, 'loaded')).toBe(playback)
+    expect(playback.textureReady).toBe(false)
+
+    playback = markCollageRevealTextureReady(playback, session, 'error')
+    expect(playback).toMatchObject({ textureReady: true, usingFallback: true, startPending: true })
+    playback = advanceCollageRevealPlayback(playback, 0.1, 1, 1, 3, settings, false, true)
+    expect(playback.focusedSeconds).toBe(0)
+    expect(playback.elapsedSeconds).toBe(0)
+
+    playback = advanceCollageRevealPlayback(playback, 0.3, 1, 1, 3, settings)
+    expect(playback.elapsedSeconds).toBe(0)
+    playback = advanceCollageRevealPlayback(playback, 0.3, 1, 1, 3, settings)
+    expect(playback.focusedSeconds).toBeCloseTo(0.3)
+    expect(playback.elapsedSeconds).toBeCloseTo(0.1)
+    playback = advanceCollageRevealPlayback(playback, 0.3, -1, 0.5, 3, settings)
+    expect(playback.elapsedSeconds).toBeLessThan(0.1)
+  })
+
+  it('keeps a late texture invisible after focus returns before loading finishes', async () => {
+    const session = {}
+    const settings = { ...DEFAULT_COLLAGE_REVEAL_SETTINGS, staggerDelay: 0.1 }
+    let playback = createCollageRevealPlayback(session)
+    let resolveImage!: () => void
+    const imageLoad = new Promise<void>(resolve => { resolveImage = resolve })
+
+    playback = advanceCollageRevealPlayback(playback, 0.08, 1, 0.2, 3, settings)
+    playback = advanceCollageRevealPlayback(playback, 0.1, -1, 0.1, 3, settings)
+    expect(playback.focusedSeconds).toBe(0)
+    expect(playback.elapsedSeconds).toBe(0)
+
+    resolveImage()
+    await imageLoad
+    playback = markCollageRevealTextureReady(playback, session, 'loaded')
+    expect(getCollageRevealPlaybackFrame(playback, 3, settings)).toMatchObject({
+      assemblyProgress: 0,
+      photoOpacity: 0,
+      particleOpacity: 0,
+    })
+    playback = advanceCollageRevealPlayback(playback, 0.05, -1, 0.1, 3, settings)
+    expect(getCollageRevealPlaybackFrame(playback, 3, settings).photoOpacity).toBe(0)
+  })
+
+  it('starts reduced-motion photo reveals without particle stagger after texture readiness', () => {
+    const session = {}
+    let playback = markCollageRevealTextureReady(createCollageRevealPlayback(session), session, 'loaded')
+    const settings = { ...DEFAULT_COLLAGE_REVEAL_SETTINGS, assembleDuration: 0.5, revealDuration: 0.5, staggerDelay: 0.4 }
+
+    playback = advanceCollageRevealPlayback(playback, 0.1, 1, 1, 4, settings, true)
+    expect(getCollageRevealPlaybackFrame(playback, 4, settings, true).photoOpacity).toBe(0)
+    playback = advanceCollageRevealPlayback(playback, 0.1, 1, 1, 4, settings, true)
+    expect(getCollageRevealPlaybackFrame(playback, 4, settings, true).photoOpacity).toBeGreaterThan(0)
+    expect(getCollageRevealPlaybackFrame(playback, 4, settings, true).particleOpacity).toBe(0)
   })
 })
