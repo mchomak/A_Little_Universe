@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+﻿import { expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, resetConfig, updateConfig } from '../systems/scene-config/config'
 import { captureScenePreset, parseScenePreset, scenePresetPatch } from './scenePresetModel'
 
@@ -19,7 +19,7 @@ it('captures the complete scene and its shared opening background', () => {
 
   expect(preset).toMatchObject({
     formatVersion: 1,
-    configSchemaVersion: 20,
+    configSchemaVersion: 21,
     name: 'Long growth',
     scope: 'growth',
     scene: config.scenes.growth,
@@ -59,7 +59,7 @@ it('rejects a preset with a blank display name', () => {
   try {
     parseScenePreset({
       formatVersion: 1,
-      configSchemaVersion: 20,
+      configSchemaVersion: 21,
       id: 'growth-long',
       name: '  ',
       scope: 'growth',
@@ -78,7 +78,7 @@ it('rejects a preset format version it does not support with a stable error code
   try {
     parseScenePreset({
       formatVersion: 2,
-      configSchemaVersion: 20,
+      configSchemaVersion: 21,
       id: 'growth-long',
       name: 'Long growth',
       scope: 'growth',
@@ -98,7 +98,7 @@ it('rejects an empty preset id with a stable validation code', () => {
   try {
     parseScenePreset({
       formatVersion: 1,
-      configSchemaVersion: 20,
+      configSchemaVersion: 21,
       id: '',
       name: 'Long growth',
       scope: 'growth',
@@ -117,7 +117,7 @@ it('rejects a preset saved for another active scope', () => {
   try {
     parseScenePreset({
       formatVersion: 1,
-      configSchemaVersion: 20,
+      configSchemaVersion: 21,
       id: 'growth-long',
       name: 'Long growth',
       scope: 'growth',
@@ -136,7 +136,7 @@ it('rejects opening background data for a scope that does not use it', () => {
   try {
     parseScenePreset({
       formatVersion: 1,
-      configSchemaVersion: 20,
+      configSchemaVersion: 21,
       id: 'gallery-night',
       name: 'Gallery night',
       scope: 'gallery',
@@ -193,3 +193,4 @@ it('applies a partial preset without changing unrelated branches or retaining un
     await resetConfig('all')
   }
 })
+

@@ -1,4 +1,4 @@
-import {
+﻿import {
   DEFAULT_SCENE_COMPOSER_CONFIG,
   SCENE_CONFIG_PRESETS,
   getConfig,
@@ -53,7 +53,7 @@ export async function importComposerJson(source: string): Promise<ComposerImport
     return { ok: false, reason: 'json' }
   }
   if (document === null || typeof document !== 'object' || Array.isArray(document)) return { ok: false, reason: 'document' }
-  if (!('schemaVersion' in document) || !Number.isInteger(document.schemaVersion) || Number(document.schemaVersion) < 1 || Number(document.schemaVersion) > 20) return { ok: false, reason: 'version' }
+  if (!('schemaVersion' in document) || !Number.isInteger(document.schemaVersion) || Number(document.schemaVersion) < 1 || Number(document.schemaVersion) > 21) return { ok: false, reason: 'version' }
   const root = document as Record<string, unknown>
   if ('global' in root && !isRecord(root.global)) return { ok: false, reason: 'document' }
   if ('scenes' in root && !isRecord(root.scenes)) return { ok: false, reason: 'document' }
@@ -174,3 +174,4 @@ function normalizeConfigFont(value: unknown) {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
+

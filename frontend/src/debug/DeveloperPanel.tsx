@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type Dispatch } from 'react'
+﻿import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type Dispatch } from 'react'
 import type { FilmAction, FilmState } from '../engine/film'
 import type { FilmRuntime } from '../engine/runtime'
 import { getSceneDuration, SCENES, type SceneId } from '../engine/filmConfig'
@@ -258,21 +258,48 @@ const IDENTITY_CAMERA_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.identity.cameraMoveDuration', label: 'Длительность движения камеры', unit: 'с', min: 1, max: 18, step: 0.1 },
 ]
 
+const GALLERY_LAYOUT_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.gallery.galleryWidth', label: 'Ширина прохода', unit: 'м', min: 6, max: 12, step: 0.1 },
+  { path: 'scenes.gallery.columnScale', label: 'Масштаб колонн', unit: '×', min: 0.75, max: 3, step: 0.05 },
+  { path: 'scenes.gallery.columnDepth', label: 'Отступ колонны за фотографией', unit: 'м', min: 0.02, max: 2, step: 0.01 },
+  { path: 'scenes.gallery.columnOffsetX', label: 'Горизонтальное смещение колонны', unit: 'м', min: -2, max: 2, step: 0.05 },
+  { path: 'scenes.gallery.columnOffsetY', label: 'Вертикальное смещение колонны от пола', unit: 'м', min: -2, max: 2, step: 0.05 },
+]
+
+function galleryPhotoLayoutControls(variant: 'A' | 'B'): readonly NumericControl[] {
+  const prefix = `scenes.gallery.galleryLayout${variant}` as const
+  return [
+    { path: `${prefix}.laneWidth` as ComposerFieldPath, label: 'Ширина стороны с картинами', unit: 'м', min: 6, max: 12, step: 0.1 },
+    { path: `${prefix}.offsetX` as ComposerFieldPath, label: variant === 'B' ? 'Смещение обеих сторон от центра · X' : 'Смещение картин · X', unit: 'м', min: variant === 'B' ? -2.5 : -3, max: 3, step: 0.05 },
+    { path: `${prefix}.offsetY` as ComposerFieldPath, label: 'Смещение картин · Y', unit: 'м', min: -2, max: 2, step: 0.05 },
+    { path: `${prefix}.offsetZ` as ComposerFieldPath, label: 'Смещение картин · Z', unit: 'м', min: -5, max: 5, step: 0.05 },
+  ]
+}
+
+const GALLERY_ARCH_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.gallery.archScale', label: 'Масштаб арки', unit: '×', min: 8, max: 28, step: 0.25 },
+  { path: 'scenes.gallery.archOpacity', label: 'Прозрачность арки', unit: '×', min: 0.1, max: 1, step: 0.01 },
+  { path: 'scenes.gallery.archPositionX', label: 'Положение арки · X', unit: 'м', min: -30, max: 30, step: 0.25 },
+  { path: 'scenes.gallery.archPositionY', label: 'Высота арки от пола', unit: 'м', min: -12, max: 24, step: 0.25 },
+  { path: 'scenes.gallery.archPositionZ', label: 'Положение арки · Z', unit: 'м', min: -140, max: -65, step: 0.5 },
+  { path: 'scenes.gallery.archRotationY', label: 'Поворот арки', unit: 'рад', min: -Math.PI, max: Math.PI, step: 0.05 },
+]
+
 const GALLERY_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.frameIntensity', label: 'Интенсивность рамок', unit: '×', min: 0, max: 2, step: 0.05 },
   { path: 'scenes.gallery.particleCount', label: 'Количество частиц', unit: 'шт.', min: 0, max: 600, step: 1 },
   { path: 'scenes.gallery.moonBrightness', label: 'Яркость лунной сферы', unit: '×', min: 0, max: 2, step: 0.05 },
   { path: 'scenes.gallery.moonSize', label: 'Размер луны', unit: '×', min: 0.4, max: 1.8, step: 0.05 },
   { path: 'scenes.gallery.waterBaseBrightness', label: 'Базовая яркость воды', unit: '×', min: 0, max: 1.5, step: 0.01 },
-  { path: 'scenes.gallery.reflectionStrength', label: 'Сила отражений', unit: '×', min: 0, max: 0.6, step: 0.01 },
-  { path: 'scenes.gallery.reflectionBlur', label: 'Размытие отражений', unit: '×', min: 0.3, max: 1, step: 0.01 },
+  { path: 'scenes.gallery.reflectionStrength', label: 'Сила отражений', unit: '×', min: 0, max: 0.9, step: 0.01 },
+  { path: 'scenes.gallery.reflectionBlur', label: 'Размытие отражений', unit: '×', min: 0.3, max: 1.5, step: 0.01 },
   { path: 'scenes.gallery.reflectionFalloff', label: 'Затухание отражений', unit: '×', min: 0.25, max: 2.5, step: 0.01 },
-  { path: 'scenes.gallery.waterDistortion', label: 'Искажение воды', unit: '×', min: 0, max: 0.05, step: 0.001 },
-  { path: 'scenes.gallery.waterDistortionScale', label: 'Масштаб микронормалей', unit: '×', min: 0.25, max: 3, step: 0.01 },
-  { path: 'scenes.gallery.waterRippleSpeed', label: 'Скорость ряби', unit: '×', min: 0, max: 1, step: 0.01 },
-  { path: 'scenes.gallery.waterNormalStrength', label: 'Сила нормалей воды', unit: '×', min: 0, max: 1, step: 0.01 },
+  { path: 'scenes.gallery.waterDistortion', label: 'Искажение воды', unit: '×', min: 0, max: 0.14, step: 0.001 },
+  { path: 'scenes.gallery.waterDistortionScale', label: 'Масштаб микронормалей', unit: '×', min: 0.25, max: 4.5, step: 0.01 },
+  { path: 'scenes.gallery.waterRippleSpeed', label: 'Скорость ряби', unit: '×', min: 0, max: 3, step: 0.01 },
+  { path: 'scenes.gallery.waterNormalStrength', label: 'Сила нормалей воды', unit: '×', min: 0, max: 3, step: 0.01 },
   { path: 'scenes.gallery.moonHighlightStrength', label: 'Сила лунного блика', unit: '×', min: 0, max: 2, step: 0.01 },
-  { path: 'scenes.gallery.moonReflectionSpread', label: 'Ширина лунной дорожки', unit: '×', min: 0.25, max: 2.5, step: 0.01 },
+  { path: 'scenes.gallery.moonReflectionSpread', label: 'Ширина лунной дорожки', unit: '×', min: 0.25, max: 4, step: 0.01 },
   { path: 'scenes.gallery.waterOpacity', label: 'Непрозрачность воды', unit: '×', min: 0, max: 1, step: 0.01 },
   { path: 'scenes.gallery.threadOpacity', label: 'Прозрачность световых нитей', unit: '×', min: 0, max: 0.8, step: 0.01 },
   { path: 'scenes.gallery.coldLightIntensity', label: 'Интенсивность холодного света', unit: '×', min: 0, max: 1.8, step: 0.05 },
@@ -291,10 +318,11 @@ const GALLERY_CONTROLS: readonly NumericControl[] = [
 
 const GALLERY_CLOUD_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
   ...([
-    { id: 'far', name: 'Far Clouds · дальний слой', maxCount: 14 },
+    { id: 'far', name: 'Far Clouds · дальний слой', maxCount: 12 },
     { id: 'mid', name: 'Mid Clouds · боковые массы', maxCount: 20 },
     { id: 'nearLow', name: 'Near Low Clouds · за фотографиями', maxCount: 24 },
     { id: 'waterline', name: 'Waterline Clouds · дымка над водой', maxCount: 32 },
+    { id: 'moon', name: 'Moon Clouds · облака у Луны', maxCount: 8 },
   ] as const).map(({ id, name, maxCount }) => ({
     name,
     controls: [
@@ -303,7 +331,7 @@ const GALLERY_CLOUD_GROUPS: readonly { name: string; controls: readonly NumericC
       { path: `scenes.gallery.cloudLayers.${id}.scale`, label: 'Масштаб', unit: '×', min: 0.55, max: 2, step: 0.05 },
       { path: `scenes.gallery.cloudLayers.${id}.opacity`, label: 'Непрозрачность', unit: '×', min: 0, max: 1.8, step: 0.05 },
       { path: `scenes.gallery.cloudLayers.${id}.brightness`, label: 'Яркость', unit: '×', min: 0, max: 2, step: 0.05 },
-      { path: `scenes.gallery.cloudLayers.${id}.driftSpeed`, label: 'Скорость дрейфа', unit: '×', min: 0, max: 2, step: 0.05 },
+      { path: `scenes.gallery.cloudLayers.${id}.driftSpeed`, label: 'Скорость дрейфа', unit: '×', min: 0, max: 3, step: 0.05 },
       { path: `scenes.gallery.cloudLayers.${id}.height`, label: 'Высота', unit: 'м', min: -8, max: 12, step: 0.1 },
       { path: `scenes.gallery.cloudLayers.${id}.distance`, label: 'Отступ от галереи', unit: 'м', min: 0, max: 24, step: 0.25 },
       { path: `scenes.gallery.cloudLayers.${id}.softness`, label: 'Мягкость края', unit: '×', min: 0, max: 1, step: 0.025 },
@@ -313,7 +341,7 @@ const GALLERY_CLOUD_GROUPS: readonly { name: string; controls: readonly NumericC
     { path: 'scenes.gallery.cloudDriftVariation', label: 'Разница дрейфа по глубине', unit: '×', min: 0, max: 1, step: 0.05 },
     { path: 'scenes.gallery.hazeDensity', label: 'Плотность дымки', unit: '×', min: 0, max: 1.8, step: 0.05 },
     { path: 'scenes.gallery.hazeHeight', label: 'Высота дымки', unit: 'м.', min: -3, max: 3, step: 0.1 },
-    { path: 'scenes.gallery.hazeMotionSpeed', label: 'Скорость движения дымки', unit: '×', min: 0, max: 1, step: 0.025 },
+    { path: 'scenes.gallery.hazeMotionSpeed', label: 'Скорость движения дымки', unit: '×', min: 0, max: 3, step: 0.025 },
   ] },
   { name: 'Лунный свет и цвет', controls: [
     { path: 'scenes.gallery.moonCloudLightIntensity', label: 'Лунный свет на облаках', unit: '×', min: 0, max: 2, step: 0.05 },
@@ -636,7 +664,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–20. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–21. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -764,7 +792,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         </details>}
         {currentScope && <details className="inspector-compare"><summary>{currentScope === 'gallery' ? 'История параметров' : 'История и сравнение A/B'}</summary>
           {historyButtons(currentScope)}
-          {currentScope === 'gallery' ? <p>Сравнение недоступно для интерактивной галереи: у прогулки нет стабильной точки фильма.</p> : <>
+          {currentScope !== 'gallery' && <>
             <p>Снимки временные и относятся к этой сцене. Сравнение останавливает фильм в текущем кадре.</p>
             <div className="inspector-history"><button type="button" onClick={() => remember('A')}>Сохранить A</button><button type="button" onClick={() => remember('B')}>Сохранить B</button></div>
             <div className="inspector-history"><button type="button" aria-pressed={currentSnapshots?.active === 'A' && !!currentSnapshots.A && matchesPatch(section(config, currentScope), currentSnapshots.A)} disabled={comparing || !currentSnapshots?.A || selected !== active || route !== 'film'} onClick={() => { void compare('A') }}>Показать A</button><button type="button" aria-pressed={currentSnapshots?.active === 'B' && !!currentSnapshots.B && matchesPatch(section(config, currentScope), currentSnapshots.B)} disabled={comparing || !currentSnapshots?.B || selected !== active || route !== 'film'} onClick={() => { void compare('B') }}>Показать B</button></div>
@@ -822,9 +850,33 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         </>}
         {selected === 'gallery' && <details open><summary>Scene 05 — Лунная галерея</summary>
           {color('scenes.gallery.moonLightColor', 'Цвет лунного света')}
-          {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.name.startsWith('Near Low') || group.name.startsWith('Waterline')}><summary>{group.name}</summary>
+          <details open><summary>Колонны и геометрия галереи</summary>
+            <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-gallery-columnVisible">Показывать колонны</label>{config.scenes.gallery.columnVisible !== defaultAtPath('scenes.gallery.columnVisible') && <button type="button" className="inspector-reset" aria-label="Сбросить видимость колонн" onClick={() => { void resetField('scenes.gallery.columnVisible') }}>↺</button>}</div><input id="composer-scenes-gallery-columnVisible" data-testid="composer-scenes-gallery-columnVisible" type="checkbox" checked={config.scenes.gallery.columnVisible} onChange={(event) => { void changeField('scenes.gallery.columnVisible', event.target.checked) }} /></div>
+            {GALLERY_LAYOUT_CONTROLS.map(range)}
+          </details>
+          <details open><summary>Компоновка картин A/B</summary>
+            <div className="composer-control">
+              <div className="inspector-control-heading"><label htmlFor="composer-scenes-gallery-galleryLayoutVariant">Вариант расположения картин</label></div>
+              <select id="composer-scenes-gallery-galleryLayoutVariant" data-testid="composer-scenes-gallery-galleryLayoutVariant" value={config.scenes.gallery.galleryLayoutVariant} onChange={(event) => { void changeField('scenes.gallery.galleryLayoutVariant', event.target.value) }}>
+                <option value="on-columns">A · На колоннах</option>
+                <option value="between-columns">B · Между колоннами</option>
+              </select>
+            </div>
+            {config.scenes.gallery.galleryLayoutVariant === 'between-columns' && <p>Настройки ниже относятся к B и сохраняются отдельно. Для X минус приближает обе стороны к центру, плюс отдаляет.</p>}
+            {config.scenes.gallery.galleryLayoutVariant === 'between-columns' && <>
+              {range({ path: 'scenes.gallery.galleryPhotoFacingMaxDegrees', label: 'Максимальный разворот картин к зрителю', unit: '°', min: 0, max: 45, step: 1 })}
+              <p>Разворот плавно уменьшается по мере приближения и уходит в ноль при фокусе на фотографии.</p>
+            </>}
+            {config.scenes.gallery.galleryLayoutVariant === 'on-columns' && <p>Настройки ниже относятся к A и сохраняются отдельно от B.</p>}
+            {galleryPhotoLayoutControls(config.scenes.gallery.galleryLayoutVariant === 'on-columns' ? 'A' : 'B').map(range)}
+          </details>
+          <details open><summary>Арка у Луны</summary>
+            <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-gallery-archVisible">Показывать арку</label>{config.scenes.gallery.archVisible !== defaultAtPath('scenes.gallery.archVisible') && <button type="button" className="inspector-reset" aria-label="Сбросить видимость арки" onClick={() => { void resetField('scenes.gallery.archVisible') }}>↺</button>}</div><input id="composer-scenes-gallery-archVisible" data-testid="composer-scenes-gallery-archVisible" type="checkbox" checked={config.scenes.gallery.archVisible} onChange={(event) => { void changeField('scenes.gallery.archVisible', event.target.checked) }} /></div>
+            {GALLERY_ARCH_CONTROLS.map(range)}
+          </details>
+          {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.name.startsWith('Near Low') || group.name.startsWith('Waterline') || group.name.startsWith('Moon Clouds')}><summary>{group.name}</summary>
             {group.controls.map(range)}
-            {group.name.startsWith('Waterline') && <p>Для устойчивого времени кадра сцена отображает не более 36 объёмных масс (20 в низком профиле); все четыре слоя сохраняют отдельные квоты.</p>}
+            {group.name.startsWith('Waterline') && <p>Счётчик управляет только этой группой; количество других облаков на него не влияет.</p>}
           </details>)}
           {GALLERY_CONTROLS.map(range)}
         </details>}
@@ -865,3 +917,4 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
     </aside>
   )
 }
+

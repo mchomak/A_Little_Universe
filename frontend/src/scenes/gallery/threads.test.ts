@@ -1,7 +1,7 @@
 import { MeshBasicMaterial, QuadraticBezierCurve3, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
-import { GALLERY_MEMORIES, memoryPosition } from './content'
+import { galleryColumnPhotoCenterOffsetZ, GALLERY, GALLERY_MEMORIES, memoryPosition } from './content'
 import { GALLERY_ART } from './artDirection'
 import {
   createMemoryThreadAccentGeometry,
@@ -44,6 +44,29 @@ describe('gallery memory thread paths', () => {
     }
   })
 
+  it('repositions accent paths along B paired frames and uses that variant lane width', () => {
+    const layout = { laneWidth: 9, offsetX: 0.2, offsetY: 0.15, offsetZ: -0.5 }
+    const paths = createMemoryThreadPaths(GALLERY_MEMORIES, GALLERY.width, 'between-columns', layout)
+    expect(paths).toHaveLength(3)
+    expect(paths[0]!.start[0]).toBeCloseTo(-6.05)
+    expect(paths[0]!.end[0]).toBeCloseTo(-6.05)
+    expect(paths[0]!.start[2]).not.toBe(paths[0]!.end[2])
+    expect(paths.every(path => [...path.start, ...path.control, ...path.end].every(Number.isFinite))).toBe(true)
+  })
+
+  it('keeps B thread paths aligned with photos when column depth and scale change', () => {
+    const defaults = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery
+    const layout = { laneWidth: 7, offsetX: 1.95, offsetY: 0.45, offsetZ: 0 }
+    const customColumns = { ...defaults, columnDepth: 0.63, columnScale: 1.8 }
+    const defaultPath = createMemoryThreadPaths(GALLERY_MEMORIES, GALLERY.width, 'between-columns', layout, defaults)[0]!
+    const customPath = createMemoryThreadPaths(GALLERY_MEMORIES, GALLERY.width, 'between-columns', layout, customColumns)[0]!
+    const expectedOffset = galleryColumnPhotoCenterOffsetZ(customColumns) - galleryColumnPhotoCenterOffsetZ(defaults)
+
+    expect(customPath.start[2] - defaultPath.start[2]).toBeCloseTo(expectedOffset, 8)
+    expect(customPath.control[2] - defaultPath.control[2]).toBeCloseTo(expectedOffset, 8)
+    expect(customPath.end[2] - defaultPath.end[2]).toBeCloseTo(expectedOffset, 8)
+  })
+
   it('creates a deterministic thin spatial tube from a public thread path', () => {
     const path = createMemoryThreadPaths(GALLERY_MEMORIES)[1]!
     const first = createMemoryThreadGeometry(path, { segments: 16, radius: 0.01, radialSegments: 4 })
@@ -59,6 +82,26 @@ describe('gallery memory thread paths', () => {
     first.dispose(); repeated.dispose()
   })
 
+  it('rebuilds world-space thread positions with the aisle while preserving depth and frame clearance', () => {
+    const defaultPaths = createMemoryThreadPaths(GALLERY_MEMORIES)
+    const wideWidth = 9
+    const widePaths = createMemoryThreadPaths(GALLERY_MEMORIES, wideWidth)
+    expect(widePaths).toHaveLength(defaultPaths.length)
+
+    for (let index = 0; index < defaultPaths.length; index++) {
+      const before = defaultPaths[index]!
+      const after = widePaths[index]!
+      const side = Math.sign(before.start[0])
+      expect(after.start[0] - before.start[0]).toBeCloseTo(side * (wideWidth - GALLERY.width) / 2)
+      expect(after.control[0] - before.control[0]).toBeCloseTo(side * (wideWidth - GALLERY.width) / 2)
+      expect(after.end[0] - before.end[0]).toBeCloseTo(side * (wideWidth - GALLERY.width) / 2)
+      expect(after.start[2]).toBe(before.start[2])
+      expect(after.control[2]).toBe(before.control[2])
+      expect(after.end[2]).toBe(before.end[2])
+      expect(Math.abs(after.start[0]) - wideWidth / 2).toBeCloseTo(1.35)
+    }
+  })
+
   it('keeps short elevated threads clear of every yawed photo surface for the full route', () => {
     const paths = createMemoryThreadPaths(GALLERY_MEMORIES)
     for (const path of paths) {
@@ -72,7 +115,7 @@ describe('gallery memory thread paths', () => {
       for (let sample = 0; sample <= 100; sample++) {
         const point = curve.getPoint(sample / 100)
         for (const memory of GALLERY_MEMORIES) {
-          const [centerX, centerY, centerZ] = memoryPosition(memory)
+          const [centerX, centerY, centerZ] = memoryPosition(memory, GALLERY.width)
           const yaw = -memory.side * GALLERY_ART.wallYaw
           const scale = memory.order === 0 ? 1.35 : 1
           const dx = point.x - centerX
@@ -126,3 +169,13 @@ describe('gallery memory thread paths', () => {
     material.dispose()
   })
 })
+
+  it('moves both thread endpoints and its control point with the photo layout height', () => {
+    const base = createMemoryThreadPaths(GALLERY_MEMORIES)[0]!
+    const shifted = createMemoryThreadPaths(GALLERY_MEMORIES, GALLERY.width, 'between-columns', {
+      laneWidth: GALLERY.width, offsetX: 0, offsetY: 0.6, offsetZ: 0,
+    })[0]!
+    for (const point of ['start', 'control', 'end'] as const) {
+      expect(shifted[point][1] - base[point][1]).toBeCloseTo(0.6)
+    }
+  })

@@ -12,7 +12,7 @@ it('gives moon-facing photo surfaces a soft directional cool fill and keeps back
 
 it('keeps the world-space reflection track finite when the moon aim has no length', () => {
   const point = { x: 0.2, y: 16, z: -126 }
-  const track = calculateMoonReflectionTrack(point, point, { x: 0, y: 1.7, z: 0 }, -2.35)
+  const track = calculateMoonReflectionTrack(point, point, -2.35)
 
   expect(track.length).toBeGreaterThan(0)
   expect(track.origin.every(Number.isFinite)).toBe(true)

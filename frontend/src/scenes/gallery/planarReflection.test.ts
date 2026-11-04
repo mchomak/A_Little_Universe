@@ -1,5 +1,6 @@
 import { HalfFloatType, LinearFilter, Mesh, MeshBasicMaterial, NoColorSpace, PerspectiveCamera, PlaneGeometry, Scene, UnsignedByteType, Vector3, Vector4, WebGLRenderTarget, WebGLRenderer } from 'three'
 import { describe, expect, it, vi } from 'vitest'
+import { createGalleryWaterReflectionBackplate } from './galleryBackplate'
 import { createGalleryPlanarReflectionPass } from './planarReflection'
 
 describe('gallery planar reflection target', () => {
@@ -87,12 +88,14 @@ describe('gallery planar reflection target', () => {
     floor.material.dispose()
   })
 
-  it('restores renderer state and floor visibility when capture throws', () => {
+  it('excludes the actual gallery photo backplate from capture and restores it after a failure', () => {
     const scene = new Scene()
     const floor = new Mesh(new PlaneGeometry(20, 20), new MeshBasicMaterial())
     floor.position.y = -2.35
     floor.rotation.x = -Math.PI / 2
-    scene.add(floor)
+    const backplate = createGalleryWaterReflectionBackplate(3, 3)
+    const photo = new Mesh(new PlaneGeometry(3, 3), new MeshBasicMaterial())
+    scene.add(floor, backplate, photo)
     const camera = new PerspectiveCamera(48, 1, 0.1, 200)
     camera.position.set(0, 1, 6)
     camera.lookAt(0, -0.5, -20)
@@ -116,7 +119,7 @@ describe('gallery planar reflection target', () => {
       setScissorTest: vi.fn(),
       clear: vi.fn(),
       render: vi.fn(() => {
-        captureState = { target: currentTarget, floorVisible: floor.visible, xr: renderer.xr.enabled, shadows: renderer.shadowMap.autoUpdate }
+        captureState = { target: currentTarget, floorVisible: floor.visible, backplateVisible: backplate.visible, photoVisible: photo.visible, xr: renderer.xr.enabled, shadows: renderer.shadowMap.autoUpdate }
         throw new Error('capture failed')
       }),
     } as unknown as WebGLRenderer
@@ -124,8 +127,9 @@ describe('gallery planar reflection target', () => {
 
     expect(() => pass.render(renderer, scene, camera, floor)).toThrow('capture failed')
 
-    expect(captureState).toEqual({ target: pass.target, floorVisible: false, xr: false, shadows: false })
+    expect(captureState).toEqual({ target: pass.target, floorVisible: false, backplateVisible: false, photoVisible: true, xr: false, shadows: false })
     expect(floor.visible).toBe(true)
+    expect(backplate.visible).toBe(true)
     expect(renderer.xr.enabled).toBe(true)
     expect(renderer.shadowMap.autoUpdate).toBe(true)
     expect(currentTarget).toBe(screenTarget)
@@ -138,5 +142,7 @@ describe('gallery planar reflection target', () => {
     screenTarget.dispose()
     floor.geometry.dispose()
     floor.material.dispose()
+    backplate.geometry.dispose()
+    backplate.material.dispose()
   })
 })

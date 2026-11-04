@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { GALLERY } from './content'
-import { GALLERY_CLOUD_RENDER_LIMIT, GALLERY_WORLD, getGalleryCloudDrift, getGalleryCloudMasses, getGalleryCloudMassesForLayerCounts, getGalleryCloudPosition, getGalleryCloudRadii, getGalleryCloudRenderOrder, getGalleryHazeMasses, getGalleryMoonScatteringLayers } from './world'
+import { GALLERY, GALLERY_MEMORIES } from './content'
+import { GALLERY_WORLD, getGalleryAtmosphereStepCount, getGalleryAtmosphereVisibilityFade, getGalleryCloudDrift, getGalleryCloudMasses, getGalleryCloudMassesForLayerCounts, getGalleryCloudPosition, getGalleryCloudRadii, getGalleryCloudRenderOrder, getGalleryHazeCameraFade, getGalleryHazeMasses, getGalleryMoonScatteringLayers } from './world'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 
 const cloudLayers = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.cloudLayers
+const focusPositions = GALLERY_MEMORIES.map(({ order }) => {
+  const z = GALLERY.firstZ - order * GALLERY.spacing
+  return [0, 0.12, z + Math.cos(1.15) * 4.8] as const
+})
 
 describe('moonlit gallery world layout', () => {
   it('keeps the floor under the route and the elevated moon fixed beyond its end', () => {
@@ -16,40 +20,78 @@ describe('moonlit gallery world layout', () => {
     expect(floorEnd).toBeLessThan(routeEnd - 20)
     expect(GALLERY_WORLD.moon.position[0]).toBeCloseTo(0.2)
     expect(GALLERY_WORLD.moon.position[1]).toBeGreaterThan(10)
-    expect(GALLERY_WORLD.moon.position[2]).toBe(-126)
+    expect(GALLERY_WORLD.moon.position[2]).toBe(Math.min(-126, routeEnd - 41))
     expect(GALLERY_WORLD.moon.position[2]).toBeLessThan(routeEnd - 40)
   })
 
-  it('renders four separately counted layers within quality budgets and preserves moon wisps', () => {
+  it('renders five independently counted cloud groups without a shared total cap', () => {
     const standard = getGalleryCloudMassesForLayerCounts('standard', cloudLayers)
     const low = getGalleryCloudMassesForLayerCounts('low', cloudLayers)
-    const counts = Object.fromEntries(['far', 'mid', 'nearLow', 'waterline'].map((layer) => [
+    const counts = Object.fromEntries(['far', 'mid', 'nearLow', 'waterline', 'moon'].map((layer) => [
       layer,
       standard.filter((mass) => mass.layer === layer).length,
     ]))
 
-    expect(counts).toEqual({ far: 5, mid: 8, nearLow: 10, waterline: 13 })
-    expect(standard).toHaveLength(GALLERY_CLOUD_RENDER_LIMIT.standard)
-    expect(low).toHaveLength(GALLERY_CLOUD_RENDER_LIMIT.low)
-    expect(new Set(low.map((mass) => mass.layer))).toEqual(new Set(['far', 'mid', 'nearLow', 'waterline']))
-    expect(Object.fromEntries(['far', 'mid', 'nearLow', 'waterline'].map((layer) => [
+    expect(counts).toEqual({ far: 2, mid: 2, nearLow: 8, waterline: 8, moon: 2 })
+    expect(standard).toHaveLength(22)
+    expect(low).toHaveLength(22)
+    expect(new Set(low.map((mass) => mass.layer))).toEqual(new Set(['far', 'mid', 'nearLow', 'waterline', 'moon']))
+    expect(Object.fromEntries(['far', 'mid', 'nearLow', 'waterline', 'moon'].map((layer) => [
       layer, low.filter((mass) => mass.layer === layer).length,
-    ]))).toEqual({ far: 3, mid: 2, nearLow: 8, waterline: 7 })
-    expect(standard.filter((mass) => mass.moonInteraction)).toHaveLength(2)
-    expect(standard.filter((mass) => mass.moonInteraction).every((mass) => mass.opacity < 0.5)).toBe(true)
-    const moonWisps = standard.filter((mass) => mass.moonInteraction)
+    ]))).toEqual({ far: 2, mid: 2, nearLow: 8, waterline: 8, moon: 2 })
+    expect(standard.filter((mass) => mass.layer === 'moon')).toHaveLength(2)
+    expect(standard.filter((mass) => mass.layer === 'moon').every((mass) => mass.moonInteraction && mass.opacity < 0.5)).toBe(true)
+    expect(low.filter((mass) => mass.layer === 'moon')).toHaveLength(2)
+    const moonWisps = standard.filter((mass) => mass.layer === 'moon')
     expect(moonWisps).toHaveLength(2)
+    expect(moonWisps).toContainEqual(expect.objectContaining({ id: 'moon-cloud-01' }))
     expect(moonWisps.every((mass) => mass.position[2] > GALLERY_WORLD.moon.position[2])).toBe(true)
-    expect(moonWisps.every((mass) => Math.abs(mass.position[0] - GALLERY_WORLD.moon.position[0]) < mass.radii[0])).toBe(true)
-    expect(moonWisps.some((mass) => {
-      const dx = (GALLERY_WORLD.moon.position[0] - mass.position[0]) / mass.radii[0]
-      const dy = (GALLERY_WORLD.moon.position[1] - mass.position[1]) / mass.radii[1]
-      return dx * dx + dy * dy < 1
-    })).toBe(true)
+    const overlappingMoonCloud = moonWisps.find((mass) => mass.id === 'moon-cloud-01')!
+    expect(Math.abs(overlappingMoonCloud.position[0] - GALLERY_WORLD.moon.position[0])).toBeLessThan(overlappingMoonCloud.radii[0])
+    const dx = (GALLERY_WORLD.moon.position[0] - overlappingMoonCloud.position[0]) / overlappingMoonCloud.radii[0]
+    const dy = (GALLERY_WORLD.moon.position[1] - overlappingMoonCloud.position[1]) / overlappingMoonCloud.radii[1]
+    expect(dx * dx + dy * dy).toBeLessThan(1)
 
-    const oversized = Object.fromEntries(Object.entries(cloudLayers).map(([layer, settings]) => [layer, { ...settings, count: 24 }])) as typeof cloudLayers
-    expect(getGalleryCloudMassesForLayerCounts('standard', oversized)).toHaveLength(GALLERY_CLOUD_RENDER_LIMIT.standard)
-    expect(getGalleryCloudMassesForLayerCounts('low', oversized)).toHaveLength(GALLERY_CLOUD_RENDER_LIMIT.low)
+    const maximum = Object.fromEntries(Object.entries(cloudLayers).map(([layer, settings]) => [
+      layer,
+      { ...settings, count: layer === 'far' ? 12 : layer === 'mid' ? 20 : layer === 'nearLow' ? 24 : layer === 'waterline' ? 32 : 8 },
+    ])) as typeof cloudLayers
+    expect(getGalleryCloudMassesForLayerCounts('standard', maximum)).toHaveLength(96)
+    expect(getGalleryCloudMassesForLayerCounts('low', maximum)).toHaveLength(96)
+    const independentlyAdjusted = { ...cloudLayers, far: { ...cloudLayers.far, count: 0 }, mid: { ...cloudLayers.mid, count: 1 } }
+    expect(getGalleryCloudMassesForLayerCounts('standard', independentlyAdjusted).filter((mass) => mass.layer === 'far')).toHaveLength(0)
+    expect(getGalleryCloudMassesForLayerCounts('standard', independentlyAdjusted).filter((mass) => mass.layer === 'mid')).toHaveLength(1)
+  })
+
+  it('spends more ray samples on close corridor clouds and fewer in the water reflection', () => {
+    const sampleBudget = (quality: 'low' | 'standard', reflection = false) => {
+      const clouds = getGalleryCloudMassesForLayerCounts(quality, cloudLayers)
+      const haze = getGalleryHazeMasses(quality)
+      return [
+        ...clouds.map((mass) => getGalleryAtmosphereStepCount(quality, mass.layer, 0, reflection)),
+        ...haze.map(() => getGalleryAtmosphereStepCount(quality, 'haze', 0, reflection)),
+      ].reduce((sum, steps) => sum + steps, 0)
+    }
+
+    expect(sampleBudget('standard')).toBe(240)
+    expect(sampleBudget('standard', true)).toBe(82)
+    expect(sampleBudget('low')).toBeLessThanOrEqual(66)
+    expect(sampleBudget('low', true)).toBeLessThanOrEqual(48)
+    expect(sampleBudget('low')).toBeGreaterThan(0)
+    expect(sampleBudget('low', true)).toBeGreaterThan(0)
+    expect(getGalleryAtmosphereStepCount('standard', 'nearLow', 18)).toBe(12)
+    expect(getGalleryAtmosphereStepCount('standard', 'nearLow', 50)).toBeGreaterThan(5)
+    expect(getGalleryAtmosphereStepCount('standard', 'nearLow', 50)).toBeLessThan(12)
+    expect(getGalleryAtmosphereStepCount('standard', 'nearLow', 90)).toBe(5)
+  })
+
+  it('fades distant clouds continuously before removing fully transparent masses', () => {
+    expect(getGalleryAtmosphereVisibilityFade(92, 'far')).toBe(1)
+    expect(getGalleryAtmosphereVisibilityFade(114, 'far')).toBeCloseTo(0.5)
+    expect(getGalleryAtmosphereVisibilityFade(136, 'far')).toBe(0)
+    expect(getGalleryAtmosphereVisibilityFade(154, 'nearLow')).toBeCloseTo(0.5)
+    expect(getGalleryAtmosphereVisibilityFade(1000, 'far', true)).toBe(1)
+    expect(getGalleryAtmosphereVisibilityFade(Number.NaN, 'nearLow')).toBe(0)
   })
 
   it('places near-low and waterline masses on both sides along the whole route, outside the photo corridor', () => {
@@ -97,7 +139,7 @@ describe('moonlit gallery world layout', () => {
   })
 
   it('supports live layer height and distance tuning without mutating the shared layout', () => {
-    const mass = getGalleryCloudMasses('standard').find((candidate) => candidate.layer === 'nearLow')!
+    const mass = getGalleryCloudMasses().find((candidate) => candidate.layer === 'nearLow')!
     const adjusted = getGalleryCloudPosition(mass, { ...cloudLayers.nearLow, height: 2.5, distance: 4 })
     const scaled = getGalleryCloudRadii(mass, { ...cloudLayers.nearLow, scale: 1.25 })
 
@@ -107,6 +149,17 @@ describe('moonlit gallery world layout', () => {
     expect(scaled).toEqual(mass.radii.map((radius) => radius * 1.25))
     expect(mass.position[1]).not.toBe(adjusted[1])
     expect(getGalleryCloudRadii(mass, cloudLayers.nearLow, 'low')[2]).toBeGreaterThan(getGalleryCloudRadii(mass, cloudLayers.nearLow)[2])
+  })
+
+  it('moves the dedicated moon cloud layer with the configured moon position', () => {
+    const mass = GALLERY_WORLD.clouds.find((candidate) => candidate.id === 'moon-cloud-01')!
+    const configuredMoonPosition = [GALLERY_WORLD.moon.position[0] + 1, GALLERY_WORLD.moon.position[1] + 1, GALLERY_WORLD.moon.position[2] + 6] as const
+    const defaultPosition = getGalleryCloudPosition(mass, cloudLayers.moon)
+    const shiftedPosition = getGalleryCloudPosition(mass, cloudLayers.moon, configuredMoonPosition)
+
+    expect(shiftedPosition[0] - defaultPosition[0]).toBeCloseTo(1)
+    expect(shiftedPosition[1] - defaultPosition[1]).toBeCloseTo(1)
+    expect(shiftedPosition[2] - defaultPosition[2]).toBeCloseTo(6)
   })
 
   it('draws waterline clouds after the transparent floor while preserving photo depth occlusion', () => {
@@ -126,7 +179,7 @@ describe('moonlit gallery world layout', () => {
   })
 
   it('keeps a calm deterministic drift and preserves the independent floor haze', () => {
-    const mass = getGalleryCloudMasses('standard')[0]!
+    const mass = getGalleryCloudMasses()[0]!
     expect(getGalleryCloudDrift(mass, 12)).toEqual(getGalleryCloudDrift(mass, 12))
     expect(getGalleryCloudDrift(mass, 12)).not.toEqual(getGalleryCloudDrift(mass, 13))
     expect(Math.hypot(...getGalleryCloudDrift(mass, 12))).toBeLessThan(2)
@@ -135,5 +188,93 @@ describe('moonlit gallery world layout', () => {
     expect(getGalleryHazeMasses('standard').length).toBeGreaterThanOrEqual(3)
     expect(getGalleryHazeMasses('low').length).toBeLessThan(getGalleryHazeMasses('standard').length)
     expect(getGalleryHazeMasses('standard').every(({ position, radii }) => position[1] < 1 && radii[1] < 6)).toBe(true)
+  })
+
+  it('expands waterline haze across the horizon while keeping it soft and covering the full water plane', () => {
+    const haze = GALLERY_WORLD.haze
+    const floorY = GALLERY_WORLD.floor.y
+    expect(haze[0]!.position[1] - haze[0]!.radii[1]).toBeLessThan(floorY)
+    expect(haze.every(({ position, radii, opacity }) => position[1] + radii[1] > 2 && opacity < 0.25)).toBe(true)
+    expect(haze[0]!.radii[2]).toBeGreaterThan(17)
+  })
+
+  it('smoothly clears the camera from haze volumes across travel, focus, exit, and maximum drift', () => {
+    const start = GALLERY.startZ
+    const routeEnd = start - GALLERY.travel - 2
+    const haze = GALLERY_WORLD.haze
+    const routePositions = Array.from({ length: 48 }, (_, index) => [0, 0, start + (routeEnd - start) * index / 47] as const)
+    let cameraEntersHaze = false
+    for (let time = 0; time <= 48; time += 2) {
+      for (const camera of [...routePositions, ...focusPositions]) {
+        for (const mass of haze) {
+          const drift = getGalleryCloudDrift(mass, time, 3 * 2.5, 0.35)
+          const center = [mass.position[0] + drift[0], mass.position[1] + drift[1], mass.position[2] + drift[2]] as const
+          const fade = getGalleryHazeCameraFade(camera, center, mass.radii)
+          const normalizedDistance = Math.hypot((camera[0] - center[0]) / mass.radii[0], (camera[1] - center[1]) / mass.radii[1], (camera[2] - center[2]) / mass.radii[2])
+          if (normalizedDistance <= 1) {
+            cameraEntersHaze = true
+            expect(fade, `${mass.id} contains camera at ${camera.join(',')} time=${time}`).toBe(0)
+          }
+          expect(fade).toBeGreaterThanOrEqual(0)
+          expect(fade).toBeLessThanOrEqual(1)
+        }
+      }
+    }
+    expect(cameraEntersHaze).toBe(true)
+
+    const sample = haze[0]!
+    const center = sample.position
+    const justOutside = [center[0], center[1], center[2] + sample.radii[2] + 4] as const
+    expect(getGalleryHazeCameraFade(justOutside, center, sample.radii)).toBeGreaterThan(0)
+    expect(getGalleryHazeCameraFade(justOutside, center, sample.radii)).toBeLessThan(1)
+    expect(getGalleryHazeCameraFade([center[0], center[1], center[2] + sample.radii[2] + 12], center, sample.radii)).toBe(1)
+  })
+
+  it('keeps a continuous haze contribution on the water horizon after camera-proximity fades', () => {
+    const start = GALLERY.startZ
+    const routeEnd = start - GALLERY.travel - 2
+    const routePositions = Array.from({ length: 48 }, (_, index) => [0, 0, start + (routeEnd - start) * index / 47] as const)
+    const farHazeZ = GALLERY_WORLD.haze[2]!.position[2]
+    const horizonSamples = Array.from({ length: 21 }, (_, index) => farHazeZ - 15 + index * 1.5)
+    const hazeDensity = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.hazeDensity
+    let minimumCoverage = Number.POSITIVE_INFINITY
+
+    for (const quality of ['low', 'standard'] as const) {
+      const haze = getGalleryHazeMasses(quality)
+      for (let time = 0; time <= 48; time += 2) {
+        for (const camera of [...routePositions, ...focusPositions]) {
+          const centers = haze.map((mass) => {
+            const drift = getGalleryCloudDrift(mass, time, 3 * 2.5, 0.35)
+            return {
+              mass,
+              center: [mass.position[0] + drift[0], mass.position[1] + drift[1], mass.position[2] + drift[2]] as const,
+            }
+          })
+
+          for (const z of horizonSamples) {
+            const horizonPoint = [0, GALLERY_WORLD.floor.y, z] as const
+            const coverage = centers.reduce((sum, { mass, center }) => {
+              const cameraFade = getGalleryHazeCameraFade(camera, center, mass.radii)
+              const cameraDistance = Math.hypot(camera[0] - center[0], camera[1] - center[1], camera[2] - center[2])
+              const distanceFade = getGalleryAtmosphereVisibilityFade(cameraDistance, 'haze')
+              const localRadius = Math.hypot((horizonPoint[0] - center[0]) / mass.radii[0], (horizonPoint[1] - center[1]) / mass.radii[1], (horizonPoint[2] - center[2]) / mass.radii[2])
+              const edgeT = Math.max(0, Math.min(1, (localRadius - 0.5) / 0.5))
+              const edgeFade = 1 - edgeT * edgeT * (3 - 2 * edgeT)
+              return sum + mass.opacity * hazeDensity * cameraFade * distanceFade * edgeFade
+            }, 0)
+            minimumCoverage = Math.min(minimumCoverage, coverage)
+          }
+        }
+      }
+    }
+
+    expect(minimumCoverage).toBeGreaterThan(0.003)
+  })
+
+  it('supports faster drift while preserving zero as a deliberate stop', () => {
+    const mass = getGalleryCloudMasses()[0]!
+    expect(getGalleryCloudDrift(mass, 12, 0)).toEqual([0, 0, 0])
+    expect(getGalleryCloudDrift(mass, 12, 3)).not.toEqual(getGalleryCloudDrift(mass, 12, 2))
+    expect(Math.hypot(...getGalleryCloudDrift(mass, 12, 3))).toBeLessThan(2)
   })
 })

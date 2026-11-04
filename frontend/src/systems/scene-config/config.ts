@@ -1,4 +1,4 @@
-import '../../styles/fonts.css'
+﻿import '../../styles/fonts.css'
 import { type ArtFontId, isArtFontId } from './fontIds'
 import { isDeveloperMode } from '../../debug/developerMode'
 
@@ -25,13 +25,21 @@ export interface GalleryCloudLayers {
   mid: Readonly<GalleryCloudLayerSettings>
   nearLow: Readonly<GalleryCloudLayerSettings>
   waterline: Readonly<GalleryCloudLayerSettings>
+  moon: Readonly<GalleryCloudLayerSettings>
+}
+
+export interface GalleryPhotoLayout {
+  laneWidth: number
+  offsetX: number
+  offsetY: number
+  offsetZ: number
 }
 
 type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T[Key]> : T[Key] }
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 20
+  readonly schemaVersion: 21
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -215,6 +223,25 @@ export interface SceneComposerConfig {
       portraitOffsetY: number
     }>
     gallery: Readonly<{
+      galleryLayoutVariant: 'on-columns' | 'between-columns'
+      galleryLayoutA: Readonly<GalleryPhotoLayout>
+      galleryLayoutB: Readonly<GalleryPhotoLayout>
+      galleryPhotoFacingMaxDegrees: number
+      /** Distance between the two photo-lane centers; changing it leaves their Z/order untouched. */
+      galleryWidth: number
+      columnVisible: boolean
+      columnScale: number
+      /** Positive depth points behind the photo plane; offsets X/Y are horizontal on its face and vertical from floor. */
+      columnDepth: number
+      columnOffsetX: number
+      columnOffsetY: number
+      archVisible: boolean
+      archScale: number
+      archOpacity: number
+      archPositionX: number
+      archPositionY: number
+      archPositionZ: number
+      archRotationY: number
       frameIntensity: number
       particleCount: number
       moonBrightness: number
@@ -332,7 +359,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 20,
+  schemaVersion: 21,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     openingBackground: { zoom: 1, offsetX: 0, offsetY: 0 },
@@ -398,24 +425,32 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       portraitBrightness: 1.8, portraitSize: 1.8, portraitScale: 1.05, portraitOffsetX: 0, portraitOffsetY: 0,
     },
     gallery: {
-      frameIntensity: 1, particleCount: 220, moonBrightness: 0.8, moonSize: 1,
+      galleryLayoutVariant: 'between-columns',
+      galleryLayoutA: { laneWidth: 7, offsetX: 0, offsetY: 0, offsetZ: 0 },
+      galleryLayoutB: { laneWidth: 7, offsetX: 2, offsetY: 0.75, offsetZ: 2.1 },
+      galleryPhotoFacingMaxDegrees: 45,
+      galleryWidth: 7,
+      columnVisible: true, columnScale: 1, columnDepth: 0.15, columnOffsetX: 0, columnOffsetY: 0,
+      archVisible: true, archScale: 19, archOpacity: 0.78, archPositionX: 0, archPositionY: 0, archPositionZ: -82, archRotationY: 0,
+      frameIntensity: 1, particleCount: 220, moonBrightness: 0.8, moonSize: 1.2,
       cloudDriftVariation: 0.65,
       cloudLayers: {
-        far: { count: 5, density: 0.84, scale: 1.12, opacity: 0.72, brightness: 0.84, driftSpeed: 0.26, height: 0, distance: 0, softness: 0.82 },
-        mid: { count: 8, density: 0.92, scale: 1.16, opacity: 0.78, brightness: 0.92, driftSpeed: 0.4, height: 0, distance: 0, softness: 0.7 },
-        nearLow: { count: 10, density: 1.12, scale: 1, opacity: 0.94, brightness: 1.08, driftSpeed: 0.34, height: 0, distance: 0, softness: 0.55 },
-        waterline: { count: 13, density: 0.96, scale: 1.05, opacity: 0.92, brightness: 0.96, driftSpeed: 0.22, height: 0, distance: 0, softness: 0.58 },
+        far: { count: 2, density: 0.84, scale: 1.12, opacity: 0.72, brightness: 0.84, driftSpeed: 0.48, height: 0, distance: 0, softness: 0.82 },
+        mid: { count: 2, density: 0.92, scale: 1.16, opacity: 0.78, brightness: 0.92, driftSpeed: 0.68, height: 0, distance: 0, softness: 0.7 },
+        nearLow: { count: 8, density: 1.12, scale: 1, opacity: 0.94, brightness: 1.08, driftSpeed: 0.62, height: 0, distance: 0, softness: 0.55 },
+        waterline: { count: 8, density: 0.96, scale: 1.05, opacity: 0.92, brightness: 0.96, driftSpeed: 0.52, height: 0.8, distance: 0, softness: 0.58 },
+        moon: { count: 2, density: 0.62, scale: 0.62, opacity: 0.68, brightness: 0.8, driftSpeed: 0.22, height: 0, distance: 0, softness: 0.72 },
       },
       cloudCoolTint: 1.35, cloudWhiteHighlight: 0.24,
-      hazeDensity: 0.22, hazeHeight: 0, hazeMotionSpeed: 0.2, reflectionStrength: 0.5,
-      reflectionBlur: 0.52, reflectionFalloff: 1.25, waterBaseBrightness: 0.72,
-      waterDistortion: 0.008, waterDistortionScale: 1, waterRippleSpeed: 0.12,
-      waterNormalStrength: 0.22, moonHighlightStrength: 0.92, moonReflectionSpread: 1.15, waterOpacity: 1,
+      hazeDensity: 0.3, hazeHeight: 0, hazeMotionSpeed: 0.35, reflectionStrength: 0.64,
+      reflectionBlur: 0.62, reflectionFalloff: 1.25, waterBaseBrightness: 0.72,
+      waterDistortion: 0.02, waterDistortionScale: 0.87, waterRippleSpeed: 1,
+      waterNormalStrength: 0.5, moonHighlightStrength: 1.1, moonReflectionSpread: 2, waterOpacity: 1,
       threadOpacity: 0.38, coldLightIntensity: 0.58,
-      moonLightIntensity: 1.25, moonFillIntensity: 0.22, moonHaloIntensity: 1.2,
+      moonLightIntensity: 1.4, moonFillIntensity: 0.22, moonHaloIntensity: 1.8,
       moonCloudLightIntensity: 0.72, moonScatteringIntensity: 0.62,
-      moonLightColor: '#C3D8F2', moonPositionX: 0.2, moonPositionY: 16, moonPositionZ: -126,
-      moonTargetX: 0, moonTargetY: -2.35, moonTargetZ: -34, moonHaloRadius: 1,
+      moonLightColor: '#C3D8F2', moonPositionX: 0.2, moonPositionY: 24, moonPositionZ: -126,
+      moonTargetX: 0, moonTargetY: 5.2, moonTargetZ: -34, moonHaloRadius: 1.7,
       moonGodRaysIntensity: 0.12,
     },
     galaxy: {
@@ -484,7 +519,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 20) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 21) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -736,7 +771,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 20, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 21, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {
@@ -760,7 +795,38 @@ function migrateGalaxySettings(input: Record<string, unknown> | undefined, versi
 function normalizeGallery(input: Record<string, unknown> | undefined): SceneComposerConfig['scenes']['gallery'] {
   const d = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery
   const cloudLayers = normalizeGalleryCloudLayers(input)
+  const layoutA = input?.galleryLayoutA && typeof input.galleryLayoutA === 'object' ? input.galleryLayoutA as Record<string, unknown> : undefined
+  const layoutB = input?.galleryLayoutB && typeof input.galleryLayoutB === 'object' ? input.galleryLayoutB as Record<string, unknown> : undefined
   return {
+    galleryLayoutVariant: enumValue(input?.galleryLayoutVariant, ['on-columns', 'between-columns'] as const, d.galleryLayoutVariant),
+    galleryLayoutA: {
+      laneWidth: numberValue(layoutA?.laneWidth, numberValue(input?.galleryWidth, d.galleryLayoutA.laneWidth, 6, 12), 6, 12),
+      offsetX: numberValue(layoutA?.offsetX, d.galleryLayoutA.offsetX, -3, 3),
+      offsetY: numberValue(layoutA?.offsetY, d.galleryLayoutA.offsetY, -2, 2),
+      offsetZ: numberValue(layoutA?.offsetZ, d.galleryLayoutA.offsetZ, -5, 5),
+    },
+    galleryLayoutB: {
+      laneWidth: numberValue(layoutB?.laneWidth, numberValue(input?.galleryWidth, d.galleryLayoutB.laneWidth, 6, 12), 6, 12),
+      // v17 profiles allowed -3; preserve those saved values while applying the
+      // tighter current bound used to keep the two mirrored cards apart.
+      offsetX: clampedNumberValue(layoutB?.offsetX, d.galleryLayoutB.offsetX, -3, 3, -2.5, 3),
+      offsetY: numberValue(layoutB?.offsetY, d.galleryLayoutB.offsetY, -2, 2),
+      offsetZ: numberValue(layoutB?.offsetZ, d.galleryLayoutB.offsetZ, -5, 5),
+    },
+    galleryPhotoFacingMaxDegrees: numberValue(input?.galleryPhotoFacingMaxDegrees, d.galleryPhotoFacingMaxDegrees, 0, 45),
+    galleryWidth: numberValue(input?.galleryWidth, d.galleryWidth, 6, 12),
+    columnVisible: typeof input?.columnVisible === 'boolean' ? input.columnVisible : d.columnVisible,
+    columnScale: numberValue(input?.columnScale, d.columnScale, 0.75, 3),
+    columnDepth: numberValue(input?.columnDepth, d.columnDepth, 0.02, 2),
+    columnOffsetX: numberValue(input?.columnOffsetX, d.columnOffsetX, -2, 2),
+    columnOffsetY: numberValue(input?.columnOffsetY, d.columnOffsetY, -2, 2),
+    archVisible: typeof input?.archVisible === 'boolean' ? input.archVisible : d.archVisible,
+    archScale: numberValue(input?.archScale, d.archScale, 8, 28),
+    archOpacity: numberValue(input?.archOpacity, d.archOpacity, 0.1, 1),
+    archPositionX: numberValue(input?.archPositionX, d.archPositionX, -30, 30),
+    archPositionY: numberValue(input?.archPositionY, d.archPositionY, -12, 24),
+    archPositionZ: numberValue(input?.archPositionZ, d.archPositionZ, -140, -65),
+    archRotationY: numberValue(input?.archRotationY, d.archRotationY, -Math.PI, Math.PI),
     frameIntensity: numberValue(input?.frameIntensity, d.frameIntensity, 0, 2),
     particleCount: numberValue(input?.particleCount, d.particleCount, 0, 600, true),
     moonBrightness: numberValue(input?.moonBrightness, d.moonBrightness, 0, 2),
@@ -771,17 +837,17 @@ function normalizeGallery(input: Record<string, unknown> | undefined): SceneComp
     cloudWhiteHighlight: numberValue(input?.cloudWhiteHighlight, d.cloudWhiteHighlight, 0, 1.5),
     hazeDensity: numberValue(input?.hazeDensity, d.hazeDensity, 0, 1.8),
     hazeHeight: numberValue(input?.hazeHeight, d.hazeHeight, -3, 3),
-    hazeMotionSpeed: numberValue(input?.hazeMotionSpeed, d.hazeMotionSpeed, 0, 1),
-    reflectionStrength: numberValue(input?.reflectionStrength, d.reflectionStrength, 0, 0.6),
-    reflectionBlur: numberValue(input?.reflectionBlur, d.reflectionBlur, 0.3, 1),
+    hazeMotionSpeed: numberValue(input?.hazeMotionSpeed, d.hazeMotionSpeed, 0, 3),
+    reflectionStrength: numberValue(input?.reflectionStrength, d.reflectionStrength, 0, 0.9),
+    reflectionBlur: numberValue(input?.reflectionBlur, d.reflectionBlur, 0.3, 1.5),
     reflectionFalloff: numberValue(input?.reflectionFalloff, d.reflectionFalloff, 0.25, 2.5),
     waterBaseBrightness: numberValue(input?.waterBaseBrightness, d.waterBaseBrightness, 0, 1.5),
-    waterDistortion: numberValue(input?.waterDistortion, d.waterDistortion, 0, 0.05),
-    waterDistortionScale: numberValue(input?.waterDistortionScale, d.waterDistortionScale, 0.25, 3),
-    waterRippleSpeed: numberValue(input?.waterRippleSpeed, d.waterRippleSpeed, 0, 1),
-    waterNormalStrength: numberValue(input?.waterNormalStrength, d.waterNormalStrength, 0, 1),
+    waterDistortion: numberValue(input?.waterDistortion, d.waterDistortion, 0, 0.14),
+    waterDistortionScale: numberValue(input?.waterDistortionScale, d.waterDistortionScale, 0.25, 4.5),
+    waterRippleSpeed: numberValue(input?.waterRippleSpeed, d.waterRippleSpeed, 0, 3),
+    waterNormalStrength: numberValue(input?.waterNormalStrength, d.waterNormalStrength, 0, 3),
     moonHighlightStrength: numberValue(input?.moonHighlightStrength, d.moonHighlightStrength, 0, 2),
-    moonReflectionSpread: numberValue(input?.moonReflectionSpread, d.moonReflectionSpread, 0.25, 2.5),
+    moonReflectionSpread: numberValue(input?.moonReflectionSpread, d.moonReflectionSpread, 0.25, 4),
     waterOpacity: numberValue(input?.waterOpacity, d.waterOpacity, 0, 1),
     threadOpacity: numberValue(input?.threadOpacity, d.threadOpacity, 0, 0.8),
     coldLightIntensity: numberValue(input?.coldLightIntensity, d.coldLightIntensity, 0, 1.8),
@@ -805,7 +871,8 @@ function normalizeGallery(input: Record<string, unknown> | undefined): SceneComp
 function normalizeGalleryCloudLayers(input: Record<string, unknown> | undefined): GalleryCloudLayers {
   const defaults = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.cloudLayers
   const source = asRecord(input?.cloudLayers)
-  const layers = ['far', 'mid', 'nearLow', 'waterline'] as const
+  const legacyLayers = ['far', 'mid', 'nearLow', 'waterline'] as const
+  const layers = [...legacyLayers, 'moon'] as const
   const legacyLayerCount = !source && typeof input?.cloudLayerCount === 'number'
     ? numberValue(input.cloudLayerCount, 18, 0, 18, true)
     : undefined
@@ -819,14 +886,16 @@ function normalizeGalleryCloudLayers(input: Record<string, unknown> | undefined)
     mid: 1,
     nearLow: numberValue(input?.cloudForegroundAmount, 1, 0, 1.6),
     waterline: numberValue(input?.cloudNearFloorAmount, 1, 0, 1.6),
+    moon: 1,
   }
-  const counts = distributeLegacyCloudCount(legacyLayerCount, layers.map((layer) => defaults[layer].count))
-  const next = Object.fromEntries(layers.map((layer, index) => {
+  const legacyMoonCount = legacyLayerCount === undefined ? defaults.moon.count : Math.min(defaults.moon.count, legacyLayerCount)
+  const counts = distributeLegacyCloudCount(legacyLayerCount === undefined ? undefined : Math.max(0, legacyLayerCount - legacyMoonCount), legacyLayers.map((layer) => defaults[layer].count))
+  const next = Object.fromEntries(layers.map((layer) => {
     const value = asRecord(source?.[layer])
     const d = defaults[layer]
-    const maxCount = layer === 'waterline' ? 32 : 24
+    const maxCount = layer === 'far' ? 12 : layer === 'mid' ? 20 : layer === 'nearLow' ? 24 : layer === 'waterline' ? 32 : 8
     return [layer, {
-      count: numberValue(value?.count, legacyLayerCount === undefined ? d.count : counts[index]!, 0, maxCount, true),
+      count: numberValue(value?.count, legacyLayerCount === undefined ? d.count : layer === 'moon' ? legacyMoonCount : counts[legacyLayers.findIndex((legacyLayer) => legacyLayer === layer)]!, 0, maxCount, true),
       density: numberValue(value?.density, input?.cloudDensity === undefined ? d.density : legacyDensity, 0, 1.8),
       scale: numberValue(value?.scale, input?.cloudScale === undefined ? d.scale : legacyScale, 0.55, 2),
       opacity: numberValue(value?.opacity,
@@ -834,7 +903,7 @@ function normalizeGalleryCloudLayers(input: Record<string, unknown> | undefined)
           ? d.opacity
           : legacyOpacity * legacyAmounts[layer], 0, 1.8),
       brightness: numberValue(value?.brightness, input?.cloudIntensity === undefined ? d.brightness : legacyBrightness, 0, 2),
-      driftSpeed: numberValue(value?.driftSpeed, input?.cloudDriftSpeed === undefined ? d.driftSpeed : legacyDrift, 0, 2),
+      driftSpeed: numberValue(value?.driftSpeed, input?.cloudDriftSpeed === undefined ? d.driftSpeed : legacyDrift, 0, 3),
       height: numberValue(value?.height, d.height, -8, 12),
       distance: numberValue(value?.distance, d.distance, 0, 24),
       softness: numberValue(value?.softness, d.softness, 0, 1),
@@ -1016,6 +1085,10 @@ function boundedNumberValue(value: unknown, fallback: number, min: number, max: 
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
   return clamp(value, min, max)
 }
+function clampedNumberValue(value: unknown, fallback: number, acceptedMin: number, acceptedMax: number, min: number, max: number, integer = false) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < acceptedMin || value > acceptedMax || (integer && !Number.isInteger(value))) return fallback
+  return clamp(value, min, max)
+}
 
 function migrateLegacyNumber(value: unknown, fallback: number, legacyMin: number, legacyMax: number, min: number, max: number, integer = false) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < legacyMin || value > legacyMax || (integer && !Number.isInteger(value))) return fallback
@@ -1067,3 +1140,7 @@ function restoreLilyGrowthVfx() {
     // A corrupt or unavailable local draft should leave the expressive defaults active.
   }
 }
+
+
+
+

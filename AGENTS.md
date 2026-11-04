@@ -23,7 +23,7 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 
 `images/phone_1.png` — DOM/CSS-фон загрузки 00 и сцен 01–04; при входе в галерею 05 он скрывается. Начальный кадр увеличен, во время падения семени видимая область плавно движется вниз и сохраняет положение в сценах 03–04. `cover` заполняет экран без пустых краёв. DEV Scene Editor в development или в локальном production preview (`http://127.0.0.1:4173/?debug`) меняет общий профиль `scenes.openingBackground.{zoom, offsetX, offsetY}`; в секции «00–04 · Кадрирование фона» доступны живой предпросмотр и сброс. Масштаб: 1–3, смещения: −1…1, по умолчанию: 1/0/0.
 
-Схема Scene Composer v15 принимает JSON v1–v15; отсутствующие поля кропа получают значения по умолчанию, экспортируется версия 15.
+Схема Scene Composer v21 принимает JSON v1–v21; старые файлы сцен 02 и 05 мигрируются с сохранением известных настроек, экспортируется версия 21.
 
 ## Пресеты Scene Editor
 
@@ -39,6 +39,10 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 
 `npm run check` выполняет lint, Vitest, typecheck и production build.
 
+
+## Scene 05: gallery of memories
+
+`GalleryScene`, `MoonlitWorld` and `WetFloor` share the persistent WebGL canvas and use `galleryMotion.time`; camera pose for rendering and photo selection comes from `frontend/src/engine/galleryCameraPose.ts`. Event order is defined by `GALLERY_EVENT_ORDER` in `frontend/src/scenes/gallery/catalog.ts`; data comes from `images/<event ID>/`, with captions in `frontend/src/data/galleryCaptions.json`. Empty folders are omitted unless they contain `.gallery-placeholder`; each memory can show up to four images. Gallery configuration is stored in `scenes.gallery`, with independent layouts A and B and the B layout selected by default. Gallery data and collages do not own film timing or lighting.
 ## Как здесь работает Autopilot
 
 Сборки фиксируются в `.autopilot/`; прогресс — в `.autopilot/dashboard.html`. Требование из manifest снимается только пользователем. Продолжение прогона: «продолжи автопилот».
@@ -47,3 +51,5 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 
 В Windows `.autopilot/sync.py` не запускает dashboard-сервер: он вызывает POSIX `ps`. `python .autopilot/sync.py --no-serve` обновляет снимок страницы без сервера.
 <!-- autopilot:end -->
+
+

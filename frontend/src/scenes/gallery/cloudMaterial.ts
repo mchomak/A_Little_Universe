@@ -1,4 +1,5 @@
 import { BackSide, Color, FrontSide, NormalBlending, ShaderMaterial, Vector3 } from 'three'
+import { getGalleryAtmosphereStepCount, getGalleryAtmosphereVisibilityFade, type GalleryAtmosphereLayer, type GalleryQuality } from './world'
 
 export interface GalleryCloudVolumeMaterialOptions {
   kind: 'cloud' | 'haze'
@@ -51,6 +52,8 @@ const cloudVolumeFragmentShader = `
   uniform float uDriftSpeed;
   uniform float uMoonLightIntensity;
   uniform float uIsHaze;
+  uniform float uStepCount;
+  uniform float uVisibilityFade;
   varying vec3 vWorldPosition;
 
   float hash31(vec3 p) {
@@ -82,6 +85,7 @@ const cloudVolumeFragmentShader = `
   }
 
   void main() {
+    if (uVisibilityFade <= 0.001) discard;
     vec3 rayDirection = normalize(vWorldPosition - cameraPosition);
     vec3 inverseRadii = 1.0 / max(uRadii, vec3(0.001));
     vec3 localOrigin = (cameraPosition - uCenter) * inverseRadii;
@@ -97,7 +101,8 @@ const cloudVolumeFragmentShader = `
     float rayEnd = (-b + root) / a;
     if (rayEnd <= rayStart) discard;
 
-    float segmentLength = (rayEnd - rayStart) / float(CLOUD_STEPS);
+    float stepCount = clamp(uStepCount, 2.0, float(CLOUD_STEPS));
+    float segmentLength = (rayEnd - rayStart) / stepCount;
     float time = uTime * uDriftSpeed;
     vec3 uvDrift = vec3(time * 0.014, sin(time * 0.09 + uSeed) * 0.032, -time * 0.01);
     float transmittance = 1.0;
@@ -105,7 +110,11 @@ const cloudVolumeFragmentShader = `
     vec3 accumulatedColor = vec3(0.0);
 
     for (int i = 0; i < CLOUD_STEPS; i++) {
-      float distanceAlongRay = rayStart + (float(i) + 0.5) * segmentLength;
+      float sampleWeight = clamp(stepCount - float(i), 0.0, 1.0);
+      if (sampleWeight <= 0.0) break;
+      // The fractional final segment occupies only sampleWeight of this nominal
+      // segment, so place its sample at that partial interval's midpoint.
+      float distanceAlongRay = rayStart + (float(i) + sampleWeight * 0.5) * segmentLength;
       vec3 sampleWorld = cameraPosition + rayDirection * distanceAlongRay;
       vec3 localPosition = (sampleWorld - uCenter) * inverseRadii;
     float isHaze = uIsHaze;
@@ -179,7 +188,7 @@ const cloudVolumeFragmentShader = `
       vec3 sampleColor = mix(coolBase * innerShade, uMoonColor, lunarLift) * uCloudIntensity;
 
       // Brightness changes cloud radiance; opacity and density alone control coverage.
-      float opticalDepth = density * uOpacity * segmentLength * 0.16;
+      float opticalDepth = density * uOpacity * segmentLength * 0.16 * sampleWeight;
       float sampleAlpha = 1.0 - exp(-max(opticalDepth, 0.0));
       float contribution = transmittance * sampleAlpha;
       accumulatedColor += sampleColor * contribution;
@@ -190,7 +199,7 @@ const cloudVolumeFragmentShader = `
 
     float entryDistance = rayStart > 0.001 ? rayStart : rayEnd;
     float depthFade = smoothstep(1.5, 8.0, entryDistance);
-    float alpha = accumulatedAlpha * depthFade;
+    float alpha = accumulatedAlpha * depthFade * uVisibilityFade;
     if (alpha < 0.004) discard;
     vec3 color = accumulatedColor / max(accumulatedAlpha, 0.0001);
     gl_FragColor = vec4(color, alpha);
@@ -210,7 +219,7 @@ export function createGalleryCloudVolumeMaterial(options: GalleryCloudVolumeMate
       // Haze samples one shared world-space field; per-mass seeds are only for clouds.
       uSeed: { value: options.kind === 'haze' ? 0 : options.seed },
       uTime: { value: 0 },
-      uDriftSpeed: { value: Math.max(0, Math.min(2, options.driftSpeed)) },
+      uDriftSpeed: { value: Math.max(0, Math.min(3, options.driftSpeed)) },
       uOpacity: { value: Math.max(0, Math.min(1.5, options.opacity)) },
       uCloudDensity: { value: Math.max(0, Math.min(1.8, options.density ?? 0.9)) },
       uCloudIntensity: { value: Math.max(0, Math.min(2, options.intensity)) },
@@ -219,6 +228,8 @@ export function createGalleryCloudVolumeMaterial(options: GalleryCloudVolumeMate
       uWhiteHighlight: { value: Math.max(0, Math.min(1.5, options.whiteHighlight ?? 0.48)) },
       uMoonLightIntensity: { value: Math.max(0, options.moonLightIntensity) },
       uIsHaze: { value: options.kind === 'haze' ? 1 : 0 },
+      uStepCount: { value: steps },
+      uVisibilityFade: { value: 1 },
     },
     defines: { CLOUD_STEPS: steps },
     vertexShader: cloudVolumeVertexShader,
@@ -242,7 +253,52 @@ export function getGalleryVolumeDepthFade(rayStart: number, rayEnd: number): num
   return t * t * (3 - 2 * t)
 }
 
+export interface GalleryVolumeRaySample {
+  distance: number
+  weight: number
+}
+
+/** Mirrors the shader's weighted midpoint samples for validating its ray integration. */
+export function getGalleryVolumeRaySamples(
+  rayStart: number,
+  rayEnd: number,
+  requestedStepCount: number,
+  maxStepCount = 12,
+): GalleryVolumeRaySample[] {
+  if (!Number.isFinite(rayStart) || !Number.isFinite(rayEnd) || rayEnd <= rayStart) return []
+  const stepCount = Math.max(2, Math.min(maxStepCount, requestedStepCount))
+  const segmentLength = (rayEnd - rayStart) / stepCount
+  const samples: GalleryVolumeRaySample[] = []
+
+  for (let index = 0; index < Math.ceil(stepCount); index += 1) {
+    const weight = Math.max(0, Math.min(1, stepCount - index))
+    if (weight <= 0) break
+    samples.push({
+      distance: rayStart + (index + weight * 0.5) * segmentLength,
+      weight,
+    })
+  }
+
+  return samples
+}
+
 export function setGalleryAtmosphereTime(materials: readonly ShaderMaterial[], time: number) {
   const safeTime = Number.isFinite(time) ? time : 0
   for (const material of materials) material.uniforms.uTime!.value = safeTime
+}
+
+/** Reapply view-dependent uniforms on every pass so mirror LOD cannot persist into the main draw. */
+export function setGalleryAtmosphereView(
+  material: ShaderMaterial,
+  quality: GalleryQuality,
+  layer: GalleryAtmosphereLayer,
+  cameraDistance: number,
+  reflection = false,
+  moonInteraction = false,
+  additionalFade = 1,
+) {
+  material.uniforms.uStepCount!.value = getGalleryAtmosphereStepCount(quality, layer, cameraDistance, reflection)
+  const visibilityFade = getGalleryAtmosphereVisibilityFade(cameraDistance, layer, moonInteraction) * Math.max(0, Math.min(1, additionalFade))
+  material.uniforms.uVisibilityFade!.value = visibilityFade
+  return visibilityFade
 }
