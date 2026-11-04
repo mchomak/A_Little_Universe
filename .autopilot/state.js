@@ -67,9 +67,9 @@ window.STATE =
   ],
   "requirements": {
     "total": 7,
-    "done": 6,
+    "done": 7,
     "inTicket": 0,
-    "inSpec": 1,
+    "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
     "dropped": 0
