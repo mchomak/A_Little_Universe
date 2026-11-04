@@ -118,7 +118,7 @@ export function getBloomPollenAge(seed: BloomPollenParticleSeed, bloomClipTime: 
 /** Positive X moving toward positive Z is clockwise from above (+Y). */
 export function getGrowthVortexPosition(seed: GrowthVortexParticleSeed, elapsed: number, dissipation: number,
   anchor: Vector3, settings: LilyGrowthVortexSettings, out: Vector3, worldScale = 1, motionScale = 1,
-  growthProgress = 0, flowerHeight = 0): Vector3 {
+  growthProgress = 0, flowerHeight = 0, budAnchor: Vector3 = anchor): Vector3 {
   const scale = Math.max(0.001, Number.isFinite(worldScale) ? worldScale : 1)
   const motion = clamp(motionScale, 0, 1)
   const dissipationProgress = clamp(dissipation)
@@ -138,10 +138,15 @@ export function getGrowthVortexPosition(seed: GrowthVortexParticleSeed, elapsed:
   const heightVariation = seed.height * verticalSpread * 0.08 * particleRise
   const helix = Math.sin(angle * settings.spiralTightness + seed.verticalPhase) * verticalSpread * 0.06 * orbitGrowth
   const lift = settings.dissipationSpread * burst * seed.lift * 0.28 / scale
+  const currentGrowthProgress = clamp(growthProgress)
+  const birthProgress = clamp(seed.birthProgress ?? 0)
+  const emitterProgress = currentGrowthProgress > 0
+    ? 0.75 * Math.min(1, birthProgress / currentGrowthProgress)
+    : 0
   out.set(
-    anchor.x + Math.cos(angle) * radius,
-    anchor.y + Math.max(0, lead + heightVariation + helix) + lift,
-    anchor.z + Math.sin(angle) * radius,
+    anchor.x + (budAnchor.x - anchor.x) * emitterProgress + Math.cos(angle) * radius,
+    anchor.y + (budAnchor.y - anchor.y) * emitterProgress + Math.max(0, lead + heightVariation + helix) + lift,
+    anchor.z + (budAnchor.z - anchor.z) * emitterProgress + Math.sin(angle) * radius,
   )
   return out
 }
@@ -182,12 +187,23 @@ export function getBloomPollenPosition(seed: BloomPollenParticleSeed, age: numbe
     const centerY = anchor.y + (innerAnchor.y - anchor.y) * approach
     const centerZ = anchor.z + (innerAnchor.z - anchor.z) * approach
     const hoverRadius = spread * (0.08 + seed.radius * 0.04)
-    const orbit = seed.angle + motionAge * (0.42 + seed.drift * 0.24)
+    const phase = seed.phase * Math.PI * 2
+    const driftX = hoverRadius * (
+      Math.sin(motionAge * (0.61 + seed.drift * 0.33) + seed.angle) * 0.43
+      + Math.sin(motionAge * (1.09 + seed.radius * 0.29) + phase * 1.3) * 0.27
+      + Math.sin(motionAge * (0.37 + seed.depth * 0.24) + seed.drift * 5.1) * 0.15)
+    const driftY = hoverRadius * (
+      Math.sin(motionAge * (0.48 + seed.depth * 0.26) + phase * 1.7) * 0.24
+      + Math.sin(motionAge * (0.93 + seed.drift * 0.3) + seed.angle * 1.9) * 0.18
+      + seed.depth * 0.08)
+    const driftZ = hoverRadius * (
+      Math.sin(motionAge * (0.53 + seed.radius * 0.31) + seed.angle + 1.7) * 0.39
+      + Math.sin(motionAge * (1.21 + seed.depth * 0.3) + phase * 0.8) * 0.25
+      + Math.cos(motionAge * (0.29 + seed.drift * 0.19) + seed.phase * 4.4) * 0.17)
     out.set(
-      centerX + Math.cos(orbit) * hoverRadius,
-      centerY + Math.sin(motionAge * 0.92 + seed.phase * Math.PI * 2) * hoverRadius * 0.42
-        + seed.depth * hoverRadius * 0.18,
-      centerZ + Math.sin(orbit) * hoverRadius,
+      centerX + driftX,
+      centerY + driftY,
+      centerZ + driftZ,
     )
     return out
   }
@@ -917,7 +933,7 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
         : 0
       const elapsed = getGrowthVortexElapsed(frame, seed)
       getGrowthVortexPosition(seed, elapsed, dissipationProgress, groundAnchor, vortexSettings, pathPoint, scaleY,
-        frame.reducedMotion ? 0.3 : 1, vortexProgress, Math.max(0, anchor.y - groundAnchor.y))
+        frame.reducedMotion ? 0.3 : 1, vortexProgress, Math.max(0, anchor.y - groundAnchor.y), head ? anchor : groundAnchor)
       const palette = seed.palette < 0.63 ? vortexChampagne : seed.palette < 0.86 ? vortexPearl : vortexRose
       particleColor.copy(vortexColor).lerp(palette, seed.palette < 0.63 ? 0.24 : 0.58)
       const size = vortexSettings.particleSize * (1 - vortexSettings.sizeVariation * 0.5 + seed.size * vortexSettings.sizeVariation)

@@ -37,4 +37,6 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 - `backend/` — необязательный FastAPI-сервис только с `/health`; фильм его не вызывает.
 
 `SceneDirector` сохраняет один клонированный `AnimatedLily` при переходах growth → bloom → identity. В `frontend/src/scenes/lily/lilyGrowthVfx.ts` пыльца внутри цветка ориентируется на реальные вершины GLB: выбираются вершины геометрических групп, чей `materialIndex` указывает на материал с именем, содержащим `anther` или `filament`; для морфящихся мешей центроид позы пересчитывается через `Mesh.getVertexPosition` и переводится в пространство общего родителя. Внутренняя пыльца движется от чаши к этой позе, а не к фиксированной точке.
+
+Вихрь роста и пыльца цветка рассчитывают траектории по film time и seed частиц в постоянном Lily VFX update; используют актуальные posed head/anther anchors, чтобы seek и replay воспроизводили ту же позу.
 <!-- autopilot:end -->

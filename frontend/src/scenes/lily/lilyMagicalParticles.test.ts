@@ -43,6 +43,46 @@ it('starts the growth vortex at the root and expands its orbit on successive tur
   expect(ahead.y).toBeGreaterThan(anchor.y + 2)
 })
 
+it('moves new vortex births up the stem below the posed bud while retaining the root at zero growth', () => {
+  const seed: GrowthVortexParticleSeed = {
+    angle: 0, angularSpeed: 1, radius: 0, height: 0, verticalPhase: 0, spread: 0.5, lift: 0.5, birthProgress: 0.65,
+  }
+  const root = new Vector3(1, 2, 3)
+  const bud = new Vector3(1.4, 6, 3.8)
+  const settings = { ...vortex, orbitRadius: 0 }
+  const atRoot = getGrowthVortexPosition({ ...seed, birthProgress: 0 }, 0, 0, root, settings, new Vector3(),
+    1, 1, 0, bud.y - root.y, bud)
+  const atBirth = getGrowthVortexPosition(seed, 0, 0, root, settings, new Vector3(),
+    1, 1, seed.birthProgress, bud.y - root.y, bud)
+
+  expect(atRoot.distanceTo(root)).toBeCloseTo(0)
+  expect(atBirth.x).toBeCloseTo(1.3)
+  expect(atBirth.y).toBeCloseTo(5)
+  expect(atBirth.z).toBeCloseTo(3.6)
+  expect(atBirth.y).toBeLessThan(bud.y)
+})
+
+it('keeps an existing vortex particle anchored to its birth point as the posed bud continues upward', () => {
+  const seed: GrowthVortexParticleSeed = {
+    angle: 0, angularSpeed: 1, radius: 0, height: 0, verticalPhase: 0, spread: 0.5, lift: 0.5, birthProgress: 0.4,
+  }
+  const root = new Vector3(1, 2, 3)
+  const budAtBirth = new Vector3(1.4, 4, 3.4)
+  const budLater = new Vector3(1.8, 6, 3.8)
+  const settings = { ...vortex, orbitRadius: 0, verticalSpread: 0, dissipationSpread: 0 }
+  const born = getGrowthVortexPosition(seed, 0, 0, root, settings, new Vector3(), 1, 1,
+    seed.birthProgress, 0, budAtBirth)
+  const later = getGrowthVortexPosition(seed, 0, 0, root, settings, new Vector3(), 1, 1,
+    0.8, 0, budLater)
+
+  expect(born.x).toBeCloseTo(1.3)
+  expect(born.y).toBeCloseTo(3.5)
+  expect(born.z).toBeCloseTo(3.3)
+  expect(later.x).toBeCloseTo(born.x)
+  expect(later.y).toBeCloseTo(born.y)
+  expect(later.z).toBeCloseTo(born.z)
+})
+
 it('starts text only after the remaining vortex dissipation tail has cleared', () => {
   const frames = getGrowthSceneFrames(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth)
   const settleDuration = frames.duration - frames.model[1]
@@ -236,6 +276,24 @@ it('moves inner pollen from the cup base to a bounded hover around anthers', () 
     const hovering = getBloomPollenPosition(seed, age, source, settings, new Vector3(), 1, 1, 'inner', anthers)
     expect(hovering.distanceTo(anthers)).toBeLessThan(0.1)
   }
+})
+
+it('lets inner pollen drift within the cup instead of holding a fixed orbital radius', () => {
+  const seed = { phase: 0.6, brightness: 0.8, radius: 0.5, depth: 0.2, drift: 0.4, size: 0.5, angle: 0.5 }
+  const settings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.lilyBloomPollen
+  const source = new Vector3(0, 0, 0)
+  const anthers = new Vector3(0, 0.42, 0)
+  const positions = [0.8, 1.2, 1.8, 2.5, 3.3].map(age =>
+    getBloomPollenPosition(seed, age, source, settings, new Vector3(), 1, 1, 'inner', anthers))
+  const horizontalRadii = positions.map(point => Math.hypot(point.x - anthers.x, point.z - anthers.z))
+  const beforeSmallStep = getBloomPollenPosition(seed, 1.5, source, settings, new Vector3(), 1, 1, 'inner', anthers)
+  const afterSmallStep = getBloomPollenPosition(seed, 1.51, source, settings, new Vector3(), 1, 1, 'inner', anthers)
+  const smallStep = beforeSmallStep.distanceTo(afterSmallStep)
+
+  expect(Math.max(...horizontalRadii) - Math.min(...horizontalRadii)).toBeGreaterThan(0.01)
+  expect(Math.max(...positions.map(point => point.distanceTo(anthers)))).toBeLessThan(0.12)
+  expect(smallStep).toBeGreaterThan(0)
+  expect(smallStep).toBeLessThan(0.00013)
 })
 
 it('lifts outer pollen around the petal silhouette and fans it sideways smoothly', () => {

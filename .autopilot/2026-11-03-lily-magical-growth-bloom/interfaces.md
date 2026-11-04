@@ -32,3 +32,9 @@ SceneDirector держит один AnimatedLily без scene key. FilmRuntime �
 - `getBloomPollenOpacity(seed, openProgress, age, settings, group?)` задаёт детерминированное позднее проявление и время затухания группы.
 - `getBloomPollenPosition(seed, age, anchor, settings, out, worldScale?, motionScale?, group?, innerAnchor?)` вычисляет позу абсолютного времени: ограниченное парение внутри чаши либо восходящий обход и боковое рассеивание снаружи.
 - Тестовый шов: эти же evaluator-функции, используемые persistent Lily VFX update; без накопленной delta-интеграции.
+
+## Из таска 05 — нижняя спираль и внутренний дрейф
+
+- `getGrowthVortexPosition(seed, elapsed, dissipation, anchor, settings, out, worldScale?, motionScale?, growthProgress?, flowerHeight?, budAnchor = anchor)` сохраняет начало у точки роста и вычисляет source частицы относительно текущего posed head anchor и её `birthProgress`; источник остаётся ниже бутона и масштабируется вместе с растением. Значение `budAnchor` по умолчанию сохраняет прежние вызовы тестового шва.
+- Inner bloom pollen использует тот же `getBloomPollenPosition` test seam, остаётся привязанной к posed anther anchor и строит индивидуальную ограниченную траекторию из seed + absolute age, без общего orbit phase.
+- Новых настроек или публичных конфигурационных полей нет; параметры DEV продолжают влиять на бюджет, радиус, скорость, reduced motion и seek через существующий update path.
