@@ -15,13 +15,16 @@ Keep this file compact. Current project status, setup, and architecture are in [
 Current user instructions take priority over this file. Keep scene-by-scene implementation details and task-specific requirements in the README, storyboard, or the active task prompt.
 
 <!-- autopilot:start -->
-## Сцена 05: вода, облака и компоновка картин
+## Сцена 05: галерея воспоминаний
 
-`GalleryScene` → `MoonlitWorld` → `WetFloor` используют общий canvas, renderer и `galleryMotion.time`; пауза и reduced motion сохраняются. Камера и выбор фотографии используют ту же функцию позиции, что и рендер.
-`gallery/waterMaterial.ts` управляет рябью и лунной дорожкой; `gallery/planarReflection.ts` владеет зеркальным проходом и восстановлением renderer/visibility. Тёмные подложки фото исключены из отражений, размытие остаётся общим с фотографиями.
-`gallery/world.ts` задаёт независимые группы облаков far, mid, nearLow, waterline и moon без общей квоты; `gallery/cloudMaterial.ts` — raymarch, low уменьшает число шагов. Оценка количества сэмплов не заменяет замер GPU.
-Настройки галереи сохраняются в `scenes.gallery` Scene Composer schema v19. DEV Inspector позволяет переключать компоновку A «На колоннах» и B «Между колоннами»; у каждой отдельно настраиваются ширина ряда фотографий и смещения X/Y/Z. В B X-сдвиг колонн зеркальный, центры пар картин выровнены; разворот к зрителю зависит от продольной дистанции и настраивается от 0° до 45° в DEV. Ширина прохода и настройки колонн общие. Импорт schema v16 переносит прежний `galleryWidth` в оба варианта; B выбран по умолчанию. Общий film-checkpoint A/B для интерактивной прогулки отключён.
-В этом worktree: `Set-Location .\frontend; npm run dev -- --port 5199`; открыть `http://127.0.0.1:5199/?debug`.
-Проверка из `frontend`: `npm run check` (lint, Vitest, typecheck, production build).
-Прогоны и требования записаны в `.autopilot/`; требование снимается только пользователем.
+`GalleryScene`, `MoonlitWorld` и `WetFloor` работают в общем persistent WebGL canvas и используют `galleryMotion.time`; пауза и reduced motion учитываются. Позиция камеры для рендера и выбора фото задаётся общей функцией `frontend/src/engine/galleryCameraPose.ts`.
+
+- Источник порядка — `GALLERY_EVENT_ORDER` в `frontend/src/scenes/gallery/catalog.ts`; ID папки — стабильный ID события. `frontend/src/scenes/gallery/content.ts` собирает данные из корневых `images/<event ID>/`; подписи отдельно хранятся по ID в `frontend/src/data/galleryCaptions.json`. `GalleryMemory.image` — главное фото (может отсутствовать у placeholder-события), `images` — до четырёх фото вместе с главным.
+- Поддерживаются `jpg`, `jpeg`, `png`, `webp`, `avif`. Точные имена `1`–`4` с таким расширением задают слоты; остальные имена, включая `photo_12.jpg`, естественно сортируются в свободные слоты. Берутся максимум четыре фото; если слот 1 пуст, первое доступное фото продвигается в главный слот. Папки без фото пропускаются, кроме папок с `.gallery-placeholder`; пустая подпись не рисуется.
+- Функции `getFocusedGalleryCollagePhotos` и `getGalleryCollagePhotoLayout` находятся в `frontend/src/scenes/gallery/collage.ts`. По `galleryMotion.focusMix` дополнительные заполненные слоты 2–4 монтируются только для выбранного воспоминания, сохраняя номера слотов; частицы сходятся к фото до роста его прозрачности. Главное фото остаётся видимым во время прогулки.
+- `GALLERY.travel` вычисляется из числа собранных воспоминаний; маршрут мира и напольные огни используют эту длину. Рябь и отражения принадлежат `waterMaterial.ts` и `planarReflection.ts`, облака и haze — `world.ts` и `cloudMaterial.ts`; данные/коллаж не меняют освещение и переходы. Дальний haze-массив в `world.ts` сохраняет opacity 0.19.
+- Настройки галереи находятся в `scenes.gallery`, Scene Composer schema v19; DEV Inspector переключает A «На колоннах» и B «Между колоннами», B выбран по умолчанию.
+
+Из `frontend/`: `npm run dev` — локальный запуск на `127.0.0.1:5173`; `npm run check` — lint, Vitest, typecheck и production build. Координатор проверил `npm run check` 2026-11-04: exit 0, 488 тестов в 97 файлах.
+Прогоны и требования записываются в `.autopilot/`; требование снимается только пользователем.
 <!-- autopilot:end -->
