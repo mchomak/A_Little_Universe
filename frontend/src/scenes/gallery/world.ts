@@ -179,13 +179,18 @@ function createRouteCloudLayer({
   })
 }
 
+const routeEndZ = GALLERY.startZ - GALLERY.travel
+const routeCloudDepth = GALLERY.travel + 22
+const nearLowRouteRadius = Math.max(14, routeCloudDepth * 2 / 11 - 3)
+const waterlineRouteRadius = Math.max(15.6, routeCloudDepth / 6 - 3)
+
 const routeClouds = [
   ...createRouteCloudLayer({ id: 'mid-bank', layer: 'mid', count: 20, x: 17.6, y: 10, radii: [10.5, 6.8, 20], opacity: 0.64, seed: 61, yJitter: 2.2, xJitter: 1.4 }),
-  ...createRouteCloudLayer({ id: 'near-low-bank', layer: 'nearLow', count: 24, x: 10.1, y: 1.85, radii: [4.35, 4, 14], opacity: 0.8, seed: 211, yJitter: 0.75, xJitter: 0.3 }),
-  ...createRouteCloudLayer({ id: 'waterline-bank', layer: 'waterline', count: 32, x: 12.2, y: 0.2, radii: [6.2, 4.1, 15.6], opacity: 0.82, seed: 421, yJitter: 0.45, xJitter: 0.3 }),
+  ...createRouteCloudLayer({ id: 'near-low-bank', layer: 'nearLow', count: 24, x: 10.1, y: 1.85, radii: [4.35, 4, nearLowRouteRadius], opacity: 0.8, seed: 211, yJitter: 0.75, xJitter: 0.3 }),
+  ...createRouteCloudLayer({ id: 'waterline-bank', layer: 'waterline', count: 32, x: 12.2, y: 0.2, radii: [6.2, 4.1, waterlineRouteRadius], opacity: 0.82, seed: 421, yJitter: 0.45, xJitter: 0.3 }),
 ]
 
-const DEFAULT_MOON_POSITION = [0.2, 24, -126] as const
+const DEFAULT_MOON_POSITION = [0.2, 24, Math.min(-126, routeEndZ - 41)] as const
 
 /** Fixed world-space bounds shared by the gallery environment and its tests. */
 export const GALLERY_WORLD = {

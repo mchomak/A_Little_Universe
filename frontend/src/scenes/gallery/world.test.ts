@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { GALLERY } from './content'
+import { GALLERY, GALLERY_MEMORIES } from './content'
 import { GALLERY_WORLD, getGalleryAtmosphereStepCount, getGalleryAtmosphereVisibilityFade, getGalleryCloudDrift, getGalleryCloudMasses, getGalleryCloudMassesForLayerCounts, getGalleryCloudPosition, getGalleryCloudRadii, getGalleryCloudRenderOrder, getGalleryHazeCameraFade, getGalleryHazeMasses, getGalleryMoonScatteringLayers } from './world'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 
 const cloudLayers = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.cloudLayers
+const focusPositions = GALLERY_MEMORIES.map(({ order }) => {
+  const z = GALLERY.firstZ - order * GALLERY.spacing
+  return [0, 0.12, z + Math.cos(1.15) * 4.8] as const
+})
 
 describe('moonlit gallery world layout', () => {
   it('keeps the floor under the route and the elevated moon fixed beyond its end', () => {
@@ -16,7 +20,7 @@ describe('moonlit gallery world layout', () => {
     expect(floorEnd).toBeLessThan(routeEnd - 20)
     expect(GALLERY_WORLD.moon.position[0]).toBeCloseTo(0.2)
     expect(GALLERY_WORLD.moon.position[1]).toBeGreaterThan(10)
-    expect(GALLERY_WORLD.moon.position[2]).toBe(-126)
+    expect(GALLERY_WORLD.moon.position[2]).toBe(Math.min(-126, routeEnd - 41))
     expect(GALLERY_WORLD.moon.position[2]).toBeLessThan(routeEnd - 40)
   })
 
@@ -149,7 +153,7 @@ describe('moonlit gallery world layout', () => {
 
   it('moves the dedicated moon cloud layer with the configured moon position', () => {
     const mass = GALLERY_WORLD.clouds.find((candidate) => candidate.id === 'moon-cloud-01')!
-    const configuredMoonPosition = [1.2, 25, -120] as const
+    const configuredMoonPosition = [GALLERY_WORLD.moon.position[0] + 1, GALLERY_WORLD.moon.position[1] + 1, GALLERY_WORLD.moon.position[2] + 6] as const
     const defaultPosition = getGalleryCloudPosition(mass, cloudLayers.moon)
     const shiftedPosition = getGalleryCloudPosition(mass, cloudLayers.moon, configuredMoonPosition)
 
@@ -199,11 +203,6 @@ describe('moonlit gallery world layout', () => {
     const routeEnd = start - GALLERY.travel - 2
     const haze = GALLERY_WORLD.haze
     const routePositions = Array.from({ length: 48 }, (_, index) => [0, 0, start + (routeEnd - start) * index / 47] as const)
-    const focusPositions = Array.from({ length: 12 }, (_, order) => {
-      const z = GALLERY.firstZ - order * GALLERY.spacing
-      return [0, 0.12, z + Math.cos(1.15) * 4.8] as const
-    })
-
     let cameraEntersHaze = false
     for (let time = 0; time <= 48; time += 2) {
       for (const camera of [...routePositions, ...focusPositions]) {
@@ -235,8 +234,8 @@ describe('moonlit gallery world layout', () => {
     const start = GALLERY.startZ
     const routeEnd = start - GALLERY.travel - 2
     const routePositions = Array.from({ length: 48 }, (_, index) => [0, 0, start + (routeEnd - start) * index / 47] as const)
-    const focusPositions = Array.from({ length: 12 }, (_, order) => [0, 0.12, GALLERY.firstZ - order * GALLERY.spacing + Math.cos(1.15) * 4.8] as const)
-    const horizonSamples = Array.from({ length: 21 }, (_, index) => -108 - index * 2)
+    const farHazeZ = GALLERY_WORLD.haze[2]!.position[2]
+    const horizonSamples = Array.from({ length: 21 }, (_, index) => farHazeZ - 15 + index * 1.5)
     const hazeDensity = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.hazeDensity
     let minimumCoverage = Number.POSITIVE_INFINITY
 

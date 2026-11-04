@@ -10,6 +10,7 @@ import { createMemoryThreadAccentGeometry, createMemoryThreadGeometry, createMem
 import { GALLERY_WORLD } from './gallery/world'
 import { createGalleryWaterReflectionBackplate } from './gallery/galleryBackplate'
 import { getMoonFrameTintStrength, getMoonPhotoIllumination } from './gallery/moonLighting'
+import { collageParticleOpacity, collagePhotoOpacity, collageRevealProgress, createCollageRevealGeometry, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout } from './gallery/collage'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, Color, DoubleSide, Group, Material, Mesh, MeshBasicMaterial, Points, PointsMaterial, SRGBColorSpace, Texture, TextureLoader, Vector3, ShaderMaterial } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
 import { useSyncExternalStore } from 'react'
@@ -18,7 +19,7 @@ import { FirstMemoryCard } from './shared/FirstMemoryCard'
 import { GALLERY, GALLERY_MEMORIES, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, gallerySupportGroupScale, gallerySupportLocalPositions, memoryPosition, type GalleryMemory } from './gallery/content'
 import { GalleryColumn } from './gallery/GalleryColumn'
 import { GalleryArch } from './gallery/GalleryArch'
-import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, resetGallery } from './gallery/controller'
+import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, resetGallery, subscribeGallery } from './gallery/controller'
 import { bindGalleryGestures } from './gallery/gestures'
 import { MoonlitWorld } from './gallery/MoonlitWorld'
 import firstPhotoUrl from '../assets/start_img.jpg'
@@ -39,6 +40,8 @@ function placeholder(memory: GalleryMemory) {
 }
 function captionTexture(text: string) { return canvasTexture((ctx, w, h) => { ctx.fillStyle = '#f5dbc9'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '42px Georgia'; ctx.fillText(text, w / 2, h / 2, w - 20) }, 1024, 100) }
 function setColorSpace(texture: Texture) { texture.colorSpace = SRGBColorSpace; texture.needsUpdate = true }
+function getFocusedGalleryOrder() { return gallerySnapshot().focus }
+function getServerFocusedGalleryOrder() { return null }
 function setShaderUniform(material: ShaderMaterial | null, name: string, value: unknown) {
   const uniform = material?.uniforms[name]
   if (uniform) uniform.value = value
@@ -129,6 +132,99 @@ function photoShaderMaterial(map: Texture) {
     toneMapped: false,
   })
 }
+const collageParticleVertexShader = `
+  uniform float uReveal;
+  uniform float uAlpha;
+  attribute vec3 targetPosition;
+  attribute float size;
+  attribute float phase;
+  varying float vAlpha;
+  void main() {
+    float reveal = smoothstep(0.0, 1.0, uReveal);
+    vec3 moved = mix(position, targetPosition, reveal);
+    vec4 view = modelViewMatrix * vec4(moved, 1.0);
+    gl_Position = projectionMatrix * view;
+    gl_PointSize = size * 520.0 / max(1.0, -view.z);
+    vAlpha = (1.0 - reveal) * uAlpha * (0.72 + 0.28 * sin(phase + uReveal * 6.2831853));
+  }
+`
+const collageParticleFragmentShader = `
+  varying float vAlpha;
+  void main() {
+    float radius = length(gl_PointCoord - 0.5);
+    float point = 1.0 - smoothstep(0.12, 0.5, radius);
+    gl_FragColor = vec4(0.82, 0.88, 0.96, point * vAlpha);
+  }
+`
+function collageParticleMaterial() {
+  return new ShaderMaterial({
+    uniforms: { uReveal: { value: 0 }, uAlpha: { value: 0 } },
+    vertexShader: collageParticleVertexShader,
+    fragmentShader: collageParticleFragmentShader,
+    transparent: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+    toneMapped: false,
+  })
+}
+function CollageExtraPhoto({ url, slot, side, mainWidth, mainHeight, fallback, focusVisual, seed }: {
+  url: string
+  slot: 2 | 3 | 4
+  side: -1 | 1
+  mainWidth: number
+  mainHeight: number
+  fallback: Texture
+  focusVisual: RefObject<{ alpha: number; focusAmount: number }>
+  seed: number
+}) {
+  const [aspect, setAspect] = useState(1)
+  const backplateMaterial = useRef<MeshBasicMaterial>(null)
+  const photoMaterial = useMemo(() => photoShaderMaterial(fallback), [fallback])
+  const particles = useMemo(() => createCollageRevealGeometry(1.02, 1.02 / Math.max(0.35, aspect), seed), [aspect, seed])
+  const revealMaterial = useMemo(() => collageParticleMaterial(), [])
+  const layout = useMemo(() => getGalleryCollagePhotoLayout(slot, side, mainWidth, mainHeight, aspect), [aspect, mainHeight, mainWidth, side, slot])
+
+  useEffect(() => {
+    let active = true
+    let loaded: Texture | null = null
+    new TextureLoader().load(url, (value) => {
+      if (!active) { value.dispose(); return }
+      loaded = value
+      setColorSpace(value)
+      setShaderUniform(photoMaterial, 'map', value)
+      const image = value.image as HTMLImageElement
+      if (image.naturalWidth && image.naturalHeight) setAspect(image.naturalWidth / image.naturalHeight)
+    }, undefined, () => { if (active) setShaderUniform(photoMaterial, 'map', fallback) })
+    return () => { active = false; loaded?.dispose() }
+  }, [fallback, photoMaterial, url])
+  useEffect(() => () => {
+    particles.dispose()
+    photoMaterial.dispose()
+    revealMaterial.dispose()
+  }, [particles, photoMaterial, revealMaterial])
+  useFrame(() => {
+    const { alpha, focusAmount } = focusVisual.current
+    const photoAlpha = alpha * collagePhotoOpacity(focusAmount)
+    if (backplateMaterial.current) backplateMaterial.current.opacity = photoAlpha * 0.92
+    setShaderUniform(photoMaterial, 'uAlpha', photoAlpha)
+    setShaderUniform(revealMaterial, 'uAlpha', alpha * collageParticleOpacity(focusAmount))
+    setShaderUniform(revealMaterial, 'uReveal', collageRevealProgress(focusAmount))
+  })
+
+  return <group position={layout.position}>
+    <mesh position={[0, 0, -0.025]} raycast={() => undefined} userData={{ galleryOpacityManaged: true }}>
+      <planeGeometry args={[layout.width + 0.08, layout.height + 0.08]} />
+      <meshBasicMaterial ref={backplateMaterial} color="#17141d" transparent opacity={0} depthWrite={false} />
+    </mesh>
+    <mesh raycast={() => undefined} renderOrder={GALLERY_MEMORY_RENDER_ORDER + 1} userData={{ galleryOpacityManaged: true }}>
+      <planeGeometry args={[layout.width, layout.height]} />
+      <primitive object={photoMaterial} attach="material" />
+    </mesh>
+    <points geometry={particles} raycast={() => undefined} renderOrder={GALLERY_MEMORY_RENDER_ORDER + 2} userData={{ galleryOpacityManaged: true }}>
+      <primitive object={revealMaterial} attach="material" />
+    </points>
+  </group>
+}
 function frameShaderMaterial() {
   return new ShaderMaterial({
     uniforms: {
@@ -143,7 +239,7 @@ function frameShaderMaterial() {
     toneMapped: false,
   })
 }
-function Photo({ url, width, height, fallback, onAspect, material }: { url: string; width: number; height: number; fallback: CanvasTexture | null; onAspect: (value: number) => void; material: RefObject<ShaderMaterial | null> }) {
+function Photo({ url, width, height, fallback, onAspect, material }: { url: string; width: number; height: number; fallback: Texture | null; onAspect: (value: number) => void; material: RefObject<ShaderMaterial | null> }) {
   const [texture, setTexture] = useState<Texture | null>(null)
   useEffect(() => {
     let active = true; let loaded: Texture | null = null
@@ -170,9 +266,10 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   const photoNormal = useMemo(() => new Vector3(), [])
   const moonColor = useMemo(() => new Color(), [])
   const firstPhoto = useLoader(TextureLoader, firstPhotoUrl)
-  const image = useMemo(() => memory.order === 0 ? null : placeholder(memory), [memory])
-  const caption = useMemo(() => captionTexture(memory.caption), [memory.caption])
-  const photoMaterial = useMemo(() => photoShaderMaterial(memory.order === 0 ? firstPhoto : image ?? firstPhoto), [firstPhoto, image, memory.order])
+  const image = useMemo(() => memory.order === 0 && memory.image ? null : placeholder(memory), [memory])
+  const captionText = memory.caption.trim()
+  const caption = useMemo(() => captionText ? captionTexture(captionText) : null, [captionText])
+  const photoMaterial = useMemo(() => photoShaderMaterial(image ?? firstPhoto), [firstPhoto, image])
   const photoMaterialRef = useRef(photoMaterial)
   const frameMaterial = useMemo(() => frameShaderMaterial(), [])
   const frameMaterialRef = useRef(frameMaterial)
@@ -184,7 +281,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   }, [photoMaterial])
   useEffect(() => () => {
     image?.dispose()
-    caption.dispose()
+    caption?.dispose()
     photoMaterial.dispose()
     frameMaterial.dispose()
   }, [image, caption, photoMaterial, frameMaterial])
@@ -192,6 +289,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   useEffect(() => {
     const saved: { material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[] = []
     visualGroup.current?.traverse((child) => {
+      if (child.userData.galleryOpacityManaged) return
       if (!(child instanceof Mesh) && !(child instanceof Points)) return
       const list = Array.isArray(child.material) ? child.material : [child.material]
       for (const material of list) saved.push({ material, opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite })
@@ -217,6 +315,11 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   const [aspect, setAspect] = useState(memory.aspect)
   const width = aspect >= 1 ? size : size * aspect
   const height = aspect >= 1 ? size / aspect : size
+  const focusedOrder = useSyncExternalStore(subscribeGallery, getFocusedGalleryOrder, getServerFocusedGalleryOrder)
+  const collagePhotos = useMemo(
+    () => getFocusedGalleryCollagePhotos(memory.images, memory.order, focusedOrder),
+    [focusedOrder, memory.images, memory.order],
+  )
   const backplate = useMemo(() => createGalleryWaterReflectionBackplate(width, height), [height, width])
   useEffect(() => () => {
     backplate.geometry.dispose()
@@ -352,7 +455,11 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
       <group ref={visualGroup}>
       <primitive object={backplate} />
       <mesh position={[0, 0, -0.07]}><planeGeometry args={[width + 0.36, height + 0.36]} /><meshBasicMaterial ref={glow} map={halo} color="#ffd7b0" transparent opacity={0.2} depthWrite={false} blending={AdditiveBlending} toneMapped={false} /></mesh>
-      {memory.order === 0 ? <FirstMemoryCard photoMaterial={photoMaterial} frameTone="moonlight" /> : memory.image ? <Photo url={memory.image} width={width} height={height} fallback={image} onAspect={setAspect} material={photoMaterialRef} /> : <mesh><planeGeometry args={[width, height]} /><primitive object={photoMaterial} attach="material" /></mesh>}
+      {memory.order === 0 && memory.id === 'demo-start-photo'
+        ? <FirstMemoryCard photoMaterial={photoMaterial} frameTone="moonlight" />
+        : memory.image
+          ? <Photo url={memory.image} width={width} height={height} fallback={image ?? firstPhoto} onAspect={setAspect} material={photoMaterialRef} />
+          : <mesh><planeGeometry args={[width, height]} /><primitive object={photoMaterial} attach="material" /></mesh>}
       {([-1, 1] as const).map(side => <group key={side}>
         <mesh position={[0, side * (height / 2 + 0.025), 0.01]}>
           <planeGeometry args={[width + 0.36, 0.16]} />
@@ -371,8 +478,20 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
           <meshBasicMaterial ref={(material) => { contourMaterials.current[side === -1 ? 2 : 3] = material }} color="#f4dcc0" transparent opacity={0.62} depthWrite={false} toneMapped={false} blending={AdditiveBlending} />
         </mesh>
       </group>)}
+      {collagePhotos.map(({ slot, url }) => <CollageExtraPhoto
+        key={slot}
+        url={url}
+        slot={slot}
+        side={memory.side}
+        mainWidth={width}
+        mainHeight={height}
+        fallback={image ?? firstPhoto}
+        focusVisual={visual}
+        seed={memory.order * 37 + slot * 101}
+      />)}
       <points geometry={frameParticles}><primitive object={frameMaterial} attach="material" /></points>
-      <mesh position={[0, -height / 2 - 0.34, 0.02]}><planeGeometry args={[3.4, 0.33]} /><meshBasicMaterial ref={captionMaterial} map={caption} transparent opacity={0.65} depthWrite={false} toneMapped={false} /></mesh>
+      {caption && <mesh position={[0, -height / 2 - 0.34, 0.02]}><planeGeometry args={[3.4, 0.33]} /><meshBasicMaterial ref={captionMaterial} map={caption} transparent opacity={0.65} depthWrite={false} toneMapped={false} />
+      </mesh>}
       </group>
     </group>
   </>
