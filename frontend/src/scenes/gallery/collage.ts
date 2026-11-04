@@ -1,4 +1,4 @@
-import { BufferAttribute, BufferGeometry } from 'three'
+import { BufferAttribute, BufferGeometry, DynamicDrawUsage } from 'three'
 
 export type GalleryCollageSlot = 2 | 3 | 4
 
@@ -12,6 +12,30 @@ export interface GalleryCollagePhoto {
   slot: GalleryCollageSlot
   url: string
 }
+
+export interface CollageRevealSettings {
+  readonly particleCount: number
+  readonly particleSize: number
+  readonly noiseStrength: number
+  readonly depth: number
+  readonly glow: number
+  readonly assembleDuration: number
+  readonly revealDuration: number
+  readonly staggerDelay: number
+  readonly particleEnabled: boolean
+}
+
+export const DEFAULT_COLLAGE_REVEAL_SETTINGS: Readonly<CollageRevealSettings> = Object.freeze({
+  particleCount: 640,
+  particleSize: 2.6,
+  noiseStrength: 0.035,
+  depth: 0.42,
+  glow: 1,
+  assembleDuration: 0.72,
+  revealDuration: 0.68,
+  staggerDelay: 0.14,
+  particleEnabled: true,
+})
 
 /** Retains numbered positions while omitting missing images and their frames. */
 export function getGalleryCollagePhotos(images: readonly (string | undefined)[]): GalleryCollagePhoto[] {
@@ -66,38 +90,138 @@ function random(seed: number) {
   }
 }
 
-/** Creates deterministic particles that converge onto the selected photo's surface. */
-export function createCollageRevealGeometry(width: number, height: number, seed: number, count = 72) {
+/** Creates deterministic, texture-sampled particles inside one photo slot. */
+export function createCollageRevealGeometry(
+  width: number,
+  height: number,
+  seed: number,
+  count = DEFAULT_COLLAGE_REVEAL_SETTINGS.particleCount,
+  settings: Pick<CollageRevealSettings, 'depth'> = DEFAULT_COLLAGE_REVEAL_SETTINGS,
+) {
   const safeWidth = Number.isFinite(width) && width > 0 ? width : 1
   const safeHeight = Number.isFinite(height) && height > 0 ? height : 1
-  const safeCount = Math.max(8, Math.floor(Number.isFinite(count) ? count : 72))
+  const safeCount = Math.max(8, Math.min(2400, Math.floor(Number.isFinite(count) ? count : DEFAULT_COLLAGE_REVEAL_SETTINGS.particleCount)))
+  const depth = Math.max(0, Math.min(0.8, Number.isFinite(settings.depth) ? settings.depth : DEFAULT_COLLAGE_REVEAL_SETTINGS.depth))
   const positions = new Float32Array(safeCount * 3)
   const targets = new Float32Array(safeCount * 3)
   const sizes = new Float32Array(safeCount)
   const phases = new Float32Array(safeCount)
+  const photoUvs = new Float32Array(safeCount * 2)
   const next = random(seed)
+  const columns = Math.max(1, Math.ceil(Math.sqrt(safeCount * safeWidth / safeHeight)))
+  const rows = Math.ceil(safeCount / columns)
 
   for (let i = 0; i < safeCount; i++) {
-    const targetX = (next() - 0.5) * safeWidth
-    const targetY = (next() - 0.5) * safeHeight
-    const angle = next() * Math.PI * 2
-    const scatter = 0.35 + next() * 0.9
-    positions.set([targetX + Math.cos(angle) * scatter, targetY + Math.sin(angle) * scatter, 0.18 + next() * 0.35], i * 3)
-    targets.set([targetX, targetY, 0.05], i * 3)
-    sizes[i] = 0.018 + next() * 0.028
+    const u = (i % columns + 0.2 + next() * 0.6) / columns
+    const v = (Math.floor(i / columns) + 0.2 + next() * 0.6) / rows
+    const targetX = (u - 0.5) * safeWidth
+    const targetY = (v - 0.5) * safeHeight
+    const startX = (next() - 0.5) * safeWidth * 0.92
+    const startY = (next() - 0.5) * safeHeight * 0.92
+    const startZ = 0.025 + next() * depth
+    photoUvs.set([u, v], i * 2)
+    positions.set([startX, startY, startZ], i * 3)
+    targets.set([targetX, targetY, 0.025], i * 3)
+    sizes[i] = 0.55 + next() * 0.9
     phases[i] = next() * Math.PI * 2
   }
 
   const geometry = new BufferGeometry()
-  geometry.setAttribute('position', new BufferAttribute(positions, 3).setUsage(35048))
+  geometry.setAttribute('position', new BufferAttribute(positions, 3).setUsage(DynamicDrawUsage))
   geometry.setAttribute('targetPosition', new BufferAttribute(targets, 3))
   geometry.setAttribute('size', new BufferAttribute(sizes, 1))
   geometry.setAttribute('phase', new BufferAttribute(phases, 1))
+  geometry.setAttribute('photoUv', new BufferAttribute(photoUvs, 2))
   return geometry
 }
 
 export function collageRevealProgress(focusMix: number) {
   return Math.max(0, Math.min(1, Number.isFinite(focusMix) ? focusMix : 0))
+}
+
+export interface CollageRevealFrame {
+  readonly assemblyProgress: number
+  readonly photoProgress: number
+  readonly photoOpacity: number
+  readonly particleOpacity: number
+}
+
+function smoothstep01(value: number) {
+  const t = Math.max(0, Math.min(1, value))
+  return t * t * (3 - 2 * t)
+}
+
+function safeTimelineDuration(value: number, fallback: number) {
+  return Math.max(0.25, Number.isFinite(value) ? value : fallback)
+}
+
+/** Returns the number of film-clock seconds needed to complete this slot's reveal. */
+export function getCollageRevealTimelineDuration(
+  slot: GalleryCollageSlot,
+  settings: Readonly<CollageRevealSettings> = DEFAULT_COLLAGE_REVEAL_SETTINGS,
+  reducedMotion = false,
+) {
+  const enabled = settings.particleEnabled && !reducedMotion
+  const assembleDuration = enabled ? safeTimelineDuration(settings.assembleDuration, DEFAULT_COLLAGE_REVEAL_SETTINGS.assembleDuration) : 0
+  const revealDuration = safeTimelineDuration(settings.revealDuration, DEFAULT_COLLAGE_REVEAL_SETTINGS.revealDuration)
+  const staggerDelay = enabled ? Math.max(0, Number.isFinite(settings.staggerDelay) ? settings.staggerDelay : DEFAULT_COLLAGE_REVEAL_SETTINGS.staggerDelay) : 0
+  return (slot - 2) * staggerDelay + assembleDuration + revealDuration
+}
+
+/** Controller focus decays exponentially at 3.8/s and removes its snapshot below 0.001. */
+function getFocusReturnSeconds(focusMix: number) {
+  const mix = Math.max(0, Math.min(1, Number.isFinite(focusMix) ? focusMix : 0))
+  if (mix <= 0.001) return 0
+  return Math.log(mix / 0.001) / 3.8
+}
+
+/** Advances in film-clock seconds; a return is compressed smoothly to finish before focus unmounts. */
+export function advanceCollageRevealTimeline(
+  elapsedSeconds: number,
+  deltaSeconds: number,
+  direction: -1 | 0 | 1,
+  focusMix: number,
+  slot: GalleryCollageSlot,
+  settings: Readonly<CollageRevealSettings> = DEFAULT_COLLAGE_REVEAL_SETTINGS,
+  reducedMotion = false,
+) {
+  const duration = getCollageRevealTimelineDuration(slot, settings, reducedMotion)
+  const elapsed = Math.max(0, Math.min(duration, Number.isFinite(elapsedSeconds) ? elapsedSeconds : 0))
+  const delta = Math.max(0, Number.isFinite(deltaSeconds) ? deltaSeconds : 0)
+  if (direction === 0 || delta === 0) return elapsed
+  if (direction > 0) return Math.min(duration, elapsed + delta)
+
+  const returnSeconds = getFocusReturnSeconds(focusMix)
+  if (returnSeconds <= 0) return 0
+  // focusMix already reflects this frame's controller update, so its remaining
+  // time starts now; the prior frame had one `delta` more time remaining.
+  return elapsed * returnSeconds / (returnSeconds + delta)
+}
+
+/** Resolves elapsed film-clock seconds to a reversible, slot-aware particle and photo frame. */
+export function getCollageRevealFrame(
+  elapsedSeconds: number,
+  slot: GalleryCollageSlot,
+  settings: Readonly<CollageRevealSettings> = DEFAULT_COLLAGE_REVEAL_SETTINGS,
+  reducedMotion = false,
+): CollageRevealFrame {
+  const enabled = settings.particleEnabled && !reducedMotion
+  const assembleDuration = enabled ? safeTimelineDuration(settings.assembleDuration, DEFAULT_COLLAGE_REVEAL_SETTINGS.assembleDuration) : 0
+  const revealDuration = safeTimelineDuration(settings.revealDuration, DEFAULT_COLLAGE_REVEAL_SETTINGS.revealDuration)
+  const staggerDelay = enabled ? Math.max(0, Number.isFinite(settings.staggerDelay) ? settings.staggerDelay : DEFAULT_COLLAGE_REVEAL_SETTINGS.staggerDelay) : 0
+  const elapsed = Math.max(0, Number.isFinite(elapsedSeconds) ? elapsedSeconds : 0)
+  const slotElapsed = Math.max(0, elapsed - (slot - 2) * staggerDelay)
+  const assemblyProgress = assembleDuration === 0 ? 1 : Math.max(0, Math.min(1, slotElapsed / assembleDuration))
+  const photoProgress = Math.max(0, Math.min(1, (slotElapsed - assembleDuration) / revealDuration))
+  const particleArrival = Math.max(0, Math.min(1, slotElapsed / Math.min(0.12, assembleDuration || 0.12)))
+  const particleOpacity = enabled ? 0.8 * smoothstep01(particleArrival) : 0
+
+  return {
+    assemblyProgress,
+    photoProgress,
+    photoOpacity: smoothstep01(photoProgress),
+    particleOpacity,
+  }
 }
 
 export function collagePhotoOpacity(focusMix: number) {

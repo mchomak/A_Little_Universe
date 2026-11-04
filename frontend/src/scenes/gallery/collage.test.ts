@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collageParticleOpacity, collagePhotoOpacity, createCollageRevealGeometry, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout, getGalleryCollagePhotos } from './collage'
+import { advanceCollageRevealTimeline, collageParticleOpacity, collagePhotoOpacity, createCollageRevealGeometry, DEFAULT_COLLAGE_REVEAL_SETTINGS, getCollageRevealFrame, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout, getGalleryCollagePhotos } from './collage'
 
 describe('gallery collage layout', () => {
   it('keeps only available extra photo slots and preserves their numbered positions', () => {
@@ -67,5 +67,61 @@ describe('gallery collage layout', () => {
     expect(collagePhotoOpacity(1)).toBe(1)
     first.dispose()
     second.dispose()
+  })
+
+  it('samples deterministic photo UVs while keeping scatter and targets inside the numbered slot', () => {
+    const first = createCollageRevealGeometry(1.02, 1.36, 31, 48)
+    const second = createCollageRevealGeometry(1.02, 1.36, 31, 48)
+    const firstUv = first.getAttribute('photoUv')
+    const secondUv = second.getAttribute('photoUv')
+
+    expect(firstUv).toBeDefined()
+    expect(firstUv.count).toBe(48)
+    expect(firstUv.array).toEqual(secondUv.array)
+    const uvs = firstUv.array as Float32Array
+    const positions = first.getAttribute('position').array as Float32Array
+    const targets = first.getAttribute('targetPosition').array as Float32Array
+    for (let i = 0; i < firstUv.count; i++) {
+      const u = uvs[i * 2]!
+      const v = uvs[i * 2 + 1]!
+      expect(u).toBeGreaterThanOrEqual(0)
+      expect(u).toBeLessThanOrEqual(1)
+      expect(v).toBeGreaterThanOrEqual(0)
+      expect(v).toBeLessThanOrEqual(1)
+      expect(Math.abs(positions[i * 3]!)).toBeLessThanOrEqual(1.02 / 2)
+      expect(Math.abs(positions[i * 3 + 1]!)).toBeLessThanOrEqual(1.36 / 2)
+      expect(Math.abs(targets[i * 3]!)).toBeLessThanOrEqual(1.02 / 2)
+      expect(Math.abs(targets[i * 3 + 1]!)).toBeLessThanOrEqual(1.36 / 2)
+    }
+    first.dispose()
+    second.dispose()
+  })
+
+  it('uses configured durations as seconds while keeping numbered slot stagger', () => {
+    const settings = { ...DEFAULT_COLLAGE_REVEAL_SETTINGS, assembleDuration: 0.5, revealDuration: 0.5, staggerDelay: 0.1 }
+    const slot2Assembled = getCollageRevealFrame(0.5, 2, settings)
+    const slot3Starting = getCollageRevealFrame(0.1, 3, settings)
+    const slot4Assembled = getCollageRevealFrame(0.7, 4, settings)
+
+    expect(slot2Assembled).toMatchObject({ assemblyProgress: 1, photoProgress: 0 })
+    expect(slot3Starting).toMatchObject({ assemblyProgress: 0, photoProgress: 0 })
+    expect(slot4Assembled.assemblyProgress).toBeCloseTo(1)
+    expect(slot4Assembled.photoProgress).toBe(0)
+    expect(getCollageRevealFrame(1, 2, settings).photoProgress).toBe(1)
+    expect(getCollageRevealFrame(0.75, 2, settings).photoProgress).toBeCloseTo(0.5)
+    expect(getCollageRevealFrame(0.6, 4, { ...settings, particleEnabled: false }).particleOpacity).toBe(0)
+    expect(getCollageRevealFrame(0.6, 4, { ...settings, assembleDuration: 2, revealDuration: 2 }).assemblyProgress).toBeCloseTo(0.2)
+  })
+
+  it('reverses by elapsed film time and reaches zero before the controller drops focus', () => {
+    const settings = { ...DEFAULT_COLLAGE_REVEAL_SETTINGS, assembleDuration: 2, revealDuration: 2, staggerDelay: 0.2 }
+    const focusTime = 1.4
+    const partlyReturned = advanceCollageRevealTimeline(focusTime, 0.2, -1, 0.5, 4, settings)
+    expect(partlyReturned).toBeLessThan(focusTime)
+    expect(partlyReturned).toBeGreaterThan(0)
+    expect(partlyReturned).toBeCloseTo(focusTime * (Math.log(0.5 / 0.001) / 3.8) / (Math.log(0.5 / 0.001) / 3.8 + 0.2))
+    expect(advanceCollageRevealTimeline(partlyReturned, 0.1, 1, 0.5, 4, settings)).toBeGreaterThan(partlyReturned)
+    expect(advanceCollageRevealTimeline(0.2, 0.5, -1, 0.001, 4, settings)).toBe(0)
+    expect(advanceCollageRevealTimeline(0.2, 0.1, 0, 1, 4, settings)).toBe(0.2)
   })
 })

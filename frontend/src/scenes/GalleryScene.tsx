@@ -10,8 +10,8 @@ import { createMemoryThreadAccentGeometry, createMemoryThreadGeometry, createMem
 import { GALLERY_WORLD } from './gallery/world'
 import { createGalleryWaterReflectionBackplate } from './gallery/galleryBackplate'
 import { getMoonFrameTintStrength, getMoonPhotoIllumination } from './gallery/moonLighting'
-import { collageParticleOpacity, collagePhotoOpacity, collageRevealProgress, createCollageRevealGeometry, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout } from './gallery/collage'
-import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, Color, DoubleSide, Group, Material, Mesh, MeshBasicMaterial, Points, PointsMaterial, SRGBColorSpace, Texture, TextureLoader, Vector3, ShaderMaterial } from 'three'
+import { advanceCollageRevealTimeline, createCollageRevealGeometry, DEFAULT_COLLAGE_REVEAL_SETTINGS, getCollageRevealFrame, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout, type CollageRevealSettings } from './gallery/collage'
+import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, ClampToEdgeWrapping, Color, DataTexture, DoubleSide, Group, LinearFilter, Material, Mesh, MeshBasicMaterial, NoColorSpace, Points, PointsMaterial, RedFormat, SRGBColorSpace, Texture, TextureLoader, UnsignedByteType, Vector2, Vector3, ShaderMaterial } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
 import { useSyncExternalStore } from 'react'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
@@ -22,6 +22,7 @@ import { GalleryArch } from './gallery/GalleryArch'
 import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, resetGallery, subscribeGallery } from './gallery/controller'
 import { bindGalleryGestures } from './gallery/gestures'
 import { MoonlitWorld } from './gallery/MoonlitWorld'
+import { createProgressivePhotoRevealMap, progressivePhotoRevealGLSL } from './shared/progressivePhotoReveal'
 import firstPhotoUrl from '../assets/start_img.jpg'
 
 function canvasTexture(draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void, w = 768, h = 768) {
@@ -133,32 +134,69 @@ function photoShaderMaterial(map: Texture) {
   })
 }
 const collageParticleVertexShader = `
+  uniform sampler2D uPhoto;
+  uniform sampler2D uRevealMap;
+  uniform float uTime;
   uniform float uReveal;
+  uniform float uPhotoReveal;
   uniform float uAlpha;
+  uniform float uParticleSize;
+  uniform float uNoiseStrength;
+  uniform float uDpr;
+  uniform vec2 uBounds;
   attribute vec3 targetPosition;
   attribute float size;
   attribute float phase;
+  attribute vec2 photoUv;
+  varying vec2 vPhotoUv;
+  varying vec3 vPhotoColor;
+  varying float vBrightness;
   varying float vAlpha;
+  ${progressivePhotoRevealGLSL}
   void main() {
     float reveal = smoothstep(0.0, 1.0, uReveal);
     vec3 moved = mix(position, targetPosition, reveal);
+    float phaseTime = uTime * 1.7 + phase;
+    vec2 drift = vec2(sin(phaseTime), cos(phaseTime * 0.83)) * uNoiseStrength * (1.0 - reveal);
+    moved.xy = clamp(moved.xy + drift, -uBounds * 0.5, uBounds * 0.5);
+    moved.z += sin(phaseTime * 0.7) * uNoiseStrength * 0.2 * (1.0 - reveal);
+    vec3 photoColor = texture2D(uPhoto, photoUv).rgb;
+    float brightness = dot(photoColor, vec3(0.2126, 0.7152, 0.0722));
+    float arrival = texture2D(uRevealMap, photoUv).r;
+    float particleVisibility = progressivePhotoParticleOpacity(uPhotoReveal, arrival);
+    vPhotoUv = photoUv;
+    vPhotoColor = photoColor;
+    vBrightness = brightness;
     vec4 view = modelViewMatrix * vec4(moved, 1.0);
     gl_Position = projectionMatrix * view;
-    gl_PointSize = size * 520.0 / max(1.0, -view.z);
-    vAlpha = (1.0 - reveal) * uAlpha * (0.72 + 0.28 * sin(phase + uReveal * 6.2831853));
+    gl_PointSize = uParticleSize * uDpr * size * mix(0.62, 1.32, brightness);
+    vAlpha = uAlpha * smoothstep(0.015, 0.2, brightness) * particleVisibility;
   }
 `
 const collageParticleFragmentShader = `
+  uniform sampler2D uPhoto;
+  uniform float uGlow;
+  varying vec2 vPhotoUv;
+  varying vec3 vPhotoColor;
+  varying float vBrightness;
   varying float vAlpha;
   void main() {
     float radius = length(gl_PointCoord - 0.5);
-    float point = 1.0 - smoothstep(0.12, 0.5, radius);
-    gl_FragColor = vec4(0.82, 0.88, 0.96, point * vAlpha);
+    float point = 1.0 - smoothstep(0.08, 0.5, radius);
+    vec3 sampledColor = texture2D(uPhoto, vPhotoUv).rgb;
+    vec3 color = mix(vPhotoColor, sampledColor, 0.5) * (0.75 + uGlow * 0.45);
+    gl_FragColor = vec4(color, point * vAlpha * mix(0.2, 1.0, vBrightness));
+    #include <colorspace_fragment>
   }
 `
-function collageParticleMaterial() {
+function collageParticleMaterial(map: Texture, bounds: Vector2) {
   return new ShaderMaterial({
-    uniforms: { uReveal: { value: 0 }, uAlpha: { value: 0 } },
+    uniforms: {
+      uPhoto: { value: map }, uRevealMap: { value: null }, uTime: { value: 0 }, uReveal: { value: 0 }, uPhotoReveal: { value: 0 }, uAlpha: { value: 0 },
+      uParticleSize: { value: DEFAULT_COLLAGE_REVEAL_SETTINGS.particleSize },
+      uNoiseStrength: { value: DEFAULT_COLLAGE_REVEAL_SETTINGS.noiseStrength },
+      uDpr: { value: 1 }, uBounds: { value: bounds }, uGlow: { value: DEFAULT_COLLAGE_REVEAL_SETTINGS.glow },
+    },
     vertexShader: collageParticleVertexShader,
     fragmentShader: collageParticleFragmentShader,
     transparent: true,
@@ -167,48 +205,138 @@ function collageParticleMaterial() {
     toneMapped: false,
   })
 }
-function CollageExtraPhoto({ url, slot, side, mainWidth, mainHeight, fallback, focusVisual, seed }: {
+const collagePhotoFragmentShader = `
+  uniform sampler2D uPhoto;
+  uniform sampler2D uRevealMap;
+  uniform float uAlpha;
+  uniform float uReveal;
+  varying vec2 vUv;
+  ${progressivePhotoRevealGLSL}
+  void main() {
+    vec3 original = texture2D(uPhoto, vUv).rgb;
+    vec3 photo = progressivePhotoCellColor(vUv, uReveal, original);
+    float arrival = texture2D(uRevealMap, vUv).r;
+    float coverage = progressivePhotoRevealCoverage(uReveal, arrival);
+    gl_FragColor = vec4(photo, uAlpha * progressivePhotoRevealAlpha(uReveal) * coverage);
+    #include <colorspace_fragment>
+  }
+`
+function collagePhotoMaterial(map: Texture) {
+  return new ShaderMaterial({
+    uniforms: { uPhoto: { value: map }, uRevealMap: { value: null }, uAlpha: { value: 0 }, uReveal: { value: 0 } },
+    vertexShader: photoVertexShader,
+    fragmentShader: collagePhotoFragmentShader,
+    transparent: true,
+    depthWrite: false,
+    side: DoubleSide,
+    toneMapped: false,
+  })
+}
+function CollageExtraPhoto({ url, slot, side, mainWidth, mainHeight, fallback, focusVisual, seed, settings = DEFAULT_COLLAGE_REVEAL_SETTINGS, reducedMotion, paused }: {
   url: string
   slot: 2 | 3 | 4
   side: -1 | 1
   mainWidth: number
   mainHeight: number
   fallback: Texture
-  focusVisual: RefObject<{ alpha: number; focusAmount: number }>
+  focusVisual: RefObject<{ alpha: number; focusAmount: number; timelineDirection: -1 | 0 | 1 }>
   seed: number
+  settings?: Readonly<CollageRevealSettings>
+  reducedMotion: boolean
+  paused: boolean
 }) {
   const [aspect, setAspect] = useState(1)
+  const dpr = useThree((state) => state.viewport.dpr)
   const backplateMaterial = useRef<MeshBasicMaterial>(null)
-  const photoMaterial = useMemo(() => photoShaderMaterial(fallback), [fallback])
-  const particles = useMemo(() => createCollageRevealGeometry(1.02, 1.02 / Math.max(0.35, aspect), seed), [aspect, seed])
-  const revealMaterial = useMemo(() => collageParticleMaterial(), [])
   const layout = useMemo(() => getGalleryCollagePhotoLayout(slot, side, mainWidth, mainHeight, aspect), [aspect, mainHeight, mainWidth, side, slot])
+  const revealMap = useMemo(() => {
+    const size = 128
+    const texture = new DataTexture(createProgressivePhotoRevealMap(size, aspect), size, size, RedFormat, UnsignedByteType)
+    texture.colorSpace = NoColorSpace
+    texture.wrapS = ClampToEdgeWrapping
+    texture.wrapT = ClampToEdgeWrapping
+    texture.minFilter = LinearFilter
+    texture.magFilter = LinearFilter
+    texture.generateMipmaps = false
+    texture.needsUpdate = true
+    return texture
+  }, [aspect])
+  const photoMaterial = useMemo(() => collagePhotoMaterial(fallback), [fallback])
+  const particlesEnabled = settings.particleEnabled && !reducedMotion
+  const particleCount = settings.particleCount
+  const particleGeometrySettings = useMemo(() => ({ depth: settings.depth }), [settings.depth])
+  const particles = useMemo(() => particlesEnabled
+    ? createCollageRevealGeometry(layout.width, layout.height, seed, particleCount, particleGeometrySettings)
+    : new BufferGeometry(), [layout.height, layout.width, particleCount, particleGeometrySettings, particlesEnabled, seed])
+  const bounds = useMemo(() => new Vector2(), [])
+  const revealMaterial = useMemo(() => particlesEnabled ? collageParticleMaterial(fallback, bounds) : null, [bounds, fallback, particlesEnabled])
+  const revealMaterialRef = useRef<ShaderMaterial | null>(null)
+  const loadedPhoto = useRef<Texture>(fallback)
+  const revealTime = useRef(0)
+  const previousFilmTime = useRef(galleryMotion.time)
+
+  useEffect(() => {
+    revealMaterialRef.current = revealMaterial
+    setShaderUniform(revealMaterial, 'uPhoto', loadedPhoto.current)
+    setShaderUniform(revealMaterial, 'uRevealMap', revealMap)
+    return () => { if (revealMaterialRef.current === revealMaterial) revealMaterialRef.current = null }
+  }, [revealMap, revealMaterial])
+  useEffect(() => { setShaderUniform(photoMaterial, 'uRevealMap', revealMap) }, [photoMaterial, revealMap])
 
   useEffect(() => {
     let active = true
     let loaded: Texture | null = null
+    loadedPhoto.current = fallback
+    setShaderUniform(photoMaterial, 'uPhoto', fallback)
+    setShaderUniform(revealMaterialRef.current, 'uPhoto', fallback)
     new TextureLoader().load(url, (value) => {
       if (!active) { value.dispose(); return }
       loaded = value
+      loadedPhoto.current = value
       setColorSpace(value)
-      setShaderUniform(photoMaterial, 'map', value)
+      setShaderUniform(photoMaterial, 'uPhoto', value)
+      setShaderUniform(revealMaterialRef.current, 'uPhoto', value)
       const image = value.image as HTMLImageElement
       if (image.naturalWidth && image.naturalHeight) setAspect(image.naturalWidth / image.naturalHeight)
-    }, undefined, () => { if (active) setShaderUniform(photoMaterial, 'map', fallback) })
-    return () => { active = false; loaded?.dispose() }
+    }, undefined, () => {
+      if (active) {
+        setShaderUniform(photoMaterial, 'uPhoto', fallback)
+        setShaderUniform(revealMaterialRef.current, 'uPhoto', fallback)
+        loadedPhoto.current = fallback
+      }
+    })
+    return () => {
+      active = false
+      loaded?.dispose()
+      if (loadedPhoto.current === loaded) loadedPhoto.current = fallback
+    }
   }, [fallback, photoMaterial, url])
-  useEffect(() => () => {
-    particles.dispose()
-    photoMaterial.dispose()
-    revealMaterial.dispose()
-  }, [particles, photoMaterial, revealMaterial])
+  useEffect(() => () => particles.dispose(), [particles])
+  useEffect(() => () => photoMaterial.dispose(), [photoMaterial])
+  useEffect(() => () => revealMaterial?.dispose(), [revealMaterial])
+  useEffect(() => () => revealMap.dispose(), [revealMap])
   useFrame(() => {
-    const { alpha, focusAmount } = focusVisual.current
-    const photoAlpha = alpha * collagePhotoOpacity(focusAmount)
+    const now = galleryMotion.time
+    const delta = Math.max(0, now - previousFilmTime.current)
+    previousFilmTime.current = now
+    const { alpha, focusAmount, timelineDirection } = focusVisual.current
+    if (!paused && !document.hidden) {
+      revealTime.current = advanceCollageRevealTimeline(revealTime.current, delta, timelineDirection, focusAmount, slot, settings, reducedMotion)
+    }
+    const frame = getCollageRevealFrame(revealTime.current, slot, settings, reducedMotion)
+    const photoAlpha = alpha * frame.photoOpacity
     if (backplateMaterial.current) backplateMaterial.current.opacity = photoAlpha * 0.92
     setShaderUniform(photoMaterial, 'uAlpha', photoAlpha)
-    setShaderUniform(revealMaterial, 'uAlpha', alpha * collageParticleOpacity(focusAmount))
-    setShaderUniform(revealMaterial, 'uReveal', collageRevealProgress(focusAmount))
+    setShaderUniform(photoMaterial, 'uReveal', frame.photoProgress)
+    setShaderUniform(revealMaterial, 'uTime', reducedMotion ? 0 : galleryMotion.time)
+    setShaderUniform(revealMaterial, 'uParticleSize', settings.particleSize)
+    setShaderUniform(revealMaterial, 'uNoiseStrength', settings.noiseStrength)
+    setShaderUniform(revealMaterial, 'uDpr', dpr)
+    setShaderUniform(revealMaterial, 'uGlow', settings.glow)
+    setShaderUniform(revealMaterial, 'uReveal', frame.assemblyProgress)
+    setShaderUniform(revealMaterial, 'uPhotoReveal', frame.photoProgress)
+    setShaderUniform(revealMaterial, 'uAlpha', alpha * frame.particleOpacity)
+    bounds.set(layout.width, layout.height)
   })
 
   return <group position={layout.position}>
@@ -220,9 +348,9 @@ function CollageExtraPhoto({ url, slot, side, mainWidth, mainHeight, fallback, f
       <planeGeometry args={[layout.width, layout.height]} />
       <primitive object={photoMaterial} attach="material" />
     </mesh>
-    <points geometry={particles} raycast={() => undefined} renderOrder={GALLERY_MEMORY_RENDER_ORDER + 2} userData={{ galleryOpacityManaged: true }}>
+    {particlesEnabled && revealMaterial && <points geometry={particles} raycast={() => undefined} renderOrder={GALLERY_MEMORY_RENDER_ORDER + 2} userData={{ galleryOpacityManaged: true }}>
       <primitive object={revealMaterial} attach="material" />
-    </points>
+    </points>}
   </group>
 }
 function frameShaderMaterial() {
@@ -273,7 +401,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   const photoMaterialRef = useRef(photoMaterial)
   const frameMaterial = useMemo(() => frameShaderMaterial(), [])
   const frameMaterialRef = useRef(frameMaterial)
-  const visual = useRef({ alpha: 0, focusAmount: 0 })
+  const visual = useRef({ alpha: 0, focusAmount: 0, timelineDirection: 0 as -1 | 0 | 1 })
   const columnOpacity = useRef(0)
 
   useEffect(() => {
@@ -385,9 +513,13 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     visualGroup.current.rotation.set(first && !reducedMotion ? -0.022 * (1 - e) : 0, 0, first && !reducedMotion ? -0.009 * (1 - e) : 0)
 
     const visible = first ? 1 : Math.max(0, Math.min(1, (m.intro - memory.order * 0.15) / 1.4))
-    const selected = gallerySnapshot().focus === memory.order
+    const snapshot = gallerySnapshot()
+    const selected = snapshot.focus === memory.order
     const focusTarget = m.focusMix > 0.001 && m.focusIndex === memory.order
     const focusAmount = m.focusIndex === memory.order ? Math.max(0, Math.min(1, m.focusMix)) : 0
+    const timelineDirection: -1 | 0 | 1 = selected
+      ? snapshot.interaction === 'returning' ? -1 : snapshot.interaction === 'focusing' || snapshot.interaction === 'focused' ? 1 : 0
+      : 0
     const photoPosition = visualGroup.current.getWorldPosition(worldPosition)
     const photoDistance = camera.position.distanceTo(photoPosition)
     moonPosition.set(settings.moonPositionX, settings.moonPositionY, settings.moonPositionZ)
@@ -424,7 +556,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     }
     group.current.visible = visible > 0 && distanceAlpha > 0 && alpha > 0.001
     supportGroup.current.visible = group.current.visible && settings.columnVisible
-    visual.current = { alpha, focusAmount }
+    visual.current = { alpha, focusAmount, timelineDirection }
 
     setShaderUniform(photoMaterialRef.current, 'uAlpha', alpha)
     setShaderUniform(photoMaterialRef.current, 'uBlur', galleryPhotoBlurAtFocus(photoDistance, focusAmount))
@@ -488,6 +620,8 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
         fallback={image ?? firstPhoto}
         focusVisual={visual}
         seed={memory.order * 37 + slot * 101}
+        reducedMotion={reducedMotion}
+        paused={paused}
       />)}
       <points geometry={frameParticles}><primitive object={frameMaterial} attach="material" /></points>
       {caption && <mesh position={[0, -height / 2 - 0.34, 0.02]}><planeGeometry args={[3.4, 0.33]} /><meshBasicMaterial ref={captionMaterial} map={caption} transparent opacity={0.65} depthWrite={false} toneMapped={false} />
