@@ -31,6 +31,10 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 
 Пределы `scenes.identity`: `particleCount` 1 000–100 000; `portraitStartProgress` 0–100%; `portraitDuration` 2–16 с, расчёт ограничивает её остатком времени сцены, но не ниже 2 с; `portraitFraction` 0–45%; min/max turns 0–4 (max повышается до min при обратном порядке); `portraitSteering` 0–2, `portraitBraking` 0,25–2, `portraitSettledBrightness` 1–2.
 
+## Портретная фотография сцены 04
+
+Используется существующий отслеживаемый оригинал `frontend/src/assets/start_img.jpg`. Плоскость фото и частицы должны совпадать по UV и камере через `portraitIntegration.ts` (`createLilyPortraitCameraBasisAtTime`, `placeLilyPortraitTargets`); точки интеграции — `LilyDissolveParticles` и `SceneDirector` в общей WebGL-канве. Проявление рассчитывается от фактической посадки последней портретной частицы, начинается от лица после отдельной паузы и завершается точным совпадением с оригиналом. `identityRestoration.ts` — исторический ориентир; фиксированный тайминг и ранние фронты старого алгоритма не подходят.
+
 ## Команды (PowerShell 5, из корня проекта)
 
 | Действие | Команда |

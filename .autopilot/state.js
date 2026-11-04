@@ -1,7 +1,7 @@
 window.STATE =
 {
   "slug": "portrait-photo-reveal",
-  "dir": "2026-11-04-portrait-photo-reveal--wip",
+  "dir": "2026-11-04-portrait-photo-reveal",
   "title": "Проявление фотографии из портрета",
   "mode": "full",
   "depth": "normal",
@@ -11,8 +11,8 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-11-04T12:02:37+03:00",
-  "updatedAt": "2026-11-04T12:19:11+03:00",
-  "finishedAt": null,
+  "updatedAt": "2026-11-04T14:41:43+03:00",
+  "finishedAt": "2026-11-04T14:41:43+03:00",
   "stages": [
     {
       "id": "preflight",
@@ -48,23 +48,28 @@ window.STATE =
     },
     {
       "id": "build",
-      "status": "active",
-      "startedAt": "2026-11-04T12:19:11+03:00"
+      "status": "done",
+      "startedAt": "2026-11-04T12:19:11+03:00",
+      "finishedAt": "2026-11-04T14:41:43+03:00"
     },
     {
       "id": "review",
-      "status": "pending"
+      "status": "done",
+      "startedAt": "2026-11-04T14:41:43+03:00",
+      "finishedAt": "2026-11-04T14:41:43+03:00"
     },
     {
       "id": "final",
-      "status": "pending"
+      "status": "done",
+      "startedAt": "2026-11-04T14:41:43+03:00",
+      "finishedAt": "2026-11-04T14:41:43+03:00"
     }
   ],
   "requirements": {
     "total": 7,
-    "done": 0,
+    "done": 6,
     "inTicket": 0,
-    "inSpec": 7,
+    "inSpec": 1,
     "placeholder": 0,
     "deferred": 0,
     "dropped": 0
@@ -73,7 +78,10 @@ window.STATE =
   "singlePass": {
     "startedAt": "2026-11-04T12:19:11+03:00"
   },
-  "tests": null,
+  "tests": {
+    "command": "npm run check",
+    "result": "passed: 112 files, 589 tests; lint, typecheck, production build"
+  },
   "debt": {
     "placeholders": [],
     "assumptions": [],
@@ -87,7 +95,7 @@ window.STATE =
   "concerns": [],
   "reviewers": {
     "manifestSpec": null,
-    "craft": null
+    "craft": "Code review passed; browser smoke did not confirm worker completion after settings change."
   },
-  "blind": null
+  "blind": "Independent browser acceptance unavailable due to browser contention; coordinator inspected screenshots."
 }
