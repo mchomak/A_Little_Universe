@@ -1,4 +1,4 @@
-﻿import { createElement } from 'react'
+import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import { initialFilmState } from '../engine/film'
@@ -395,4 +395,29 @@ it('shows the B profile values when the between-columns layout is active', async
   } finally {
     await updateConfig(DEFAULT_SCENE_COMPOSER_CONFIG)
   }
+})
+
+it('exposes eight bounded collage controls in one collapsed DEV section', () => {
+  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'gallery' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    route: 'film',
+  }))
+  const section = markup.match(/<details><summary>Частицы дополнительных фото<\/summary>([\s\S]*?)<\/details>/)
+
+  expect(section).not.toBeNull()
+  expect((markup.match(/Частицы дополнительных фото/g) ?? [])).toHaveLength(1)
+  expect(section?.[1]).toContain('id="composer-scenes-gallery-collageParticleCount"')
+  expect(section?.[1]).toMatch(/collageParticleCount"[^>]*min="96" max="2400" step="1" value="640"/)
+  expect(section?.[1]).toMatch(/collageParticleSize"[^>]*min="1" max="8" step="0\.1" value="2\.6"/)
+  expect(section?.[1]).toMatch(/collageNoiseStrength"[^>]*min="0" max="0\.12" step="0\.005" value="0\.035"/)
+  expect(section?.[1]).toMatch(/collageDepth"[^>]*min="0" max="0\.8" step="0\.01" value="0\.42"/)
+  expect(section?.[1]).toMatch(/collageGlow"[^>]*min="0" max="2" step="0\.05" value="1"/)
+  expect(section?.[1]).toMatch(/collageAssembleDuration"[^>]*min="0\.25" max="2" step="0\.01" value="0\.72"/)
+  expect(section?.[1]).toMatch(/collageRevealDuration"[^>]*min="0\.25" max="2" step="0\.01" value="0\.68"/)
+  expect(section?.[1]).toMatch(/collageStaggerDelay"[^>]*min="0" max="0\.5" step="0\.01" value="0\.14"/)
+  expect(section?.[1]).toContain('Длительность сборки · 0,72 с')
+  expect(section?.[1]).toContain('Длительность проявления фото · 0,68 с')
 })

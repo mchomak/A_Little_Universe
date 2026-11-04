@@ -1,4 +1,4 @@
-﻿# AGENTS.md — A Little Universe for You
+# AGENTS.md — A Little Universe for You
 
 Keep this file compact. Current project status, setup, and architecture are in [README.md](README.md). Narrative, shot order, timing, and creative direction are in the [storyboard](A_Little_Universe_for_Vasilisa_Storyboard_v3.0.md). Approved keyframes are indexed in [references/keyframes/README.md](references/keyframes/README.md).
 
@@ -23,7 +23,7 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 
 `images/phone_1.png` — DOM/CSS-фон загрузки 00 и сцен 01–04; при входе в галерею 05 он скрывается. Начальный кадр увеличен, во время падения семени видимая область плавно движется вниз и сохраняет положение в сценах 03–04. `cover` заполняет экран без пустых краёв. DEV Scene Editor в development или в локальном production preview (`http://127.0.0.1:4173/?debug`) меняет общий профиль `scenes.openingBackground.{zoom, offsetX, offsetY}`; в секции «00–04 · Кадрирование фона» доступны живой предпросмотр и сброс. Масштаб: 1–3, смещения: −1…1, по умолчанию: 1/0/0.
 
-Схема Scene Composer v22 принимает JSON v1–v22; старые файлы сцен 02 и 05 мигрируются с сохранением известных настроек, а Lily appearance/pollen остаются совместимы со всеми предыдущими версиями. Экспортируется версия 22.
+Схема Scene Composer v23 принимает JSON v1–v23; старые файлы сцен 02 и 05 мигрируются с сохранением известных настроек, а Lily appearance/pollen остаются совместимы со всеми предыдущими версиями. Экспортируется версия 23.
 
 ## Пресеты Scene Editor
 
@@ -64,6 +64,12 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 ## Подводные камни
 
 В Windows `.autopilot/sync.py` не запускает dashboard-сервер: он вызывает POSIX `ps`. `python .autopilot/sync.py --no-serve` обновляет снимок страницы без сервера.
+
+## Scene 05 photo particle reveal
+
+`GalleryScene` reveals additional photos only for the focused memory. Particles assemble on the seconds-based `galleryMotion.time` timeline before the original photo becomes visible. A slot waits for its texture before starting, and repeated focus changes, reduced motion, and GPU cleanup must remain safe. Shared reveal timing lives in `frontend/src/scenes/shared/progressivePhotoReveal.ts`; deterministic particle geometry and slot timing live in `frontend/src/scenes/gallery/collage.ts`.
+
+Gallery collage settings live under `scenes.gallery` in Scene Composer schema v23. Per-memory opt-out uses stable event IDs in `frontend/src/scenes/gallery/galleryCollageConfig.ts`. The eight DEV controls cover count, size, noise, depth, glow, assembly duration, photo reveal duration, and stagger. Keep all particles limited to the focused memory and the shared WebGL renderer.
 <!-- autopilot:end -->
 
 
