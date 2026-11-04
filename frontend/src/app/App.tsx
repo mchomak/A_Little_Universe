@@ -19,7 +19,7 @@ import { openGift } from './openGift'
 import { PhoneBackground } from '../components/PhoneBackground'
 import { getImplementationStatus } from './filmStatus'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
-import { awaitFilmStartup, isFilmStartupFailure, type FilmStartupError } from './filmStartup'
+import { startPreparedFilm, isFilmStartupFailure, type FilmStartupError } from './filmStartup'
 import { LilyParticlePreparationBanner } from './LilyParticlePreparationBanner'
 import { createLilyParticlePreparationSeedKey, getLilyFilmSurfaceDimensions, lilyParticlePreparation, prepareLilyParticleGeometryForStart, subscribeLilyFilmSurfaceDimensions } from '../scenes/lily/lilyParticlePreparation'
 import { LILY_MODEL_RUNTIME_ASSET, preloadLilyModel } from '../assets/lily/lilyAsset'
@@ -115,23 +115,21 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     setStarting(true)
     setStartError(null)
     const request = ++operation.current
-    let giftReady = false
-    let particlesReady = false
-    const enterFilm = () => {
-      if (!giftReady || !particlesReady || request !== operation.current) return
-      resetGalleryInstruction(); setMountedFilm(true); setRoute('film'); dispatch({ type: state.mode === 'ready' ? 'start' : 'replay' })
-    }
     // Start the gesture-sensitive audio unlock synchronously; keep the user on
     // preparation until the matching scene-04 geometry is actually ready.
-    const giftPromise = openGift({ audio, media, onStart: () => { giftReady = true; enterFilm() } })
-    const particlePromise = prepareLilyParticleGeometryForStart(
-      lilyParticlePreparation,
-      getParticlePreparationInput,
-      () => request === operation.current,
-    )
-    void awaitFilmStartup(giftPromise, particlePromise).then(() => {
-      particlesReady = true
-      enterFilm()
+    void startPreparedFilm({
+      startGift: () => openGift({ audio, media, onStart: () => undefined }),
+      prepareParticles: () => prepareLilyParticleGeometryForStart(
+        lilyParticlePreparation,
+        getParticlePreparationInput,
+        () => request === operation.current,
+      ),
+      stopRecording: () => media.stop(),
+      isCurrent: () => request === operation.current,
+      onReady: () => {
+        resetGalleryInstruction(); setMountedFilm(true); setRoute('film')
+        dispatch({ type: state.mode === 'ready' ? 'start' : 'replay' })
+      },
     }).catch((failure: unknown) => {
       if (request !== operation.current) return
       const tagged = isFilmStartupFailure(failure) ? failure : { source: 'gift' as const, reason: failure }

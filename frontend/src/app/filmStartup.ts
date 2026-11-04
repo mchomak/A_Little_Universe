@@ -22,6 +22,31 @@ export function awaitFilmStartup(gift: Promise<unknown>, particles: Promise<unkn
   return Promise.all([tagFailure('gift', gift), tagFailure('particles', particles)]).then(() => undefined)
 }
 
+export interface PreparedFilmStart {
+  startGift(): Promise<unknown>
+  prepareParticles(): Promise<unknown>
+  stopRecording(): Promise<unknown>
+  isCurrent(): boolean
+  onReady(): void
+}
+
+/** Starts gesture-sensitive work immediately, then mounts only after both prerequisites settle. */
+export async function startPreparedFilm({ startGift, prepareParticles, stopRecording, isCurrent, onReady }: PreparedFilmStart): Promise<void> {
+  let giftPromise: Promise<unknown>
+  try { giftPromise = startGift() } catch (reason) { giftPromise = Promise.reject(reason) }
+  let particlePromise: Promise<unknown>
+  try { particlePromise = prepareParticles() } catch (reason) { particlePromise = Promise.reject(reason) }
+  try {
+    await awaitFilmStartup(giftPromise, particlePromise)
+  } catch (failure) {
+    if (isCurrent()) {
+      try { await stopRecording() } catch { /* Preserve the original startup failure. */ }
+    }
+    throw failure
+  }
+  if (isCurrent()) onReady()
+}
+
 export function isFilmStartupFailure(value: unknown): value is FilmStartupFailure {
   if (!value || typeof value !== 'object') return false
   const failure = value as { source?: unknown; reason?: unknown }
