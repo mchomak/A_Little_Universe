@@ -1,10 +1,16 @@
 ﻿import * as THREE from 'three'
 
 const BASE = '/__iris-assets/vasilisa/'
+export const RUN017_BLUE_FIBERS_IMAGE = `${BASE}iris_cinematic_rgba.png`
 const NAMES = ['iris_cinematic_rgba.png', 'iris_authentic_rgba.png', 'iris_confidence.png', 'iris_particles.bin'] as const
 const LAYOUT = ['x', 'y', 'z', 'r_linear', 'g_linear', 'b_linear', 'size']
 type Manifest = { schemaVersion: number; sourceRun: string; textureSize: [number, number]; textureColorSpace: string; confidenceColorSpace: string; pupilRatio: number; particles: { count: number; format: string; strideBytes: number; layout: string[]; coordinates: string; colorSpace: string }; files: Record<string, string> }
 export type IrisAssets = { cinematic: THREE.Texture; authentic: THREE.Texture; confidence: THREE.Texture; particles: Float32Array; count: number; pupilRatio: number; dispose(): void }
+
+export function resolveIrisPhotoSource(mode: string, uploadedSource: string | null | undefined, isDevelopment: boolean): string | null {
+  if (mode === 'Run 017 Blue Fibers') return RUN017_BLUE_FIBERS_IMAGE
+  return uploadedSource ?? (isDevelopment ? '/__iris-assets/source-eye.png' : null)
+}
 
 export function validateIrisManifest(value: unknown): Manifest {
   if (!value || typeof value !== 'object') throw new Error('Invalid iris asset manifest')
