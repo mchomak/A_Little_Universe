@@ -1,8 +1,17 @@
 import type { SceneId } from '../engine/filmConfig'
 
+const SCENE_STATUS_LABELS: Record<SceneId, string> = {
+  prologue: 'Сцена 01 · пролог',
+  growth: 'Сцена 02 · семечко и рост лилии',
+  bloom: 'Сцена 03 · раскрытие лилии',
+  identity: 'Сцена 04 · растворение лилии',
+  gallery: 'Сцена 05 · лунная галерея',
+  eye: 'Сцена 06 · глаз',
+  cosmos: 'Сцена 07 · космос',
+  greeting: 'Сцена 08 · поздравление',
+  ending: 'Сцена 09 · финал',
+}
+
 export function getImplementationStatus(scene: SceneId): string {
-  if (scene === 'growth') return 'Сцена 02 · семечко и рост лилии'
-  if (scene === 'bloom') return 'Сцена 03 · раскрытие лилии'
-  if (scene === 'identity') return 'Сцена 04 · растворение лилии'
-  return 'Сцены 06–09 · placeholders'
+  return SCENE_STATUS_LABELS[scene]
 }
