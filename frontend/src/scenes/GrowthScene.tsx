@@ -13,6 +13,7 @@ import { seedPointsFragmentShader, seedPointsVertexShader } from './growth/recst
 import { FloatingIsland } from './growth/FloatingIsland'
 import { GrowthClouds } from './growth/GrowthClouds'
 import { GrowthMoonlight } from './growth/GrowthMoonlight'
+import { GrowthSky } from './growth/GrowthSky'
 import { shouldUseGrowthShadows } from './growth/sceneShadows'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import type { FilmRuntime } from '../engine/runtime'
@@ -319,6 +320,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
       </group>
     </group>}
     <group key="growth-environment">
+      <GrowthSky />
       {shouldMountGrowthClouds(environmentOnly) && <GrowthClouds runtime={runtime} reducedMotion={reducedMotion} frames={growthFrames} environmentOpacity={environmentOpacity} settings={growthSettings} />}
       <FloatingIsland
         runtime={runtime}

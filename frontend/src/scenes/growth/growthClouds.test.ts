@@ -81,9 +81,12 @@ describe('Scene 02 independent clouds', () => {
     expect(field).toHaveLength(20)
     expect(persistent).toHaveLength(6)
     expect(depthRange).toBeGreaterThan(1.5)
-    expect(field.filter(({ pathCrossing }) => !pathCrossing).every(({ position, radii }) =>
+    expect(field.filter(({ pathCrossing, persistent }) => !pathCrossing && !persistent).every(({ position, radii }) =>
       Math.abs(position[0]) - radii[0] > 0.18,
     )).toBe(true)
+    const seaBanks = persistent.filter(({ id }) => id.startsWith('island-'))
+    expect(seaBanks).toHaveLength(4)
+    expect(seaBanks.every(({ radii }) => radii[0] > 2)).toBe(true)
   })
 
   it('builds a layered deterministic set outside the flower center', () => {
@@ -117,7 +120,7 @@ describe('Scene 02 independent clouds', () => {
     expect(masses.filter(({ pathCrossing }) => pathCrossing).every(({ position, radii }) =>
       (position[0] / radii[0]) ** 2 + (position[2] / radii[2]) ** 2 < 1,
     )).toBe(true)
-    expect(fullField.filter(({ pathCrossing }) => !pathCrossing)
+    expect(fullField.filter(({ pathCrossing, persistent }) => !pathCrossing && !persistent)
       .every(({ position, radii }) => Math.abs(position[0]) - radii[0] > 0.18)).toBe(true)
     expect(new Set(fullField.map(({ position }) => position[0].toFixed(2))).size).toBeGreaterThan(20)
     expect(new Set(fullField.map(({ radii }) => radii[0].toFixed(2))).size).toBeGreaterThan(18)
@@ -174,7 +177,7 @@ describe('Scene 02 independent clouds', () => {
     expect(getGrowthCloudMasses(-2, 1)).toHaveLength(0)
     for (const scale of [0.4, 1, 2]) {
       const masses = getGrowthCloudMasses(24, scale)
-      expect(masses.filter(({ pathCrossing }) => !pathCrossing)
+      expect(masses.filter(({ pathCrossing, persistent }) => !pathCrossing && !persistent)
         .every(({ position, radii }) => Math.abs(position[0]) - radii[0] > 0.18)).toBe(true)
     }
     expect(getGrowthCloudMasses(1, Number.NaN)[0]!.radii[0]).toBeCloseTo(getGrowthCloudMasses(1, 1)[0]!.radii[0])
