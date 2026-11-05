@@ -1,6 +1,7 @@
 ﻿import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type Dispatch } from 'react'
 import type { FilmAction, FilmState } from '../engine/film'
 import type { FilmRuntime } from '../engine/runtime'
+import type { DesktopRecordingSession, DesktopSource } from '../systems/media/DesktopRecordingSession'
 import { getSceneDuration, SCENES, type SceneId } from '../engine/filmConfig'
 import {
   DEFAULT_SCENE_COMPOSER_CONFIG,
@@ -48,6 +49,29 @@ type NumericControl = {
 
 type InspectorScene = SceneId | 'preload'
 type SelectControl = { path: ComposerFieldPath; label: string; options: readonly { value: string; label: string }[] }
+
+const recordingSourceNames: Record<DesktopSource, string> = { camera: 'Camera', microphone: 'Microphone', screen: 'Screen' }
+function RecordingInspector({ session }: { session: DesktopRecordingSession }) {
+  const recording = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
+  const duration = `${String(Math.floor(recording.durationMs / 60_000)).padStart(2, '0')}:${String(Math.floor(recording.durationMs / 1_000) % 60).padStart(2, '0')}`
+  const space = recording.freeBytes === null ? '—' : `${(recording.freeBytes / 1_073_741_824).toFixed(1)} GB`
+  return <details className="inspector-section" open data-testid="recording-inspector">
+    <summary>Recording</summary>
+    <dl>
+      <div><dt>Status</dt><dd>{recording.status}</dd></div>
+      {(['camera', 'microphone', 'screen'] as const).map((source) => <div key={source}><dt>{recordingSourceNames[source]}</dt><dd>{recording.sources[source]}</dd></div>)}
+      <div><dt>Duration</dt><dd>{duration}</dd></div>
+      <div><dt>Saved segments</dt><dd>{recording.segmentCounts.camera + recording.segmentCounts.microphone + recording.segmentCounts.screen}</dd></div>
+      <div><dt>Folder</dt><dd>{recording.folder ?? '—'}</dd></div>
+      <div><dt>Free space</dt><dd>{space}</dd></div>
+    </dl>
+    {recording.errors.length > 0 && <div role="status"><strong>Errors</strong><ul>{recording.errors.map((error, index) => <li key={`${error}:${index}`}>{error}</li>)}</ul></div>}
+    <div className="inspector-history">
+      <button type="button" disabled={!['starting', 'recording', 'error'].includes(recording.status)} onClick={() => { void session.stop() }}>Stop &amp; Save</button>
+      <button type="button" disabled={!recording.sessionId} onClick={() => { void session.openFolder() }}>Open Recording Folder</button>
+    </div>
+  </details>
+}
 
 const PRELOAD_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.preload.glow', label: 'Свечение', unit: '×', min: 0, max: 2, step: 0.05 },
@@ -578,13 +602,14 @@ function SelectConfigControl({ control, value, onChange, onReset }: {
   </div>
 }
 
-export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion, onPreload, route = 'film' }: {
+export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion, onPreload, route = 'film', desktopRecording }: {
   state: FilmState
   dispatch: Dispatch<FilmAction>
   runtime?: FilmRuntime
   reducedMotion: boolean
   onPreload(): void
   route?: string
+  desktopRecording?: DesktopRecordingSession
 }) {
   const active: InspectorScene = route === 'loading' ? 'preload' : state.scene
   const [pinned, setPinned] = useState<InspectorScene | null>(null)
@@ -818,6 +843,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   return (
     <aside id="developer-panel" className="developer-panel" aria-labelledby="developer-title">
       <div className="inspector-heading"><h2 id="developer-title">Scene Inspector</h2><button type="button" aria-pressed={pinned !== null} onClick={() => setPinned(pinned === null ? active : null)}>{pinned === null ? 'Auto' : 'Pin'}</button></div>
+      {desktopRecording?.available && <RecordingInspector session={desktopRecording} />}
       <p className="inspector-follow">{pinned === null ? 'Следует за активной сценой' : 'Панель закреплена'} · {title}</p>
       {fontLoading && <p role="status">Загружаем локальный шрифт…</p>}
       {notice && <p role="status" aria-live="polite">{notice}</p>}

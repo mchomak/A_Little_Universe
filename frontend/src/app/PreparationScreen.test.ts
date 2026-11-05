@@ -4,7 +4,7 @@ import { expect, it } from 'vitest'
 import type { MediaSession } from '../systems/media/MediaSession'
 import { PreparationScreen } from './PreparationScreen'
 
-function renderPreparation(step: 'settings' | 'checking' | 'ready' = 'settings', startError?: { source: 'gift' | 'particles'; message: string }) {
+function renderPreparation(step: 'settings' | 'checking' | 'ready' = 'settings', startError?: { source: 'gift' | 'particles'; message: string }, desktopRecording = false) {
   const session = {
     subscribe: () => () => undefined,
     getSnapshot: () => ({ options: { gaze: false, recording: false, upload: false } }),
@@ -22,6 +22,7 @@ function renderPreparation(step: 'settings' | 'checking' | 'ready' = 'settings',
     onWithoutMedia: () => undefined,
     onEdit: () => undefined,
     onStart: () => undefined,
+    desktopRecording,
   }))
 }
 
@@ -44,6 +45,17 @@ it('keeps the three switches without printing their off state', () => {
 
   expect(markup).not.toContain('выкл')
   expect(markup.match(/role="switch"/g)).toHaveLength(3)
+})
+
+it('shows one explicit local-recording consent action in the desktop app', () => {
+  const markup = renderPreparation('settings', undefined, true)
+  expect(markup).toContain('камера, микрофон и окно приложения')
+  expect(markup).toContain('Запись не отправляется по сети')
+  expect(markup).toContain('Остановить всю запись и сохранить её можно кнопкой Stop &amp; Save')
+  expect(markup).not.toContain('Каждый поток можно остановить')
+  expect(markup).toContain('data-testid="desktop-recording-consent"')
+  expect(markup).not.toContain('role="switch"')
+  expect(markup).not.toContain('Продолжить без разрешений')
 })
 
 it('states that gaze response is unavailable without a connected tracker', () => {

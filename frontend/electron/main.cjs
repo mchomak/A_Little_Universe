@@ -1,7 +1,10 @@
-const { app, BrowserWindow, desktopCapturer, net, protocol, session } = require('electron')
+const { app, BrowserWindow, desktopCapturer, ipcMain, net, protocol, session, shell, webContents } = require('electron')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 const { appScheme, canCheckMediaPermission, canRequestMedia, isAppOrigin, resolveBundlePath } = require('./runtime-path.cjs')
+const { RecordingDiskStore } = require('./recording-store.cjs')
+const { installRecordingHandlers } = require('./recording-ipc.cjs')
+const { createAppWindowCaptureHandler } = require('./media-capture.cjs')
 
 const APP_ENTRY = 'app://bundle/index.html'
 const DEVELOPMENT_URL = process.env.ALU_DEV_SERVER_URL
@@ -9,6 +12,12 @@ const DEVELOPMENT_URL = process.env.ALU_DEV_SERVER_URL
 protocol.registerSchemesAsPrivileged([appScheme])
 
 app.setName('A Little Universe for You')
+let recordingStore
+
+function registerRecordingIpc() {
+  recordingStore = new RecordingDiskStore(path.join(app.getPath('movies'), 'A_Little_Universe_Records'))
+  installRecordingHandlers(ipcMain, recordingStore, { openPath: shell.openPath })
+}
 
 function installBundledProtocol() {
   const root = path.join(app.getAppPath(), 'dist')
@@ -52,18 +61,12 @@ function registerMediaPermissions() {
     try { isAppPage = !contents.isDestroyed() && isAppOrigin(contents.getURL()) } catch { /* Deny invalid origins. */ }
     callback(isAppPage && canRequestMedia(contents.getURL(), permission, details.mediaTypes ?? []))
   })
-  defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
-    if (!canRequestMedia(request.securityOrigin, 'display-capture') || !request.videoRequested) return callback(null)
-    const windowTitle = BrowserWindow.getAllWindows()[0]?.getTitle()
-    try {
-      const sources = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 1, height: 1 } })
-      const appWindow = sources.find((source) => source.name === windowTitle)
-      callback(appWindow ? { video: appWindow } : null)
-    } catch (error) {
-      console.error('Could not select the application window for capture.', error)
-      callback(null)
-    }
-  })
+  defaultSession.setDisplayMediaRequestHandler(createAppWindowCaptureHandler({
+    isAppOrigin: (origin) => canRequestMedia(origin, 'display-capture'),
+    getWebContents: (frame) => webContents.fromFrame(frame),
+    getWindow: (contents) => BrowserWindow.fromWebContents(contents),
+    getSources: (options) => desktopCapturer.getSources(options),
+  }))
 }
 
 function createMainWindow() {
@@ -78,6 +81,7 @@ function createMainWindow() {
       nodeIntegration: false,
       sandbox: true,
       webSecurity: true,
+      preload: path.join(__dirname, 'preload.cjs'),
     },
   })
   window.removeMenu()
@@ -100,6 +104,7 @@ function createMainWindow() {
 
 app.whenReady().then(() => {
   registerMediaPermissions()
+  registerRecordingIpc()
   if (!DEVELOPMENT_URL) installBundledProtocol()
   createMainWindow()
   app.on('activate', () => {

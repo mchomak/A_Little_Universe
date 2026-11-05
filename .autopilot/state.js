@@ -11,7 +11,7 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-11-05T16:34:30+03:00",
-  "updatedAt": "2026-11-05T17:19:04+03:00",
+  "updatedAt": "2026-11-05T18:21:43+03:00",
   "finishedAt": null,
   "stages": [
     {
@@ -108,11 +108,19 @@ window.STATE =
         "desktop",
         "frontend"
       ],
-      "status": "in-progress",
+      "status": "done",
       "retries": 0,
-      "repairs": 0,
+      "repairs": 2,
       "handoffs": 0,
-      "startedAt": "2026-11-05T17:19:04+03:00"
+      "startedAt": "2026-11-05T17:19:04+03:00",
+      "finishedAt": "2026-11-05T18:21:43+03:00",
+      "tests": {
+        "passed": 781,
+        "failed": 0
+      },
+      "concerns": [
+        "Реальный захват и воспроизводимость сегментов на macOS требуют проверки."
+      ]
     },
     {
       "id": "03",
@@ -128,10 +136,11 @@ window.STATE =
         "desktop",
         "frontend"
       ],
-      "status": "pending",
+      "status": "in-progress",
       "retries": 0,
       "repairs": 0,
-      "handoffs": 0
+      "handoffs": 0,
+      "startedAt": "2026-11-05T18:21:43+03:00"
     }
   ],
   "singlePass": null,

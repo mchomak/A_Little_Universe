@@ -13,3 +13,9 @@
 - Упакованные ресурсы проверяются по манифесту напрямую, без Service Worker; продакшн в браузере сохраняет прежний путь.
 - DEV пресеты в Electron используют persistent localStorage и встроенный индекс; обычный Vite API сохранён.
 - Команды `npm run desktop:dev`, `npm run test:desktop`, `npm run build:mac:dir`; macOS сборка требует macOS.
+
+## Этап B — реализовано
+- `window.desktopRecording` предоставляет ограниченный IPC к `RecordingDiskStore` по идентификатору сеанса; renderer не выбирает произвольные пути.
+- `RecordingDiskStore.createSession`, `openSegment`, `appendChunk`, `closeSegment`, `finishSession` управляют файловой сессией, журналом и manifest.
+- `DesktopRecordingSession` запускается только после согласия; независимые MediaRecorder пишут на диск, ротация не привязана к фильму, Stop дренирует очередь.
+- При перегрузке источник останавливается, неполный сегмент помечается ошибкой; оригинальные данные остаются на диске.
