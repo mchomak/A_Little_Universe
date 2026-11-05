@@ -128,6 +128,13 @@ it('keeps the frame absent until photo reveal completes, then assembles over thr
   expect(photoReveal.getLilyPortraitFrameAssemblyProgress(19.45, 10)).toBe(1)
 })
 
+it('fades in a continuous portrait edge only as the particle assembly finishes', async () => {
+  const photoReveal = await import('./portraitPhotoReveal')
+  expect(photoReveal.getLilyPortraitFrameOutlineOpacity(0.8)).toBe(0)
+  expect(photoReveal.getLilyPortraitFrameOutlineOpacity(0.9)).toBeCloseTo(0.41)
+  expect(photoReveal.getLilyPortraitFrameOutlineOpacity(1)).toBeCloseTo(0.82)
+})
+
 function photoPoint(u: number, v: number) {
   return { u, v, tone: 0.5, contrast: 0, featureWeight: 0.5, seed: 0.5, photoColorLinear: [1, 1, 1] as const }
 }

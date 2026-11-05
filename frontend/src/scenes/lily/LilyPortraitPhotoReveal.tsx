@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useThree } from '@react-three/fiber'
-import { AdditiveBlending, type Points } from 'three'
+import { AdditiveBlending, LineBasicMaterial, type Points } from 'three'
 import {
   BufferGeometry,
   ClampToEdgeWrapping,
@@ -32,8 +32,9 @@ import {
   getLilyPortraitPhotoRevealProgress,
   getLilyPortraitPhotoStableRevealAnchor,
   getLilyPortraitFrameAssemblyProgress,
+  getLilyPortraitFrameOutlineOpacity,
 } from './portraitPhotoReveal'
-import { createLilyPortraitFrameGeometry } from './portraitFrame'
+import { createLilyPortraitFrameGeometry, createLilyPortraitFrameOutlineGeometry } from './portraitFrame'
 
 interface LilyPortraitPhotoRevealProps {
   portrait: { width: number; height: number }
@@ -170,6 +171,24 @@ export function LilyPortraitPhotoReveal({ portrait, cameraSettings, geometry, br
 
   const frameGeometry = useMemo(() => createLilyPortraitFrameGeometry(finalBasis, aspect, APPROVED_PORTRAIT_SETTINGS), [aspect, finalBasis])
   useEffect(() => () => frameGeometry.dispose(), [frameGeometry])
+  const frameOutlineGeometry = useMemo(() => createLilyPortraitFrameOutlineGeometry(finalBasis, aspect, APPROVED_PORTRAIT_SETTINGS), [aspect, finalBasis])
+  useEffect(() => () => frameOutlineGeometry.dispose(), [frameOutlineGeometry])
+  const frameOutlineMaterial = useMemo(() => new LineBasicMaterial({
+    color: 0xe9d8c2,
+    transparent: true,
+    opacity: 0,
+    depthTest: true,
+    depthWrite: false,
+    toneMapped: false,
+  }), [])
+  const frameOutlineMaterialRef = useRef<LineBasicMaterial | null>(null)
+  useEffect(() => {
+    frameOutlineMaterialRef.current = frameOutlineMaterial
+    return () => {
+      if (frameOutlineMaterialRef.current === frameOutlineMaterial) frameOutlineMaterialRef.current = null
+      frameOutlineMaterial.dispose()
+    }
+  }, [frameOutlineMaterial])
   const frameMaterial = useMemo(() => new ShaderMaterial({
     uniforms: { uTime: { value: 0 }, uProgress: { value: 0 } },
     vertexShader: FRAME_VERTEX_SHADER,
@@ -275,15 +294,18 @@ export function LilyPortraitPhotoReveal({ portrait, cameraSettings, geometry, br
       const progress = revealAnchor === null ? 0 : getLilyPortraitFrameAssemblyProgress(time, revealAnchor)
       currentMaterial.uniforms.uTime!.value = time
       currentMaterial.uniforms.uProgress!.value = progress
+      const outlineMaterial = frameOutlineMaterialRef.current
+      if (outlineMaterial) outlineMaterial.opacity = getLilyPortraitFrameOutlineOpacity(progress)
       if (framePoints.current) framePoints.current.visible = progress > 0
       invalidate()
     }
     update(runtime.time)
     return runtime.subscribeFrame(update)
-  }, [frameMaterial, invalidate, revealAnchor, runtime])
+  }, [frameMaterial, frameOutlineMaterial, invalidate, revealAnchor, runtime])
 
   return <>
     {material && <mesh geometry={planeGeometry} material={material} frustumCulled={false} renderOrder={0} />}
     <points ref={framePoints} geometry={frameGeometry} material={frameMaterial} frustumCulled={false} renderOrder={2} visible={false} />
+    <lineLoop geometry={frameOutlineGeometry} material={frameOutlineMaterial} frustumCulled={false} renderOrder={3} />
   </>
 }

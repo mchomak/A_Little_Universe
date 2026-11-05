@@ -1,5 +1,4 @@
-import { Float32BufferAttribute } from 'three'
-import type { BufferGeometry } from 'three'
+import { BufferGeometry, Float32BufferAttribute } from 'three'
 import type { ParticlePortraitSettings } from '../../particle-portrait-lab/config'
 import { createFrameParticleGeometry } from '../gallery/frameParticles'
 import type { PortraitCameraBasis } from './portraitTargets'
@@ -20,7 +19,7 @@ export function createLilyPortraitFrameGeometry(
   const fitWidth = safeAspect <= basis.aspect ? basis.visibleHeight * safeAspect : basis.visibleWidth
   const width = fitWidth * settings.scale
   const height = width / safeAspect
-  const geometry = createFrameParticleGeometry(width, height, 41, { frameIntensity: 0.8 },
+  const geometry = createFrameParticleGeometry(width, height, 41, { frameIntensity: 1.6 },
     PORTRAIT_FRAME_SPACING, PORTRAIT_FRAME_MARGIN)
   const positions = geometry.getAttribute('position')
   const normals = geometry.getAttribute('normal2d')
@@ -55,6 +54,29 @@ export function createLilyPortraitFrameGeometry(
   geometry.setAttribute('position', new Float32BufferAttribute(worldPositions, 3))
   geometry.setAttribute('aStartPosition', new Float32BufferAttribute(startPositions, 3))
   geometry.setAttribute('aAssemblyDelay', new Float32BufferAttribute(delays, 1))
+  geometry.computeBoundingSphere()
+  return geometry
+}
+
+/** A quiet solid edge completes the particle outline during the last part of assembly. */
+export function createLilyPortraitFrameOutlineGeometry(
+  basis: PortraitCameraBasis,
+  photoAspect: number,
+  settings: Pick<ParticlePortraitSettings, 'scale'>,
+): BufferGeometry {
+  const safeAspect = Number.isFinite(photoAspect) && photoAspect > 0 ? photoAspect : 1
+  const fitWidth = safeAspect <= basis.aspect ? basis.visibleHeight * safeAspect : basis.visibleWidth
+  const halfWidth = fitWidth * settings.scale / 2 + PORTRAIT_FRAME_MARGIN
+  const halfHeight = fitWidth * settings.scale / safeAspect / 2 + PORTRAIT_FRAME_MARGIN
+  const corners: Array<[number, number]> = [
+    [-halfWidth, halfHeight],
+    [halfWidth, halfHeight],
+    [halfWidth, -halfHeight],
+    [-halfWidth, -halfHeight],
+  ]
+  const geometry = new BufferGeometry()
+  geometry.setAttribute('position', new Float32BufferAttribute(corners.flatMap(([x, y]) =>
+    project(basis, x, y, PORTRAIT_FRAME_DEPTH - 0.004)), 3))
   geometry.computeBoundingSphere()
   return geometry
 }

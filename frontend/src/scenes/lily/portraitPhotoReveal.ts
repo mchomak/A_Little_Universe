@@ -30,6 +30,14 @@ export const LILY_PORTRAIT_PHOTO_REVEAL_SECONDS = 5.8
 export const LILY_PORTRAIT_FRAME_ASSEMBLY_SECONDS = 3
 export const LILY_PORTRAIT_PHOTO_FINAL_HOLD_SECONDS = 2
 export const LILY_PORTRAIT_PHOTO_DEPTH_OFFSET = 0.012
+export const LILY_PORTRAIT_FRAME_OUTLINE_OPACITY = 0.82
+
+/** Fade the solid edge in only as the arriving particles finish the frame. */
+export function getLilyPortraitFrameOutlineOpacity(frameProgress: number) {
+  const progress = Number.isFinite(frameProgress) ? Math.min(1, Math.max(0, frameProgress)) : 0
+  const fade = Math.min(1, Math.max(0, (progress - 0.8) / 0.2))
+  return fade * fade * (3 - 2 * fade) * LILY_PORTRAIT_FRAME_OUTLINE_OPACITY
+}
 
 /** An absolute-time reveal clock stays reversible under pause, seek, resize and replay. */
 export function getLilyPortraitPhotoRevealProgress(
