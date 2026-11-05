@@ -1,7 +1,5 @@
 import { Color, Vector3, type Material } from 'three'
 import type { LilyBloomPollenSettings, LilyBudGlowSettings, LilyLeafMaterialSettings } from '../../systems/scene-config/config'
-import type { SceneId } from '../../engine/film'
-import { getGrowthProgress } from '../growth/seedProcedure'
 
 export type LilyAppearancePart = 'bud' | 'leaf' | 'center' | 'other'
 
@@ -18,8 +16,6 @@ export interface LilyAppearanceUniforms {
   uLilyLeafColorVariation: { value: number }
   uLilyInnerCupGlow: { value: number }
   uLilyCupCenter: { value: Vector3 }
-  uLilyMoonlightIntensity: { value: number }
-  uLilyMoonlightColor: { value: Color }
 }
 
 export function createLilyAppearanceUniforms(): LilyAppearanceUniforms {
@@ -36,15 +32,7 @@ export function createLilyAppearanceUniforms(): LilyAppearanceUniforms {
     uLilyLeafColorVariation: { value: 0.24 },
     uLilyInnerCupGlow: { value: 0.35 },
     uLilyCupCenter: { value: new Vector3(0.09, 0.823, 0.18) },
-    uLilyMoonlightIntensity: { value: 0 },
-    uLilyMoonlightColor: { value: new Color('#AFC9F5') },
   }
-}
-
-/** Use the impact frames in scene 02 and hold that light through the bloom handoff. */
-export function getLilyMoonlightProgress(scene: SceneId, time: number, moonlightFrames: readonly [number, number]): number {
-  if (scene === 'growth') return getGrowthProgress(time, moonlightFrames)
-  return scene === 'bloom' ? 1 : 0
 }
 
 /** Resolve the two authored leaves and petal head without changing GLB names or geometry. */
@@ -90,9 +78,7 @@ export function patchLilyAppearanceMaterial(
         uniform float uLilyLeafEdgeLight;
         uniform float uLilyLeafColorVariation;
         uniform float uLilyInnerCupGlow;
-        uniform vec3 uLilyCupCenter;
-        uniform float uLilyMoonlightIntensity;
-        uniform vec3 uLilyMoonlightColor;`)
+        uniform vec3 uLilyCupCenter;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         if (uLilyAppearancePart > 0.5 && uLilyAppearancePart < 1.5) {
           float leafTone = sin(vLilyWorld.x * 3.7 + vLilyWorld.y * 1.9 + vLilyWorld.z * 2.8);
@@ -143,17 +129,10 @@ export function patchLilyAppearanceMaterial(
           diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.025 + warmPearl * 0.018,
             clamp(innerCupSurfaceGlow * 0.13, 0.0, 0.14));
           totalEmissiveRadiance += warmPearl * (innerCupSurfaceGlow * (0.016 + centerRim * 0.04));
-        }
-        float lilyMoonlightPart = uLilyAppearancePart < 0.5 ? 0.62
-          : uLilyAppearancePart < 1.5 ? 0.36
-          : uLilyAppearancePart < 2.5 ? 0.42 : 0.34;
-        float growthMoonlight = smoothstep(0.22, 0.72, uLilyGrowthProgress);
-        float bloomMoonlight = smoothstep(0.0, 0.55, uLilyBloomProgress);
-        float lilyMoonlight = max(uLilyMoonlightIntensity, max(growthMoonlight, bloomMoonlight));
-        totalEmissiveRadiance += uLilyMoonlightColor * lilyMoonlight * lilyMoonlightPart;`)
+        }`)
     material.needsUpdate = true
   }
-  material.customProgramCacheKey = () => `${dissolveCacheKey()}-lily-appearance-v4-${part}`
+  material.customProgramCacheKey = () => `${dissolveCacheKey()}-lily-appearance-v5-${part}`
   material.needsUpdate = true
 }
 
@@ -164,8 +143,6 @@ export function updateLilyAppearance(
   growthProgress: number,
   bloomProgress: number,
   bloomPollen: LilyBloomPollenSettings,
-  moonlightIntensity: number,
-  moonlightColor: string,
 ) {
   uniforms.uLilyGrowthProgress.value = finiteUnit(growthProgress)
   uniforms.uLilyBloomProgress.value = finiteUnit(bloomProgress)
@@ -177,8 +154,6 @@ export function updateLilyAppearance(
   uniforms.uLilyLeafEdgeLight.value = finite(leafMaterial.edgeLightIntensity, 0, 1)
   uniforms.uLilyLeafColorVariation.value = finite(leafMaterial.colorVariation, 0, 1)
   uniforms.uLilyInnerCupGlow.value = finite(bloomPollen.enabled ? bloomPollen.innerCupGlow : 0, 0, 2)
-  uniforms.uLilyMoonlightIntensity.value = finiteUnit(moonlightIntensity)
-  uniforms.uLilyMoonlightColor.value.set(moonlightColor)
 }
 
 function finiteUnit(value: number) {
