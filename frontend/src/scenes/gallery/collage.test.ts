@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { advanceCollageRevealPlayback, advanceCollageRevealTimeline, collageParticleOpacity, collagePhotoOpacity, createCollageRevealPlayback, createCollageRevealGeometry, DEFAULT_COLLAGE_REVEAL_SETTINGS, getCollageRevealPlaybackFrame, getCollageRevealFrame, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout, getGalleryCollagePhotos, markCollageRevealTextureReady } from './collage'
+import { advanceCollageRevealPlayback, advanceCollageRevealTimeline, collageParticleOpacity, collagePhotoOpacity, createCollageRevealPlayback, createCollageRevealGeometry, createCollageRevealGeometryFromSignal, DEFAULT_COLLAGE_REVEAL_SETTINGS, getCollageRevealPlaybackFrame, getCollageRevealFrame, getCollageRevealTimelineDuration, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout, getGalleryCollagePhotos, markCollageRevealTextureReady } from './collage'
+import { processMemorySignalBaselinePixels } from '../../iris-lab/memorySignalBaseline'
 
 describe('gallery collage layout', () => {
   it('keeps only available extra photo slots and preserves their numbered positions', () => {
@@ -55,8 +56,7 @@ describe('gallery collage layout', () => {
     expect(rightSlot2.position[2]).toBeLessThan(rightSlot3.position[2])
   })
 
-  it('keeps portrait and wide photos compact and centered above or beside the main photo', () => {
-    const maxPhotoHeight = 0.68
+  it('keeps portrait and wide photos at the configured scale and centered above or beside the main photo', () => {
     for (const mainHeight of [2.15, 3.3]) {
       for (const side of [-1, 1] as const) {
         for (const aspect of [0.55, 0.75, 1.4, 2.4]) {
@@ -64,14 +64,54 @@ describe('gallery collage layout', () => {
           const lower = getGalleryCollagePhotoLayout(sideSlot, side, 2.6, mainHeight, aspect)
           const upper = getGalleryCollagePhotoLayout(4, side, 2.6, mainHeight, aspect)
 
-          expect(lower.height).toBeLessThanOrEqual(maxPhotoHeight)
-          expect(upper.height).toBeLessThanOrEqual(maxPhotoHeight)
+          expect(Math.max(lower.width, lower.height)).toBeCloseTo(Math.max(2.6, mainHeight) * 0.9)
+          expect(lower.height).toBeCloseTo(lower.width / aspect)
+          expect(Math.max(upper.width, upper.height)).toBeCloseTo(Math.max(2.6, mainHeight) * 0.9)
+          expect(upper.height).toBeCloseTo(upper.width / aspect)
           expect(upper.position[0]).toBe(0)
-          expect(upper.position[1] - upper.height / 2).toBeCloseTo(mainHeight / 2 + 0.16)
+          expect(upper.position[1] - upper.height / 2).toBeCloseTo(mainHeight / 2 + 0.3)
           expect(lower.position[0] * side).toBeGreaterThan(0)
-          expect(Math.abs(lower.position[0]) - lower.width / 2).toBeGreaterThan(2.6 / 2)
+          expect(Math.abs(lower.position[0]) - lower.width / 2 - 2.6 / 2).toBeCloseTo(0.3)
         }
       }
+    }
+  })
+
+  it('keeps two and three additional photos at 90% scale with a clear configured gap', () => {
+    const settings = { photoScale: 0.9, photoGap: 0.3 }
+    const left = getGalleryCollagePhotoLayout(2, -1, 3.3, 3.3, 0.75, settings)
+    const right = getGalleryCollagePhotoLayout(3, -1, 3.3, 3.3, 1.4, settings)
+    const upper = getGalleryCollagePhotoLayout(4, -1, 3.3, 3.3, 1.2, settings)
+
+    expect(Math.max(left.width, left.height)).toBeCloseTo(2.97)
+    expect(left.height).toBeCloseTo(left.width / 0.75)
+    expect(Math.abs(left.position[0]) - left.width / 2 - 3.3 / 2).toBeCloseTo(0.3)
+    expect((right.position[0] - right.width / 2) - 3.3 / 2).toBeCloseTo(0.3)
+    expect(Math.max(upper.width, upper.height)).toBeCloseTo(2.97)
+    expect(upper.position[1] - upper.height / 2 - 3.3 / 2).toBeCloseTo(0.3)
+  })
+
+  it('places B collage photos left, right, and above the main photo with the configured gaps', () => {
+    const settings = { photoScale: 0.9, photoGap: 0.3 }
+    const first = getGalleryCollagePhotoLayout(2, -1, 3.3, 2.4, 0.72, settings, 'between-columns')
+    const second = getGalleryCollagePhotoLayout(3, -1, 3.3, 2.4, 1.4, settings, 'between-columns')
+    const top = getGalleryCollagePhotoLayout(4, -1, 3.3, 2.4, 0.55, settings, 'between-columns')
+
+    expect(first.position[0]).toBeLessThan(0)
+    expect(second.position[0]).toBeGreaterThan(0)
+    expect(top.position[0]).toBe(0)
+    expect(Math.abs(first.position[0]) - first.width / 2 - 3.3 / 2).toBeCloseTo(0.3)
+    expect(second.position[0] - second.width / 2 - 3.3 / 2).toBeCloseTo(0.3)
+    expect(top.position[1] - top.height / 2 - 2.4 / 2).toBeCloseTo(0.3)
+    expect(first.position[1]).toBeCloseTo(-2.4 / 2 + first.height / 2 + 0.3)
+    expect(second.position[1]).toBeCloseTo(-2.4 / 2 + second.height / 2 + 0.3)
+    expect(first.position[2]).toBe(0.85)
+    expect(second.position[2]).toBe(0.85)
+    expect(Math.max(first.width, first.height)).toBeCloseTo(2.97)
+    expect(Math.max(second.width, second.height)).toBeCloseTo(2.97)
+    expect(Math.max(top.width, top.height)).toBeCloseTo(2.97)
+    for (const photo of [first, second, top]) {
+      expect(0.75 + photo.position[1] - photo.height / 2).toBeGreaterThan(-2.35)
     }
   })
 
@@ -117,6 +157,50 @@ describe('gallery collage layout', () => {
     second.dispose()
   })
 
+  it('maps sampled pixel centers to particle targets and UVs, then disposes the geometry', () => {
+    const pixels = new Uint8ClampedArray([
+      240, 20, 20, 255, 20, 240, 20, 255,
+      20, 20, 240, 255, 240, 240, 20, 255,
+    ])
+    const sample = processMemorySignalBaselinePixels(pixels, 2, 2, () => 0.5)
+    const width = 2.4
+    const height = 1.8
+    const geometry = createCollageRevealGeometryFromSignal(sample, width, height, 17, { depth: 0.3 })
+    const targets = geometry.getAttribute('targetPosition').array as Float32Array
+    const uvs = geometry.getAttribute('photoUv').array as Float32Array
+    const brightness = geometry.getAttribute('brightness').array as Float32Array
+    let disposeEvents = 0
+    geometry.addEventListener('dispose', () => { disposeEvents += 1 })
+
+    try {
+      expect(geometry.getAttribute('position').count).toBe(4)
+      for (let i = 0; i < sample.count; i += 1) {
+        const sourceX = Math.round(sample.positions[i * 3]! / 1.5 + sample.width / 2)
+        const sourceY = Math.round(-sample.positions[i * 3 + 1]! / 1.5 + sample.height / 2)
+        const targetX = (sourceX + 0.5 - sample.width / 2) / sample.width * width
+        const targetY = (sample.height / 2 - sourceY - 0.5) / sample.height * height
+        const u = (sourceX + 0.5) / sample.width
+        const v = 1 - (sourceY + 0.5) / sample.height
+
+        expect(targets[i * 3]).toBeCloseTo(targetX)
+        expect(targets[i * 3 + 1]).toBeCloseTo(targetY)
+        expect(uvs[i * 2]).toBeCloseTo(u)
+        expect(uvs[i * 2 + 1]).toBeCloseTo(v)
+        expect(brightness[i]).toBeCloseTo(sample.brightness[i]!)
+
+        const textureX = Math.floor(uvs[i * 2]! * sample.width)
+        const textureY = Math.floor((1 - uvs[i * 2 + 1]!) * sample.height)
+        const textureOffset = (textureY * sample.width + textureX) * 4
+        for (let channel = 0; channel < 3; channel += 1) {
+          expect(pixels[textureOffset + channel]! / 255).toBeCloseTo(sample.colors[i * 3 + channel]!, 6)
+        }
+      }
+    } finally {
+      geometry.dispose()
+    }
+    expect(disposeEvents).toBe(1)
+  })
+
   it('uses configured durations as seconds while keeping numbered slot stagger', () => {
     const settings = { ...DEFAULT_COLLAGE_REVEAL_SETTINGS, assembleDuration: 0.5, revealDuration: 0.5, staggerDelay: 0.1 }
     const slot2Assembled = getCollageRevealFrame(0.5, 2, settings)
@@ -127,10 +211,31 @@ describe('gallery collage layout', () => {
     expect(slot3Starting).toMatchObject({ assemblyProgress: 0, photoProgress: 0 })
     expect(slot4Assembled.assemblyProgress).toBeCloseTo(1)
     expect(slot4Assembled.photoProgress).toBe(0)
-    expect(getCollageRevealFrame(1, 2, settings).photoProgress).toBe(1)
-    expect(getCollageRevealFrame(0.75, 2, settings).photoProgress).toBeCloseTo(0.5)
+    expect(getCollageRevealFrame(4.5, 2, settings).photoProgress).toBe(1)
+    expect(getCollageRevealFrame(4.25, 2, settings).photoProgress).toBeCloseTo(0.5)
     expect(getCollageRevealFrame(0.6, 4, { ...settings, particleEnabled: false }).particleOpacity).toBe(0)
     expect(getCollageRevealFrame(0.6, 4, { ...settings, assembleDuration: 2, revealDuration: 2 }).assemblyProgress).toBeCloseTo(0.2)
+  })
+
+  it('holds the default five-second particle assembly before the progressive photo reveal begins', () => {
+    const settings = DEFAULT_COLLAGE_REVEAL_SETTINGS
+    const beforeAssembly = getCollageRevealFrame(4.99, 2, settings)
+    const assemblyComplete = getCollageRevealFrame(5, 2, settings)
+    const holdComplete = getCollageRevealFrame(8.5, 2, settings)
+    const revealMiddle = getCollageRevealFrame(9.75, 2, settings)
+    const revealComplete = getCollageRevealFrame(11, 2, settings)
+
+    expect(settings.assembleDuration).toBe(5)
+    expect(settings.revealDuration).toBe(2.5)
+    expect(beforeAssembly.assemblyProgress).toBeCloseTo(0.998)
+    expect(beforeAssembly.photoProgress).toBe(0)
+    expect(assemblyComplete).toMatchObject({ assemblyProgress: 1, photoProgress: 0 })
+    expect(holdComplete).toMatchObject({ assemblyProgress: 1, photoProgress: 0, particleOpacity: 0.8 })
+    expect(revealMiddle.photoProgress).toBeCloseTo(0.5)
+    expect(revealMiddle.photoOpacity).toBeGreaterThan(0)
+    expect(revealMiddle.photoOpacity).toBeLessThan(1)
+    expect(revealComplete.photoOpacity).toBe(1)
+    expect(getCollageRevealTimelineDuration(4, settings)).toBeCloseTo(11.28)
   })
 
   it('reverses by elapsed film time and reaches zero before the controller drops focus', () => {

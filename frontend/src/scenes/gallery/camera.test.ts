@@ -21,6 +21,22 @@ describe('focus dolly', () => {
     expect(focusCamera([0, 0, 6], target, 0, yaw)).toEqual({ x: 0, y: 0, z: 6, distance: Math.hypot(3, 16) })
   })
 
+  it('accepts a gallery-local focus distance while retaining the corridor pose at zero mix', () => {
+    const target = [2, 0.5, -4] as const
+    const yaw = -0.8
+    const focused = focusCamera([0, 0, 6], target, 1, yaw, 9.25)
+
+    expect(focused.x).toBeCloseTo(target[0] + Math.sin(yaw) * 9.25)
+    expect(focused.z).toBeCloseTo(target[2] + Math.cos(yaw) * 9.25)
+    expect(focused.distance).toBeCloseTo(Math.hypot(9.25, 0.12))
+    expect(focusCamera([0, 0, 6], target, 0, yaw, 9.25)).toEqual({
+      x: 0,
+      y: 0,
+      z: 6,
+      distance: Math.hypot(2, 0.5, 10),
+    })
+  })
+
   it('keeps focus framing attached to the same exhibit as aisle width changes', () => {
     const memory = GALLERY_MEMORIES[0]!
     const narrowTarget = memoryPosition(memory, 6)

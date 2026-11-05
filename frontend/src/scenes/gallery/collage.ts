@@ -1,4 +1,6 @@
 import { BufferAttribute, BufferGeometry, DynamicDrawUsage } from 'three'
+import type { GalleryLayoutVariant } from './content'
+import { memorySignalBaselineDimensions, type MemorySignalBaselineSample } from '../../iris-lab/memorySignalBaseline'
 
 export type GalleryCollageSlot = 2 | 3 | 4
 
@@ -13,7 +15,13 @@ export interface GalleryCollagePhoto {
   url: string
 }
 
-const MAX_COLLAGE_PHOTO_HEIGHT = 0.68
+export interface CollagePhotoLayoutSettings {
+  readonly photoScale?: number
+  readonly photoGap?: number
+}
+
+const DEFAULT_COLLAGE_PHOTO_SCALE = 0.9
+const DEFAULT_COLLAGE_PHOTO_GAP = 0.3
 
 export interface CollageRevealSettings {
   readonly particleCount: number
@@ -28,16 +36,18 @@ export interface CollageRevealSettings {
 }
 
 export const DEFAULT_COLLAGE_REVEAL_SETTINGS: Readonly<CollageRevealSettings> = Object.freeze({
-  particleCount: 640,
+  particleCount: 90000,
   particleSize: 2.6,
   noiseStrength: 0.035,
   depth: 0.42,
   glow: 1,
-  assembleDuration: 0.72,
-  revealDuration: 0.68,
+  assembleDuration: 5,
+  revealDuration: 2.5,
   staggerDelay: 0.14,
   particleEnabled: true,
 })
+
+export const COLLAGE_PARTICLE_HOLD_SECONDS = 3.5
 
 /** Retains numbered positions while omitting missing images and their frames. */
 export function getGalleryCollagePhotos(images: readonly (string | undefined)[]): GalleryCollagePhoto[] {
@@ -62,11 +72,15 @@ export function getGalleryCollagePhotoLayout(
   mainWidth: number,
   mainHeight: number,
   aspect: number,
+  settings: Readonly<CollagePhotoLayoutSettings> = {},
+  variant: GalleryLayoutVariant = 'on-columns',
 ): GalleryCollagePhotoLayout {
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1
-  const width = Math.min(1.02, safeAspect * MAX_COLLAGE_PHOTO_HEIGHT)
+  const photoScale = Math.max(0.5, Math.min(1, Number.isFinite(settings.photoScale) ? settings.photoScale! : DEFAULT_COLLAGE_PHOTO_SCALE))
+  const gap = Math.max(0.1, Math.min(1.5, Number.isFinite(settings.photoGap) ? settings.photoGap! : DEFAULT_COLLAGE_PHOTO_GAP))
+  const longestEdge = Math.max(mainWidth, mainHeight) * photoScale
+  const width = safeAspect >= 1 ? longestEdge : longestEdge * safeAspect
   const height = width / safeAspect
-  const gap = 0.16
   const wallYaw = -side * 1.15
   const yawSin = Math.sin(wallYaw)
   const outwardDepth = Math.abs(yawSin) > 0.001 ? side * 0.18 / yawSin : 0.035
@@ -74,6 +88,15 @@ export function getGalleryCollagePhotoLayout(
 
   const horizontal = slot === 2 ? -1 : 1
   const horizontalOffset = horizontal * (mainWidth / 2 + width / 2 + gap)
+  if (variant === 'between-columns') {
+    // Bring side-facing B photos into the aisle so the neighboring shafts do not cover them.
+    const aisleDepth = 0.85
+    return {
+      position: [horizontalOffset, -mainHeight / 2 + height / 2 + gap, aisleDepth],
+      width,
+      height,
+    }
+  }
   const facesPassage = slot === 2 ? side > 0 : side < 0
   const depthLayer = slot === 2 ? -0.025 : 0.025
   const localZ = outwardDepth + depthLayer - (facesPassage ? 0.08 : 0)
@@ -102,13 +125,14 @@ export function createCollageRevealGeometry(
 ) {
   const safeWidth = Number.isFinite(width) && width > 0 ? width : 1
   const safeHeight = Number.isFinite(height) && height > 0 ? height : 1
-  const safeCount = Math.max(8, Math.min(2400, Math.floor(Number.isFinite(count) ? count : DEFAULT_COLLAGE_REVEAL_SETTINGS.particleCount)))
+  const safeCount = Math.max(8, Math.min(90000, Math.floor(Number.isFinite(count) ? count : DEFAULT_COLLAGE_REVEAL_SETTINGS.particleCount)))
   const depth = Math.max(0, Math.min(0.8, Number.isFinite(settings.depth) ? settings.depth : DEFAULT_COLLAGE_REVEAL_SETTINGS.depth))
   const positions = new Float32Array(safeCount * 3)
   const targets = new Float32Array(safeCount * 3)
   const sizes = new Float32Array(safeCount)
   const phases = new Float32Array(safeCount)
   const photoUvs = new Float32Array(safeCount * 2)
+  const edgeFactors = new Float32Array(safeCount).fill(0.45)
   const next = random(seed)
   const columns = Math.max(1, Math.ceil(Math.sqrt(safeCount * safeWidth / safeHeight)))
   const rows = Math.ceil(safeCount / columns)
@@ -134,6 +158,73 @@ export function createCollageRevealGeometry(
   geometry.setAttribute('size', new BufferAttribute(sizes, 1))
   geometry.setAttribute('phase', new BufferAttribute(phases, 1))
   geometry.setAttribute('photoUv', new BufferAttribute(photoUvs, 2))
+  geometry.setAttribute('edgeFactor', new BufferAttribute(edgeFactors, 1))
+  return geometry
+}
+
+/** Keeps the reference sampler's 300 px source limit while respecting the configured point budget. */
+export function getCollageParticleRasterDimensions(sourceWidth: number, sourceHeight: number, maxPoints: number) {
+  const baseline = memorySignalBaselineDimensions(sourceWidth, sourceHeight)
+  const pointLimit = Math.max(2400, Math.min(90000, Math.floor(Number.isFinite(maxPoints) ? maxPoints : DEFAULT_COLLAGE_REVEAL_SETTINGS.particleCount)))
+  const sourcePoints = baseline.width * baseline.height
+  if (sourcePoints <= pointLimit) return baseline
+  const reduction = Math.sqrt(pointLimit / sourcePoints)
+  return {
+    width: Math.max(1, Math.floor(baseline.width * reduction)),
+    height: Math.max(1, Math.floor(baseline.height * reduction)),
+  }
+}
+
+/** Builds a dense point image from the Memory Signal pixel sample, retaining only recognizable photo pixels. */
+export function createCollageRevealGeometryFromSignal(
+  sample: Readonly<MemorySignalBaselineSample>,
+  width: number,
+  height: number,
+  seed: number,
+  settings: Pick<CollageRevealSettings, 'depth'> = DEFAULT_COLLAGE_REVEAL_SETTINGS,
+  count = sample.count,
+) {
+  const safeWidth = Number.isFinite(width) && width > 0 ? width : 1
+  const safeHeight = Number.isFinite(height) && height > 0 ? height : 1
+  const safeCount = Math.max(0, Math.min(sample.count, 90000, Math.floor(Number.isFinite(count) ? count : sample.count)))
+  const depth = Math.max(0, Math.min(0.8, Number.isFinite(settings.depth) ? settings.depth : DEFAULT_COLLAGE_REVEAL_SETTINGS.depth))
+  const positions = new Float32Array(safeCount * 3)
+  const targets = new Float32Array(safeCount * 3)
+  const sizes = new Float32Array(safeCount)
+  const phases = new Float32Array(safeCount)
+  const photoUvs = new Float32Array(safeCount * 2)
+  const brightness = new Float32Array(safeCount)
+  const edgeFactors = new Float32Array(safeCount)
+  const next = random(seed)
+
+  for (let i = 0; i < safeCount; i += 1) {
+    const sampleIndex = safeCount === sample.count ? i : Math.floor(i * sample.count / safeCount)
+    const sourceX = sample.positions[sampleIndex * 3]!
+    const sourceY = sample.positions[sampleIndex * 3 + 1]!
+    const targetX = (sourceX / (sample.width * 1.5) + 0.5 / sample.width) * safeWidth
+    const targetY = (sourceY / (sample.height * 1.5) - 0.5 / sample.height) * safeHeight
+    const luminance = sample.brightness[sampleIndex]!
+    const edge = sample.edgeFactor[sampleIndex]!
+    const u = Math.max(0, Math.min(1, targetX / safeWidth + 0.5))
+    const v = Math.max(0, Math.min(1, targetY / safeHeight + 0.5))
+
+    positions.set([(next() - 0.5) * safeWidth * 1.35, (next() - 0.5) * safeHeight * 1.35, 0.025 + next() * depth], i * 3)
+    targets.set([targetX, targetY, 0.025 + luminance * 0.045], i * 3)
+    sizes[i] = 0.62 + luminance * 0.82 + edge * 0.28
+    phases[i] = sample.random[sampleIndex]! * Math.PI * 2
+    photoUvs.set([u, v], i * 2)
+    brightness[i] = luminance
+    edgeFactors[i] = edge
+  }
+
+  const geometry = new BufferGeometry()
+  geometry.setAttribute('position', new BufferAttribute(positions, 3).setUsage(DynamicDrawUsage))
+  geometry.setAttribute('targetPosition', new BufferAttribute(targets, 3))
+  geometry.setAttribute('size', new BufferAttribute(sizes, 1))
+  geometry.setAttribute('phase', new BufferAttribute(phases, 1))
+  geometry.setAttribute('photoUv', new BufferAttribute(photoUvs, 2))
+  geometry.setAttribute('brightness', new BufferAttribute(brightness, 1))
+  geometry.setAttribute('edgeFactor', new BufferAttribute(edgeFactors, 1))
   return geometry
 }
 
@@ -236,9 +327,10 @@ export function getCollageRevealTimelineDuration(
 ) {
   const enabled = settings.particleEnabled && !reducedMotion
   const assembleDuration = enabled ? safeTimelineDuration(settings.assembleDuration, DEFAULT_COLLAGE_REVEAL_SETTINGS.assembleDuration) : 0
+  const particleHoldDuration = enabled ? COLLAGE_PARTICLE_HOLD_SECONDS : 0
   const revealDuration = safeTimelineDuration(settings.revealDuration, DEFAULT_COLLAGE_REVEAL_SETTINGS.revealDuration)
   const staggerDelay = enabled ? Math.max(0, Number.isFinite(settings.staggerDelay) ? settings.staggerDelay : DEFAULT_COLLAGE_REVEAL_SETTINGS.staggerDelay) : 0
-  return (slot - 2) * staggerDelay + assembleDuration + revealDuration
+  return (slot - 2) * staggerDelay + assembleDuration + particleHoldDuration + revealDuration
 }
 
 /** Controller focus decays exponentially at 3.8/s and removes its snapshot below 0.001. */
@@ -280,12 +372,13 @@ export function getCollageRevealFrame(
 ): CollageRevealFrame {
   const enabled = settings.particleEnabled && !reducedMotion
   const assembleDuration = enabled ? safeTimelineDuration(settings.assembleDuration, DEFAULT_COLLAGE_REVEAL_SETTINGS.assembleDuration) : 0
+  const particleHoldDuration = enabled ? COLLAGE_PARTICLE_HOLD_SECONDS : 0
   const revealDuration = safeTimelineDuration(settings.revealDuration, DEFAULT_COLLAGE_REVEAL_SETTINGS.revealDuration)
   const staggerDelay = enabled ? Math.max(0, Number.isFinite(settings.staggerDelay) ? settings.staggerDelay : DEFAULT_COLLAGE_REVEAL_SETTINGS.staggerDelay) : 0
   const elapsed = Math.max(0, Number.isFinite(elapsedSeconds) ? elapsedSeconds : 0)
   const slotElapsed = Math.max(0, elapsed - (slot - 2) * staggerDelay)
   const assemblyProgress = assembleDuration === 0 ? 1 : Math.max(0, Math.min(1, slotElapsed / assembleDuration))
-  const photoProgress = Math.max(0, Math.min(1, (slotElapsed - assembleDuration) / revealDuration))
+  const photoProgress = Math.max(0, Math.min(1, (slotElapsed - assembleDuration - particleHoldDuration) / revealDuration))
   const particleArrival = Math.max(0, Math.min(1, slotElapsed / Math.min(0.12, assembleDuration || 0.12)))
   const particleOpacity = enabled ? 0.8 * smoothstep01(particleArrival) : 0
 

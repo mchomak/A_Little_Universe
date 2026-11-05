@@ -10,6 +10,7 @@ import type { CameraPose } from '../scenes/shared/galleryMotion'
 import { GALLERY } from '../scenes/gallery/content'
 import { galleryMotion, gallerySnapshot } from '../scenes/gallery/controller'
 import { configureCameraFarPlane } from '../scenes/gallery/camera'
+import { getGalleryNormalFov } from '../scenes/gallery/galleryCameraFit'
 import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
 import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthViewportHeight } from '../scenes/growth/seedProcedure'
@@ -33,6 +34,8 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
   const galaxySettings = config.scenes.galaxy
   const pose = useRef<CameraPose>({ x: 0, y: 0, z: 5.6, tx: 0, ty: 0, tz: 0 })
   const galleryRevision = useRef<number | null>(null)
+  const galleryFocusDistance = useRef(4.8)
+  const galleryFocusCenter = useRef<[number, number]>([0, 0])
   const { scene, mode, revision, paused, reading, speed } = state
   const lastBuiltScene = useRef(scene)
   const hasBuiltScene = useRef(false)
@@ -60,6 +63,8 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     if (scene === 'gallery') {
       if (galleryRevision.current !== revision) {
         Object.assign(p, firstMemoryCamera(34, reducedMotion))
+        galleryFocusDistance.current = 4.8
+        galleryFocusCenter.current = [0, 0]
         galleryRevision.current = revision
       }
       render()
@@ -138,17 +143,22 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
   useFrame((_, delta) => {
     if (scene !== 'gallery' || reading || document.hidden) return
     const p = pose.current
-    const { camera: focused, target, memory, eased, focal } = updateGalleryCameraPose(p, config.scenes.gallery, {
-      delta, speed, paused, reducedMotion, aspect,
+    const { camera: focused, target, eased, focal, collageFrame, focusDistance, focusCenter } = updateGalleryCameraPose(p, config.scenes.gallery, {
+      delta,
+      speed,
+      paused,
+      reducedMotion,
+      aspect,
+      focusDistance: galleryFocusDistance.current,
+      focusCenter: galleryFocusCenter.current,
     })
+    galleryFocusDistance.current = focusDistance
+    galleryFocusCenter.current = [focusCenter[0], focusCenter[1]]
     camera.position.set(focused.x, focused.y, focused.z)
     camera.lookAt(...target)
     if (camera instanceof PerspectiveCamera) {
-      const portraitFov = Math.min(82, Math.max(70, 2 * Math.atan(5.1 / (10.65 * Math.max(.3, aspect))) * 180 / Math.PI))
-      const initialFov = aspect < 1 ? 42 : 38
-      const normalFov = initialFov + ((aspect < 1 ? portraitFov : 48) - initialFov) * eased
-      const frameWidth = 3.3 * Math.min(1, memory.aspect), frameHeight = 3.3 / Math.max(1, memory.aspect)
-      const fitHeight = Math.max(frameHeight * 1.35, frameWidth / Math.max(.3, aspect))
+      const normalFov = getGalleryNormalFov(aspect, eased)
+      const fitHeight = Math.max(collageFrame.height, collageFrame.width / Math.max(.3, aspect))
       const fitFov = Math.max(4, Math.min(70, 2 * Math.atan(fitHeight / (2 * focused.distance * .75)) * 180 / Math.PI))
       const fov = normalFov + (fitFov - normalFov) * focal
       camera.setFocalLength(camera.getFilmHeight() / (2 * Math.tan(fov * Math.PI / 360))); camera.updateProjectionMatrix()

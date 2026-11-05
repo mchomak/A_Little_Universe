@@ -1,7 +1,7 @@
 # Scene Composer configuration
 
-`SceneComposerConfig` is immutable schema version 23. `normalizeConfig(input)` accepts partial JSON from schema versions 1–23, discards unknown keys, and fills missing or invalid values with current defaults. The merged configuration preserves known legacy prologue, growth, gallery, identity, and galaxy settings. It includes the opening-background crop profile, current scene 02 growth and seed controls, Lily appearance, growth vortex and bloom pollen, and gallery controls for water and clouds, Ionic columns, the arch, and independent A/B photo layouts. Older saved presets remain importable and are normalized to the current defaults.
-Schema v23 adds bounded collage particle settings for the focused gallery memory: count, size, noise, depth, glow, assembly duration, photo reveal duration, and stagger delay.
+`SceneComposerConfig` is immutable schema version 24. `normalizeConfig(input)` accepts partial JSON from schema versions 1–24, discards unknown keys, and fills missing or invalid values with current defaults. The merged configuration preserves known legacy prologue, growth, gallery, identity, and galaxy settings. It includes the opening-background crop profile, current scene 02 growth and seed controls, Lily appearance, growth vortex and bloom pollen, and gallery controls for water and clouds, Ionic columns, the arch, and independent A/B photo layouts. Older saved presets remain importable and are normalized to the current defaults.
+Schema v23 added bounded collage particle settings for the focused gallery memory. Schema v24 keeps those settings, raises minimum assembly and reveal durations to 5 and 1.5 seconds, and adds photo scale and spacing controls. The collage particle density defaults to 90,000, with a 96–90,000 range so existing customized presets remain valid while the 300 px Memory Signal raster can use its full image area. Older snapshots carrying the previous 640 default migrate to the new default. Older v23 snapshots with shorter durations import with the v24 minimums.
 
 The public store is:
 
@@ -12,7 +12,7 @@ The public store is:
 - `updateConfig(patch: SceneComposerConfigPatch): Promise<SceneComposerConfig>`
 - `resetConfig(scope: ConfigResetScope): Promise<SceneComposerConfig>`
 
-`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v23. Schema v20 has two parallel histories: the scene 05 branch introduced bounded photo-collage controls under that version, while the candidate configuration had already assigned v20 to its own accumulated settings. The merged normalizer recognizes fields from both shapes and exports v23, preserving collage settings alongside crop, growth, pollen, and gallery A/B values. Schema v21 gallery presets remain importable with their existing water, photo-layout, and crop values, while the Lily groups receive current defaults unless explicitly saved.
+`loadStartupConfig` fetches `${BASE_URL}scene-composer.json` after preload; failure or malformed JSON leaves the active snapshot unchanged. Composer import and export use the same normalizer and store. Exported JSON uses schema v24. Schema v20 has two parallel histories: the scene 05 branch introduced bounded photo-collage controls under that version, while the candidate configuration had already assigned v20 to its own accumulated settings. The merged normalizer recognizes fields from both shapes and exports v24, preserving collage settings alongside crop, growth, pollen, and gallery A/B values. Schema v21 gallery presets remain importable with their existing water, photo-layout, and crop values, while the Lily groups receive current defaults unless explicitly saved.
 
 Schema v1 migration preserves the other recognized scene and global settings. Legacy `particleSpeed` maps to `windStrength` using `clamp(particleSpeed × 1.15, 0.2, 3)`, and `particleSpread` maps to `turbulence` using `particleSpread × 0.3`. Legacy particle counts below the v2 minimum are raised to 300. `particleDuration` keeps its 0.1–20 second travel-window meaning, with the cinematic default now 2.2 seconds; `particleFadeDuration` controls individual dust fade and defaults to 1.2 seconds. `particleReturnFraction` is ignored. The light, atmosphere, typography and interaction fields are additive schema-v2 fields: missing fields in both v1 and v2 files receive current defaults.
 
@@ -20,7 +20,7 @@ An optional production override can contain only values that differ from the def
 
 ```json
 {
-  "schemaVersion": 23,
+  "schemaVersion": 24,
   "global": { "quality": "low" },
   "scenes": {
     "openingBackground": {
@@ -74,6 +74,7 @@ Lily settings are stored under `scenes.growth.lilyBudGlow`, `scenes.growth.lilyL
 | Gallery water | Distortion / micro-normal scale / ripple speed | 0–0.14 (0.04) / 0.25–4.5 (1.25) / 0–3 (1.35) |
 | Gallery water | Normal strength / moon highlight / moon spread | 0–3 (0.95) / 0–2 (0.92) / 0.25–4 (1.6) |
 | Gallery water | Water opacity | 0–1 (1) |
+| Gallery collage | Particle density | 96–90,000 integer; default 90,000, with the local Memory Signal source raster capped at 300 px per edge |
 | Prologue | Font size, line height, position Y | 16–160, 0.8–2.5, 10–80 |
 | Prologue | Handwriting duration/rhythm, phrase interval, readable hold | 0.5–20, 0.1–3, 0–8, 0–30 |
 | Prologue | Particle count | 300–6000 integer; default 1800 |

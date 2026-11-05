@@ -322,7 +322,6 @@ const GALLERY_ARCH_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.archOpacity', label: 'Прозрачность арки', unit: '×', min: 0.1, max: 1, step: 0.01 },
   { path: 'scenes.gallery.archPositionX', label: 'Положение арки · X', unit: 'м', min: -30, max: 30, step: 0.25 },
   { path: 'scenes.gallery.archPositionY', label: 'Высота арки от пола', unit: 'м', min: -12, max: 24, step: 0.25 },
-  { path: 'scenes.gallery.archPositionZ', label: 'Положение арки · Z', unit: 'м', min: -140, max: -65, step: 0.5 },
   { path: 'scenes.gallery.archRotationY', label: 'Поворот арки', unit: 'рад', min: -Math.PI, max: Math.PI, step: 0.05 },
 ]
 
@@ -358,13 +357,15 @@ const GALLERY_CONTROLS: readonly NumericControl[] = [
 ]
 
 const GALLERY_COLLAGE_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.gallery.collageParticleCount', label: 'Плотность частиц на фото', unit: 'шт.', min: 96, max: 2400, step: 1 },
+  { path: 'scenes.gallery.collageParticleCount', label: 'Плотность частиц на фото', unit: 'шт.', min: 96, max: 90000, step: 1 },
   { path: 'scenes.gallery.collageParticleSize', label: 'Размер частицы', unit: 'px', min: 1, max: 8, step: 0.1 },
   { path: 'scenes.gallery.collageNoiseStrength', label: 'Шум движения', unit: '×', min: 0, max: 0.12, step: 0.005 },
   { path: 'scenes.gallery.collageDepth', label: 'Глубина рассеяния', unit: 'м', min: 0, max: 0.8, step: 0.01 },
   { path: 'scenes.gallery.collageGlow', label: 'Свечение частиц', unit: '×', min: 0, max: 2, step: 0.05 },
-  { path: 'scenes.gallery.collageAssembleDuration', label: 'Длительность сборки', unit: 'с', min: 0.25, max: 2, step: 0.01 },
-  { path: 'scenes.gallery.collageRevealDuration', label: 'Длительность проявления фото', unit: 'с', min: 0.25, max: 2, step: 0.01 },
+  { path: 'scenes.gallery.collageAssembleDuration', label: 'Длительность сборки', unit: 'с', min: 0.25, max: 10, step: 0.01 },
+  { path: 'scenes.gallery.collageRevealDuration', label: 'Длительность проявления фото', unit: 'с', min: 0.25, max: 6, step: 0.01 },
+  { path: 'scenes.gallery.collagePhotoScale', label: 'Масштаб дополнительных фото', unit: '×', min: 0.5, max: 1, step: 0.01 },
+  { path: 'scenes.gallery.collagePhotoGap', label: 'Отступы в коллаже', unit: 'м', min: 0.1, max: 1.5, step: 0.01 },
   { path: 'scenes.gallery.collageStaggerDelay', label: 'Задержка между фото', unit: 'с', min: 0, max: 0.5, step: 0.01 },
 ]
 
