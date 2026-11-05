@@ -25,9 +25,10 @@ export function getLilyPortraitPhotoLastArrivalTime(
   return latestArrival
 }
 
-export const LILY_PORTRAIT_PHOTO_PAUSE_SECONDS = 0.85
-export const LILY_PORTRAIT_PHOTO_REVEAL_SECONDS = 3.2
-export const LILY_PORTRAIT_PHOTO_FINAL_HOLD_SECONDS = 1.25
+export const LILY_PORTRAIT_PHOTO_PAUSE_SECONDS = 0.65
+export const LILY_PORTRAIT_PHOTO_REVEAL_SECONDS = 5.8
+export const LILY_PORTRAIT_FRAME_ASSEMBLY_SECONDS = 3
+export const LILY_PORTRAIT_PHOTO_FINAL_HOLD_SECONDS = 2
 export const LILY_PORTRAIT_PHOTO_DEPTH_OFFSET = 0.012
 
 /** An absolute-time reveal clock stays reversible under pause, seek, resize and replay. */
@@ -45,6 +46,25 @@ export function getLilyPortraitPhotoRevealProgress(
   if (sceneTime <= revealStart) return 0
   if (revealDuration === 0) return 1
   return Math.min(1, Math.max(0, (sceneTime - revealStart) / revealDuration))
+}
+
+/** Build the particle frame only after the original photo is fully visible. */
+export function getLilyPortraitFrameAssemblyProgress(
+  time: number,
+  revealAnchor: number,
+  pause = LILY_PORTRAIT_PHOTO_PAUSE_SECONDS,
+  revealDuration = LILY_PORTRAIT_PHOTO_REVEAL_SECONDS,
+  assemblyDuration = LILY_PORTRAIT_FRAME_ASSEMBLY_SECONDS,
+) {
+  const sceneTime = Number.isFinite(time) ? Math.max(0, time) : 0
+  const anchor = Number.isFinite(revealAnchor) ? Math.max(0, revealAnchor) : 0
+  const start = anchor + Math.max(0, Number.isFinite(pause) ? pause : LILY_PORTRAIT_PHOTO_PAUSE_SECONDS)
+    + Math.max(0, Number.isFinite(revealDuration) ? revealDuration : LILY_PORTRAIT_PHOTO_REVEAL_SECONDS)
+  const duration = Number.isFinite(assemblyDuration) ? Math.max(0, assemblyDuration) : LILY_PORTRAIT_FRAME_ASSEMBLY_SECONDS
+  if (sceneTime <= start) return 0
+  if (duration === 0) return 1
+  const linear = Math.min(1, Math.max(0, (sceneTime - start) / duration))
+  return linear * linear * (3 - 2 * linear)
 }
 
 /** Late geometry or texture readiness restarts the pause from the visible route's latest available time. */
@@ -115,7 +135,7 @@ export function getLilyPortraitPhotoMaskAlpha(progress: number, arrivalOrder: nu
 export function getLilyPortraitPhotoRequiredSceneDuration(lastArrival: number) {
   const arrival = Number.isFinite(lastArrival) ? Math.max(0, lastArrival) : 0
   return arrival + LILY_PORTRAIT_PHOTO_PAUSE_SECONDS + LILY_PORTRAIT_PHOTO_REVEAL_SECONDS
-    + LILY_PORTRAIT_PHOTO_FINAL_HOLD_SECONDS
+    + LILY_PORTRAIT_FRAME_ASSEMBLY_SECONDS + LILY_PORTRAIT_PHOTO_FINAL_HOLD_SECONDS
 }
 
 /** Use the approved portrait placement helper for all photo corners, then put the pixels just behind the particles. */

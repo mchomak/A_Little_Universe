@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useThree } from '@react-three/fiber'
+import { AdditiveBlending, type Points } from 'three'
 import {
   BufferGeometry,
   ClampToEdgeWrapping,
@@ -30,7 +31,9 @@ import {
   getLilyPortraitPhotoRequiredSceneDuration,
   getLilyPortraitPhotoRevealProgress,
   getLilyPortraitPhotoStableRevealAnchor,
+  getLilyPortraitFrameAssemblyProgress,
 } from './portraitPhotoReveal'
+import { createLilyPortraitFrameGeometry } from './portraitFrame'
 
 interface LilyPortraitPhotoRevealProps {
   portrait: { width: number; height: number }
@@ -67,6 +70,42 @@ const PHOTO_FRAGMENT_SHADER = /* glsl */ `
     vec3 original = texture2D(uPhoto, vPhotoUv).rgb;
     gl_FragColor = vec4(original, coverage);
     #include <colorspace_fragment>
+  }
+`
+
+const FRAME_VERTEX_SHADER = /* glsl */ `
+  uniform float uTime;
+  uniform float uProgress;
+  attribute vec3 aStartPosition;
+  attribute float aAssemblyDelay;
+  attribute vec2 normal2d;
+  attribute float size;
+  attribute float phase;
+  attribute float speed;
+  attribute float particleAlpha;
+  attribute vec3 color;
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    float delay = aAssemblyDelay * 0.62;
+    float localProgress = smoothstep(delay, delay + (1.0 - delay) * 0.38, uProgress);
+    vec3 assembled = mix(aStartPosition, position, localProgress);
+    vec4 view = modelViewMatrix * vec4(assembled, 1.0);
+    gl_Position = projectionMatrix * view;
+    gl_PointSize = size * 300.0 / max(1.0, -view.z);
+    float shimmer = 0.76 + 0.24 * sin(uTime * speed + phase);
+    vColor = color;
+    vAlpha = particleAlpha * shimmer * smoothstep(0.0, 0.08, localProgress);
+  }
+`
+
+const FRAME_FRAGMENT_SHADER = /* glsl */ `
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    float radius = length(gl_PointCoord - 0.5);
+    float glow = 1.0 - smoothstep(0.12, 0.5, radius);
+    gl_FragColor = vec4(vColor, glow * vAlpha);
   }
 `
 
@@ -128,6 +167,28 @@ export function LilyPortraitPhotoReveal({ portrait, cameraSettings, geometry, br
     return next
   }, [planeAttributes])
   useEffect(() => () => planeGeometry.dispose(), [planeGeometry])
+
+  const frameGeometry = useMemo(() => createLilyPortraitFrameGeometry(finalBasis, aspect, APPROVED_PORTRAIT_SETTINGS), [aspect, finalBasis])
+  useEffect(() => () => frameGeometry.dispose(), [frameGeometry])
+  const frameMaterial = useMemo(() => new ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uProgress: { value: 0 } },
+    vertexShader: FRAME_VERTEX_SHADER,
+    fragmentShader: FRAME_FRAGMENT_SHADER,
+    transparent: true,
+    depthTest: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+    toneMapped: false,
+  }), [])
+  const frameMaterialRef = useRef<ShaderMaterial | null>(null)
+  const framePoints = useRef<Points | null>(null)
+  useEffect(() => {
+    frameMaterialRef.current = frameMaterial
+    return () => {
+      if (frameMaterialRef.current === frameMaterial) frameMaterialRef.current = null
+      frameMaterial.dispose()
+    }
+  }, [frameMaterial])
 
   useEffect(() => {
     let active = true
@@ -207,5 +268,22 @@ export function LilyPortraitPhotoReveal({ portrait, cameraSettings, geometry, br
     }
   }, [effectiveReadyAt, geometry, geometryReadyAt, invalidate, lastArrival, material, photoReadyAt, revealAnchor, runtime, uniforms])
 
-  return material ? <mesh geometry={planeGeometry} material={material} frustumCulled={false} renderOrder={0} /> : null
+  useEffect(() => {
+    const update = (time: number) => {
+      const currentMaterial = frameMaterialRef.current
+      if (!currentMaterial) return
+      const progress = revealAnchor === null ? 0 : getLilyPortraitFrameAssemblyProgress(time, revealAnchor)
+      currentMaterial.uniforms.uTime!.value = time
+      currentMaterial.uniforms.uProgress!.value = progress
+      if (framePoints.current) framePoints.current.visible = progress > 0
+      invalidate()
+    }
+    update(runtime.time)
+    return runtime.subscribeFrame(update)
+  }, [frameMaterial, invalidate, revealAnchor, runtime])
+
+  return <>
+    {material && <mesh geometry={planeGeometry} material={material} frustumCulled={false} renderOrder={0} />}
+    <points ref={framePoints} geometry={frameGeometry} material={frameMaterial} frustumCulled={false} renderOrder={2} visible={false} />
+  </>
 }

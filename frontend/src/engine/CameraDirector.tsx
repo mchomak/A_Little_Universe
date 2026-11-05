@@ -16,7 +16,8 @@ import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthViewportHe
 import { getBloomCameraApproach, getBloomCloseupPose, getBloomEntryCameraPose } from './bloomCamera'
 import { galaxyCameraPose, interpolateCameraPose } from '../scenes/galaxy/camera'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
-import { getIdentityCameraMoveTarget } from './identityCamera'
+import { getIdentityCameraMoveTarget, getIdentityCameraPullbackPose, IDENTITY_CAMERA_PULLBACK_DISTANCE,
+  IDENTITY_CAMERA_PULLBACK_SECONDS } from './identityCamera'
 import { updateGalleryCameraPose } from './galleryCameraPose'
 
 /** Camera settings belong here, never inside an artistic scene module. */
@@ -105,6 +106,14 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       duration: identitySettings.cameraMoveDuration,
       ease: 'sine.inOut',
     })
+    if (scene === 'identity') {
+      const identityTarget = getIdentityCameraMoveTarget(flowerCloseup, identitySettings)
+      timeline.to(p, {
+        ...getIdentityCameraPullbackPose(identityTarget, IDENTITY_CAMERA_PULLBACK_DISTANCE),
+        duration: IDENTITY_CAMERA_PULLBACK_SECONDS,
+        ease: 'sine.inOut',
+      }, identitySettings.cameraMoveDuration)
+    }
     if (scene === 'eye') timeline.to(p, { z: 0.85, duration: TIMING.camera.eye, ease: 'power2.inOut' }, TIMING.eye.approach[0])
     if (scene === 'cosmos') {
       const finish = galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)

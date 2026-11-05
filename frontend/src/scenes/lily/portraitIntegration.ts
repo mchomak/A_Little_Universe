@@ -1,6 +1,6 @@
 import type { ParticlePortraitSettings } from '../../particle-portrait-lab/config'
 import { getBloomCloseupPose } from '../../engine/bloomCamera'
-import { getIdentityCameraMoveTarget } from '../../engine/identityCamera'
+import { getIdentityCameraMoveTarget, getIdentityCameraPoseAt } from '../../engine/identityCamera'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
 import type { LilyPortraitAppearanceSettings } from './dissolve'
 import { createPortraitCameraBasis, type PortraitCameraBasis } from './portraitTargets'
@@ -15,7 +15,6 @@ export interface LilyPortraitCameraWorkerSettings {
   aspect: number
   reducedMotion: boolean
 }
-
 /** Keep the sampler inputs identical to the standalone DEV portrait lab. */
 export function toStarPortraitSamplingSettings(settings: ParticlePortraitSettings): StarPortraitSamplingSettings {
   return {
@@ -136,14 +135,5 @@ export function toLilyPortraitCaptureSettings(settings: IdentitySettings) {
     portraitBraking: settings.portraitBraking,
     portraitSettledBrightness: settings.portraitSettledBrightness,
     vortexSpeedMultiplier: settings.vortexSpeedMultiplier,
-  }
-}
-
-function getIdentityCameraPoseAt(start: ReturnType<typeof getBloomCloseupPose>, end: ReturnType<typeof getBloomCloseupPose>, time: number, duration: number) {
-  const progress = Math.min(1, Math.max(0, (Number.isFinite(time) ? time : 0) / Math.max(0.001, duration)))
-  const eased = 0.5 - 0.5 * Math.cos(Math.PI * progress)
-  return {
-    x: start.x + (end.x - start.x) * eased, y: start.y + (end.y - start.y) * eased, z: start.z + (end.z - start.z) * eased,
-    tx: start.tx + (end.tx - start.tx) * eased, ty: start.ty + (end.ty - start.ty) * eased, tz: start.tz + (end.tz - start.tz) * eased,
   }
 }

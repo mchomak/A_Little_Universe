@@ -16,15 +16,19 @@ export function createFrameParticleGeometry(
   height: number,
   seed: number,
   settings?: Readonly<Pick<SceneComposerConfig['scenes']['gallery'], 'frameIntensity'>>,
+  spacing: number = GALLERY_ART.frameParticleSpacing,
+  margin = 0.06,
 ) {
-  const frameWidth = width + 0.12
-  const frameHeight = height + 0.12
+  const frameMargin = Number.isFinite(margin) ? Math.max(0, margin) : 0.06
+  const particleSpacing = Number.isFinite(spacing) ? Math.max(0.01, spacing) : GALLERY_ART.frameParticleSpacing
+  const frameWidth = width + frameMargin * 2
+  const frameHeight = height + frameMargin * 2
   const halfWidth = frameWidth / 2
   const halfHeight = frameHeight / 2
   const perimeterDistances: number[] = []
   let edgeOffset = 0
   for (const edgeLength of [frameWidth, frameHeight, frameWidth, frameHeight]) {
-    const edgeCount = Math.max(1, Math.floor(edgeLength / GALLERY_ART.frameParticleSpacing))
+    const edgeCount = Math.max(1, Math.floor(edgeLength / particleSpacing))
     for (let edgeIndex = 0; edgeIndex < edgeCount; edgeIndex++) {
       perimeterDistances.push(edgeOffset + (edgeIndex + 1) / (edgeCount + 1) * edgeLength)
     }

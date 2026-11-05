@@ -26,9 +26,9 @@ it('keeps the original fully transparent through the pause and follows absolute 
   const photoReveal = await import('./portraitPhotoReveal')
 
   expect(photoReveal.getLilyPortraitPhotoRevealProgress(10, 10)).toBe(0)
-  expect(photoReveal.getLilyPortraitPhotoRevealProgress(10.85, 10)).toBe(0)
-  expect(photoReveal.getLilyPortraitPhotoRevealProgress(12.45, 10)).toBeCloseTo(0.5)
-  expect(photoReveal.getLilyPortraitPhotoRevealProgress(14.05, 10)).toBe(1)
+  expect(photoReveal.getLilyPortraitPhotoRevealProgress(10.65, 10)).toBe(0)
+  expect(photoReveal.getLilyPortraitPhotoRevealProgress(13.55, 10)).toBeCloseTo(0.5)
+  expect(photoReveal.getLilyPortraitPhotoRevealProgress(16.45, 10)).toBeCloseTo(1)
   expect(photoReveal.getLilyPortraitPhotoRevealProgress(10, 20)).toBe(0)
 })
 
@@ -37,10 +37,10 @@ it('restarts the pause when replacement geometry or its texture becomes ready af
   const anchor = photoReveal.getLilyPortraitPhotoRevealAnchor(31, 40)
 
   expect(anchor).toBe(40)
-  expect(photoReveal.getLilyPortraitPhotoRevealProgress(40.84, anchor)).toBe(0)
-  expect(photoReveal.getLilyPortraitPhotoRevealProgress(40.85, anchor)).toBe(0)
-  expect(photoReveal.getLilyPortraitPhotoRevealProgress(42.45, anchor)).toBeCloseTo(0.5)
-  expect(photoReveal.getLilyPortraitPhotoRequiredSceneDuration(anchor)).toBeCloseTo(45.3)
+  expect(photoReveal.getLilyPortraitPhotoRevealProgress(40.64, anchor)).toBe(0)
+  expect(photoReveal.getLilyPortraitPhotoRevealProgress(40.65, anchor)).toBe(0)
+  expect(photoReveal.getLilyPortraitPhotoRevealProgress(43.55, anchor)).toBeCloseTo(0.5)
+  expect(photoReveal.getLilyPortraitPhotoRequiredSceneDuration(anchor)).toBeCloseTo(51.45)
   expect(photoReveal.getLilyPortraitPhotoRevealProgress(0, anchor)).toBe(0)
 })
 
@@ -64,10 +64,10 @@ it('keeps t28 continuous across replacement geometry, then replays from current 
 
   const replayAnchor = photoReveal.getLilyPortraitPhotoRevealAnchorForReplay(12)
   expect(replayAnchor).toBe(12)
-  expect(photoReveal.getLilyPortraitPhotoRevealProgress(12.84, replayAnchor)).toBe(0)
-  expect(photoReveal.getLilyPortraitPhotoRevealProgress(12.85, replayAnchor)).toBe(0)
-  expect(photoReveal.getLilyPortraitPhotoRevealProgress(12.86, replayAnchor)).toBeGreaterThan(0)
-  expect(photoReveal.getLilyPortraitPhotoRevealProgress(28.85, replayAnchor)).toBe(1)
+  expect(photoReveal.getLilyPortraitPhotoRevealProgress(12.64, replayAnchor)).toBe(0)
+  expect(photoReveal.getLilyPortraitPhotoRevealProgress(12.65, replayAnchor)).toBe(0)
+  expect(photoReveal.getLilyPortraitPhotoRevealProgress(12.66, replayAnchor)).toBeGreaterThan(0)
+  expect(photoReveal.getLilyPortraitPhotoRevealProgress(18.45, replayAnchor)).toBeCloseTo(1)
 })
 
 it('reveals the face region before the hair and outer photo, then resolves to every original pixel', async () => {
@@ -115,9 +115,17 @@ it('keeps a full-photo hold in the required scene duration and uses a top-down r
   const topU = (4 + 0.5) / edge, topV = 1 - 0.5 / edge
   const bottomU = topU, bottomV = 0.5 / edge
 
-  expect(photoReveal.getLilyPortraitPhotoRequiredSceneDuration(24)).toBeCloseTo(29.3)
+  expect(photoReveal.getLilyPortraitPhotoRequiredSceneDuration(24)).toBeCloseTo(35.45)
   expect(map[(edge - 1) * edge + 4]! / 255).toBeCloseTo(photoReveal.getLilyPortraitPhotoRevealArrivalOrder(topU, topV, 1), 2)
   expect(map[4]! / 255).toBeCloseTo(photoReveal.getLilyPortraitPhotoRevealArrivalOrder(bottomU, bottomV, 1), 2)
+})
+
+it('keeps the frame absent until photo reveal completes, then assembles over three seconds', async () => {
+  const photoReveal = await import('./portraitPhotoReveal')
+  expect(photoReveal.getLilyPortraitFrameAssemblyProgress(16.44, 10)).toBe(0)
+  expect(photoReveal.getLilyPortraitFrameAssemblyProgress(16.45, 10)).toBe(0)
+  expect(photoReveal.getLilyPortraitFrameAssemblyProgress(17.95, 10)).toBeCloseTo(0.5)
+  expect(photoReveal.getLilyPortraitFrameAssemblyProgress(19.45, 10)).toBe(1)
 })
 
 function photoPoint(u: number, v: number) {

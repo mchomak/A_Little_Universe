@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createFilmRuntime } from '../../engine/runtime'
 import { getBloomCloseupPose } from '../../engine/bloomCamera'
-import { getIdentityCameraMoveTarget } from '../../engine/identityCamera'
+import { getIdentityCameraMoveTarget, getIdentityCameraPoseAt } from '../../engine/identityCamera'
 import { DEFAULT_PARTICLE_PORTRAIT_SETTINGS } from '../../particle-portrait-lab/config'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 import { getLilyParticlePortraitPosition } from './dissolve'
@@ -64,11 +64,16 @@ describe('Scene 04 portrait integration', () => {
     const start = basisAtTime(0)
     const middle = basisAtTime(identitySettings.cameraMoveDuration / 2)
     const end = basisAtTime(identitySettings.cameraMoveDuration)
+    const pullbackMiddle = basisAtTime(identitySettings.cameraMoveDuration + 2)
     const afterEnd = basisAtTime(identitySettings.cameraMoveDuration + 5)
 
     expect(start.eye).not.toEqual(end.eye)
     expect(middle.eye).not.toEqual(start.eye)
-    expect(afterEnd.eye).toEqual(end.eye)
+    expect(Math.hypot(...pullbackMiddle.eye.map((value, index) => value - end.eye[index]!))).toBeCloseTo(0.85, 5)
+    expect(Math.hypot(...afterEnd.eye.map((value, index) => value - end.eye[index]!))).toBeCloseTo(1.7, 5)
+    afterEnd.forward.forEach((value, index) => expect(value).toBeCloseTo(end.forward[index]!, 6))
+    expect(basisAtTime(identitySettings.cameraMoveDuration + 2).eye)
+      .not.toEqual(end.eye)
 
     const reduced = createLilyPortraitCameraBasisAtTime({ bloomSettings, identitySettings, aspect: 4 / 3, reducedMotion: true })
     expect(reduced(0).eye).toEqual(reduced(identitySettings.cameraMoveDuration).eye)
@@ -93,17 +98,7 @@ describe('Scene 04 portrait integration', () => {
     const end = getIdentityCameraMoveTarget(start, identitySettings)
     const moving = createLilyPortraitCameraBasisAtTime({ bloomSettings, identitySettings, aspect: 4 / 3, reducedMotion: false })
     const expectedAt = (time: number) => {
-      const progress = Math.min(1, Math.max(0, time / identitySettings.cameraMoveDuration))
-      const eased = 0.5 - 0.5 * Math.cos(Math.PI * progress)
-      const pose = {
-        x: start.x + (end.x - start.x) * eased,
-        y: start.y + (end.y - start.y) * eased,
-        z: start.z + (end.z - start.z) * eased,
-        tx: start.tx + (end.tx - start.tx) * eased,
-        ty: start.ty + (end.ty - start.ty) * eased,
-        tz: start.tz + (end.tz - start.tz) * eased,
-      }
-      return cameraBasisForPose(pose)
+      return cameraBasisForPose(getIdentityCameraPoseAt(start, end, time, identitySettings.cameraMoveDuration))
     }
     const runtime = createFilmRuntime()
     const movingFrames: ReturnType<typeof moving>[] = []
