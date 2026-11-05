@@ -64,7 +64,7 @@ void main() {
     vec3 pixel = texture2D(uPhoto, cellUv).rgb;
     float front = 4.0 * restored * (1.0 - restored);
     original = mix(original, pixel, front * .55);
-    alpha = .35 + .65 * restored;
+    alpha = uOpacity * restored;
   }
   gl_FragColor = vec4(original, alpha);
   #include <colorspace_fragment>

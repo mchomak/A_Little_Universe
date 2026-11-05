@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { restorationStart, restoredPixel, restorationFrame } from './identityRestoration'
+import { restorationStart, restoredPixel, restorationFrame, restoredPhotoFragment } from './identityRestoration'
 
 describe('04.6 local photographic restoration', () => {
   it('starts with the existing portrait and finishes early enough for a quiet hold', () => {
@@ -17,6 +17,10 @@ describe('04.6 local photographic restoration', () => {
     expect(hair).toBeLessThan(restorationStart(.02, .97))
     expect(shoulder).toBeLessThan(restorationStart(.02, .97))
     expect(restoredPixel(24.2, .66, .38)).toBeGreaterThan(restoredPixel(24.2, .02, .97))
+  })
+  it('keeps original-photo pixels invisible until their face-to-edge mask arrives', () => {
+    expect(restoredPhotoFragment).toContain('alpha = uOpacity * restored;')
+    expect(restoredPhotoFragment).not.toContain('0.35 + 0.65 * restored')
   })
   it('uses a monotonic, spatially varied schedule independent of playback history', () => {
     const starts = new Set<number>()
