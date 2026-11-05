@@ -5,6 +5,8 @@ import type { GalleryPhotoLayout } from '../../systems/scene-config/config'
 
 /** Preserves the existing 12-photo composition: 13.69m beyond the actual default shaft centers. */
 export const GALLERY_ARCH_COLUMN_GAP = 13.69
+/** Historical Z value at the default 12-photo position; deviations remain relative to the final columns. */
+export const GALLERY_ARCH_DEFAULT_POSITION_Z = -82
 
 type Point = readonly [number, number, number]
 export interface GalleryArchColumnSettings {
@@ -92,11 +94,15 @@ export function getGalleryArchPosition(
   yOffset = 0,
   floorY = 0,
   columnSettings: Readonly<GalleryArchColumnSettings> = DEFAULT_COLUMN_SETTINGS,
+  archPositionZ = GALLERY_ARCH_DEFAULT_POSITION_Z,
 ): [number, number, number] {
   const [first, second] = finalSupportPair(memories, galleryWidth, variant, layout, columnSettings, floorY)
+  const archOffsetZ = Number.isFinite(archPositionZ)
+    ? archPositionZ - GALLERY_ARCH_DEFAULT_POSITION_Z
+    : 0
   return [
     (first[0] + second[0]) / 2 + xOffset,
     floorY + yOffset,
-    (first[2] + second[2]) / 2 - GALLERY_ARCH_COLUMN_GAP,
+    (first[2] + second[2]) / 2 - GALLERY_ARCH_COLUMN_GAP + archOffsetZ,
   ]
 }

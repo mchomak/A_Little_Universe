@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { normalizeConfig } from '../../systems/scene-config/config'
 import { getGalleryArchPosition } from './archPlacement'
 import type { GalleryMemory } from './content'
 
@@ -27,6 +28,29 @@ describe('gallery arch placement', () => {
     expect(long[2]).toBeCloseTo(-60.4)
     expect(established[2]).toBeCloseTo(-82)
     expect(long[2] - short[2]).toBeCloseTo(-21.6)
+  })
+
+  it('applies saved legacy Z as a relative offset and keeps following the final columns', () => {
+    const customizedZ = -91
+    const short = getGalleryArchPosition(memories(4), 7, 'between-columns', betweenColumns, 0, 0, 0, undefined, customizedZ)
+    const long = getGalleryArchPosition(memories(8), 7, 'between-columns', betweenColumns, 0, 0, 0, undefined, customizedZ)
+    const established = getGalleryArchPosition(memories(12), 7, 'between-columns', betweenColumns, 0, 0, 0, undefined, customizedZ)
+
+    expect(short[2]).toBeCloseTo(-47.8)
+    expect(long[2]).toBeCloseTo(-69.4)
+    expect(established[2]).toBeCloseTo(-91)
+    expect(long[2] - short[2]).toBeCloseTo(-21.6)
+  })
+
+  it('preserves a legacy Z value through config migration and applies it to the current column pair', () => {
+    const migrated = normalizeConfig({ schemaVersion: 16, scenes: { gallery: { archPositionZ: -91 } } })
+    const position = getGalleryArchPosition(
+      memories(12), 7, 'between-columns', betweenColumns, 0, 0, 0, undefined,
+      migrated.scenes.gallery.archPositionZ,
+    )
+
+    expect(migrated.scenes.gallery.archPositionZ).toBe(-91)
+    expect(position[2]).toBeCloseTo(-91)
   })
 
   it('anchors to the final two supports in on-column mode with the configured floor and vertical offset', () => {

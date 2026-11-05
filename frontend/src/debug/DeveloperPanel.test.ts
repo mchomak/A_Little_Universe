@@ -260,6 +260,7 @@ it('exposes the gallery layout and displays previously saved short collage timin
   await updateConfig({ scenes: { gallery: {
     collageAssembleDuration: 0.72,
     collageRevealDuration: 0.68,
+    archPositionZ: -91,
   } } })
   try {
   const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
@@ -293,7 +294,8 @@ it('exposes the gallery layout and displays previously saved short collage timin
   expect(markup).toMatch(/id="composer-scenes-gallery-archVisible"[^>]*type="checkbox"[^>]*checked/)
   expect(markup).toMatch(/id="composer-scenes-gallery-archScale"[^>]*min="8" max="28" step="0.25" value="19"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-archOpacity"[^>]*min="0.1" max="1" step="0.01" value="0.78"/)
-  expect(markup).not.toContain('composer-scenes-gallery-archPositionZ')
+  expect(markup).toMatch(/id="composer-scenes-gallery-archPositionZ"[^>]*min="-140" max="-65" step="0.25" value="-91"/)
+  expect(markup).toContain('−82 м — исходный зазор за последней парой колонн.')
   expect(markup).toMatch(/id="composer-scenes-gallery-collageAssembleDuration"[^>]*min="0.25" max="10" step="0.01" value="0.72"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-collageRevealDuration"[^>]*min="0.25" max="6" step="0.01" value="0.68"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-collagePhotoScale"[^>]*min="0.5" max="1" step="0.01" value="0.9"/)

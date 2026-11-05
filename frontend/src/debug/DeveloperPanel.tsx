@@ -322,6 +322,7 @@ const GALLERY_ARCH_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.archOpacity', label: 'Прозрачность арки', unit: '×', min: 0.1, max: 1, step: 0.01 },
   { path: 'scenes.gallery.archPositionX', label: 'Положение арки · X', unit: 'м', min: -30, max: 30, step: 0.25 },
   { path: 'scenes.gallery.archPositionY', label: 'Высота арки от пола', unit: 'м', min: -12, max: 24, step: 0.25 },
+  { path: 'scenes.gallery.archPositionZ', label: 'Смещение от базового положения по Z', unit: 'м', min: -140, max: -65, step: 0.25 },
   { path: 'scenes.gallery.archRotationY', label: 'Поворот арки', unit: 'рад', min: -Math.PI, max: Math.PI, step: 0.05 },
 ]
 
@@ -953,6 +954,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           <details open><summary>Арка у Луны</summary>
             <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-gallery-archVisible">Показывать арку</label>{config.scenes.gallery.archVisible !== defaultAtPath('scenes.gallery.archVisible') && <button type="button" className="inspector-reset" aria-label="Сбросить видимость арки" onClick={() => { void resetField('scenes.gallery.archVisible') }}>↺</button>}</div><input id="composer-scenes-gallery-archVisible" data-testid="composer-scenes-gallery-archVisible" type="checkbox" checked={config.scenes.gallery.archVisible} onChange={(event) => { void changeField('scenes.gallery.archVisible', event.target.checked) }} /></div>
             {GALLERY_ARCH_CONTROLS.map(range)}
+            <p>−82 м — исходный зазор за последней парой колонн. Отклонение от −82 м сдвигает арку относительно пары; при изменении длины галереи арка следует за колоннами.</p>
           </details>
           {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.name.startsWith('Near Low') || group.name.startsWith('Waterline') || group.name.startsWith('Moon Clouds')}><summary>{group.name}</summary>
             {group.controls.map(range)}

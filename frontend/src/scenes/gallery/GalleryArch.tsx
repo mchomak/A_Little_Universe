@@ -31,7 +31,9 @@ export function GalleryArch({ settings }: { settings: GallerySettings }) {
       columnOffsetX: settings.columnOffsetX,
       columnOffsetY: settings.columnOffsetY,
     },
+    settings.archPositionZ,
   ), [
+    settings.archPositionZ,
     settings.columnDepth,
     settings.columnOffsetX,
     settings.columnOffsetY,
