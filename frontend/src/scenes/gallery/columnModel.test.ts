@@ -1,9 +1,12 @@
 import { readFileSync } from 'node:fs'
-import { Mesh, MeshStandardMaterial, PerspectiveCamera, Vector3, type Object3D } from 'three'
+import { Group, Mesh, MeshStandardMaterial, PerspectiveCamera, Raycaster, Vector3, type Object3D } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import { describe, expect, it, vi } from 'vitest'
 import { focusCamera } from './camera'
+import { getGalleryCollagePhotoLayout } from './collage'
+import { getGalleryCollageCameraFrame, getGalleryCollageFocusDistance, getGalleryNormalFov } from './galleryCameraFit'
+import { galleryDistanceOpacity, galleryFocusedPhotoDistanceOpacity } from './visibility'
 import { GALLERY, GALLERY_COLUMN_SHAFT_CENTER_Z, GALLERY_COLUMN_SHAFT_FRONT_Z, GALLERY_MEMORIES, galleryColumnPositions, galleryPhotoApproachYaw, memoryPosition } from './content'
 import {
   acquireGalleryColumnMaterials,
@@ -355,6 +358,92 @@ describe('the supplied ionic column GLB', () => {
           const projectedFrontGap = Math.abs(projectX(photoFrontEdgeZ) - projectX(nearColumn.backZ))
           const projectedRearGap = Math.abs(projectX(photoBackEdgeZ) - projectX(farColumn.frontZ))
           expect(projectedFrontGap).toBeCloseTo(projectedRearGap, 5)
+        }
+      }
+    }
+  })
+
+  it('keeps focused main and collage photos clear of the real B columns at an 18m focus distance', async () => {
+    const source = await loadAssetScene()
+    const extendedColumn = clone(source)
+    const extended = extendGalleryColumnShaft(extendedColumn)
+    expect(extended).not.toBeNull()
+    const layout = { laneWidth: 7, offsetX: 2, offsetY: 0.75, offsetZ: 2.1 }
+    const supports = GALLERY_MEMORIES.flatMap(candidate => galleryColumnPositions(candidate, GALLERY.width, 'between-columns', layout))
+    const uniqueSupports = [...new Map(supports.map(([x, y, z]) => [`${x}:${z}`, [x, y, z] as const])).values()]
+    const columns = new Group()
+    const rootPlacement = getGalleryColumnPlacement(
+      { scale: 1, depth: 0.15, offsetX: 0, offsetY: 0 },
+      { x: 1, y: 1, z: 1 },
+      -2.35,
+      extended!.bounds.shaftFrontZ,
+      extended!.bounds.baseBottom,
+    )
+    uniqueSupports.forEach(([x, y, z]) => {
+      const instance = new Group()
+      instance.position.set(x + rootPlacement.position[0], y + rootPlacement.position[1], z + rootPlacement.position[2])
+      instance.scale.set(...rootPlacement.scale)
+      instance.add(clone(extendedColumn))
+      columns.add(instance)
+    })
+    columns.updateMatrixWorld(true)
+
+    const rotationAxis = new Vector3(0, 1, 0)
+    const raycaster = new Raycaster()
+    const collageSettings = { collagePhotoScale: 0.9, collagePhotoGap: 0.3, galleryLayoutVariant: 'between-columns' as const }
+    for (const side of [-1, 1] as const) {
+      const originalMemory = GALLERY_MEMORIES.find(candidate => candidate.side === side && candidate.order >= 2)!
+      const memory = { ...originalMemory, images: ['main.jpg', 'extra-2.jpg', 'extra-3.jpg', 'extra-4.jpg'] }
+      const target = memoryPosition(memory, GALLERY.width, 'between-columns', layout, { columnDepth: 0.15, columnScale: 1 })
+      const yaw = galleryPhotoApproachYaw(memory, 'between-columns', 0, 45, 1)
+      const imageAspects = [0.72, 1.4, 0.75]
+      const size = memory.order === 0 ? 2.15 : 3.3
+      const mainWidth = memory.aspect >= 1 ? size : size * memory.aspect
+      const mainHeight = memory.aspect >= 1 ? size / memory.aspect : size
+      const photos = [
+        { position: [0, 0, 0] as const, width: mainWidth, height: mainHeight },
+        ...([2, 3, 4] as const).map((slot, index) => {
+          const extra = getGalleryCollagePhotoLayout(slot, memory.side, mainWidth, mainHeight, imageAspects[index]!, {
+            photoScale: collageSettings.collagePhotoScale,
+            photoGap: collageSettings.collagePhotoGap,
+          }, 'between-columns')
+          return { position: extra.position, width: extra.width, height: extra.height }
+        }),
+      ]
+      const frame = getGalleryCollageCameraFrame(memory, collageSettings, { main: memory.aspect, extras: imageAspects })
+      for (const viewportAspect of [16 / 9, 9 / 16]) {
+        const desiredFov = Math.min(70, getGalleryNormalFov(viewportAspect, 1))
+        const distance = getGalleryCollageFocusDistance(frame, viewportAspect, desiredFov)
+        const mainPhotoDistance = Math.hypot(distance, frame.centerY + 0.12)
+        expect(mainPhotoDistance).toBeLessThan(32)
+        expect(galleryFocusedPhotoDistanceOpacity(mainPhotoDistance, true, 1)).toBe(1)
+        expect(galleryFocusedPhotoDistanceOpacity(mainPhotoDistance, false, 1)).toBe(galleryDistanceOpacity(mainPhotoDistance))
+        const fitHeight = Math.max(frame.height, frame.width / Math.max(0.3, viewportAspect))
+        const fov = Math.max(4, Math.min(70, 2 * Math.atan(fitHeight / (2 * distance * 0.75)) * 180 / Math.PI))
+        const cameraTarget: [number, number, number] = [target[0] + frame.centerX, target[1] + frame.centerY, target[2]]
+        const cameraPose = focusCamera([0, 0, 6], cameraTarget, 1, yaw, distance)
+        const camera = new PerspectiveCamera(fov, viewportAspect, 0.1, 100)
+        camera.position.set(cameraPose.x, cameraPose.y, cameraPose.z)
+        camera.lookAt(cameraTarget[0], cameraTarget[1] - 0.2, cameraTarget[2])
+        camera.updateMatrixWorld()
+
+        for (const photo of photos) {
+          for (const fractionX of [-0.48, -0.24, 0, 0.24, 0.48]) {
+            for (const fractionY of [-0.48, -0.24, 0, 0.24, 0.48]) {
+              const localPoint = new Vector3(
+                photo.position[0] + photo.width * fractionX,
+                photo.position[1] + photo.height * fractionY,
+                photo.position[2],
+              ).applyAxisAngle(rotationAxis, yaw)
+              const worldPoint = new Vector3(target[0], target[1], target[2]).add(localPoint)
+              const direction = worldPoint.clone().sub(camera.position).normalize()
+              const distanceToPhoto = camera.position.distanceTo(worldPoint)
+              raycaster.set(camera.position, direction)
+              raycaster.far = distanceToPhoto - 0.02
+              const hits = raycaster.intersectObject(columns, true)
+              expect(hits, `side ${side}, aspect ${viewportAspect}, distance ${distance.toFixed(2)}, photo sample ${worldPoint.toArray().join(',')}, hits ${hits.map(hit => `${hit.object.name}@${hit.point.toArray().map(value => value.toFixed(2)).join(',')}`).join(';')}`).toHaveLength(0)
+            }
+          }
         }
       }
     }

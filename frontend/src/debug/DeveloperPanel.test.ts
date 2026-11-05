@@ -288,7 +288,11 @@ it('exposes the gallery layout switch and independently editable active layout',
   expect(markup).toMatch(/id="composer-scenes-gallery-archVisible"[^>]*type="checkbox"[^>]*checked/)
   expect(markup).toMatch(/id="composer-scenes-gallery-archScale"[^>]*min="8" max="28" step="0.25" value="19"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-archOpacity"[^>]*min="0.1" max="1" step="0.01" value="0.78"/)
-  expect(markup).toMatch(/id="composer-scenes-gallery-archPositionZ"[^>]*min="-140" max="-65" step="0.5" value="-82"/)
+  expect(markup).not.toContain('composer-scenes-gallery-archPositionZ')
+  expect(markup).toMatch(/id="composer-scenes-gallery-collageAssembleDuration"[^>]*min="5" max="10" step="0.01" value="5"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-collageRevealDuration"[^>]*min="1.5" max="6" step="0.01" value="2.5"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-collagePhotoScale"[^>]*min="0.5" max="1" step="0.01" value="0.9"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-collagePhotoGap"[^>]*min="0.1" max="1.5" step="0.01" value="0.3"/)
   expect(markup).toContain('Far Clouds · дальний слой')
   expect(markup).toContain('Mid Clouds · боковые массы')
   expect(markup).toContain('Near Low Clouds · за фотографиями')
@@ -397,7 +401,7 @@ it('shows the B profile values when the between-columns layout is active', async
   }
 })
 
-it('exposes eight bounded collage controls in one collapsed DEV section', () => {
+it('exposes ten bounded collage controls in one collapsed DEV section', () => {
   const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
     state: { ...initialFilmState, scene: 'gallery' },
     dispatch: () => undefined,
@@ -415,9 +419,11 @@ it('exposes eight bounded collage controls in one collapsed DEV section', () => 
   expect(section?.[1]).toMatch(/collageNoiseStrength"[^>]*min="0" max="0\.12" step="0\.005" value="0\.035"/)
   expect(section?.[1]).toMatch(/collageDepth"[^>]*min="0" max="0\.8" step="0\.01" value="0\.42"/)
   expect(section?.[1]).toMatch(/collageGlow"[^>]*min="0" max="2" step="0\.05" value="1"/)
-  expect(section?.[1]).toMatch(/collageAssembleDuration"[^>]*min="0\.25" max="2" step="0\.01" value="0\.72"/)
-  expect(section?.[1]).toMatch(/collageRevealDuration"[^>]*min="0\.25" max="2" step="0\.01" value="0\.68"/)
+  expect(section?.[1]).toMatch(/collageAssembleDuration"[^>]*min="5" max="10" step="0\.01" value="5"/)
+  expect(section?.[1]).toMatch(/collageRevealDuration"[^>]*min="1\.5" max="6" step="0\.01" value="2\.5"/)
+  expect(section?.[1]).toMatch(/collagePhotoScale"[^>]*min="0\.5" max="1" step="0\.01" value="0\.9"/)
+  expect(section?.[1]).toMatch(/collagePhotoGap"[^>]*min="0\.1" max="1\.5" step="0\.01" value="0\.3"/)
   expect(section?.[1]).toMatch(/collageStaggerDelay"[^>]*min="0" max="0\.5" step="0\.01" value="0\.14"/)
-  expect(section?.[1]).toContain('Длительность сборки · 0,72 с')
-  expect(section?.[1]).toContain('Длительность проявления фото · 0,68 с')
+  expect(section?.[1]).toContain('Длительность сборки · 5 с')
+  expect(section?.[1]).toContain('Длительность проявления фото · 2,5 с')
 })

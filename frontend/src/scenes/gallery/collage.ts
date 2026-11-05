@@ -1,4 +1,5 @@
 import { BufferAttribute, BufferGeometry, DynamicDrawUsage } from 'three'
+import type { GalleryLayoutVariant } from './content'
 
 export type GalleryCollageSlot = 2 | 3 | 4
 
@@ -13,7 +14,13 @@ export interface GalleryCollagePhoto {
   url: string
 }
 
-const MAX_COLLAGE_PHOTO_HEIGHT = 0.68
+export interface CollagePhotoLayoutSettings {
+  readonly photoScale?: number
+  readonly photoGap?: number
+}
+
+const DEFAULT_COLLAGE_PHOTO_SCALE = 0.9
+const DEFAULT_COLLAGE_PHOTO_GAP = 0.3
 
 export interface CollageRevealSettings {
   readonly particleCount: number
@@ -33,8 +40,8 @@ export const DEFAULT_COLLAGE_REVEAL_SETTINGS: Readonly<CollageRevealSettings> = 
   noiseStrength: 0.035,
   depth: 0.42,
   glow: 1,
-  assembleDuration: 0.72,
-  revealDuration: 0.68,
+  assembleDuration: 5,
+  revealDuration: 2.5,
   staggerDelay: 0.14,
   particleEnabled: true,
 })
@@ -62,14 +69,25 @@ export function getGalleryCollagePhotoLayout(
   mainWidth: number,
   mainHeight: number,
   aspect: number,
+  settings: Readonly<CollagePhotoLayoutSettings> = {},
+  variant: GalleryLayoutVariant = 'on-columns',
 ): GalleryCollagePhotoLayout {
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1
-  const width = Math.min(1.02, safeAspect * MAX_COLLAGE_PHOTO_HEIGHT)
+  const photoScale = Math.max(0.5, Math.min(1, Number.isFinite(settings.photoScale) ? settings.photoScale! : DEFAULT_COLLAGE_PHOTO_SCALE))
+  const gap = Math.max(0.1, Math.min(1.5, Number.isFinite(settings.photoGap) ? settings.photoGap! : DEFAULT_COLLAGE_PHOTO_GAP))
+  const longestEdge = Math.max(mainWidth, mainHeight) * photoScale
+  const width = safeAspect >= 1 ? longestEdge : longestEdge * safeAspect
   const height = width / safeAspect
-  const gap = 0.16
   const wallYaw = -side * 1.15
   const yawSin = Math.sin(wallYaw)
   const outwardDepth = Math.abs(yawSin) > 0.001 ? side * 0.18 / yawSin : 0.035
+  if (variant === 'between-columns') {
+    // Side-facing cards run along the column rows, so stacking upward keeps posts clear of the photo plane and water.
+    const stackBase = mainHeight / 2 + gap
+    const precedingSlots = slot - 2
+    const verticalOffset = stackBase + precedingSlots * (longestEdge + gap) + longestEdge / 2
+    return { position: [0, verticalOffset, outwardDepth], width, height }
+  }
   if (slot === 4) return { position: [0, mainHeight / 2 + height / 2 + gap, outwardDepth], width, height }
 
   const horizontal = slot === 2 ? -1 : 1

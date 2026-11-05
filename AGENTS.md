@@ -23,7 +23,7 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 
 `images/phone_1.png` — DOM/CSS-фон загрузки 00 и сцен 01–04; при входе в галерею 05 он скрывается. Начальный кадр увеличен, во время падения семени видимая область плавно движется вниз и сохраняет положение в сценах 03–04. `cover` заполняет экран без пустых краёв. DEV Scene Editor в development или в локальном production preview (`http://127.0.0.1:4173/?debug`) меняет общий профиль `scenes.openingBackground.{zoom, offsetX, offsetY}`; в секции «00–04 · Кадрирование фона» доступны живой предпросмотр и сброс. Масштаб: 1–3, смещения: −1…1, по умолчанию: 1/0/0.
 
-Схема Scene Composer v23 принимает JSON v1–v23; старые файлы сцен 02 и 05 мигрируются с сохранением известных настроек, а Lily appearance/pollen остаются совместимы со всеми предыдущими версиями. Экспортируется версия 23.
+Схема Scene Composer v24 принимает JSON v1–v24; старые файлы сцен 02 и 05 мигрируются с сохранением известных настроек, а Lily appearance/pollen остаются совместимы со всеми предыдущими версиями. Экспортируется версия 24.
 
 ## Пресеты Scene Editor
 
@@ -57,6 +57,8 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 ## Scene 05: gallery of memories
 
 `GalleryScene`, `MoonlitWorld` and `WetFloor` share the persistent WebGL canvas and use `galleryMotion.time`; camera pose for rendering and photo selection comes from `frontend/src/engine/galleryCameraPose.ts`. Event order is defined by `GALLERY_EVENT_ORDER` in `frontend/src/scenes/gallery/catalog.ts`; data comes from `images/<event ID>/`, with captions in `frontend/src/data/galleryCaptions.json`. Empty folders are omitted unless they contain `.gallery-placeholder`; each memory can show up to four images. Gallery configuration is stored in `scenes.gallery`, with independent layouts A and B and the B layout selected by default. Gallery data and collages do not own film timing or lighting.
+
+The final arch follows the last real column shaft centers through `getGalleryColumnPlacement`, keeping a 13.69m default gap; the 12-photo B layout retains its historical Z=-82 placement. Gallery length and column depth, scale, and X offset move the arch with the colonnade; legacy `archPositionZ` does not override this anchor.
 ## Как здесь работает Autopilot
 
 Сборки фиксируются в `.autopilot/`; прогресс — в `.autopilot/dashboard.html`. Требование из manifest снимается только пользователем. Продолжение прогона: «продолжи автопилот».
@@ -67,9 +69,9 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 
 ## Scene 05 photo particle reveal
 
-`GalleryScene` reveals additional photos only for the focused memory. Particles assemble on the seconds-based `galleryMotion.time` timeline before the original photo becomes visible. A slot waits for its texture before starting, and repeated focus changes, reduced motion, and GPU cleanup must remain safe. Shared reveal timing lives in `frontend/src/scenes/shared/progressivePhotoReveal.ts`; deterministic particle geometry and slot timing live in `frontend/src/scenes/gallery/collage.ts`.
+Additional photos mount only for the focused memory and reveal through the shared progressive photo shader after particle assembly. Defaults are 5s assembly and 2.5s reveal; wait for each texture before starting and clean up on focus changes. Layout A places extras beside the main image; B stacks them above it to stay clear of the columns and floor. Preserve source aspect ratios, 90% default photo scale, and a 0.3m gap. Camera fitting uses loaded photo aspects and the actual collage bounds; the selected collage stays visible through the focus dolly. Keep particles on the selected collage and use the shared WebGL renderer.
 
-Gallery collage settings live under `scenes.gallery` in Scene Composer schema v23. Per-memory opt-out uses stable event IDs in `frontend/src/scenes/gallery/galleryCollageConfig.ts`. The eight DEV controls cover count, size, noise, depth, glow, assembly duration, photo reveal duration, and stagger. Keep all particles limited to the focused memory and the shared WebGL renderer.
+Gallery collage settings live under `scenes.gallery` in Scene Composer schema v24. Defaults: `collageParticleCount=640` (96–2400), assembly 5s (5–10), reveal 2.5s (1.5–6), photo scale 0.9 (0.5–1), and photo gap 0.3m (0.1–1.5). Existing particle size, noise, depth, glow, and stagger controls remain in `frontend/src/debug/DeveloperPanel.tsx`. Per-memory opt-out uses stable event IDs in `frontend/src/scenes/gallery/galleryCollageConfig.ts`.
 <!-- autopilot:end -->
 
 

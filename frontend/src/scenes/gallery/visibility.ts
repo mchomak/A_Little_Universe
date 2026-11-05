@@ -25,6 +25,12 @@ export function galleryDistanceOpacity(distance: number, start = GALLERY_FADE_ST
   return GALLERY_DISTANCE_SILHOUETTE_OPACITY * (1 - smooth(Math.max(0, Math.min(1, t))))
 }
 
+/** Keep the selected collage legible during a camera fit that deliberately moves farther back. */
+export function galleryFocusedPhotoDistanceOpacity(distance: number, selected: boolean, focusMix: number) {
+  if (selected && Number.isFinite(focusMix) && focusMix > 0.001) return 1
+  return galleryDistanceOpacity(distance)
+}
+
 /** The distant arch stays visible as a moonlit outline, then eases brighter as the viewer approaches. */
 export function galleryArchDistanceOpacity(distance: number) {
   if (!Number.isFinite(distance) || distance < 0) return 0.55
