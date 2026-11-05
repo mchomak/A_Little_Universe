@@ -299,6 +299,7 @@ export interface SceneComposerConfig {
       collageStaggerDelay: number
       collagePhotoScale: number
       collagePhotoGap: number
+      captionFontSize: number
       moonBrightness: number
       moonSize: number
       cloudDriftVariation: number
@@ -502,6 +503,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       collageParticleCount: 90000, collageParticleSize: 2.6, collageNoiseStrength: 0.035, collageDepth: 0.42,
       collageGlow: 1, collageAssembleDuration: 5, collageRevealDuration: 2.5, collageStaggerDelay: 0.14,
       collagePhotoScale: 0.9, collagePhotoGap: 0.3,
+      captionFontSize: 29,
       moonBrightness: 0.8, moonSize: 1.2,
       cloudDriftVariation: 0.65,
       cloudLayers: {
@@ -950,6 +952,7 @@ function normalizeGallery(input: Record<string, unknown> | undefined): SceneComp
     collageStaggerDelay: numberValue(input?.collageStaggerDelay, d.collageStaggerDelay, 0, 0.5),
     collagePhotoScale: numberValue(input?.collagePhotoScale, d.collagePhotoScale, 0.5, 1),
     collagePhotoGap: numberValue(input?.collagePhotoGap, d.collagePhotoGap, 0.1, 1.5),
+    captionFontSize: numberValue(input?.captionFontSize, d.captionFontSize, 20, 40, true),
     moonBrightness: numberValue(input?.moonBrightness, d.moonBrightness, 0, 2),
     moonSize: numberValue(input?.moonSize, d.moonSize, 0.4, 1.8),
     cloudDriftVariation: numberValue(input?.cloudDriftVariation, d.cloudDriftVariation, 0, 1),

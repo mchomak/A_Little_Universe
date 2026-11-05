@@ -102,6 +102,14 @@ describe('gallery collage camera fit', () => {
     expect(long.minY).toBeLessThan(short.minY)
   })
 
+  it('includes the configured caption text size in focused collage bounds', () => {
+    const exhibit = memory(0)
+    const standard = getGalleryCollageCameraFrame(exhibit, { ...settings, captionFontSize: 29 })
+    const larger = getGalleryCollageCameraFrame(exhibit, { ...settings, captionFontSize: 40 })
+
+    expect(larger.height).toBeGreaterThan(standard.height)
+  })
+
   it('centers the camera on a three-photo B frame to keep the selected image inside the corridor fade range', () => {
     const exhibit = memory(3, 1.36, -1)
     const frame = getGalleryCollageCameraFrame(exhibit, { ...settings, galleryLayoutVariant: 'between-columns' }, {

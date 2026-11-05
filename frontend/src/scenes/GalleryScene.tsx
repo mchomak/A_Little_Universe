@@ -4,7 +4,7 @@ import type { RefObject } from 'react'
 import { galleryColumnOpacity, galleryDistanceOpacity, galleryFocusOpacity, galleryFocusedPhotoDistanceOpacity } from './gallery/visibility'
 import { galleryPhotoBlurAtFocus, galleryPhotoLightAtFocus } from './gallery/artDirection'
 import { createFrameParticleGeometry } from './gallery/frameParticles'
-import { getGalleryCaptionLayout, GALLERY_CAPTION_BODY_FONT_SIZE, GALLERY_CAPTION_BODY_LINE_HEIGHT, GALLERY_CAPTION_CANVAS_WIDTH, GALLERY_CAPTION_GAP, GALLERY_CAPTION_HORIZONTAL_PADDING, GALLERY_CAPTION_PLANE_WIDTH, GALLERY_CAPTION_SECTION_GAP, GALLERY_CAPTION_TITLE_FONT_SIZE, GALLERY_CAPTION_TITLE_LINE_HEIGHT, GALLERY_CAPTION_VERTICAL_PADDING, type GalleryCaptionLayout } from './gallery/captionLayout'
+import { getGalleryCaptionLayout, GALLERY_CAPTION_CANVAS_WIDTH, GALLERY_CAPTION_GAP, GALLERY_CAPTION_HORIZONTAL_PADDING, GALLERY_CAPTION_PLANE_WIDTH, type GalleryCaptionLayout } from './gallery/captionLayout'
 import { createGalleryDustGeometry, getGalleryDustCount } from './gallery/dust'
 import type { GalleryArtSettings } from './gallery/reflections'
 import { createMemoryThreadAccentGeometry, createMemoryThreadGeometry, createMemoryThreadMaterial, createMemoryThreadPaths, GALLERY_MEMORY_RENDER_ORDER, GALLERY_THREAD_RENDER_ORDER, memoryThreadOpacity, updateMemoryThreadMaterial } from './gallery/threads'
@@ -28,32 +28,34 @@ import { MoonlitWorld } from './gallery/MoonlitWorld'
 import { createProgressivePhotoRevealMap, progressivePhotoRevealGLSL } from './shared/progressivePhotoReveal'
 import { processMemorySignalBaselinePixels, type MemorySignalBaselineSample } from '../iris-lab/memorySignalBaseline'
 import firstPhotoUrl from '../assets/start_img.jpg'
+import { ART_FONT_CATALOG, loadArtFont } from '../systems/scene-config/fontCatalog'
+import type { ArtFontId } from '../systems/scene-config/fontIds'
 
 function canvasTexture(draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void, w = 768, h = 768) {
   const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h
   const ctx = canvas.getContext('2d')!; draw(ctx, w, h)
   const texture = new CanvasTexture(canvas); texture.colorSpace = SRGBColorSpace; return texture
 }
-function captionTexture(layout: GalleryCaptionLayout) {
+function captionTexture(layout: GalleryCaptionLayout, titleFontFamily: string) {
   return canvasTexture((ctx, width) => {
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
-    let y = GALLERY_CAPTION_VERTICAL_PADDING
+    let y = layout.verticalPadding
     if (layout.titleLines.length) {
       ctx.fillStyle = '#d8c5b7'
-      ctx.font = `${GALLERY_CAPTION_TITLE_FONT_SIZE}px Georgia, serif`
+      ctx.font = `400 ${layout.titleFontSize}px "${titleFontFamily}", Georgia, serif`
       for (const line of layout.titleLines) {
         ctx.fillText(line, width / 2, y, width - GALLERY_CAPTION_HORIZONTAL_PADDING * 2)
-        y += GALLERY_CAPTION_TITLE_LINE_HEIGHT
+        y += layout.titleLineHeight
       }
     }
     if (layout.captionLines.length) {
-      if (layout.titleLines.length) y += GALLERY_CAPTION_SECTION_GAP
+      if (layout.titleLines.length) y += layout.sectionGap
       ctx.fillStyle = '#f5dbc9'
-      ctx.font = `${GALLERY_CAPTION_BODY_FONT_SIZE}px Georgia, serif`
+      ctx.font = `${layout.bodyFontSize}px Georgia, serif`
       for (const line of layout.captionLines) {
         ctx.fillText(line, width / 2, y, width - GALLERY_CAPTION_HORIZONTAL_PADDING * 2)
-        y += GALLERY_CAPTION_BODY_LINE_HEIGHT
+        y += layout.bodyLineHeight
       }
     }
   }, GALLERY_CAPTION_CANVAS_WIDTH, layout.canvasHeight)
@@ -483,7 +485,7 @@ function Photo({ url, width, height, fallback, onAspect, material }: { url: stri
 }
 function setMaterialAlpha(saved: { material: Material; opacity: number; transparent: boolean; depthWrite: boolean }, alpha: number) { saved.material.opacity = saved.opacity * alpha; saved.material.transparent = alpha < 1 || saved.transparent; saved.material.depthWrite = alpha < 1 ? false : saved.depthWrite }
 function setFocusFog(material: Material, focus: boolean) { if (material instanceof MeshBasicMaterial && material.fog === focus) { material.fog = !focus; material.needsUpdate = true } }
-function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: GalleryMemory; reducedMotion: boolean; halo: CanvasTexture; paused: boolean; settings: GalleryArtSettings }) {
+function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily }: { memory: GalleryMemory; reducedMotion: boolean; halo: CanvasTexture; paused: boolean; settings: GalleryArtSettings; titleFontFamily: string }) {
   const materials = useRef<{ material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[]>([])
   const group = useRef<Group>(null)
   const supportGroup = useRef<Group>(null)
@@ -498,8 +500,8 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   const photoNormal = useMemo(() => new Vector3(), [])
   const moonColor = useMemo(() => new Color(), [])
   const firstPhoto = useLoader(TextureLoader, firstPhotoUrl)
-  const captionLayout = useMemo(() => getGalleryCaptionLayout(memory.title, memory.caption), [memory.caption, memory.title])
-  const caption = useMemo(() => captionLayout.canvasHeight ? captionTexture(captionLayout) : null, [captionLayout])
+  const captionLayout = useMemo(() => getGalleryCaptionLayout(memory.title, memory.caption, settings.captionFontSize), [memory.caption, memory.title, settings.captionFontSize])
+  const caption = useMemo(() => captionLayout.canvasHeight ? captionTexture(captionLayout, titleFontFamily) : null, [captionLayout, titleFontFamily])
   const photoMaterial = useMemo(() => photoShaderMaterial(firstPhoto), [firstPhoto])
   const photoMaterialRef = useRef(photoMaterial)
   const frameMaterial = useMemo(() => frameShaderMaterial(), [])
@@ -867,6 +869,16 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
   const gl = useThree(s => s.gl)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const settings = config.scenes.gallery
+  const prologueFont = ART_FONT_CATALOG.find(({ id }) => id === config.scenes.prologue.fontFamily) ?? ART_FONT_CATALOG[0]!
+  const [loadedTitleFontId, setLoadedTitleFontId] = useState<ArtFontId | null>(null)
+  useEffect(() => {
+    let active = true
+    void loadArtFont(prologueFont.id).then((loaded) => {
+      if (active) setLoadedTitleFontId(loaded ? prologueFont.id : null)
+    })
+    return () => { active = false }
+  }, [prologueFont.id])
+  const titleFontFamily = loadedTitleFontId === prologueFont.id ? prologueFont.family : 'Georgia'
   const quality = state.quality === 'low' || config.global.quality === 'low' ? 'low' : 'standard'
   const skyColor = useMemo(() => new Color('#020713').lerp(new Color('#071d42'), Math.max(0, Math.min(1, settings.cloudCoolTint / 1.5))), [settings.cloudCoolTint])
   const halo = useMemo(() => canvasTexture((ctx, w, h) => { const gradient = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gradient.addColorStop(0, 'rgba(244,248,255,.34)'); gradient.addColorStop(.24, 'rgba(219,229,244,.13)'); gradient.addColorStop(1, 'rgba(206,220,239,0)'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h) }, 256, 256), [])
@@ -879,7 +891,7 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
     <MoonlitWorld settings={settings} quality={quality} halo={halo} reducedMotion={reducedMotion} />
     <GalleryArch settings={settings} />
     <Dust low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
-    {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} />)}
+    {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} titleFontFamily={titleFontFamily} />)}
     <MemoryThreads settings={settings} low={quality === 'low'} paused={state.paused} halo={halo} />
     <FloorLights halo={halo} low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
     <Outro />

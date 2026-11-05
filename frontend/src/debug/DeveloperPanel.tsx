@@ -370,6 +370,10 @@ const GALLERY_COLLAGE_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.collageStaggerDelay', label: 'Задержка между фото', unit: 'с', min: 0, max: 0.5, step: 0.01 },
 ]
 
+const GALLERY_CAPTION_CONTROLS: readonly NumericControl[] = [
+  { path: 'scenes.gallery.captionFontSize', label: 'Размер текста подписей', unit: 'px', min: 20, max: 40, step: 1 },
+]
+
 const GALLERY_CLOUD_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
   ...([
     { id: 'far', name: 'Far Clouds · дальний слой', maxCount: 12 },
@@ -931,6 +935,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         {selected === 'gallery' && <details open><summary>Scene 05 — Лунная галерея</summary>
           {color('scenes.gallery.moonLightColor', 'Цвет лунного света')}
           <details><summary>Частицы дополнительных фото</summary>{GALLERY_COLLAGE_CONTROLS.map(range)}</details>
+          <details open><summary>Подписи под фото</summary>{GALLERY_CAPTION_CONTROLS.map(range)}</details>
           <details open><summary>Колонны и геометрия галереи</summary>
             <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-gallery-columnVisible">Показывать колонны</label>{config.scenes.gallery.columnVisible !== defaultAtPath('scenes.gallery.columnVisible') && <button type="button" className="inspector-reset" aria-label="Сбросить видимость колонн" onClick={() => { void resetField('scenes.gallery.columnVisible') }}>↺</button>}</div><input id="composer-scenes-gallery-columnVisible" data-testid="composer-scenes-gallery-columnVisible" type="checkbox" checked={config.scenes.gallery.columnVisible} onChange={(event) => { void changeField('scenes.gallery.columnVisible', event.target.checked) }} /></div>
             {GALLERY_LAYOUT_CONTROLS.map(range)}

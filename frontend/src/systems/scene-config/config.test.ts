@@ -221,6 +221,17 @@ it('keeps collage settings within their inclusive DEV limits', () => {
   })
 })
 
+it('provides a bounded gallery caption font size', () => {
+  const minimum = normalizeConfig({ schemaVersion: 24, scenes: { gallery: { captionFontSize: 20 } } })
+  const maximum = normalizeConfig({ schemaVersion: 24, scenes: { gallery: { captionFontSize: 40 } } })
+  const outOfRange = normalizeConfig({ schemaVersion: 24, scenes: { gallery: { captionFontSize: 41 } } })
+
+  expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.captionFontSize).toBe(29)
+  expect(minimum.scenes.gallery.captionFontSize).toBe(20)
+  expect(maximum.scenes.gallery.captionFontSize).toBe(40)
+  expect(outOfRange.scenes.gallery.captionFontSize).toBe(29)
+})
+
 it('migrates and bounds the adjustable gallery aisle width in schema v15', () => {
   const oldSettings = normalizeConfig({ schemaVersion: 14, scenes: { gallery: { moonBrightness: 1.1 } } })
   const customized = normalizeConfig({ schemaVersion: 15, scenes: { gallery: {

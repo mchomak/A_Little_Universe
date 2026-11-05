@@ -21,6 +21,7 @@ export interface GalleryCollageCameraFrame {
 interface GalleryCollageCameraSettings {
   readonly collagePhotoScale: number
   readonly collagePhotoGap: number
+  readonly captionFontSize?: number
   readonly galleryLayoutVariant?: GalleryLayoutVariant
 }
 
@@ -90,7 +91,7 @@ export function getGalleryCollageCameraFrame(
   })
 
   if (memory.title.trim() || memory.caption.trim()) {
-    const captionHeight = getGalleryCaptionLayout(memory.title, memory.caption).worldHeight
+    const captionHeight = getGalleryCaptionLayout(memory.title, memory.caption, settings.captionFontSize).worldHeight
     minX = Math.min(minX, -GALLERY_CAPTION_PLANE_WIDTH / 2)
     maxX = Math.max(maxX, GALLERY_CAPTION_PLANE_WIDTH / 2)
     minY = Math.min(minY, -mainHeight / 2 - GALLERY_CAPTION_GAP - captionHeight)
