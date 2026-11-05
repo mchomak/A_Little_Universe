@@ -67,4 +67,4 @@
 
 | 2026-11-04 | `2026-11-04-gallery-particle-reveal` | completed | Photo particles, progressive reveal and gallery settings |
 
-| 2026-11-05 | `2026-11-05-review-selective-integration--wip` | в работе | ? |
+| 2026-11-05 | `2026-11-05-review-selective-integration` | сдан с оговорками | 776 tests; visual MacBook and two-extra collage pending |

@@ -1,7 +1,7 @@
 window.STATE =
 {
   "slug": "review-selective-integration",
-  "dir": "2026-11-05-review-selective-integration--wip",
+  "dir": "2026-11-05-review-selective-integration",
   "title": "Review 02 / 04 / 05",
   "mode": "full",
   "depth": "normal",
@@ -11,8 +11,8 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-11-05T16:43:00+03:00",
-  "updatedAt": "2026-11-05T17:30:56+03:00",
-  "finishedAt": null,
+  "updatedAt": "2026-11-05T17:34:55+03:00",
+  "finishedAt": "2026-11-05T17:34:55+03:00",
   "stages": [
     {
       "id": "preflight",
@@ -58,8 +58,9 @@ window.STATE =
     },
     {
       "id": "final",
-      "status": "active",
-      "startedAt": "2026-11-05T17:30:56+03:00"
+      "status": "done",
+      "startedAt": "2026-11-05T17:30:56+03:00",
+      "finishedAt": "2026-11-05T17:34:55+03:00"
     }
   ],
   "tickets": [
@@ -113,8 +114,10 @@ window.STATE =
       ],
       "wave": 3,
       "zone": "verification",
-      "status": "in-progress",
-      "startedAt": "2026-11-05T17:16:03+03:00"
+      "status": "done",
+      "startedAt": "2026-11-05T17:16:03+03:00",
+      "finishedAt": "2026-11-05T17:34:55+03:00",
+      "note": "776 tests; browser and source audit; two-extra visual and MacBook M2 remain unverified"
     }
   ],
   "coverage": {
