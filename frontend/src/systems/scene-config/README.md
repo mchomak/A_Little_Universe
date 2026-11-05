@@ -1,6 +1,6 @@
 # Scene Composer configuration
 
-`SceneComposerConfig` is immutable schema version 25. `normalizeConfig(input)` accepts partial JSON from schema versions 1–25, discards unknown keys, and fills missing or invalid values with current defaults. The merged configuration preserves known legacy prologue, growth, gallery, identity, and galaxy settings. It includes the opening-background crop profile, current scene 02 growth and seed controls, independently tunable settled cloud groups for scenes 02–03, Lily appearance, growth vortex and bloom pollen, and gallery controls for water and clouds, Ionic columns, the arch, and independent A/B photo layouts. Older saved presets remain importable and are normalized to the current defaults.
+`SceneComposerConfig` is immutable schema version 26. `normalizeConfig(input)` accepts partial JSON from schema versions 1–26, discards unknown keys, and fills missing or invalid values with current defaults. The merged configuration preserves known legacy prologue, growth, gallery, identity, and galaxy settings. It includes the opening-background crop profile, current scene 02 growth and seed controls, 12 settled cloud volumes across three independently tunable groups for scenes 02–03, Lily appearance, growth vortex and bloom pollen, and gallery controls for water and clouds, Ionic columns, the arch, and independent A/B photo layouts. Older saved presets remain importable and are normalized to the current defaults.
 Schema v23 added bounded collage particle settings for the focused gallery memory. Schema v24 keeps those settings, raises minimum assembly and reveal durations to 5 and 1.5 seconds, and adds photo scale and spacing controls. The collage particle density defaults to 90,000, with a 96–90,000 range so existing customized presets remain valid while the 300 px Memory Signal raster can use its full image area. Older snapshots carrying the previous 640 default migrate to the new default. Older v23 snapshots with shorter durations import with the v24 minimums.
 
 The public store is:
@@ -20,7 +20,7 @@ An optional production override can contain only values that differ from the def
 
 ```json
 {
-  "schemaVersion": 25,
+  "schemaVersion": 26,
   "global": { "quality": "low" },
   "scenes": {
     "openingBackground": {

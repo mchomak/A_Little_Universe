@@ -1,4 +1,4 @@
-﻿import { expect, it } from 'vitest'
+import { expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, resetConfig, updateConfig } from '../systems/scene-config/config'
 import { captureScenePreset, parseScenePreset, scenePresetPatch } from './scenePresetModel'
 
@@ -19,7 +19,7 @@ it('captures the complete scene and its shared opening background', () => {
 
   expect(preset).toMatchObject({
     formatVersion: 1,
-    configSchemaVersion: 25,
+    configSchemaVersion: 26,
     name: 'Long growth',
     scope: 'growth',
     scene: config.scenes.growth,

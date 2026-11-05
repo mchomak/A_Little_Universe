@@ -57,6 +57,8 @@ const GROWTH_CLOUD_LAYOUT: readonly GrowthCloudTemplate[] = [
   { id: 'far-group-right-upper', seed: 101, position: [3.45, -0.6, -6.2], radii: [2.8, 1.2, 1.8], cloudLayer: 'far', raySteps: 5, persistent: true, lightScale: 1 },
   { id: 'near-group-right-upper', seed: 113, position: [2.65, 0, 2.8], radii: [0.96, 0.68, 1.02], fallProgress: 0.62, lightScale: 1 },
   { id: 'far-group-left-mid', seed: 127, position: [-3.85, -0.1, -6.6], radii: [2.9, 1.15, 2], cloudLayer: 'far', raySteps: 5, persistent: true, lightScale: 1 },
+  { id: 'far-group-inner-left', seed: 251, position: [-1.55, -0.85, -7.05], radii: [2.55, 1.05, 1.75], cloudLayer: 'far', raySteps: 5, persistent: true, lightScale: 1 },
+  { id: 'far-group-inner-right', seed: 269, position: [1.65, 0.65, -7.35], radii: [2.6, 1.1, 1.8], cloudLayer: 'far', raySteps: 5, persistent: true, lightScale: 1 },
   { id: 'near-group-left-mid', seed: 131, position: [-3.55, 0, 3.15], radii: [1.3, 1.02, 0.88], fallProgress: 0.72, lightScale: 1 },
   { id: 'far-group-right-mid', seed: 149, position: [3.7, 0, -6.05], radii: [1.22, 0.77, 1.54], fallProgress: 0.75, lightScale: 1 },
   { id: 'near-group-right-low', seed: 157, position: [3.2, 0, 2.55], radii: [1.02, 0.7, 1.3], fallProgress: 0.84, lightScale: 1 },
@@ -64,8 +66,12 @@ const GROWTH_CLOUD_LAYOUT: readonly GrowthCloudTemplate[] = [
   // Settled groups surround the floating island at varied depths instead of forming a low floor.
   { id: 'island-back-left', seed: 179, position: [-4.45, -0.75, -1.45], radii: [2.25, 1.05, 1.55], cloudLayer: 'sides', raySteps: 8, persistent: true, lightScale: 1 },
   { id: 'island-back-right', seed: 191, position: [4.55, 0, -1.1], radii: [2.1, 1.1, 1.7], cloudLayer: 'sides', raySteps: 8, persistent: true, lightScale: 1 },
+  { id: 'island-side-left-front', seed: 257, position: [-4.15, 0.25, 1.1], radii: [2.2, 1.1, 1.55], cloudLayer: 'sides', raySteps: 8, persistent: true, lightScale: 1 },
+  { id: 'island-side-right-front', seed: 263, position: [4.2, -0.3, 1.45], radii: [2.15, 1.05, 1.6], cloudLayer: 'sides', raySteps: 8, persistent: true, lightScale: 1 },
   { id: 'island-far-left', seed: 199, position: [-2.55, -0.65, 1.7], radii: [2.45, 1.05, 1.45], cloudLayer: 'foreground', raySteps: 8, persistent: true, lightScale: 1 },
   { id: 'island-far-right', seed: 211, position: [2.55, 0.1, 2.1], radii: [2.35, 1.1, 1.5], cloudLayer: 'foreground', raySteps: 8, persistent: true, lightScale: 1 },
+  { id: 'island-front-left', seed: 271, position: [-1.2, -1, 3.35], radii: [2.4, 1.05, 1.5], cloudLayer: 'foreground', raySteps: 8, persistent: true, lightScale: 1 },
+  { id: 'island-front-right', seed: 277, position: [1.25, 0.35, 3.65], radii: [2.4, 1.1, 1.55], cloudLayer: 'foreground', raySteps: 8, persistent: true, lightScale: 1 },
   { id: 'near-group-left-lower', seed: 223, position: [-3.35, 0, 2.6], radii: [1.24, 0.7, 1.1], fallProgress: 0.79, lightScale: 1 },
   { id: 'far-group-right-lower', seed: 227, position: [3.9, 0, -5.45], radii: [1.36, 0.92, 1.2], fallProgress: 0.8, lightScale: 1 },
   { id: 'near-group-right-deep', seed: 239, position: [3.45, 0, 3.45], radii: [1.06, 0.76, 1.16], fallProgress: 0.94, lightScale: 1 },
@@ -223,7 +229,7 @@ export function getGrowthCloudMasses(
   scale: number,
   options: GrowthCloudLayoutOptions = {},
 ): GrowthCloudMass[] {
-  const safeCount = Number.isFinite(count) ? Math.max(0, Math.min(GROWTH_CLOUD_LAYOUT.length, Math.floor(count))) : 18
+  const safeCount = Number.isFinite(count) ? Math.max(0, Math.min(GROWTH_CLOUD_LAYOUT.length, Math.floor(count))) : 24
   const safeScale = Number.isFinite(scale) ? Math.max(0.4, Math.min(2, scale)) : 1
   const fallDistance = clampFinite(options.fallDistance ?? DEFAULT_CLOUD_LAYOUT_OPTIONS.fallDistance, 1, 40, DEFAULT_CLOUD_LAYOUT_OPTIONS.fallDistance)
   const viewportHeight = clampFinite(options.viewportHeight ?? DEFAULT_CLOUD_LAYOUT_OPTIONS.viewportHeight, 1, 20, DEFAULT_CLOUD_LAYOUT_OPTIONS.viewportHeight)
@@ -284,9 +290,12 @@ export function getGrowthCloudMasses(
     const pathCount = Math.min(pathCandidates.length, requestedPathCount)
     const selectedPath = spreadSelect(pathCandidates, Math.min(pathCount, safeCount))
     let remaining = safeCount - selectedPath.length
+    const configuredLayerCount = GROWTH_CLOUD_LAYER_IDS.reduce((total, id) => total + cloudLayers[id].count, 0)
+    let remainingLayerBudget = Math.min(configuredLayerCount, safeCount < 8 ? 1 : Math.floor(safeCount * 0.5))
     const selectedLayers = GROWTH_CLOUD_LAYER_IDS.flatMap((id) => {
-      const selected = spreadSelect(layerCandidates.get(id) ?? [], Math.min(cloudLayers[id].count, remaining))
+      const selected = spreadSelect(layerCandidates.get(id) ?? [], Math.min(cloudLayers[id].count, remaining, remainingLayerBudget))
       remaining -= selected.length
+      remainingLayerBudget -= selected.length
       return selected
     })
     const otherCount = remaining
@@ -298,7 +307,7 @@ export function getGrowthCloudMasses(
     return {
       ...mass,
       position: [
-        (mass.position[0] + (layer ? Math.sign(mass.position[0]) * layer.distance : 0)) * positionScale,
+        (mass.position[0] + (layer ? Math.sign(mass.position[0]) * layer.distance + layer.offsetX : 0)) * positionScale,
         mass.position[1] + (layer?.height ?? 0),
         mass.position[2] * safeScale + (layer?.depth ?? 0),
       ] as const,

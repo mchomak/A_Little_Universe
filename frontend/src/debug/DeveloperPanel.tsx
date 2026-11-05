@@ -166,7 +166,7 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.growth.seedImpactLifetime', label: 'Время жизни частиц удара', unit: 'с', min: 0.2, max: 1.6, step: 0.05 },
   ] },
   { name: 'Облака', controls: [
-    { path: 'scenes.growth.cloudCount', label: 'Количество облаков', unit: 'шт.', min: 0, max: 24, step: 1 },
+    { path: 'scenes.growth.cloudCount', label: 'Количество облаков', unit: 'шт.', min: 0, max: 30, step: 1 },
     { path: 'scenes.growth.cloudDensity', label: 'Плотность облаков', unit: '×', min: 0, max: 2, step: 0.05 },
     { path: 'scenes.growth.cloudScale', label: 'Масштаб облаков', unit: '×', min: 0.4, max: 2, step: 0.05 },
     { path: 'scenes.growth.cloudDriftSpeed', label: 'Скорость облаков', unit: '×', min: 0, max: 2, step: 0.05 },
@@ -194,34 +194,37 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
 
 const GROWTH_CLOUD_LAYER_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
   { name: 'Дальние облака · фон', controls: [
-    { path: 'scenes.growth.cloudLayers.far.count', label: 'Число облаков', unit: 'шт.', min: 0, max: 2, step: 1 },
+    { path: 'scenes.growth.cloudLayers.far.count', label: 'Число облаков', unit: 'шт.', min: 0, max: 4, step: 1 },
     { path: 'scenes.growth.cloudLayers.far.density', label: 'Плотность', unit: '×', min: 0, max: 1.8, step: 0.05 },
     { path: 'scenes.growth.cloudLayers.far.scale', label: 'Размер', unit: '×', min: 0.55, max: 2, step: 0.05 },
     { path: 'scenes.growth.cloudLayers.far.opacity', label: 'Непрозрачность', unit: '×', min: 0, max: 1.8, step: 0.05 },
     { path: 'scenes.growth.cloudLayers.far.brightness', label: 'Яркость', unit: '×', min: 0, max: 2, step: 0.05 },
-    { path: 'scenes.growth.cloudLayers.far.height', label: 'Высота', unit: 'м', min: -3, max: 3, step: 0.1 },
-    { path: 'scenes.growth.cloudLayers.far.distance', label: 'Разнос по сторонам', unit: 'м', min: 0, max: 8, step: 0.25 },
-    { path: 'scenes.growth.cloudLayers.far.depth', label: 'Глубина Z', unit: 'м', min: -8, max: 8, step: 0.25 },
+    { path: 'scenes.growth.cloudLayers.far.offsetX', label: 'Смещение группы по X', unit: 'м', min: -12, max: 12, step: 0.25 },
+    { path: 'scenes.growth.cloudLayers.far.height', label: 'Высота', unit: 'м', min: -6, max: 6, step: 0.1 },
+    { path: 'scenes.growth.cloudLayers.far.distance', label: 'Разнос по сторонам', unit: 'м', min: 0, max: 16, step: 0.25 },
+    { path: 'scenes.growth.cloudLayers.far.depth', label: 'Глубина Z', unit: 'м', min: -12, max: 12, step: 0.25 },
   ] },
   { name: 'Боковые облака · уровень острова', controls: [
-    { path: 'scenes.growth.cloudLayers.sides.count', label: 'Число облаков', unit: 'шт.', min: 0, max: 2, step: 1 },
+    { path: 'scenes.growth.cloudLayers.sides.count', label: 'Число облаков', unit: 'шт.', min: 0, max: 4, step: 1 },
     { path: 'scenes.growth.cloudLayers.sides.density', label: 'Плотность', unit: '×', min: 0, max: 1.8, step: 0.05 },
     { path: 'scenes.growth.cloudLayers.sides.scale', label: 'Размер', unit: '×', min: 0.55, max: 2, step: 0.05 },
     { path: 'scenes.growth.cloudLayers.sides.opacity', label: 'Непрозрачность', unit: '×', min: 0, max: 1.8, step: 0.05 },
     { path: 'scenes.growth.cloudLayers.sides.brightness', label: 'Яркость', unit: '×', min: 0, max: 2, step: 0.05 },
-    { path: 'scenes.growth.cloudLayers.sides.height', label: 'Высота', unit: 'м', min: -3, max: 3, step: 0.1 },
-    { path: 'scenes.growth.cloudLayers.sides.distance', label: 'Разнос по сторонам', unit: 'м', min: 0, max: 8, step: 0.25 },
-    { path: 'scenes.growth.cloudLayers.sides.depth', label: 'Глубина Z', unit: 'м', min: -8, max: 8, step: 0.25 },
+    { path: 'scenes.growth.cloudLayers.sides.offsetX', label: 'Смещение группы по X', unit: 'м', min: -12, max: 12, step: 0.25 },
+    { path: 'scenes.growth.cloudLayers.sides.height', label: 'Высота', unit: 'м', min: -6, max: 6, step: 0.1 },
+    { path: 'scenes.growth.cloudLayers.sides.distance', label: 'Разнос по сторонам', unit: 'м', min: 0, max: 16, step: 0.25 },
+    { path: 'scenes.growth.cloudLayers.sides.depth', label: 'Глубина Z', unit: 'м', min: -12, max: 12, step: 0.25 },
   ] },
   { name: 'Передний план · края острова', controls: [
-    { path: 'scenes.growth.cloudLayers.foreground.count', label: 'Число облаков', unit: 'шт.', min: 0, max: 2, step: 1 },
+    { path: 'scenes.growth.cloudLayers.foreground.count', label: 'Число облаков', unit: 'шт.', min: 0, max: 4, step: 1 },
     { path: 'scenes.growth.cloudLayers.foreground.density', label: 'Плотность', unit: '×', min: 0, max: 1.8, step: 0.05 },
     { path: 'scenes.growth.cloudLayers.foreground.scale', label: 'Размер', unit: '×', min: 0.55, max: 2, step: 0.05 },
     { path: 'scenes.growth.cloudLayers.foreground.opacity', label: 'Непрозрачность', unit: '×', min: 0, max: 1.8, step: 0.05 },
     { path: 'scenes.growth.cloudLayers.foreground.brightness', label: 'Яркость', unit: '×', min: 0, max: 2, step: 0.05 },
-    { path: 'scenes.growth.cloudLayers.foreground.height', label: 'Высота', unit: 'м', min: -3, max: 3, step: 0.1 },
-    { path: 'scenes.growth.cloudLayers.foreground.distance', label: 'Разнос по сторонам', unit: 'м', min: 0, max: 8, step: 0.25 },
-    { path: 'scenes.growth.cloudLayers.foreground.depth', label: 'Глубина Z', unit: 'м', min: -8, max: 8, step: 0.25 },
+    { path: 'scenes.growth.cloudLayers.foreground.offsetX', label: 'Смещение группы по X', unit: 'м', min: -12, max: 12, step: 0.25 },
+    { path: 'scenes.growth.cloudLayers.foreground.height', label: 'Высота', unit: 'м', min: -6, max: 6, step: 0.1 },
+    { path: 'scenes.growth.cloudLayers.foreground.distance', label: 'Разнос по сторонам', unit: 'м', min: 0, max: 16, step: 0.25 },
+    { path: 'scenes.growth.cloudLayers.foreground.depth', label: 'Глубина Z', unit: 'м', min: -12, max: 12, step: 0.25 },
   ] },
 ]
 
@@ -756,7 +759,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–25. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–26. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])

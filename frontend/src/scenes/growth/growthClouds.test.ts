@@ -75,17 +75,17 @@ describe('Scene 02 independent clouds', () => {
       - Math.min(...persistent.map(({ position }) => position[2]))
 
     expect(settings).toMatchObject({
-      cloudCount: 20, cloudDensity: 0.9, cloudOpacity: 0.48, cloudDriftSpeed: 0.28,
+      cloudCount: 24, cloudDensity: 0.9, cloudOpacity: 0.48, cloudDriftSpeed: 0.28,
       cloudShapeVariation: 0.72, cloudDepthVariation: 0.8,
     })
-    expect(field).toHaveLength(20)
-    expect(persistent).toHaveLength(6)
+    expect(field).toHaveLength(24)
+    expect(persistent).toHaveLength(12)
     expect(depthRange).toBeGreaterThan(1.5)
     expect(field.filter(({ pathCrossing, persistent }) => !pathCrossing && !persistent).every(({ position, radii }) =>
       Math.abs(position[0]) - radii[0] > 0.18,
     )).toBe(true)
     const settledGroups = persistent.filter(({ cloudLayer }) => cloudLayer)
-    expect(settledGroups).toHaveLength(6)
+    expect(settledGroups).toHaveLength(12)
     expect(settledGroups.every(({ position }) => position[1] > -1.6)).toBe(true)
   })
 
@@ -98,23 +98,25 @@ describe('Scene 02 independent clouds', () => {
     const sides = settled.filter((mass) => mass.cloudLayer === 'sides')
     const foreground = settled.filter((mass) => mass.cloudLayer === 'foreground')
 
-    expect([far, sides, foreground].map((group) => group.length)).toEqual([2, 2, 2])
+    expect([far, sides, foreground].map((group) => group.length)).toEqual([4, 4, 4])
     expect(far.every((mass) => mass.position[2] <= -8 && mass.position[1] > -1.6 && mass.raySteps === 5)).toBe(true)
-    expect(sides.map((mass) => Math.sign(mass.position[0])).sort()).toEqual([-1, 1])
+    expect(sides.map((mass) => Math.sign(mass.position[0])).sort()).toEqual([-1, -1, 1, 1])
     expect(sides.every((mass) => Math.abs(mass.position[0]) >= 4 && mass.position[1] > -1.4)).toBe(true)
     expect(foreground.every((mass) => mass.position[2] >= 2 && mass.radii[0] >= 2.2)).toBe(true)
 
     const adjustedLayers = {
       ...settings.cloudLayers,
       far: { ...settings.cloudLayers.far, count: 0 },
-      foreground: { ...settings.cloudLayers.foreground, count: 1, height: 1.25, depth: 4, distance: 1.2, scale: 0.75 },
+      foreground: { ...settings.cloudLayers.foreground, count: 1, offsetX: 3, height: 1.25, depth: 4, distance: 1.2, scale: 0.75 },
     }
     const adjusted = getGrowthCloudMasses(settings.cloudCount, settings.cloudScale, { ...options, cloudLayers: adjustedLayers })
     const adjustedForeground = adjusted.filter((mass) => mass.cloudLayer === 'foreground')
     expect(adjusted.filter((mass) => mass.cloudLayer === 'far')).toHaveLength(0)
     expect(adjustedForeground).toHaveLength(1)
-    expect(adjustedForeground[0]!.position[1]).toBeGreaterThan(foreground[0]!.position[1])
-    expect(adjustedForeground[0]!.position[2]).toBeGreaterThan(foreground[0]!.position[2])
+    const defaultMatchingMass = foreground.find((mass) => mass.id === adjustedForeground[0]!.id)!
+    expect(adjustedForeground[0]!.position[0] - defaultMatchingMass.position[0]).toBeCloseTo(4)
+    expect(adjustedForeground[0]!.position[1] - defaultMatchingMass.position[1]).toBeCloseTo(1.35)
+    expect(adjustedForeground[0]!.position[2]).toBeGreaterThan(defaultMatchingMass.position[2])
     expect(adjustedForeground[0]!.radii[0]).toBeLessThan(foreground[0]!.radii[0])
   })
 
@@ -157,7 +159,7 @@ describe('Scene 02 independent clouds', () => {
       .toBeGreaterThan(Math.max(...defaultField.map(({ position }) => position[1])) + 3)
     expect(maxDistanceField.filter(({ pathCrossing }) => pathCrossing).every(({ position, radii }) => position[1] + radii[1]
       < 15.3 - flight.viewportHeight / 2)).toBe(true)
-    expect(minimumDistanceField.every(({ position, radii }) => position[1] + radii[1]
+    expect(minimumDistanceField.filter(({ cloudLayer }) => !cloudLayer).every(({ position, radii }) => position[1] + radii[1]
       < minimumFallDistance - flight.viewportHeight / 2)).toBe(true)
     expect(minimumDistanceField.filter(({ pathCrossing }) => pathCrossing).length).toBeGreaterThan(0)
     expect(minimumDistanceField.filter(({ pathCrossing }) => pathCrossing).every(({ position }) =>
@@ -186,8 +188,8 @@ describe('Scene 02 independent clouds', () => {
       const baseline = uniformById.get(id)!.radii
       return radii.some((radius, axis) => Math.abs(radius - baseline[axis]!) > 0.01)
     })).toBe(true)
-    expect(Math.max(...deepField.map(({ position }) => Math.abs(position[2]))))
-      .toBeGreaterThan(Math.max(...shallowField.map(({ position }) => Math.abs(position[2]))))
+    expect(Math.max(...deepField.filter(({ cloudLayer }) => !cloudLayer).map(({ position }) => Math.abs(position[2]))))
+      .toBeGreaterThan(Math.max(...shallowField.filter(({ cloudLayer }) => !cloudLayer).map(({ position }) => Math.abs(position[2]))))
   })
 
   it('honors path density when only one cloud is requested', () => {
@@ -202,7 +204,7 @@ describe('Scene 02 independent clouds', () => {
   })
 
   it('bounds count and scale without allowing dense clouds to cover the center', () => {
-    expect(getGrowthCloudMasses(99, 2)).toHaveLength(24)
+    expect(getGrowthCloudMasses(99, 2)).toHaveLength(30)
     expect(getGrowthCloudMasses(-2, 1)).toHaveLength(0)
     for (const scale of [0.4, 1, 2]) {
       const masses = getGrowthCloudMasses(24, scale)
