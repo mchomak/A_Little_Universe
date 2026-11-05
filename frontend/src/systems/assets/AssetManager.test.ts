@@ -62,6 +62,17 @@ it('optional failure does not block or dilute mandatory progress', async () => {
   expect(finalProgress).toMatchObject({ completed: 1, total: 1 })
 })
 
+it('verifies packaged Electron assets without depending on Service Worker or CacheStorage', async () => {
+  const verifyOffline = vi.fn(async () => { throw new Error('CacheStorage is unavailable') })
+  const manager = new AssetManager({ bundled: true, loadModules: async () => undefined,
+    manifest: { version: 'electron-bundle', assets: [{ url: '/film.txt', kind: 'file', required: true, bytes: 4 }] },
+    fetch: async () => new Response('film'), verifyOffline,
+  })
+
+  await expect(manager.prepare()).resolves.toMatchObject({ ready: true, offline: 'verified', warnings: [] })
+  expect(verifyOffline).not.toHaveBeenCalled()
+})
+
 it('never claims offline readiness for a failed manifest response, and can retry cache verification', async () => {
   let broken = true
   const manifest = { version: 'cache-test', assets: [{ url: '/film.txt', kind: 'file' as const, required: true, bytes: 4 }] }

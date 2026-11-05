@@ -25,6 +25,7 @@ export interface PreparationResult {
 }
 export interface AssetManagerOptions {
   development?: boolean
+  bundled?: boolean
   manifest?: RuntimeManifest
   fetch?: typeof fetch
   loadModules: () => Promise<unknown>
@@ -91,7 +92,8 @@ export class AssetManager {
       return { ready: false, offline: 'unavailable', errors, warnings }
     }
     let offline: PreparationResult['offline'] = 'development'
-    if (this.options.development) warnings.push('Режим разработки: автономный запуск проверяется в production-сборке.')
+    if (this.options.bundled) offline = 'verified'
+    else if (this.options.development) warnings.push('Режим разработки: автономный запуск проверяется в production-сборке.')
     else {
       emit('cache', 'Почти готово…')
       try {

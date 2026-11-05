@@ -1,30 +1,30 @@
 window.STATE =
 {
-  "slug": "scene-presets",
-  "dir": "2026-11-03-scene-presets--wip",
-  "title": "Пресеты настроек сцен",
+  "slug": "macbook-native-release",
+  "dir": "2026-11-05-macbook-native-release--wip",
+  "title": "macOS приложение и локальная запись",
   "mode": "full",
   "depth": "normal",
   "polish": null,
   "tier": "T2",
-  "briefFile": "2026-11-03-brief.md",
+  "briefFile": "2026-11-05-brief.md",
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
-  "startedAt": "2026-11-03T17:55:00+03:00",
-  "updatedAt": "2026-11-03T19:45:22+03:00",
-  "finishedAt": "2026-11-03T19:45:22+03:00",
+  "startedAt": "2026-11-05T16:34:30+03:00",
+  "updatedAt": "2026-11-05T17:19:04+03:00",
+  "finishedAt": null,
   "stages": [
     {
       "id": "preflight",
       "status": "done",
-      "startedAt": "2026-11-03T17:55:00+03:00",
-      "finishedAt": "2026-11-03T18:02:20+03:00"
+      "startedAt": "2026-11-05T16:34:30+03:00",
+      "finishedAt": "2026-11-05T16:34:30+03:00"
     },
     {
       "id": "manifest",
       "status": "done",
-      "startedAt": "2026-11-03T18:02:20+03:00",
-      "finishedAt": "2026-11-03T18:03:54+03:00"
+      "startedAt": "2026-11-05T16:34:30+03:00",
+      "finishedAt": "2026-11-05T16:35:10+03:00"
     },
     {
       "id": "briefing",
@@ -34,38 +34,34 @@ window.STATE =
     {
       "id": "spec",
       "status": "done",
-      "startedAt": "2026-11-03T18:03:54+03:00",
-      "finishedAt": "2026-11-03T18:19:49+03:00"
+      "startedAt": "2026-11-05T16:35:10+03:00",
+      "finishedAt": "2026-11-05T16:36:15+03:00"
     },
     {
       "id": "plan",
       "status": "done",
-      "startedAt": "2026-11-03T18:19:49+03:00",
-      "finishedAt": "2026-11-03T18:24:23+03:00",
-      "note": "4 таска, ярус T2"
+      "startedAt": "2026-11-05T16:36:15+03:00",
+      "finishedAt": "2026-11-05T16:36:15+03:00",
+      "note": "3 последовательных этапа"
     },
     {
       "id": "build",
-      "status": "done",
-      "startedAt": "2026-11-03T18:24:23+03:00",
-      "note": "Таск 01 из 4 — формат пресета и снимок сцены",
-      "finishedAt": "2026-11-03T19:45:22+03:00"
+      "status": "active",
+      "startedAt": "2026-11-05T16:36:15+03:00"
     },
     {
       "id": "review",
-      "status": "done",
-      "finishedAt": "2026-11-03T19:45:22+03:00"
+      "status": "pending"
     },
     {
       "id": "final",
-      "status": "done",
-      "finishedAt": "2026-11-03T19:45:22+03:00"
+      "status": "pending"
     }
   ],
   "requirements": {
-    "total": 5,
-    "done": 5,
-    "inTicket": 0,
+    "total": 106,
+    "done": 0,
+    "inTicket": 106,
     "inSpec": 0,
     "placeholder": 0,
     "deferred": 0,
@@ -74,119 +70,91 @@ window.STATE =
   "tickets": [
     {
       "id": "01",
-      "title": "Формат и преобразование полного пресета сцены",
+      "title": "Автономное macOS приложение",
       "requirements": [
-        "R02",
-        "R04",
-        "R05"
+        "R01"
       ],
       "blockedBy": [],
       "wave": 1,
       "zone": [
-        "frontend/src/debug/scenePresetModel.ts"
+        "desktop",
+        "frontend"
       ],
       "status": "done",
       "retries": 0,
       "repairs": 0,
       "handoffs": 0,
-      "startedAt": "2026-11-03T18:35:32+03:00",
-      "finishedAt": "2026-11-03T19:45:22+03:00"
+      "startedAt": "2026-11-05T16:36:21+03:00",
+      "finishedAt": "2026-11-05T17:19:04+03:00",
+      "tests": {
+        "passed": 764,
+        "failed": 0
+      },
+      "concerns": [
+        "Сборка и запуск macOS ARM64 требуют macOS; на Windows не проверены."
+      ]
     },
     {
       "id": "02",
-      "title": "Файловое хранилище и локальный API пресетов",
+      "title": "Подтверждение и независимая запись",
       "requirements": [
-        "R03",
-        "R05",
-        "R03.1",
-        "R03.2"
+        "R01"
       ],
       "blockedBy": [
         "01"
       ],
       "wave": 2,
       "zone": [
-        "frontend/dev-scene-preset-store.ts",
-        "frontend/vite.config.ts"
+        "desktop",
+        "frontend"
       ],
-      "status": "done",
+      "status": "in-progress",
       "retries": 0,
       "repairs": 0,
       "handoffs": 0,
-      "finishedAt": "2026-11-03T19:45:22+03:00"
+      "startedAt": "2026-11-05T17:19:04+03:00"
     },
     {
       "id": "03",
-      "title": "Управление пресетами в Scene Editor",
+      "title": "Объединение, восстановление и проверки",
       "requirements": [
-        "R01",
-        "R03",
-        "R04",
-        "R01.1",
-        "R03.1",
-        "R03.2"
+        "R01"
       ],
       "blockedBy": [
         "02"
       ],
       "wave": 3,
       "zone": [
-        "frontend/src/debug/scenePresetApi.ts",
-        "frontend/src/debug/ScenePresetControls.tsx"
+        "desktop",
+        "frontend"
       ],
-      "status": "done",
+      "status": "pending",
       "retries": 0,
       "repairs": 0,
-      "handoffs": 0,
-      "finishedAt": "2026-11-03T19:45:22+03:00"
-    },
-    {
-      "id": "04",
-      "title": "Снимок и применение пресета выбранной сцены",
-      "requirements": [
-        "R01",
-        "R02",
-        "R04",
-        "R05",
-        "R04.1"
-      ],
-      "blockedBy": [
-        "03"
-      ],
-      "wave": 4,
-      "zone": [
-        "frontend/src/debug/DeveloperPanel.tsx"
-      ],
-      "status": "done",
-      "retries": 0,
-      "repairs": 0,
-      "handoffs": 0,
-      "finishedAt": "2026-11-03T19:45:22+03:00"
+      "handoffs": 0
     }
   ],
   "singlePass": null,
-  "tests": "npm run check: 566 tests, lint, typecheck, build passed",
+  "tests": null,
   "debt": {
     "placeholders": [],
-    "assumptions": [],
+    "assumptions": [
+      "Локальный main d631793 выбран как актуальный, он опережает origin/main на 68 коммитов."
+    ],
     "emptyEnv": []
   },
   "additions": [],
   "coverage": {
-    "found": 1,
-    "fixed": 1,
-    "deferred": 0,
-    "findings": [
-      "Независимая проверка: пропусков нет; половинчатых требований нет; все уточнения привязаны к R01–R05. Удалён лишний список не запрошенных функций из раздела «Вне рамок»."
-    ]
+    "found": 8,
+    "fixed": 8,
+    "deferred": 0
   },
-  "concerns": [],
+  "concerns": [
+    "Первый этап: ARM64 .app и разрешения macOS не проверены на Windows."
+  ],
   "reviewers": {
     "manifestSpec": null,
     "craft": null
   },
-  "blind": {
-    "status": "passed",
-    "detail": "Browser: save, reload, apply, undo and redo verified for scene and background."
-  }
+  "blind": null
 }

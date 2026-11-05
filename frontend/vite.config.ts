@@ -4,7 +4,7 @@ import { scenePresetStorePlugin } from './dev-scene-preset-store'
 import { defineConfig } from 'vitest/config'
 import { createHash } from 'node:crypto'
 import type { Plugin } from 'vite'
-import { createReadStream, realpathSync, statSync } from 'node:fs'
+import { createReadStream, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { resolve, sep } from 'node:path'
 
 
@@ -43,19 +43,41 @@ function irisLabAssets(): Plugin {
 /** Every emitted runtime file belongs to one immutable, versioned offline snapshot. */
 function offlineBuild(): Plugin {
   let base = '/'
+  let root = process.cwd()
   return {
     name: 'little-universe-offline',
     apply: 'build',
     enforce: 'post',
     configResolved(config) {
       base = config.base
+      root = config.root
       if (!base.startsWith('/') || base.startsWith('//')) throw new Error('Offline build requires a same-origin absolute Vite base path')
     },
     generateBundle: {
       order: 'post',
       handler(_options, bundle) {
-        const runtimeAssets = Object.values(bundle).map((output) => {
-          const bytes = Buffer.from(output.type === 'chunk' ? output.code : output.source)
+        const outputs = Object.values(bundle).map((output) => ({
+          fileName: output.fileName,
+          source: Buffer.from(output.type === 'chunk' ? output.code : output.source),
+        }))
+        const bundledSeeds: Array<{ fileName: string; source: Buffer }> = []
+        const seedPresets: unknown[] = []
+        const seedRoot = resolve(root, 'scene-presets')
+        for (const scope of readdirSync(seedRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory())) {
+          for (const file of readdirSync(resolve(seedRoot, scope.name), { withFileTypes: true })
+            .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))) {
+            const fileName = `scene-presets/${scope.name}/${file.name}`
+            const source = readFileSync(resolve(seedRoot, scope.name, file.name))
+            seedPresets.push(JSON.parse(source.toString('utf8')))
+            this.emitFile({ type: 'asset', fileName, source })
+            bundledSeeds.push({ fileName, source })
+          }
+        }
+        const seedIndex = Buffer.from(JSON.stringify(seedPresets))
+        this.emitFile({ type: 'asset', fileName: 'scene-presets/index.json', source: seedIndex })
+        bundledSeeds.push({ fileName: 'scene-presets/index.json', source: seedIndex })
+        const runtimeAssets = [...outputs, ...bundledSeeds].map((output) => {
+          const bytes = Buffer.from(output.source)
           const extension = output.fileName.split('.').at(-1)?.toLowerCase()
           const kind = ['png', 'jpg', 'jpeg', 'webp', 'avif', 'gif'].includes(extension ?? '') ? 'image'
             : ['mp3', 'wav', 'ogg', 'm4a'].includes(extension ?? '') ? 'audio'

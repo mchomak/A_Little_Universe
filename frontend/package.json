@@ -14,7 +14,11 @@
     "test:watch": "vitest",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "check": "npm run lint && npm test && npm run build"
+    "check": "npm run lint && npm run test:desktop && npm test && npm run build",
+    "desktop:dev": "node electron/dev.cjs",
+    "test:desktop": "node --test electron/*.test.cjs",
+    "build:mac:dir": "npm run build && electron-builder --mac dir --arm64",
+    "smoke:desktop": "npm run build && node electron/bundle-smoke.cjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -23,6 +27,8 @@
     "@types/react-dom": "19.3.0",
     "@types/three": "0.186.0",
     "@vitejs/plugin-react": "6.1.2",
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0",
     "eslint": "10.13.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-refresh": "0.5.7",
@@ -40,5 +46,35 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "three": "0.186.1"
+  },
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "com.alittleuniverse.foryou",
+    "productName": "A Little Universe for You",
+    "asar": true,
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.entertainment",
+      "extendInfo": {
+        "NSCameraUsageDescription": "A Little Universe for You uses the camera to record your reaction after you confirm.",
+        "NSMicrophoneUsageDescription": "A Little Universe for You uses the microphone to record audio after you confirm.",
+        "NSScreenCaptureUsageDescription": "A Little Universe for You records the film window after you confirm."
+      }
+    }
   }
 }
