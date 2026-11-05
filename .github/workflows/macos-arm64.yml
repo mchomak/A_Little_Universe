@@ -1,0 +1,49 @@
+name: macOS Apple Silicon build
+
+on:
+  push:
+    branches: [codex/macbook-native-release]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos-arm64:
+    runs-on: macos-15
+    defaults:
+      run:
+        shell: bash
+        working-directory: frontend
+    env:
+      FFMPEG_PATH: ${{ github.workspace }}/frontend/resources/macos-arm64/ffmpeg
+      FFPROBE_PATH: ${{ github.workspace }}/frontend/resources/macos-arm64/ffprobe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install build dependencies
+        run: npm ci
+      - name: Build pinned LGPL FFmpeg for arm64
+        run: npm run desktop:ffmpeg:mac
+      - name: Run application checks with the packaged media tools
+        run: npm run check
+      - name: Package the macOS app
+        run: npm run build:mac:dir
+      - name: Verify app resource is arm64 and outside ASAR
+        run: |
+          APP_PATH="$(find release -maxdepth 6 -name 'A Little Universe for You.app' -print -quit)"
+          test -n "${APP_PATH}"
+          node electron/verify-macos-ffmpeg.cjs "${APP_PATH}"
+          test -x "${APP_PATH}/Contents/Resources/ffmpeg/ffmpeg"
+          test -x "${APP_PATH}/Contents/Resources/ffmpeg/ffprobe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: a-little-universe-macos-arm64
+          path: frontend/release/
+          if-no-files-found: error

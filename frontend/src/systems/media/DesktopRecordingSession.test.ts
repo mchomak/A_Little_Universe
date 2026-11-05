@@ -45,19 +45,26 @@ function deferred<T>() {
 function harness(options: {
   capture?: (source: DesktopSource) => Promise<MediaStream>
   openSegment?: (value: unknown) => Promise<unknown>
-  appendChunk?: (value: { bytes: ArrayBuffer }) => Promise<void>
+  markSegmentStarted?: (value: { source: DesktopSource; timelineMs: number }) => Promise<void>
+  appendChunk?: (value: { bytes: ArrayBuffer; timelineMs: number }) => Promise<void>
   closeSegment?: (value: { source: DesktopSource; sequence: number }) => Promise<void>
+  wallNow?: () => number
+  monotonicNow?: () => number
 } = {}) {
   const recorders: Recorder[] = []
   const timers: { callback: () => void; delay: number }[] = []
   const openSegment = vi.fn(options.openSegment ?? (async () => undefined))
+  const markSegmentStarted = vi.fn(options.markSegmentStarted ?? (async () => undefined))
   const appendChunk = vi.fn(options.appendChunk ?? (async () => undefined))
   const closeSegment = vi.fn(options.closeSegment ?? (async () => undefined))
   const finishSession = vi.fn(async () => undefined)
   const bridge = {
     available: true,
     createSession: async () => ({ id: 'session-test', directory: 'Movies/session-test', startedAt: 1000 }),
-    openSegment, appendChunk, closeSegment, reportError: vi.fn(async () => undefined), finishSession,
+    openSegment, markSegmentStarted, appendChunk, closeSegment, reportError: vi.fn(async () => undefined), finishSession,
+    getRecoveryStatus: async () => ({ status: 'idle' as const, pending: 0, currentSessionId: null, error: null, failed: 0, retryable: false }),
+    retryRecovery: async () => ({ status: 'idle' as const, pending: 0, currentSessionId: null, error: null, failed: 0, retryable: false }),
+    setFilmActive: async () => undefined,
     getStatus: async () => ({ directory: 'Movies/session-test', elapsedMs: 1000, freeBytes: 1000, segmentCounts: { camera: 1, microphone: 1, screen: 1 }, errors: [] }),
     openFolder: async () => undefined,
   }
@@ -67,15 +74,44 @@ function harness(options: {
       capture: options.capture ?? (async () => makeStream().stream),
       mimeFor: (source) => source === 'microphone' ? 'audio/webm' : 'video/webm',
       recorder: (input) => { const recorder = new Recorder(input); recorders.push(recorder); return recorder as unknown as MediaRecorder },
-      wallNow: () => 1000, monotonicNow: () => 0,
+      wallNow: options.wallNow ?? (() => 1000), monotonicNow: options.monotonicNow ?? (() => 0),
       every: (callback, delay) => { timers.push({ callback, delay }); return timers.length as unknown as ReturnType<typeof setInterval> },
       cancel: () => undefined,
     },
   })
-  return { session, bridge, recorders, timers, openSegment, appendChunk, closeSegment, finishSession }
+  return { session, bridge, recorders, timers, openSegment, markSegmentStarted, appendChunk, closeSegment, finishSession }
 }
 
 describe('DesktopRecordingSession', () => {
+  it('persists each recorder start offset after its own delayed segment-open IPC', async () => {
+    let monotonic = 0
+    const gates = { camera: deferred<void>(), microphone: deferred<void>(), screen: deferred<void>() }
+    const h = harness({
+      monotonicNow: () => monotonic,
+      wallNow: () => 1_000 + monotonic,
+      openSegment: async (value) => {
+        const source = (value as { source: DesktopSource }).source
+        await gates[source].promise
+      },
+    })
+    await h.session.start()
+    await vi.waitFor(() => expect(h.openSegment).toHaveBeenCalledTimes(3))
+
+    monotonic = 120
+    gates.camera.resolve()
+    await vi.waitFor(() => expect(h.markSegmentStarted).toHaveBeenCalledWith(expect.objectContaining({ source: 'camera', timelineMs: 120 })))
+    monotonic = 470
+    gates.microphone.resolve()
+    await vi.waitFor(() => expect(h.markSegmentStarted).toHaveBeenCalledWith(expect.objectContaining({ source: 'microphone', timelineMs: 470 })))
+    monotonic = 920
+    gates.screen.resolve()
+    await vi.waitFor(() => expect(h.markSegmentStarted).toHaveBeenCalledWith(expect.objectContaining({ source: 'screen', timelineMs: 920 })))
+
+    expect(h.openSegment.mock.calls.map(([value]) => (value as { timelineMs: number }).timelineMs)).toEqual([0, 0, 0])
+    expect(h.markSegmentStarted.mock.calls.map(([value]) => value.timelineMs).sort((a, b) => a - b)).toEqual([120, 470, 920])
+    await h.session.stop()
+  })
+
   it('starts each resolved source without waiting for the other permission prompts', async () => {
     const requests = { camera: deferred<MediaStream>(), microphone: deferred<MediaStream>(), screen: deferred<MediaStream>() }
     const capture = vi.fn((source: DesktopSource) => requests[source].promise)
@@ -119,6 +155,25 @@ describe('DesktopRecordingSession', () => {
     expect(h.recorders).toHaveLength(0)
     expect(h.finishSession).toHaveBeenCalledOnce()
     expect(h.session.getSnapshot().status).toBe('saved')
+  })
+
+  it('publishes partial finalization results and errors after Stop & Save', async () => {
+    const h = harness()
+    h.bridge.getStatus = async () => ({
+      directory: 'Movies/session-test', elapsedMs: 3200, freeBytes: 900, segmentCounts: { camera: 1, microphone: 1, screen: 1 }, errors: [],
+      finalization: {
+        status: 'partial',
+        files: { screen: { status: 'partial', path: 'final/screen_full.mp4', bytes: 200, error: 'A screen segment was damaged.' } },
+        errors: ['A screen segment was damaged.'],
+      },
+    })
+    await h.session.start()
+    await h.session.stop()
+
+    expect(h.session.getSnapshot().status).toBe('error')
+    expect(h.session.getSnapshot().finalizationStatus).toBe('partial')
+    expect(h.session.getSnapshot().finalizationFiles.screen?.path).toBe('final/screen_full.mp4')
+    expect(h.session.getSnapshot().errors).toContain('A screen segment was damaged.')
   })
 
   it('drains queued chunks and appends the final dataavailable chunk before closing on Stop & Save', async () => {

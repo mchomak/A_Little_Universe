@@ -64,7 +64,10 @@ function RecordingInspector({ session }: { session: DesktopRecordingSession }) {
       <div><dt>Saved segments</dt><dd>{recording.segmentCounts.camera + recording.segmentCounts.microphone + recording.segmentCounts.screen}</dd></div>
       <div><dt>Folder</dt><dd>{recording.folder ?? '—'}</dd></div>
       <div><dt>Free space</dt><dd>{space}</dd></div>
+      <div><dt>Finalization</dt><dd>{recording.finalizationStatus}</dd></div>
+      <div><dt>Recovery</dt><dd>{recording.recovery.status}{recording.recovery.pending ? ` · ${recording.recovery.pending} queued` : ''}{recording.recovery.error ? ` · ${recording.recovery.error}` : ''}</dd></div>
     </dl>
+    {Object.keys(recording.finalizationFiles).length > 0 && <div role="status"><strong>Final files</strong><ul>{Object.entries(recording.finalizationFiles).map(([name, file]) => <li key={name}>{name}: {file.status}{file.path ? ` · ${file.path}` : ''}</li>)}</ul></div>}
     {recording.errors.length > 0 && <div role="status"><strong>Errors</strong><ul>{recording.errors.map((error, index) => <li key={`${error}:${index}`}>{error}</li>)}</ul></div>}
     <div className="inspector-history">
       <button type="button" disabled={!['starting', 'recording', 'error'].includes(recording.status)} onClick={() => { void session.stop() }}>Stop &amp; Save</button>

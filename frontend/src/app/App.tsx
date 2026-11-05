@@ -54,6 +54,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   const operation = useRef(0)
   const opening = useRef(false)
   const particlePreparation = useSyncExternalStore(lilyParticlePreparation.subscribe, lilyParticlePreparation.getSnapshot, lilyParticlePreparation.getSnapshot)
+  useEffect(() => { void desktopRecording.setFilmActive(route === 'film').catch(() => undefined) }, [route])
   useAudioDirector(audio, state, runtime)
   const getParticlePreparationInput = useCallback(() => ({
     config: getConfig(),
@@ -174,6 +175,10 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   const implementationStatus = getImplementationStatus(state.scene)
   const showOpeningBackground = route === 'film'
     && (state.scene === 'prologue' || state.scene === 'growth' || state.scene === 'bloom' || state.scene === 'identity')
+  const stopViewingForRecovery = () => {
+    if (!state.paused && (state.mode === 'playing' || state.mode === 'transitioning')) dispatch({ type: 'toggle-pause' })
+    setRoute('settings')
+  }
 
   return <main className={`universe${cinematic ? ' cinematic' : ''}`} data-route={route} data-scene={state.scene} data-mode={state.mode} data-reading={state.reading} data-paused={state.paused} data-debug={developerMode && debug ? 'true' : undefined}>
     <LilyParticlePreparationBanner snapshot={particlePreparation} development={import.meta.env.DEV} onRetry={retryParticlePreparation} />
@@ -190,7 +195,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} startError={visibleStartError} onOptions={changeOptions} onPrepare={() => { void prepare() }} onContinue={() => setRoute('ready')} onWithoutMedia={withoutMedia} onEdit={edit} onStart={start} desktopRecording={desktopRecording.available} />}
     <PersistentLight phase={lightPhase} interactive={lightInteractive} reducedMotion={reducedMotion} runtime={runtime} state={state} onActivate={() => dispatch({ type: 'interact' })} />
     {!desktopRecording.available && <RecordingControls session={media} />}
-    <DesktopRecordingControls session={desktopRecording} />
+    <DesktopRecordingControls session={desktopRecording} filmActive={route === 'film'} onStopViewing={stopViewingForRecovery} />
     {!desktopRecording.available && <RecoveryPanel session={media} />}
     {state.reading && route === 'film' && <ReadingPanel dispatch={dispatch} />}
     {developerMode && <button className="debug-toggle" type="button" aria-expanded={debug} aria-controls="developer-panel" onClick={() => setDebug((value) => !value)}>DEV</button>}

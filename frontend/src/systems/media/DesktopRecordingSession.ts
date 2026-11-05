@@ -1,5 +1,8 @@
 export type DesktopSource = 'camera' | 'microphone' | 'screen'
 export type DesktopSourceStatus = 'idle' | 'starting' | 'recording' | 'saved' | 'error'
+export type DesktopFinalizationStatus = 'idle' | 'pending' | 'finalizing' | 'complete' | 'partial' | 'error'
+export interface DesktopFinalFile { status: 'saved' | 'partial' | 'error' | 'skipped'; path: string | null; bytes: number; durationMs?: number; error: string | null }
+export interface DesktopRecoveryStatus { status: 'idle' | 'waiting' | 'paused' | 'recovering' | 'error'; pending: number; currentSessionId: string | null; error: string | null; failed: number; retryable: boolean }
 
 export interface DesktopRecordingSnapshot {
   status: 'idle' | 'starting' | 'recording' | 'stopping' | 'saved' | 'error'
@@ -11,18 +14,34 @@ export interface DesktopRecordingSnapshot {
   segmentCounts: Record<DesktopSource, number>
   sources: Record<DesktopSource, DesktopSourceStatus>
   errors: string[]
+  finalizationStatus: DesktopFinalizationStatus
+  finalizationFiles: Record<string, DesktopFinalFile>
+  recovery: DesktopRecoveryStatus
+}
+
+interface DesktopRecordingStatus {
+  directory: string
+  elapsedMs: number
+  freeBytes: number
+  segmentCounts: Record<DesktopSource, number>
+  errors: ({ message: string; source?: string } | string)[]
+  finalization?: { status: DesktopFinalizationStatus; files: Record<string, DesktopFinalFile>; errors: string[] }
 }
 
 interface DesktopBridge {
   available: boolean
   createSession(): Promise<{ id: string; directory: string; startedAt: number }>
   openSegment(value: { sessionId: string; source: DesktopSource; sequence: number; mimeType: string; startedAt: number; timelineMs: number }): Promise<unknown>
-  appendChunk(value: { sessionId: string; source: DesktopSource; sequence: number; bytes: ArrayBuffer }): Promise<void>
+  markSegmentStarted(value: { sessionId: string; source: DesktopSource; sequence: number; startedAt: number; timelineMs: number }): Promise<void>
+  appendChunk(value: { sessionId: string; source: DesktopSource; sequence: number; bytes: ArrayBuffer; timelineMs: number }): Promise<void>
   closeSegment(value: { sessionId: string; source: DesktopSource; sequence: number; endedAt: number; error?: string }): Promise<void>
   reportError(value: { sessionId: string; source: DesktopSource; message: string }): Promise<void>
   finishSession(value: { sessionId: string }): Promise<unknown>
-  getStatus(value: { sessionId: string }): Promise<{ directory: string; elapsedMs: number; freeBytes: number; segmentCounts: Record<DesktopSource, number>; errors: { message: string }[] }>
+  getStatus(value: { sessionId: string }): Promise<DesktopRecordingStatus>
   openFolder(value: { sessionId: string }): Promise<unknown>
+  getRecoveryStatus(): Promise<DesktopRecoveryStatus>
+  retryRecovery(): Promise<DesktopRecoveryStatus>
+  setFilmActive(active: boolean): Promise<void>
 }
 
 declare global { interface Window { desktopRecording?: DesktopBridge } }
@@ -105,6 +124,8 @@ const initialSnapshot = (): DesktopRecordingSnapshot => ({
   status: 'idle', sessionId: null, folder: null, startedAt: null, durationMs: 0, freeBytes: null,
   segmentCounts: { camera: 0, microphone: 0, screen: 0 },
   sources: { camera: 'idle', microphone: 'idle', screen: 'idle' }, errors: [],
+  finalizationStatus: 'idle', finalizationFiles: {},
+  recovery: { status: 'idle', pending: 0, currentSessionId: null, error: null, failed: 0, retryable: false },
 })
 
 export class DesktopRecordingSession {
@@ -261,9 +282,9 @@ export class DesktopRecordingSession {
   private async openNextSegment(run: SourceRun, generation = this.generation) {
     if (run.stopRequested || this.stopRequested || !this.runs.has(run.source) || !this.isCurrent(generation)) return
     const sequence = ++run.sequence
-    const startedAt = this.environment.wallNow()
-    const timelineMs = Math.max(0, this.environment.monotonicNow() - this.sessionMonotonicStart)
-    await this.bridge!.openSegment({ sessionId: this.snapshot.sessionId!, source: run.source, sequence, mimeType: run.mimeType.split(';')[0] ?? run.mimeType, startedAt, timelineMs })
+    const provisionalStart = this.environment.wallNow()
+    const provisionalTimeline = Math.max(0, this.environment.monotonicNow() - this.sessionMonotonicStart)
+    await this.bridge!.openSegment({ sessionId: this.snapshot.sessionId!, source: run.source, sequence, mimeType: run.mimeType.split(';')[0] ?? run.mimeType, startedAt: provisionalStart, timelineMs: provisionalTimeline })
     run.segmentOpen = true
     if (run.stopRequested || this.stopRequested || !this.isCurrent(generation)) return
 
@@ -272,6 +293,7 @@ export class DesktopRecordingSession {
     recorder.addEventListener('error', () => {
       void this.stopSource(run, 'Медиарекордер сообщил об ошибке.')
     }, { once: true })
+    let startedPersisted: Promise<void> = Promise.resolve()
     recorder.addEventListener('dataavailable', (event) => {
       if (!event.data.size) return
       if (run.queueOverflow) {
@@ -292,10 +314,15 @@ export class DesktopRecordingSession {
         void this.stopSource(run)
         return
       }
-      this.enqueueChunk(run, sequence, event.data)
+      const timelineMs = Math.max(0, this.environment.monotonicNow() - this.sessionMonotonicStart)
+      this.enqueueChunk(run, sequence, event.data, timelineMs, startedPersisted)
     })
+    const startedAt = this.environment.wallNow()
+    const timelineMs = Math.max(0, this.environment.monotonicNow() - this.sessionMonotonicStart)
     recorder.start(CHUNK_INTERVAL_MS)
     run.startedAt = startedAt
+    startedPersisted = this.bridge!.markSegmentStarted({ sessionId: this.snapshot.sessionId!, source: run.source, sequence, startedAt, timelineMs })
+    await startedPersisted
     this.sourceStatus(run.source, 'recording')
     if (run.interval) this.environment.cancel(run.interval)
     run.interval = this.environment.every(() => { void this.rotate(run) }, SEGMENT_DURATION_MS)
@@ -338,7 +365,7 @@ export class DesktopRecordingSession {
     run.overflowTail = null
     run.overflowTailSequence = null
     if (tail && sequence !== null) {
-      if (run.pendingBytes + tail.size <= MAX_QUEUED_BYTES) this.enqueueChunk(run, sequence, tail)
+      if (run.pendingBytes + tail.size <= MAX_QUEUED_BYTES) this.enqueueChunk(run, sequence, tail, Math.max(0, this.environment.monotonicNow() - this.sessionMonotonicStart))
       else run.overflowTailRejected = true
     }
     if (run.overflowTailRejected) {
@@ -349,11 +376,12 @@ export class DesktopRecordingSession {
     }
   }
 
-  private enqueueChunk(run: SourceRun, sequence: number, blob: Blob) {
+  private enqueueChunk(run: SourceRun, sequence: number, blob: Blob, timelineMs: number, startedPersisted: Promise<void> = Promise.resolve()) {
     run.pendingBytes += blob.size
     run.queue = run.queue.then(async () => {
+      await startedPersisted
       const bytes = await blob.arrayBuffer()
-      await this.bridge!.appendChunk({ sessionId: this.snapshot.sessionId!, source: run.source, sequence, bytes })
+      await this.bridge!.appendChunk({ sessionId: this.snapshot.sessionId!, source: run.source, sequence, bytes, timelineMs })
     }).catch((error: unknown) => {
       this.reportSourceError(run.source, error, run)
       run.stopRequested = true
@@ -451,7 +479,15 @@ export class DesktopRecordingSession {
     try {
       const status = await this.bridge.getStatus({ sessionId })
       if (generation !== this.generation || sessionId !== this.snapshot.sessionId) return
-      this.publish({ folder: status.directory, freeBytes: status.freeBytes, segmentCounts: status.segmentCounts })
+      const finalization = status.finalization
+      const diskErrors = status.errors.map((entry) => typeof entry === 'string' ? entry : `${entry.source ? `${entry.source}: ` : ''}${entry.message}`)
+      const errors = [...new Set([...this.snapshot.errors, ...diskErrors, ...(finalization?.errors ?? [])])]
+      this.publish({
+        folder: status.directory, freeBytes: status.freeBytes, segmentCounts: status.segmentCounts,
+        durationMs: status.elapsedMs,
+        ...(finalization ? { finalizationStatus: finalization.status, finalizationFiles: finalization.files } : {}),
+        errors,
+      })
     } catch (error) {
       if (generation !== this.generation || sessionId !== this.snapshot.sessionId) return
       const message = `disk: ${error instanceof Error ? error.message : String(error)}`
@@ -479,7 +515,7 @@ export class DesktopRecordingSession {
       try {
         await this.bridge.finishSession({ sessionId: this.snapshot.sessionId })
         await this.refreshStatus(generation)
-        this.publish({ status: this.snapshot.errors.length > 0 ? 'error' : 'saved' })
+        this.publish({ status: this.snapshot.errors.length > 0 || ['partial', 'error'].includes(this.snapshot.finalizationStatus) ? 'error' : 'saved' })
       } catch (error) {
         const message = `disk: ${error instanceof Error ? error.message : String(error)}`
         this.publish({ status: 'error', errors: this.snapshot.errors.includes(message) ? this.snapshot.errors : [...this.snapshot.errors, message] })
@@ -494,5 +530,27 @@ export class DesktopRecordingSession {
 
   async openFolder() {
     if (this.snapshot.sessionId) await this.bridge?.openFolder({ sessionId: this.snapshot.sessionId })
+  }
+
+  async refreshRecoveryStatus() {
+    if (!this.bridge?.available) return
+    try { this.publish({ recovery: await this.bridge.getRecoveryStatus() }) }
+    catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      this.publish({ recovery: { ...this.snapshot.recovery, status: 'error', error: message, retryable: false } })
+    }
+  }
+
+  async setFilmActive(active: boolean) {
+    if (this.bridge?.available) await this.bridge.setFilmActive(active)
+  }
+
+  async retryRecovery() {
+    if (!this.bridge?.available) return
+    try { this.publish({ recovery: await this.bridge.retryRecovery() }) }
+    catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      this.publish({ recovery: { ...this.snapshot.recovery, status: 'error', error: message } })
+    }
   }
 }

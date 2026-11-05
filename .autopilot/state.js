@@ -11,7 +11,7 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-11-05T16:34:30+03:00",
-  "updatedAt": "2026-11-05T18:21:43+03:00",
+  "updatedAt": "2026-11-05T22:18:18+03:00",
   "finishedAt": null,
   "stages": [
     {
@@ -51,7 +51,8 @@ window.STATE =
     },
     {
       "id": "review",
-      "status": "pending"
+      "status": "active",
+      "startedAt": "2026-11-05T22:18:18+03:00"
     },
     {
       "id": "final",
@@ -136,11 +137,15 @@ window.STATE =
         "desktop",
         "frontend"
       ],
-      "status": "in-progress",
+      "status": "review",
       "retries": 0,
-      "repairs": 0,
+      "repairs": 2,
       "handoffs": 0,
-      "startedAt": "2026-11-05T18:21:43+03:00"
+      "startedAt": "2026-11-05T18:21:43+03:00",
+      "tests": {
+        "passed": 805,
+        "failed": 0
+      }
     }
   ],
   "singlePass": null,
@@ -159,7 +164,8 @@ window.STATE =
     "deferred": 0
   },
   "concerns": [
-    "Первый этап: ARM64 .app и разрешения macOS не проверены на Windows."
+    "Первый этап: ARM64 .app и разрешения macOS не проверены на Windows.",
+    "Не проверены накопление сдвига после множества групп и физический MacBook."
   ],
   "reviewers": {
     "manifestSpec": null,

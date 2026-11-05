@@ -3,6 +3,8 @@ const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 const { appScheme, canCheckMediaPermission, canRequestMedia, isAppOrigin, resolveBundlePath } = require('./runtime-path.cjs')
 const { RecordingDiskStore } = require('./recording-store.cjs')
+const { MediaFinalizer } = require('./media-finalizer.cjs')
+const { RecordingRecoveryScheduler } = require('./recording-recovery-scheduler.cjs')
 const { installRecordingHandlers } = require('./recording-ipc.cjs')
 const { createAppWindowCaptureHandler } = require('./media-capture.cjs')
 
@@ -13,10 +15,45 @@ protocol.registerSchemesAsPrivileged([appScheme])
 
 app.setName('A Little Universe for You')
 let recordingStore
+let recordingFinalizer
+let recoveryScheduler
+let finalizationQueue = Promise.resolve()
+
+function queueFinalization(recording, callbacks) {
+  const operation = finalizationQueue.then(() => recordingFinalizer.finalizeSession(recording, callbacks))
+  finalizationQueue = operation.catch(() => undefined)
+  return operation
+}
+
+function finalizeStoredSession(sessionId, { signal } = {}) {
+  const recording = recordingStore.getSession(sessionId)
+  return queueFinalization(recording, {
+    signal,
+    persist: () => recordingStore.persist(recording),
+    log: (message) => recordingStore.log(recording, message),
+  })
+}
 
 function registerRecordingIpc() {
   recordingStore = new RecordingDiskStore(path.join(app.getPath('movies'), 'A_Little_Universe_Records'))
-  installRecordingHandlers(ipcMain, recordingStore, { openPath: shell.openPath })
+  recordingFinalizer = new MediaFinalizer({ isPackaged: app.isPackaged, resourcesPath: process.resourcesPath })
+  recoveryScheduler = new RecordingRecoveryScheduler({
+    recover: async (sessionId, { signal } = {}) => {
+      try { return await finalizeStoredSession(sessionId, { signal }) }
+      catch (error) { console.error(`Could not recover recording session ${sessionId}.`, error); throw error }
+    },
+  })
+  installRecordingHandlers(ipcMain, recordingStore, {
+    openPath: shell.openPath,
+    finalizer: { finalizeSession: (recording, callbacks) => queueFinalization(recording, callbacks) },
+    getRecoveryStatus: () => recoveryScheduler.getStatus(),
+    retryRecovery: () => recoveryScheduler.retryFailed(),
+    onFilmActivity: (active) => recoveryScheduler.setBusy('film', active),
+    onRecordingActivity: (active) => recoveryScheduler.setBusy('recording', active),
+  })
+  return recordingStore.recoverInterrupted().then((sessionIds) => {
+    recoveryScheduler.enqueue(sessionIds)
+  })
 }
 
 function installBundledProtocol() {
@@ -94,6 +131,7 @@ function createMainWindow() {
     event.preventDefault()
     window.setTitle('A Little Universe for You')
   })
+  window.once('closed', () => recoveryScheduler?.setBusy('film', false))
   window.once('ready-to-show', () => window.show())
   const url = DEVELOPMENT_URL || APP_ENTRY
   void window.loadURL(url).catch((error) => {
@@ -104,7 +142,7 @@ function createMainWindow() {
 
 app.whenReady().then(() => {
   registerMediaPermissions()
-  registerRecordingIpc()
+  void registerRecordingIpc().catch((error) => console.error('Could not scan local recording sessions for recovery.', error))
   if (!DEVELOPMENT_URL) installBundledProtocol()
   createMainWindow()
   app.on('activate', () => {
