@@ -14,11 +14,11 @@ const memory = (images: number, aspect = 1, side: -1 | 1 = 1): GalleryMemory => 
   id: `camera-fit-${images}`,
   image: 'main.jpg',
   images: ['main.jpg', ...Array.from({ length: images }, (_, index) => `extra-${index}.jpg`)],
+  title: 'A quieter event title',
   caption: 'A caption below the photograph',
   aspect,
   side,
   order: 4,
-  palette: ['#000000', '#ffffff'],
 })
 
 const settings = { collagePhotoScale: 0.9, collagePhotoGap: 0.3 }
@@ -81,6 +81,25 @@ describe('gallery collage camera fit', () => {
     expect(loaded.height).not.toBeCloseTo(fallback.height)
     expect(getGalleryCollageFocusDistance(loaded, 9 / 16, 70))
       .not.toBeCloseTo(getGalleryCollageFocusDistance(fallback, 9 / 16, 70))
+  })
+
+  it('gives short captions compact space and fits long captions with additional wrapped lines', () => {
+    const exhibit = memory(0)
+    const noCaption = getGalleryCollageCameraFrame({ ...exhibit, title: '', caption: '' }, settings)
+    const short = getGalleryCollageCameraFrame({
+      ...exhibit,
+      title: 'Поездка в Тулу — май 2026',
+      caption: 'Один хороший день.',
+    }, settings)
+    const long = getGalleryCollageCameraFrame({
+      ...exhibit,
+      title: 'Планетарий — октябрь 2026',
+      caption: 'Тогда мы встретились и отправились смотреть на звёзды вместе. '.repeat(14),
+    }, settings)
+
+    expect(short.height - noCaption.height).toBeLessThan(1)
+    expect(long.height).toBeGreaterThan(short.height + 1.5)
+    expect(long.minY).toBeLessThan(short.minY)
   })
 
   it('centers the camera on a three-photo B frame to keep the selected image inside the corridor fade range', () => {

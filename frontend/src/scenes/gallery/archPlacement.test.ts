@@ -7,6 +7,7 @@ const memories = (count: number): GalleryMemory[] => Array.from({ length: count 
   id: `memory-${order}`,
   image: undefined,
   images: [],
+  title: '',
   caption: '',
   aspect: 1,
   side: order % 2 === 0 ? -1 : 1,

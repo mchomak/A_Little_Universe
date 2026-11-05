@@ -4,6 +4,7 @@ import type { RefObject } from 'react'
 import { galleryColumnOpacity, galleryDistanceOpacity, galleryFocusOpacity, galleryFocusedPhotoDistanceOpacity } from './gallery/visibility'
 import { galleryPhotoBlurAtFocus, galleryPhotoLightAtFocus } from './gallery/artDirection'
 import { createFrameParticleGeometry } from './gallery/frameParticles'
+import { getGalleryCaptionLayout, GALLERY_CAPTION_BODY_FONT_SIZE, GALLERY_CAPTION_BODY_LINE_HEIGHT, GALLERY_CAPTION_CANVAS_WIDTH, GALLERY_CAPTION_GAP, GALLERY_CAPTION_HORIZONTAL_PADDING, GALLERY_CAPTION_PLANE_WIDTH, GALLERY_CAPTION_SECTION_GAP, GALLERY_CAPTION_TITLE_FONT_SIZE, GALLERY_CAPTION_TITLE_LINE_HEIGHT, GALLERY_CAPTION_VERTICAL_PADDING, type GalleryCaptionLayout } from './gallery/captionLayout'
 import { createGalleryDustGeometry, getGalleryDustCount } from './gallery/dust'
 import type { GalleryArtSettings } from './gallery/reflections'
 import { createMemoryThreadAccentGeometry, createMemoryThreadGeometry, createMemoryThreadMaterial, createMemoryThreadPaths, GALLERY_MEMORY_RENDER_ORDER, GALLERY_THREAD_RENDER_ORDER, memoryThreadOpacity, updateMemoryThreadMaterial } from './gallery/threads'
@@ -33,16 +34,30 @@ function canvasTexture(draw: (ctx: CanvasRenderingContext2D, w: number, h: numbe
   const ctx = canvas.getContext('2d')!; draw(ctx, w, h)
   const texture = new CanvasTexture(canvas); texture.colorSpace = SRGBColorSpace; return texture
 }
-function placeholder(memory: GalleryMemory) {
-  return canvasTexture((ctx, w, h) => {
-    const gradient = ctx.createLinearGradient(0, 0, w, h); gradient.addColorStop(0, memory.palette[0]); gradient.addColorStop(1, memory.palette[1]); ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h)
-    ctx.fillStyle = 'rgba(255,235,210,.20)'; ctx.beginPath(); ctx.arc(w * .72, h * .27, w * .12, 0, Math.PI * 2); ctx.fill()
-    ctx.fillStyle = 'rgba(23,28,46,.34)'; ctx.beginPath(); ctx.moveTo(0, h * .8); ctx.lineTo(w * .27, h * .48); ctx.lineTo(w * .48, h * .72); ctx.lineTo(w * .69, h * .5); ctx.lineTo(w, h * .76); ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.fill()
-    if (memory.order === 11) { ctx.fillStyle = 'rgba(255,250,229,.8)'; for (let i = 0; i < 32; i++) { const x = ((i * 139 + 43) % 720) / 720 * w, y = ((i * 73 + 19) % 380) / 768 * h; ctx.fillRect(x, y, 2, 2) } }
-    ctx.fillStyle = 'rgba(255,248,237,.8)'; ctx.font = '22px Georgia'; ctx.textAlign = 'center'; ctx.fillText('ТЕСТОВОЕ ИЗОБРАЖЕНИЕ', w / 2, h * .91)
-  }, 256, 256)
+function captionTexture(layout: GalleryCaptionLayout) {
+  return canvasTexture((ctx, width) => {
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    let y = GALLERY_CAPTION_VERTICAL_PADDING
+    if (layout.titleLines.length) {
+      ctx.fillStyle = '#d8c5b7'
+      ctx.font = `${GALLERY_CAPTION_TITLE_FONT_SIZE}px Georgia, serif`
+      for (const line of layout.titleLines) {
+        ctx.fillText(line, width / 2, y, width - GALLERY_CAPTION_HORIZONTAL_PADDING * 2)
+        y += GALLERY_CAPTION_TITLE_LINE_HEIGHT
+      }
+    }
+    if (layout.captionLines.length) {
+      if (layout.titleLines.length) y += GALLERY_CAPTION_SECTION_GAP
+      ctx.fillStyle = '#f5dbc9'
+      ctx.font = `${GALLERY_CAPTION_BODY_FONT_SIZE}px Georgia, serif`
+      for (const line of layout.captionLines) {
+        ctx.fillText(line, width / 2, y, width - GALLERY_CAPTION_HORIZONTAL_PADDING * 2)
+        y += GALLERY_CAPTION_BODY_LINE_HEIGHT
+      }
+    }
+  }, GALLERY_CAPTION_CANVAS_WIDTH, layout.canvasHeight)
 }
-function captionTexture(text: string) { return canvasTexture((ctx, w, h) => { ctx.fillStyle = '#f5dbc9'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '42px Georgia'; ctx.fillText(text, w / 2, h / 2, w - 20) }, 1024, 100) }
 function setColorSpace(texture: Texture) { texture.colorSpace = SRGBColorSpace; texture.needsUpdate = true }
 function getFocusedGalleryOrder() { return gallerySnapshot().focus }
 function getServerFocusedGalleryOrder() { return null }
@@ -483,10 +498,9 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
   const photoNormal = useMemo(() => new Vector3(), [])
   const moonColor = useMemo(() => new Color(), [])
   const firstPhoto = useLoader(TextureLoader, firstPhotoUrl)
-  const image = useMemo(() => memory.order === 0 && memory.image ? null : placeholder(memory), [memory])
-  const captionText = memory.caption.trim()
-  const caption = useMemo(() => captionText ? captionTexture(captionText) : null, [captionText])
-  const photoMaterial = useMemo(() => photoShaderMaterial(image ?? firstPhoto), [firstPhoto, image])
+  const captionLayout = useMemo(() => getGalleryCaptionLayout(memory.title, memory.caption), [memory.caption, memory.title])
+  const caption = useMemo(() => captionLayout.canvasHeight ? captionTexture(captionLayout) : null, [captionLayout])
+  const photoMaterial = useMemo(() => photoShaderMaterial(firstPhoto), [firstPhoto])
   const photoMaterialRef = useRef(photoMaterial)
   const frameMaterial = useMemo(() => frameShaderMaterial(), [])
   const frameMaterialRef = useRef(frameMaterial)
@@ -497,11 +511,10 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
     photoMaterialRef.current = photoMaterial
   }, [photoMaterial])
   useEffect(() => () => {
-    image?.dispose()
     caption?.dispose()
     photoMaterial.dispose()
     frameMaterial.dispose()
-  }, [image, caption, photoMaterial, frameMaterial])
+  }, [caption, photoMaterial, frameMaterial])
   useEffect(() => { setColorSpace(firstPhoto) }, [firstPhoto])
   useEffect(() => {
     const saved: { material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[] = []
@@ -702,11 +715,11 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
       <group ref={visualGroup}>
       <primitive object={backplate} />
       <mesh position={[0, 0, -0.07]}><planeGeometry args={[width + 0.36, height + 0.36]} /><meshBasicMaterial ref={glow} map={halo} color="#ffd7b0" transparent opacity={0.2} depthWrite={false} blending={AdditiveBlending} toneMapped={false} /></mesh>
-      {memory.order === 0 && memory.id === 'demo-start-photo'
+      {memory.order === 0
         ? <FirstMemoryCard photoMaterial={photoMaterial} frameTone="moonlight" />
         : memory.image
-          ? <Photo url={memory.image} width={width} height={height} fallback={image ?? firstPhoto} onAspect={reportMainPhotoAspect} material={photoMaterialRef} />
-          : <mesh><planeGeometry args={[width, height]} /><primitive object={photoMaterial} attach="material" /></mesh>}
+          ? <Photo url={memory.image} width={width} height={height} fallback={firstPhoto} onAspect={reportMainPhotoAspect} material={photoMaterialRef} />
+          : null}
       {([-1, 1] as const).map(side => <group key={side}>
         <mesh position={[0, side * (height / 2 + 0.025), 0.01]}>
           <planeGeometry args={[width + 0.36, 0.16]} />
@@ -733,7 +746,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
         side={memory.side}
         mainWidth={width}
         mainHeight={height}
-        fallback={image ?? firstPhoto}
+        fallback={firstPhoto}
         focusVisual={visual}
         seed={memory.order * 37 + slot * 101}
         photoScale={settings.collagePhotoScale}
@@ -744,7 +757,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings }: { memory: Gal
         paused={paused}
       />)}
       <points geometry={frameParticles}><primitive object={frameMaterial} attach="material" /></points>
-      {caption && <mesh position={[0, -height / 2 - 0.34, 0.02]}><planeGeometry args={[3.4, 0.33]} /><meshBasicMaterial ref={captionMaterial} map={caption} transparent opacity={0.65} depthWrite={false} toneMapped={false} />
+      {caption && <mesh position={[0, -height / 2 - GALLERY_CAPTION_GAP - captionLayout.worldHeight / 2, 0.02]}><planeGeometry args={[GALLERY_CAPTION_PLANE_WIDTH, captionLayout.worldHeight]} /><meshBasicMaterial ref={captionMaterial} map={caption} transparent opacity={0.65} depthWrite={false} toneMapped={false} />
       </mesh>}
       </group>
     </group>

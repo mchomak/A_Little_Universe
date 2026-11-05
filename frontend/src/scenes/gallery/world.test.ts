@@ -232,7 +232,7 @@ describe('moonlit gallery world layout', () => {
 
   it('keeps a continuous haze contribution on the water horizon after camera-proximity fades', () => {
     const start = GALLERY.startZ
-    const routeEnd = start - GALLERY.travel - 2
+    const routeEnd = start - GALLERY.travel
     const routePositions = Array.from({ length: 48 }, (_, index) => [0, 0, start + (routeEnd - start) * index / 47] as const)
     const farHazeZ = GALLERY_WORLD.haze[2]!.position[2]
     const horizonSamples = Array.from({ length: 21 }, (_, index) => farHazeZ - 15 + index * 1.5)

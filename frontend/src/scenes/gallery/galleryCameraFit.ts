@@ -1,4 +1,5 @@
 import { getGalleryCollagePhotoLayout, type GalleryCollageSlot } from './collage'
+import { getGalleryCaptionLayout, GALLERY_CAPTION_GAP, GALLERY_CAPTION_PLANE_WIDTH } from './captionLayout'
 import type { GalleryLayoutVariant, GalleryMemory } from './content'
 
 export interface GalleryPhotoAspectProfile {
@@ -88,10 +89,11 @@ export function getGalleryCollageCameraFrame(
     maxY = Math.max(maxY, extra.position[1] + extra.height / 2 + 0.04)
   })
 
-  if (memory.caption.trim()) {
-    minX = Math.min(minX, -1.7)
-    maxX = Math.max(maxX, 1.7)
-    minY = Math.min(minY, -mainHeight / 2 - 0.34 - 0.165)
+  if (memory.title.trim() || memory.caption.trim()) {
+    const captionHeight = getGalleryCaptionLayout(memory.title, memory.caption).worldHeight
+    minX = Math.min(minX, -GALLERY_CAPTION_PLANE_WIDTH / 2)
+    maxX = Math.max(maxX, GALLERY_CAPTION_PLANE_WIDTH / 2)
+    minY = Math.min(minY, -mainHeight / 2 - GALLERY_CAPTION_GAP - captionHeight)
   }
 
   const centerX = (minX + maxX) / 2

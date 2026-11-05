@@ -48,17 +48,26 @@ describe('gallery support transforms', () => {
 })
 
 describe('gallery event content', () => {
-  it('keeps available photo or placeholder events in explicit order with compact placement', () => {
-    const orderIndex = new Map<string, number>(GALLERY_EVENT_ORDER.map((id, index) => [id, index]))
-    const indices = GALLERY_MEMORIES.map(({ id }) => orderIndex.get(id))
-    const captionsById = galleryCaptions as Readonly<Record<string, { caption: string } | undefined>>
-
-    expect(indices.every((index): index is number => index !== undefined)).toBe(true)
-    expect(indices).toEqual([...indices].sort((left, right) => left! - right!))
+  it('places start_img first, followed by all 17 events in order on alternating sides', () => {
+    expect(GALLERY_EVENT_ORDER).toHaveLength(17)
+    expect(GALLERY_MEMORIES).toHaveLength(18)
+    expect(GALLERY_MEMORIES.map(({ id }) => id)).toEqual(['start_img.jpg', ...GALLERY_EVENT_ORDER])
     expect(GALLERY_MEMORIES.map(({ side }) => side)).toEqual(
       GALLERY_MEMORIES.map((_, index) => index % 2 === 0 ? -1 : 1),
     )
-    expect(GALLERY_MEMORIES.every(({ id, caption }) => caption === (captionsById[id]?.caption ?? ''))).toBe(true)
+    expect(GALLERY_MEMORIES.map(({ order }) => order)).toEqual(Array.from({ length: 18 }, (_, index) => index))
+    expect(GALLERY_MEMORIES.every(({ image }) => Boolean(image))).toBe(true)
     expect(GALLERY.travel).toBeGreaterThan(GALLERY_MEMORIES.length * GALLERY.spacing)
+  })
+
+  it('loads every title and caption from JSON without old event or demo entries', () => {
+    const captionsById = galleryCaptions as Readonly<Record<string, { title: string; caption: string } | undefined>>
+    expect(Object.keys(captionsById)).toEqual(['start_img.jpg', ...GALLERY_EVENT_ORDER])
+    expect(GALLERY_MEMORIES.every(({ id, title, caption }) => {
+      const content = captionsById[id]
+      return content !== undefined && content.title === title && content.caption === caption
+    })).toBe(true)
+    expect(GALLERY_EVENT_ORDER.slice(-2)).toEqual(['2026_10_Saint_Petersburg', '2026_10_Planetarium'])
+    expect(GALLERY_MEMORIES.some(({ id }) => id.startsWith('demo-'))).toBe(false)
   })
 })

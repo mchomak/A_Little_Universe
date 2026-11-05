@@ -4,39 +4,58 @@ export const GALLERY_EVENT_ORDER = [
   '2024_00_Dimas_Birthday',
   '2025_01_Moscow_City_New_Year',
   '2026_01_Country_House_New_Year',
-  '2026_02_My_Birthday',
   '2026_02_23_February_23',
-  '2026_00_After_Gym',
-  '2026_00_Movie_Night',
+  '2026_03_Movie_Night',
   '2026_04_Theater_Night',
   '2026_04_Artems_Birthday',
   '2026_05_Annas_Graduation',
   '2026_05_Tula_Trip',
-  '2026_05_Tula_Karting',
   '2026_06_Visiting_Anna',
-  '2026_00_World_Cup',
-  '2026_00_Club_Night',
-  '2026_08_Asia_Trip',
+  '2026_07_World_Cup',
+  '2026_07_Club_Night',
   '2026_08_Koh_Samui',
-  '2026_00_Timurs_Farewell',
+  '2026_08_Timurs_Farewell',
   '2026_09_Annas_Birthday',
   '2026_10_Saint_Petersburg',
   '2026_10_Planetarium',
 ] as const
 
+type GalleryEventId = (typeof GALLERY_EVENT_ORDER)[number]
+
+/** Exact source files selected for each event; older source originals stay in place but are not shown. */
+export const GALLERY_EVENT_PHOTO_FILES = {
+  '2024_00_Dimas_Birthday': ['1.jpg'],
+  '2025_01_Moscow_City_New_Year': ['1.jpg', '2.jpg', '3.jpg'],
+  '2026_01_Country_House_New_Year': ['1.jpg'],
+  '2026_02_23_February_23': ['1.jpg', '2.jpg', '3.jpg', '4.jpg'],
+  '2026_03_Movie_Night': ['1.jpg', '2.jpg', '3.jpg'],
+  '2026_04_Theater_Night': ['1.jpg', '2.jpg', '3.jpg', 'photo_6_2026-11-03_16-26-25.jpg'],
+  '2026_04_Artems_Birthday': ['photo_8_2026-11-03_16-22-28.jpg'],
+  '2026_05_Annas_Graduation': ['1.jpg'],
+  '2026_05_Tula_Trip': ['1.jpg', '2.jpg', '3.jpg', '4.jpg'],
+  '2026_06_Visiting_Anna': ['1.jpg', '2.jpg', '3.jpg'],
+  '2026_07_World_Cup': ['1.jpg', '2.jpg', '4.jpg'],
+  '2026_07_Club_Night': ['1.jpg', '2.jpg', '3.jpg', '4.jpg'],
+  '2026_08_Koh_Samui': ['1.jpg', '2.jpg', '3.jpg', '4.jpg'],
+  '2026_08_Timurs_Farewell': ['1.jpg', '2.jpg', '3.jpg'],
+  '2026_09_Annas_Birthday': ['1.png', '2.jpg', '3.jpg', '4.png'],
+  '2026_10_Saint_Petersburg': ['1.jpg', '2.jpg', '3.jpg', '4.jpg'],
+  '2026_10_Planetarium': ['1.jpg', '2.jpg', '3.jpg', '4.jpg'],
+} as const satisfies Readonly<Record<GalleryEventId, readonly string[]>>
+
 export interface GalleryCatalogMemory {
   id: string
   image: string | undefined
   images: Array<string | undefined>
+  title: string
   caption: string
   aspect: number
   side: -1 | 1
   order: number
-  palette: [string, string]
 }
 
-type Captions = Readonly<Record<string, { caption: string } | undefined>>
-type Palette = [string, string]
+type Captions = Readonly<Record<string, { title: string; caption: string } | undefined>>
+type PhotoSelection = Readonly<Record<string, readonly string[]>>
 
 const byStableName = (left: string, right: string) => {
   const leftParts = left.toLocaleLowerCase('en').match(/\d+|\D+/g) ?? []
@@ -81,13 +100,6 @@ function placePhotos(files: readonly { fileName: string; url: string }[]): Array
     if (firstOpenSlot < 0) break
     slots[firstOpenSlot] = file.url
   }
-  if (slots[0] === undefined) {
-    const firstExistingSlot = slots.findIndex((entry) => entry !== undefined)
-    if (firstExistingSlot > 0) {
-      slots[0] = slots[firstExistingSlot]
-      slots[firstExistingSlot] = undefined
-    }
-  }
   return slots
 }
 
@@ -96,8 +108,7 @@ export function createGalleryEventMemories(
   eventOrder: readonly string[],
   assets: Readonly<Record<string, string>>,
   captions: Captions,
-  palettes: readonly Palette[],
-  placeholderEvents: readonly string[] = [],
+  photoSelection?: PhotoSelection,
 ): GalleryCatalogMemory[] {
   const filesByEvent = new Map<string, { fileName: string; url: string }[]>()
   for (const [path, url] of Object.entries(assets)) {
@@ -108,24 +119,29 @@ export function createGalleryEventMemories(
     filesByEvent.set(parts.eventId, files)
   }
 
-  const placeholderEventSet = new Set(placeholderEvents)
   const memories: GalleryCatalogMemory[] = []
   for (const eventId of eventOrder) {
-    const files = filesByEvent.get(eventId)
-    if (!files?.length && !placeholderEventSet.has(eventId)) continue
-    const images = files?.length ? placePhotos(files) : [undefined, undefined, undefined, undefined]
+    const availableFiles = filesByEvent.get(eventId) ?? []
+    const files = photoSelection
+      ? (photoSelection[eventId] ?? []).flatMap((fileName) => {
+        const file = availableFiles.find((candidate) => candidate.fileName === fileName)
+        return file ? [file] : []
+      })
+      : availableFiles
+    if (!files.length) continue
+    const images = placePhotos(files)
     const image = images[0]
-    if (files?.length && !image) continue
+    if (!image) continue
     const order = memories.length
     memories.push({
       id: eventId,
       image,
       images,
+      title: captions[eventId]?.title ?? '',
       caption: captions[eventId]?.caption ?? '',
       aspect: 1,
       side: order % 2 === 0 ? -1 : 1,
       order,
-      palette: palettes[order % Math.max(1, palettes.length)] ?? ['#765c68', '#c59e8c'],
     })
   }
   return memories
