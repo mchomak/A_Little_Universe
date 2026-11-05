@@ -6,6 +6,9 @@ import type { SceneComposerConfig } from '../systems/scene-config/config'
 import type { CameraPose } from '../scenes/shared/galleryMotion'
 import { getGalleryCollageCameraFrame, getGalleryCollageFocusDistance, getGalleryNormalFov, getGalleryPhotoAspectProfile } from '../scenes/gallery/galleryCameraFit'
 
+const MIN_FOCUS_DISTANCE = 4.8
+const OPPOSITE_PHOTO_CLEARANCE = 0.9
+
 export interface GalleryCameraFrameOptions {
   delta: number
   speed: number
@@ -33,9 +36,13 @@ export function updateGalleryCameraPose(
   const [x, y, z] = memoryPosition(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout, settings)
   const focal = motion.focusMix
   const collageFrame = getGalleryCollageCameraFrame(memory, settings, getGalleryPhotoAspectProfile(memory.id))
+  const fittedFocusDistance = getGalleryCollageFocusDistance(collageFrame, aspect, getGalleryNormalFov(aspect, eased))
+  const oppositePhotoDistance = memory.images[3] && settings.galleryLayoutVariant === 'between-columns'
+    ? Math.max(MIN_FOCUS_DISTANCE, Math.abs(x) * 2 - OPPOSITE_PHOTO_CLEARANCE)
+    : Number.POSITIVE_INFINITY
   const targetFocusDistance = focal > 0.001
-    ? getGalleryCollageFocusDistance(collageFrame, aspect, getGalleryNormalFov(aspect, eased))
-    : 4.8
+    ? Math.min(fittedFocusDistance, oppositePhotoDistance)
+    : MIN_FOCUS_DISTANCE
   const distanceBlend = 1 - Math.exp(-Math.max(0, Math.min(delta, 0.05)) * 7)
   const easedFocusDistance = focusDistance + (targetFocusDistance - focusDistance) * distanceBlend
   const targetCenterX = focal > 0.001 ? collageFrame.centerX : 0

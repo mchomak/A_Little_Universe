@@ -118,4 +118,38 @@ describe('gallery camera layout switching', () => {
     expect(frame.camera.x).toBeCloseTo(expectedX + Math.sin(yaw) * focusDistance, 3)
     expect(frame.camera.z).toBeCloseTo(expectedZ + Math.cos(yaw) * focusDistance, 3)
   })
+
+  it('keeps the camera in front of the opposite photo when a collage has a top photo', () => {
+    const memory = GALLERY_MEMORIES.find(candidate => candidate.id === '2026_10_Planetarium')!
+    expect(memory.images[3]).toBeDefined()
+    galleryFocus(null)
+    advanceGallery(10)
+    galleryFocus(memory.order)
+    advanceGallery(10)
+
+    const settings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery
+    const layout = settings.galleryLayoutVariant === 'between-columns' ? settings.galleryLayoutB : settings.galleryLayoutA
+    const oppositeMemory = { ...memory, side: memory.side === 1 ? -1 as const : 1 as const }
+    const oppositePhoto = memoryPosition(oppositeMemory, settings.galleryWidth, settings.galleryLayoutVariant, layout, settings)
+    const pose = { x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0 }
+    let focusDistance = 4.8
+    let focusCenter: readonly [number, number] = [0, 0]
+    let frame!: ReturnType<typeof updateGalleryCameraPose>
+
+    for (let step = 0; step < 32; step += 1) {
+      frame = updateGalleryCameraPose(pose, settings, {
+        delta: 0.05,
+        speed: 1,
+        paused: true,
+        reducedMotion: false,
+        aspect: 2551 / 1167,
+        focusDistance,
+        focusCenter,
+      })
+      focusDistance = frame.focusDistance
+      focusCenter = frame.focusCenter
+    }
+
+    expect(memory.side * (frame.camera.x - oppositePhoto[0])).toBeGreaterThan(0.75)
+  })
 })
