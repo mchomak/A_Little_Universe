@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { GALLERY_ART } from './artDirection'
 import { createFrameParticleGeometry } from './frameParticles'
 
 describe('gallery frame particle geometry', () => {
@@ -59,5 +60,14 @@ describe('gallery frame particle geometry', () => {
     expect(left).toBeGreaterThan(0)
     expect(wide.getAttribute('phase').array).toEqual(repeated.getAttribute('phase').array)
     wide.dispose(); tall.dispose(); repeated.dispose()
+  })
+
+  it('supports a denser portrait frame while keeping gallery spacing as the default', () => {
+    const gallerySpacing = createFrameParticleGeometry(2.46, 2.46, 11)
+    const portraitSpacing = createFrameParticleGeometry(2.46, 2.46, 11, undefined, GALLERY_ART.frameParticleSpacing * 0.04, 0.012)
+    expect(portraitSpacing.getAttribute('position').count).toBeGreaterThan(gallerySpacing.getAttribute('position').count * 15)
+    const points = portraitSpacing.getAttribute('position')
+    expect(Math.max(...Array.from(points.array as Float32Array).filter((_value, index) => index % 3 === 0))).toBeCloseTo(1.242)
+    gallerySpacing.dispose(); portraitSpacing.dispose()
   })
 })

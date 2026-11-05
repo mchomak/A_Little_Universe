@@ -17,6 +17,7 @@ import { GalaxyExperience } from '../scenes/galaxy/GalaxyExperience'
 import { shouldKeepGrowthWorld } from './sceneContinuity'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { getSceneLighting } from './sceneLighting'
+import { IdentityPhotoReveal } from '../scenes/lily/IdentityPhotoReveal'
 
 
 const modules = { prologue: PrologueScene, bloom: BloomScene, gallery: GalleryScene, eye: EyeScene, cosmos: CosmosScene, greeting: GreetingScene, ending: EndingScene }
@@ -50,6 +51,7 @@ export function SceneDirector(props: SceneProps) {
     {scene === 'identity' && (lilyParticleSource
       ? <LilyDissolveParticles source={lilyParticleSource} uniforms={dissolveUniforms} runtime={props.runtime} low={props.state.quality === 'low' || props.reducedMotion} reducedMotion={props.reducedMotion} />
       : <IdentityLoading runtime={props.runtime} />)}
+    {scene === 'identity' && <Suspense fallback={null}><IdentityPhotoReveal runtime={props.runtime} reducedMotion={props.reducedMotion} /></Suspense>}
     {Scene && <Scene key={`${scene}:${props.state.revision}`} {...props} />}
   </>
 }

@@ -11,3 +11,18 @@ export function getIdentityCameraMoveTarget(start: CameraPose, settings: Identit
     z: start.z + settings.cameraPullback,
   }
 }
+
+/** Continue a dolly along the current view direction while keeping its framing target fixed. */
+export function getIdentityCameraPullbackPose(pose: CameraPose, distance: number): CameraPose {
+  const deltaX = pose.x - pose.tx
+  const deltaY = pose.y - pose.ty
+  const deltaZ = pose.z - pose.tz
+  const length = Math.max(0.001, Math.hypot(deltaX, deltaY, deltaZ))
+  const pullback = Number.isFinite(distance) ? Math.max(0, distance) : 0
+  return {
+    ...pose,
+    x: pose.x + deltaX / length * pullback,
+    y: pose.y + deltaY / length * pullback,
+    z: pose.z + deltaZ / length * pullback,
+  }
+}

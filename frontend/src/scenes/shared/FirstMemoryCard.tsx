@@ -6,12 +6,13 @@ import photoUrl from '../../assets/start_img.jpg'
 function setPhotoColorSpace(texture: Texture) { texture.colorSpace = SRGBColorSpace; texture.needsUpdate = true }
 
 /** The same photograph and physical frame are shared by the film and gallery. */
-export function FirstMemoryCard({ photoRef, frameRef, photoMaterial, rimMaterial, frameTone = 'warm' }: {
+export function FirstMemoryCard({ photoRef, frameRef, photoMaterial, rimMaterial, frameTone = 'warm', showFrame = true }: {
   photoRef?: RefObject<Group | null>
   frameRef?: RefObject<Group | null>
   photoMaterial?: Material
   rimMaterial?: Material
   frameTone?: 'warm' | 'moonlight'
+  showFrame?: boolean
 }) {
   const texture = useLoader(TextureLoader, photoUrl)
   const glow = useMemo(() => {
@@ -26,7 +27,7 @@ export function FirstMemoryCard({ photoRef, frameRef, photoMaterial, rimMaterial
   useEffect(() => () => glow.dispose(), [glow])
   useLayoutEffect(() => { setPhotoColorSpace(texture) }, [texture])
   return <>
-    <group ref={frameRef ?? null}>
+    <group ref={frameRef ?? null} visible={showFrame}>
       <mesh position={[0, 0, -.022]}><boxGeometry args={[2.158, 2.158, .028]} /><meshBasicMaterial color="#17141d" transparent /></mesh>
       <mesh position={[0, 0, -.003]} userData={{ memoryEdgeGlow: true }}><planeGeometry args={[2.3, 2.3]} /><meshBasicMaterial map={glow} transparent depthWrite={false} toneMapped={false} /></mesh>
       {([-1, 1] as const).map((side) => <group key={side}>

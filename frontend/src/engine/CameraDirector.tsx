@@ -17,7 +17,8 @@ import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthViewportHe
 import { getBloomCameraMoveDuration, getBloomCloseupPose, getBloomEntryCameraPose } from './bloomCamera'
 import { galaxyCameraPose, interpolateCameraPose } from '../scenes/galaxy/camera'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
-import { getIdentityCameraMoveTarget } from './identityCamera'
+import { getIdentityCameraMoveTarget, getIdentityCameraPullbackPose } from './identityCamera'
+import { getScene04Timeline } from '../scenes/lily/scene04Timeline'
 
 /** Camera settings belong here, never inside an artistic scene module. */
 export function CameraDirector({ state, dispatch, runtime, reducedMotion }: SceneProps) {
@@ -99,11 +100,20 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       duration: getBloomCameraMoveDuration(bloomSettings, bloomFrames.opening),
       ease: 'sine.inOut',
     })
-    if (scene === 'identity') timeline.to(p, {
-      ...getIdentityCameraMoveTarget(flowerCloseup, identitySettings),
-      duration: identitySettings.cameraMoveDuration,
-      ease: 'sine.inOut',
-    })
+    if (scene === 'identity') {
+      const portraitCameraPose = getIdentityCameraMoveTarget(flowerCloseup, identitySettings)
+      const scene04Timeline = getScene04Timeline(identitySettings)
+      timeline.to(p, {
+        ...portraitCameraPose,
+        duration: identitySettings.cameraMoveDuration,
+        ease: 'sine.inOut',
+      })
+      timeline.to(p, {
+        ...getIdentityCameraPullbackPose(portraitCameraPose, scene04Timeline.cameraPullbackDistance),
+        duration: scene04Timeline.cameraPullbackDuration,
+        ease: 'sine.inOut',
+      }, scene04Timeline.cameraPullbackStart)
+    }
     if (scene === 'eye') timeline.to(p, { z: 0.85, duration: TIMING.camera.eye, ease: 'power2.inOut' }, TIMING.eye.approach[0])
     if (scene === 'cosmos') {
       const finish = galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)

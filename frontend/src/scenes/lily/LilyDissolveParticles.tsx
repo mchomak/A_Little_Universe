@@ -3,12 +3,12 @@ import { Html } from '@react-three/drei'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { Points } from 'three'
 import type { FilmRuntime } from '../../engine/runtime'
-import { TIMING } from '../../engine/filmConfig'
 import { getConfig, subscribeConfig } from '../../systems/scene-config/config'
 import { createLilyParticleGeometry, createLilyParticleMaterial, LILY_PARTICLE_TAIL_SECONDS, updateLilyParticleSize, updateLilyPortraitAppearance, updateLilyPortraitSettings, type LilyDissolveUniforms, type LilyVisiblePortraitGeometryOptions } from './dissolve'
 import type { LilySurfaceSource } from './particleSource'
 import { createLilyPortraitCameraBasisAtTime, placeLilyPortraitTargets, toLilyPortraitAppearanceSettings, toLilyPortraitCaptureSettings, toLilyPortraitUniformScales } from './portraitIntegration'
 import { APPROVED_PORTRAIT_SETTINGS, applyApprovedPortraitAppearance, createApprovedPortraitGate, loadApprovedPortrait } from './approvedPortrait'
+import { getScene04PortraitParticleOpacity, getScene04Timeline } from './scene04Timeline'
 type ParticleProps = {
   source: LilySurfaceSource
   uniforms: LilyDissolveUniforms
@@ -44,13 +44,15 @@ function ReadyLilyDissolveParticles({ source, uniforms, reducedMotion, runtime, 
   const dpr = useThree((state) => state.viewport.dpr)
   const invalidate = useThree((state) => state.invalidate)
   const points = useRef<Points>(null)
+  const uniformsRef = useRef(uniforms)
   const portraitSettings = APPROVED_PORTRAIT_SETTINGS
   const settings = config.scenes.identity
+  const sceneTimeline = useMemo(() => getScene04Timeline(settings), [settings])
   const portraitUniformScales = useMemo(() => toLilyPortraitUniformScales(portraitSettings, settings.particleBrightness, settings.particleSize),
     [portraitSettings, settings.particleBrightness, settings.particleSize])
   const count = settings.particleCount
-  const portraitStart = settings.portraitStartProgress * settings.dissolveDuration
-  const portraitDuration = Math.min(settings.portraitDuration, Math.max(2, TIMING.identity.duration - portraitStart))
+  const portraitStart = sceneTimeline.portraitStart
+  const portraitDuration = sceneTimeline.portraitDuration
   const portraitTargets = portrait.points
 
   const cameraBasisAtTime = useMemo(() => createLilyPortraitCameraBasisAtTime({
@@ -102,18 +104,19 @@ function ReadyLilyDissolveParticles({ source, uniforms, reducedMotion, runtime, 
   }, [uniforms, portraitSettings])
   useLayoutEffect(() => {
     const sync = (time: number) => {
-      updateLilyPortraitSettings(uniforms, time, {
+      updateLilyPortraitSettings(uniformsRef.current, time, {
         portraitStart,
         portraitDuration,
         portraitBrightness: portraitUniformScales.brightness,
         portraitSize: portraitUniformScales.size,
       })
+      uniformsRef.current.uLilyPortraitOpacity.value = portraitSettings.opacity * getScene04PortraitParticleOpacity(time, sceneTimeline)
       if (points.current) points.current.visible = hasPortrait || time < settings.dissolveDuration + LILY_PARTICLE_TAIL_SECONDS
       invalidate()
     }
     sync(runtime.time)
     return runtime.subscribeFrame(sync)
-  }, [runtime, invalidate, hasPortrait, uniforms, portraitStart, portraitDuration, portraitUniformScales, settings.dissolveDuration])
+  }, [runtime, invalidate, hasPortrait, uniformsRef, portraitStart, portraitDuration, portraitUniformScales, portraitSettings, sceneTimeline, settings])
   useEffect(() => () => geometry.dispose(), [geometry])
   useEffect(() => () => material.dispose(), [material])
   return <points ref={points} geometry={geometry} material={material} frustumCulled={false} />
