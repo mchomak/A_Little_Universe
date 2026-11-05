@@ -1,4 +1,5 @@
 import { BackSide, Color, NormalBlending, ShaderMaterial, Vector3 } from 'three'
+import { DEFAULT_GROWTH_CLOUD_LAYERS, GROWTH_CLOUD_LAYER_IDS, type GrowthCloudLayerId, type GrowthCloudLayers } from '../../systems/scene-config/growthCloudLayers'
 import { getGrowthProgress, type GrowthFrames } from './seedProcedure'
 
 export interface GrowthCloudMass {
@@ -10,6 +11,8 @@ export interface GrowthCloudMass {
   /** Thin wisps can cross the seed path briefly while keeping its silhouette readable. */
   pathCrossing?: boolean
   densityScale?: number
+  cloudLayer?: GrowthCloudLayerId
+  raySteps?: number
   /** Only sparse far masses persist into lily growth. */
   persistent?: boolean
   /** Normalized camera-path point for the brief approach and pass of a cloud wisp. */
@@ -28,9 +31,10 @@ export interface GrowthCloudLayoutOptions {
   lightVariation?: number
   pathDensity?: number
   depthVariation?: number
+  cloudLayers?: GrowthCloudLayers
 }
 
-const DEFAULT_CLOUD_LAYOUT_OPTIONS: Required<GrowthCloudLayoutOptions> = {
+const DEFAULT_CLOUD_LAYOUT_OPTIONS: Omit<Required<GrowthCloudLayoutOptions>, 'cloudLayers'> = {
   fallDistance: 7.65,
   viewportHeight: 3.856,
   sizeVariation: 0.72,
@@ -50,18 +54,18 @@ const GROWTH_CLOUD_LAYOUT: readonly GrowthCloudTemplate[] = [
   { id: 'path-crossing-07', seed: 71, position: [0.12, 0, -0.16], radii: [0.72, 0.33, 0.76], fallProgress: 0.89, pathCrossing: true, densityScale: 0.15, lightScale: 1 },
   { id: 'path-crossing-08', seed: 83, position: [-0.16, 0, -0.08], radii: [0.64, 0.35, 0.68], fallProgress: 0.95, pathCrossing: true, densityScale: 0.15, lightScale: 1 },
   { id: 'near-group-left-high', seed: 97, position: [-2.55, 0, 2.45], radii: [1.15, 0.86, 1.22], fallProgress: 0.52, lightScale: 1 },
-  { id: 'far-group-right-upper', seed: 101, position: [3.45, 0, -5.25], radii: [1.38, 0.74, 1.34], fallProgress: 0.56, persistent: true, lightScale: 1 },
+  { id: 'far-group-right-upper', seed: 101, position: [3.45, -0.6, -6.2], radii: [2.8, 1.2, 1.8], cloudLayer: 'far', raySteps: 5, persistent: true, lightScale: 1 },
   { id: 'near-group-right-upper', seed: 113, position: [2.65, 0, 2.8], radii: [0.96, 0.68, 1.02], fallProgress: 0.62, lightScale: 1 },
-  { id: 'far-group-left-mid', seed: 127, position: [-3.85, 0, -4.7], radii: [1.08, 0.9, 1.42], fallProgress: 0.66, persistent: true, lightScale: 1 },
+  { id: 'far-group-left-mid', seed: 127, position: [-3.85, -0.1, -6.6], radii: [2.9, 1.15, 2], cloudLayer: 'far', raySteps: 5, persistent: true, lightScale: 1 },
   { id: 'near-group-left-mid', seed: 131, position: [-3.55, 0, 3.15], radii: [1.3, 1.02, 0.88], fallProgress: 0.72, lightScale: 1 },
   { id: 'far-group-right-mid', seed: 149, position: [3.7, 0, -6.05], radii: [1.22, 0.77, 1.54], fallProgress: 0.75, lightScale: 1 },
   { id: 'near-group-right-low', seed: 157, position: [3.2, 0, 2.55], radii: [1.02, 0.7, 1.3], fallProgress: 0.84, lightScale: 1 },
   { id: 'far-group-left-low', seed: 163, position: [-4.05, 0, -5.55], radii: [1.4, 0.82, 1.18], fallProgress: 0.91, lightScale: 1 },
-  // Broad, distant banks sit below the island and overlap into a quiet cloud sea.
-  { id: 'island-back-left', seed: 179, position: [-2.75, -2.3, -5.75], radii: [5.4, 0.66, 1.6], persistent: true, lightScale: 1 },
-  { id: 'island-back-right', seed: 191, position: [2.75, -2.45, -6.25], radii: [5.4, 0.7, 1.72], persistent: true, lightScale: 1 },
-  { id: 'island-far-left', seed: 199, position: [-2.9, -3.25, -6.8], radii: [5.8, 0.72, 1.95], persistent: true, lightScale: 1 },
-  { id: 'island-far-right', seed: 211, position: [2.9, -3.5, -7.15], radii: [5.8, 0.68, 1.72], persistent: true, lightScale: 1 },
+  // Settled groups surround the floating island at varied depths instead of forming a low floor.
+  { id: 'island-back-left', seed: 179, position: [-4.45, -0.75, -1.45], radii: [2.25, 1.05, 1.55], cloudLayer: 'sides', raySteps: 8, persistent: true, lightScale: 1 },
+  { id: 'island-back-right', seed: 191, position: [4.55, 0, -1.1], radii: [2.1, 1.1, 1.7], cloudLayer: 'sides', raySteps: 8, persistent: true, lightScale: 1 },
+  { id: 'island-far-left', seed: 199, position: [-2.55, -0.65, 1.7], radii: [2.45, 1.05, 1.45], cloudLayer: 'foreground', raySteps: 8, persistent: true, lightScale: 1 },
+  { id: 'island-far-right', seed: 211, position: [2.55, 0.1, 2.1], radii: [2.35, 1.1, 1.5], cloudLayer: 'foreground', raySteps: 8, persistent: true, lightScale: 1 },
   { id: 'near-group-left-lower', seed: 223, position: [-3.35, 0, 2.6], radii: [1.24, 0.7, 1.1], fallProgress: 0.79, lightScale: 1 },
   { id: 'far-group-right-lower', seed: 227, position: [3.9, 0, -5.45], radii: [1.36, 0.92, 1.2], fallProgress: 0.8, lightScale: 1 },
   { id: 'near-group-right-deep', seed: 239, position: [3.45, 0, 3.45], radii: [1.06, 0.76, 1.16], fallProgress: 0.94, lightScale: 1 },
@@ -205,6 +209,7 @@ const cloudFragmentShader = `
 
 export interface GrowthCloudMaterialOptions {
   seed: number
+  raySteps?: number
 }
 
 /** Directional cloud illumination follows the same impact-bound cue as the key light. */
@@ -226,6 +231,7 @@ export function getGrowthCloudMasses(
   const lightVariation = clampFinite(options.lightVariation ?? DEFAULT_CLOUD_LAYOUT_OPTIONS.lightVariation, 0, 1, DEFAULT_CLOUD_LAYOUT_OPTIONS.lightVariation)
   const pathDensity = clampFinite(options.pathDensity ?? DEFAULT_CLOUD_LAYOUT_OPTIONS.pathDensity, 0, 1, DEFAULT_CLOUD_LAYOUT_OPTIONS.pathDensity)
   const depthVariation = clampFinite(options.depthVariation ?? DEFAULT_CLOUD_LAYOUT_OPTIONS.depthVariation, 0, 1, DEFAULT_CLOUD_LAYOUT_OPTIONS.depthVariation)
+  const cloudLayers = options.cloudLayers ?? DEFAULT_GROWTH_CLOUD_LAYERS
   const depthSpread = 0.32 + depthVariation * 1.08
   const positionScale = 1 + (safeScale - 1) * 0.35
   const initialViewportBottom = fallDistance - viewportHeight / 2
@@ -236,9 +242,9 @@ export function getGrowthCloudMasses(
   const highestPathY = Math.min(fallDistance * 0.48, initialViewportBottom - maxPathRadius - 0.28)
   const dynamicLayout = GROWTH_CLOUD_LAYOUT.map((mass) => {
     const crossing = mass.pathCrossing ?? false
-    const xJitter = seededVariation(mass.seed, 1) * (crossing ? 0 : 0.52)
+    const xJitter = mass.cloudLayer ? 0 : seededVariation(mass.seed, 1) * (crossing ? 0 : 0.52)
     const yJitter = mass.persistent ? 0 : seededVariation(mass.seed, 2) * (crossing ? 0.035 : 0.055)
-    const zJitter = seededVariation(mass.seed, 3) * (crossing ? 0 : 0.95)
+    const zJitter = mass.cloudLayer ? 0 : seededVariation(mass.seed, 3) * (crossing ? 0 : 0.95)
     const sizeFactors = [4, 5, 6].map((salt) => 1 + seededVariation(mass.seed, salt) * sizeVariation * 0.42) as [number, number, number]
     const lightScale = clampFinite(1 + seededVariation(mass.seed, 7) * lightVariation * 0.72, 0.35, 1.65, 1)
     const radii = [mass.radii[0] * sizeFactors[0], mass.radii[1] * sizeFactors[1], mass.radii[2] * sizeFactors[2]] as const
@@ -259,7 +265,7 @@ export function getGrowthCloudMasses(
       : Math.min(desiredY, initialViewportBottom + sideBankRise - radii[1] * safeScale - 0.28)
     return {
       ...mass,
-      position: [mass.position[0] + xJitter, y, (mass.position[2] + zJitter) * depthSpread] as const,
+      position: [mass.position[0] + xJitter, y, (mass.position[2] + zJitter) * (mass.cloudLayer ? 1 : depthSpread)] as const,
       radii,
       lightScale: mass.lightScale * lightScale,
     }
@@ -268,27 +274,37 @@ export function getGrowthCloudMasses(
   const selectedMasses = (() => {
     if (safeCount === 0) return []
     const pathCandidates = verticalLayout.filter(({ pathCrossing }) => pathCrossing)
-    const persistentCandidates = verticalLayout.filter(({ persistent }) => persistent)
-    const otherCandidates = verticalLayout.filter(({ pathCrossing, persistent }) => !pathCrossing && !persistent)
+    const layerCandidates = new Map(GROWTH_CLOUD_LAYER_IDS.map((id) => [id, verticalLayout.filter(({ cloudLayer }) => cloudLayer === id)]))
+    const otherCandidates = verticalLayout.filter(({ pathCrossing, cloudLayer }) => !pathCrossing && !cloudLayer)
     // A single volume is a discrete choice, so let the slider's midpoint switch it
     // from a background group to a path wisp instead of bypassing path density.
     const requestedPathCount = safeCount === 1
       ? Math.round(pathDensity)
       : Math.round(safeCount * pathDensity * 0.5)
     const pathCount = Math.min(pathCandidates.length, requestedPathCount)
-    const persistentCount = safeCount >= 8 ? Math.min(persistentCandidates.length, Math.round(safeCount * 0.3)) : 0
-    const reservedCount = Math.min(safeCount, pathCount + persistentCount)
-    const selectedPath = spreadSelect(pathCandidates, Math.min(pathCount, reservedCount))
-    const selectedPersistent = spreadSelect(persistentCandidates, Math.min(persistentCount, reservedCount - selectedPath.length))
-    const otherCount = safeCount - selectedPath.length - selectedPersistent.length
+    const selectedPath = spreadSelect(pathCandidates, Math.min(pathCount, safeCount))
+    let remaining = safeCount - selectedPath.length
+    const selectedLayers = GROWTH_CLOUD_LAYER_IDS.flatMap((id) => {
+      const selected = spreadSelect(layerCandidates.get(id) ?? [], Math.min(cloudLayers[id].count, remaining))
+      remaining -= selected.length
+      return selected
+    })
+    const otherCount = remaining
     const selectedOther = spreadSelect(otherCandidates, otherCount)
-    return [...selectedPath, ...selectedPersistent, ...selectedOther].sort((a, b) => a.position[1] - b.position[1])
+    return [...selectedPath, ...selectedLayers, ...selectedOther].sort((a, b) => a.position[1] - b.position[1])
   })()
-  return selectedMasses.map((mass) => ({
-    ...mass,
-    position: [mass.position[0] * positionScale, mass.position[1], mass.position[2] * safeScale],
-    radii: [mass.radii[0] * safeScale, mass.radii[1] * safeScale, mass.radii[2] * safeScale],
-  }))
+  return selectedMasses.map((mass) => {
+    const layer = mass.cloudLayer ? cloudLayers[mass.cloudLayer] : undefined
+    return {
+      ...mass,
+      position: [
+        (mass.position[0] + (layer ? Math.sign(mass.position[0]) * layer.distance : 0)) * positionScale,
+        mass.position[1] + (layer?.height ?? 0),
+        mass.position[2] * safeScale + (layer?.depth ?? 0),
+      ] as const,
+      radii: [mass.radii[0] * safeScale * (layer?.scale ?? 1), mass.radii[1] * safeScale * (layer?.scale ?? 1), mass.radii[2] * safeScale * (layer?.scale ?? 1)] as const,
+    }
+  })
 }
 
 export function getGrowthCloudVisibility(
@@ -348,6 +364,7 @@ export function setGrowthCloudMoonPosition(target: Vector3, rootPosition: Vector
 }
 
 export function createGrowthCloudVolumeMaterial(options: GrowthCloudMaterialOptions): ShaderMaterial {
+  const raySteps = Math.floor(clampFinite(options.raySteps ?? GROWTH_CLOUD_RAY_STEPS, 4, GROWTH_CLOUD_RAY_STEPS, GROWTH_CLOUD_RAY_STEPS))
   return new ShaderMaterial({
     uniforms: {
       uCenter: { value: new Vector3() },
@@ -362,7 +379,7 @@ export function createGrowthCloudVolumeMaterial(options: GrowthCloudMaterialOpti
       uSeaEdgeFade: { value: 0 },
       uTime: { value: 0 },
     },
-    defines: { CLOUD_STEPS: GROWTH_CLOUD_RAY_STEPS },
+    defines: { CLOUD_STEPS: raySteps },
     vertexShader: cloudVertexShader,
     fragmentShader: cloudFragmentShader,
     transparent: true,

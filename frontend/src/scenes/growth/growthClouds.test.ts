@@ -84,9 +84,38 @@ describe('Scene 02 independent clouds', () => {
     expect(field.filter(({ pathCrossing, persistent }) => !pathCrossing && !persistent).every(({ position, radii }) =>
       Math.abs(position[0]) - radii[0] > 0.18,
     )).toBe(true)
-    const seaBanks = persistent.filter(({ id }) => id.startsWith('island-'))
-    expect(seaBanks).toHaveLength(4)
-    expect(seaBanks.every(({ position, radii }) => position[1] <= -2 && radii[0] > 3.8 && radii[1] < 0.8)).toBe(true)
+    const settledGroups = persistent.filter(({ cloudLayer }) => cloudLayer)
+    expect(settledGroups).toHaveLength(6)
+    expect(settledGroups.every(({ position }) => position[1] > -1.6)).toBe(true)
+  })
+
+  it('places the settled cloud groups around the island and tunes each group independently', () => {
+    const settings = getConfig().scenes.growth
+    const options = { sizeVariation: 0, lightVariation: 0, depthVariation: 0, cloudLayers: settings.cloudLayers }
+    const field = getGrowthCloudMasses(settings.cloudCount, settings.cloudScale, options)
+    const settled = field.filter((mass) => mass.cloudLayer)
+    const far = settled.filter((mass) => mass.cloudLayer === 'far')
+    const sides = settled.filter((mass) => mass.cloudLayer === 'sides')
+    const foreground = settled.filter((mass) => mass.cloudLayer === 'foreground')
+
+    expect([far, sides, foreground].map((group) => group.length)).toEqual([2, 2, 2])
+    expect(far.every((mass) => mass.position[2] <= -8 && mass.position[1] > -1.6 && mass.raySteps === 5)).toBe(true)
+    expect(sides.map((mass) => Math.sign(mass.position[0])).sort()).toEqual([-1, 1])
+    expect(sides.every((mass) => Math.abs(mass.position[0]) >= 4 && mass.position[1] > -1.4)).toBe(true)
+    expect(foreground.every((mass) => mass.position[2] >= 2 && mass.radii[0] >= 2.2)).toBe(true)
+
+    const adjustedLayers = {
+      ...settings.cloudLayers,
+      far: { ...settings.cloudLayers.far, count: 0 },
+      foreground: { ...settings.cloudLayers.foreground, count: 1, height: 1.25, depth: 4, distance: 1.2, scale: 0.75 },
+    }
+    const adjusted = getGrowthCloudMasses(settings.cloudCount, settings.cloudScale, { ...options, cloudLayers: adjustedLayers })
+    const adjustedForeground = adjusted.filter((mass) => mass.cloudLayer === 'foreground')
+    expect(adjusted.filter((mass) => mass.cloudLayer === 'far')).toHaveLength(0)
+    expect(adjustedForeground).toHaveLength(1)
+    expect(adjustedForeground[0]!.position[1]).toBeGreaterThan(foreground[0]!.position[1])
+    expect(adjustedForeground[0]!.position[2]).toBeGreaterThan(foreground[0]!.position[2])
+    expect(adjustedForeground[0]!.radii[0]).toBeLessThan(foreground[0]!.radii[0])
   })
 
   it('builds a layered deterministic set outside the flower center', () => {
@@ -111,7 +140,7 @@ describe('Scene 02 independent clouds', () => {
     expect(verticalSpan).toBeGreaterThan(4)
     expect(mainClouds).toHaveLength(3)
     expect(new Set(fullField.map(({ position }) => position[2] < 0 ? 'background' : 'foreground')).size).toBe(2)
-    expect(fullField.some(({ position }) => position[1] < -1.45)).toBe(true)
+    expect(fullField.every(({ position }) => position[1] > -1.45)).toBe(true)
     expect(fullField.filter(({ pathCrossing }) => pathCrossing).length).toBeGreaterThanOrEqual(8)
     expect(defaultField.filter(({ pathCrossing }) => pathCrossing).length).toBeGreaterThanOrEqual(6)
     expect(defaultField.filter(({ persistent }) => persistent).length).toBeGreaterThanOrEqual(3)
@@ -135,8 +164,8 @@ describe('Scene 02 independent clouds', () => {
       position[1] > 0 && position[1] < minimumFallDistance * 0.5,
     )).toBe(true)
     expect(reducedMotionField.filter(({ pathCrossing }) => pathCrossing)).toHaveLength(0)
-    expect(reducedMotionField.every(({ position, radii }) => position[1] + radii[1]
-      < getSeedFallDistance(flight.viewportHeight) - flight.viewportHeight / 2)).toBe(true)
+    expect(reducedMotionField.filter(({ persistent }) => persistent)
+      .every(({ position }) => position[1] > -1.45)).toBe(true)
     expect(getGrowthCloudMasses(4, 1, flight)).toEqual(masses)
     expect(getGrowthCloudMasses(0, 1)).toEqual([])
   })
@@ -264,7 +293,7 @@ describe('Scene 02 independent clouds', () => {
   })
 
   it('holds the settled cloud sea at one world-space pose across the growth-to-bloom seam', () => {
-    const seaMass = getGrowthCloudMasses(24, 1).find(({ id }) => id.startsWith('island-'))!
+    const seaMass = getGrowthCloudMasses(24, 1).find(({ cloudLayer }) => cloudLayer === 'sides')!
 
     expect(getGrowthCloudDrift(seaMass, 8, 0.3)).toEqual([0, 0, 0])
   })
@@ -279,6 +308,7 @@ describe('Scene 02 independent clouds', () => {
 
   it('creates a soft silver ellipsoid volume with bounded raymarch cost', () => {
     const material = createGrowthCloudVolumeMaterial({ seed: 2 })
+    const distantMaterial = createGrowthCloudVolumeMaterial({ seed: 3, raySteps: 5 })
 
     expect(material.transparent).toBe(true)
     expect(material.depthWrite).toBe(false)
@@ -286,6 +316,7 @@ describe('Scene 02 independent clouds', () => {
     expect(material.side).toBe(BackSide)
     expect(material.blending).toBe(NormalBlending)
     expect(material.defines?.CLOUD_STEPS).toBe(12)
+    expect(distantMaterial.defines?.CLOUD_STEPS).toBe(5)
     expect(material.uniforms.uMoonPosition!.value.toArray()).toEqual([0, 5.5, 0])
     expect(material.uniforms.uShapeVariation!.value).toBe(0.65)
     expect(material.uniforms.uSeaEdgeFade!.value).toBe(0)

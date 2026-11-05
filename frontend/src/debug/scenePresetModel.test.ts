@@ -19,7 +19,7 @@ it('captures the complete scene and its shared opening background', () => {
 
   expect(preset).toMatchObject({
     formatVersion: 1,
-    configSchemaVersion: 24,
+    configSchemaVersion: 25,
     name: 'Long growth',
     scope: 'growth',
     scene: config.scenes.growth,

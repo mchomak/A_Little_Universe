@@ -17,6 +17,7 @@ export type ComposerFieldPath =
   | `scenes.preload.${keyof SceneComposerConfig['scenes']['preload'] & string}`
   | `scenes.prologue.${keyof SceneComposerConfig['scenes']['prologue'] & string}`
   | `scenes.growth.${keyof SceneComposerConfig['scenes']['growth'] & string}`
+  | `scenes.growth.cloudLayers.${keyof SceneComposerConfig['scenes']['growth']['cloudLayers'] & string}.${keyof SceneComposerConfig['scenes']['growth']['cloudLayers']['far'] & string}`
   | `scenes.growth.lilyBudGlow.${keyof SceneComposerConfig['scenes']['growth']['lilyBudGlow'] & string}`
   | `scenes.growth.lilyLeafMaterial.${keyof SceneComposerConfig['scenes']['growth']['lilyLeafMaterial'] & string}`
   | `scenes.growth.growthVortex.${keyof SceneComposerConfig['scenes']['growth']['growthVortex'] & string}`
@@ -57,7 +58,7 @@ export async function importComposerJson(source: string): Promise<ComposerImport
     return { ok: false, reason: 'json' }
   }
   if (document === null || typeof document !== 'object' || Array.isArray(document)) return { ok: false, reason: 'document' }
-  if (!('schemaVersion' in document) || !Number.isInteger(document.schemaVersion) || Number(document.schemaVersion) < 1 || Number(document.schemaVersion) > 24) return { ok: false, reason: 'version' }
+  if (!('schemaVersion' in document) || !Number.isInteger(document.schemaVersion) || Number(document.schemaVersion) < 1 || Number(document.schemaVersion) > 25) return { ok: false, reason: 'version' }
   const root = document as Record<string, unknown>
   if ('global' in root && !isRecord(root.global)) return { ok: false, reason: 'document' }
   if ('scenes' in root && !isRecord(root.scenes)) return { ok: false, reason: 'document' }

@@ -192,6 +192,39 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
   ] },
 ]
 
+const GROWTH_CLOUD_LAYER_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
+  { name: 'Дальние облака · фон', controls: [
+    { path: 'scenes.growth.cloudLayers.far.count', label: 'Число облаков', unit: 'шт.', min: 0, max: 2, step: 1 },
+    { path: 'scenes.growth.cloudLayers.far.density', label: 'Плотность', unit: '×', min: 0, max: 1.8, step: 0.05 },
+    { path: 'scenes.growth.cloudLayers.far.scale', label: 'Размер', unit: '×', min: 0.55, max: 2, step: 0.05 },
+    { path: 'scenes.growth.cloudLayers.far.opacity', label: 'Непрозрачность', unit: '×', min: 0, max: 1.8, step: 0.05 },
+    { path: 'scenes.growth.cloudLayers.far.brightness', label: 'Яркость', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.cloudLayers.far.height', label: 'Высота', unit: 'м', min: -3, max: 3, step: 0.1 },
+    { path: 'scenes.growth.cloudLayers.far.distance', label: 'Разнос по сторонам', unit: 'м', min: 0, max: 8, step: 0.25 },
+    { path: 'scenes.growth.cloudLayers.far.depth', label: 'Глубина Z', unit: 'м', min: -8, max: 8, step: 0.25 },
+  ] },
+  { name: 'Боковые облака · уровень острова', controls: [
+    { path: 'scenes.growth.cloudLayers.sides.count', label: 'Число облаков', unit: 'шт.', min: 0, max: 2, step: 1 },
+    { path: 'scenes.growth.cloudLayers.sides.density', label: 'Плотность', unit: '×', min: 0, max: 1.8, step: 0.05 },
+    { path: 'scenes.growth.cloudLayers.sides.scale', label: 'Размер', unit: '×', min: 0.55, max: 2, step: 0.05 },
+    { path: 'scenes.growth.cloudLayers.sides.opacity', label: 'Непрозрачность', unit: '×', min: 0, max: 1.8, step: 0.05 },
+    { path: 'scenes.growth.cloudLayers.sides.brightness', label: 'Яркость', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.cloudLayers.sides.height', label: 'Высота', unit: 'м', min: -3, max: 3, step: 0.1 },
+    { path: 'scenes.growth.cloudLayers.sides.distance', label: 'Разнос по сторонам', unit: 'м', min: 0, max: 8, step: 0.25 },
+    { path: 'scenes.growth.cloudLayers.sides.depth', label: 'Глубина Z', unit: 'м', min: -8, max: 8, step: 0.25 },
+  ] },
+  { name: 'Передний план · края острова', controls: [
+    { path: 'scenes.growth.cloudLayers.foreground.count', label: 'Число облаков', unit: 'шт.', min: 0, max: 2, step: 1 },
+    { path: 'scenes.growth.cloudLayers.foreground.density', label: 'Плотность', unit: '×', min: 0, max: 1.8, step: 0.05 },
+    { path: 'scenes.growth.cloudLayers.foreground.scale', label: 'Размер', unit: '×', min: 0.55, max: 2, step: 0.05 },
+    { path: 'scenes.growth.cloudLayers.foreground.opacity', label: 'Непрозрачность', unit: '×', min: 0, max: 1.8, step: 0.05 },
+    { path: 'scenes.growth.cloudLayers.foreground.brightness', label: 'Яркость', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.cloudLayers.foreground.height', label: 'Высота', unit: 'м', min: -3, max: 3, step: 0.1 },
+    { path: 'scenes.growth.cloudLayers.foreground.distance', label: 'Разнос по сторонам', unit: 'м', min: 0, max: 8, step: 0.25 },
+    { path: 'scenes.growth.cloudLayers.foreground.depth', label: 'Глубина Z', unit: 'м', min: -8, max: 8, step: 0.25 },
+  ] },
+]
+
 const LILY_GROWTH_PARTICLE_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.growth.vfxParticleCount', label: 'Particle Count / Density', unit: 'pcs', min: 0, max: 528, step: 8 },
   { path: 'scenes.growth.vfxParticleSize', label: 'Particle Size', unit: 'px', min: 0.75, max: 8, step: 0.1 },
@@ -723,7 +756,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
         const errors = {
           json: 'Файл содержит некорректный JSON. Текущие настройки сохранены.',
           document: 'Разделы файла должны быть объектами. Текущие настройки сохранены.',
-          version: 'Поддерживаются schemaVersion 1–21. Текущие настройки сохранены.',
+          version: 'Поддерживаются schemaVersion 1–25. Текущие настройки сохранены.',
           font: 'Шрифт не загрузился; настройки из JSON не применены. Текущие настройки сохранены.',
         }
         setNotice(errors[result.reason])
@@ -742,6 +775,9 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
 
   const rangeWithMax = (control: NumericControl, max: number) => <ConfigRange key={control.path} control={max === control.max ? control : { ...control, max }} config={config} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
   const range = (control: NumericControl) => rangeWithMax(control, control.max)
+  const growthCloudLayerControls = () => <details><summary>Облака вокруг острова · сцены 02–03</summary>
+    {GROWTH_CLOUD_LAYER_GROUPS.map(group => <details key={group.name}><summary>{group.name}</summary>{group.controls.map(range)}</details>)}
+  </details>
   const color = (path: ComposerFieldPath, label: string) => {
     const isGalaxyColor = path.startsWith('scenes.galaxy.')
     const galaxyColorKey = isGalaxyColor ? path.slice('scenes.galaxy.'.length) as GalaxyColorKey : undefined
@@ -899,6 +935,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             {LILY_GROWTH_VORTEX_CONTROLS.map(range)}
             {color('scenes.growth.growthVortex.color', 'Particle Color')}
           </details>
+          {growthCloudLayerControls()}
           <p>Обе длительности анимации цветка настраиваются здесь и в сцене раскрытия.</p>
           <details><summary>Палитра частиц</summary>
             {color('scenes.growth.pearlColor', 'Жемчужный')}
@@ -910,6 +947,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           <details open><summary>Камера · CameraDirector</summary>{BLOOM_CONTROLS.map(range)}</details>
           <p>Раскрытие начинается автоматически после короткой паузы роста. Камера плавно приближается к цветку.</p>
         </details>}
+        {selected === 'bloom' && growthCloudLayerControls()}
         {import.meta.env.DEV && route === 'film' && active === 'bloom' && selected === 'bloom' && <details open>
           <summary>Материалы лилии · A/B</summary>
           <div role="group" aria-label="Сравнение материалов лилии" className="inspector-history">

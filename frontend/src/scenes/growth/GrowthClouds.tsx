@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef, type MutableRefObject } from 'react'
 import { useThree } from '@react-three/fiber'
 import { Color, Group, Mesh, ShaderMaterial, SphereGeometry, Vector3 } from 'three'
 import type { FilmRuntime } from '../../engine/runtime'
+import { DEFAULT_GROWTH_CLOUD_LAYERS } from '../../systems/scene-config/growthCloudLayers'
 import {
   createGrowthCloudVolumeMaterial, getGrowthCloudDrift, getGrowthCloudLunarLight, getGrowthCloudMasses, MAX_GROWTH_CLOUD_MASSES,
   getGrowthCloudMotionTime, getGrowthCloudVisibility, setGrowthCloudMoonPosition,
@@ -34,9 +35,17 @@ export function GrowthClouds({
   const root = useRef<Group>(null)
   const meshes = useRef<Array<Mesh | null>>([])
   const materialRefs = useRef<Array<ShaderMaterial | null>>([])
-  const geometry = useMemo(() => new SphereGeometry(1, 20, 14), [])
-  const materials = useMemo(() => getGrowthCloudMasses(CLOUD_RENDER_LIMIT, 1)
-    .map(({ seed }) => createGrowthCloudVolumeMaterial({ seed })), [])
+  const geometries = useMemo(() => ({
+    detail: new SphereGeometry(1, 20, 14),
+    mid: new SphereGeometry(1, 16, 10),
+    far: new SphereGeometry(1, 12, 8),
+  }), [])
+  const materials = useMemo(() => new Map(getGrowthCloudMasses(CLOUD_RENDER_LIMIT, 1, {
+    cloudLayers: DEFAULT_GROWTH_CLOUD_LAYERS,
+  }).map((mass) => [mass.id, createGrowthCloudVolumeMaterial({
+    seed: mass.seed,
+    ...(mass.raySteps === undefined ? {} : { raySteps: mass.raySteps }),
+  })])), [])
   const effectiveFallHeight = getSeedFallHeightMultiplier(settings.seedFallHeight, reducedMotion)
   const fallDistance = getSeedFallDistance(viewportHeight) * effectiveFallHeight
   const masses = useMemo(() => getGrowthCloudMasses(settings.cloudCount, settings.cloudScale, {
@@ -46,9 +55,10 @@ export function GrowthClouds({
     lightVariation: settings.cloudLightVariation,
     pathDensity: reducedMotion ? 0 : settings.cloudPathDensity,
     depthVariation: settings.cloudDepthVariation,
+    cloudLayers: settings.cloudLayers,
   }), [
     fallDistance, reducedMotion, settings.cloudCount, settings.cloudDepthVariation, settings.cloudLightVariation,
-    settings.cloudPathDensity, settings.cloudScale, settings.cloudSizeVariation, viewportHeight,
+    settings.cloudLayers, settings.cloudPathDensity, settings.cloudScale, settings.cloudSizeVariation, viewportHeight,
   ])
   const rootOrigin = useMemo(() => new Vector3(), [])
   const moonPosition = useMemo(() => new Vector3(), [])
@@ -56,9 +66,9 @@ export function GrowthClouds({
   const center = useMemo(() => new Vector3(), [])
 
   useLayoutEffect(() => () => {
-    geometry.dispose()
+    Object.values(geometries).forEach((geometry) => geometry.dispose())
     materials.forEach((material) => material.dispose())
-  }, [geometry, materials])
+  }, [geometries, materials])
 
   useLayoutEffect(() => {
     const update = (time: number) => {
@@ -74,14 +84,15 @@ export function GrowthClouds({
         const mass = masses[index]
         const material = materialRefs.current[index]
         if (!material) continue
+        const groupSettings = mass?.cloudLayer ? settings.cloudLayers[mass.cloudLayer] : undefined
         const opacity = getGrowthCloudVisibility(
           safeTime, frames, settings.cloudOpacity, environmentOpacity.current, mass?.persistent, reducedMotion,
           mass?.pathCrossing ? mass.fallProgress : undefined, nightEstablished,
         )
         const settledSea = mass?.persistent ?? false
-        material.uniforms.uOpacity!.value = opacity * (settledSea ? 0.5 : 1)
-        material.uniforms.uDensity!.value = settings.cloudDensity * (mass?.densityScale ?? 1) * (settledSea ? 0.72 : 1)
-        material.uniforms.uLightIntensity!.value = getGrowthCloudLunarLight(safeTime, frames, settings.cloudLightIntensity, settings.moonLightIntensity, mass?.lightScale ?? 1) * (settledSea ? 0.4 : 1)
+        material.uniforms.uOpacity!.value = opacity * (groupSettings?.opacity ?? 1) * (settledSea ? 0.5 : 1)
+        material.uniforms.uDensity!.value = settings.cloudDensity * (groupSettings?.density ?? 1) * (mass?.densityScale ?? 1) * (settledSea ? 0.72 : 1)
+        material.uniforms.uLightIntensity!.value = getGrowthCloudLunarLight(safeTime, frames, settings.cloudLightIntensity, settings.moonLightIntensity, mass?.lightScale ?? 1) * (groupSettings?.brightness ?? 1) * (settledSea ? 0.4 : 1)
         material.uniforms.uShapeVariation!.value = settings.cloudShapeVariation
         material.uniforms.uSeaEdgeFade!.value = settledSea ? 1 : 0
         material.uniforms.uMoonColor!.value.copy(moonColor)
@@ -96,7 +107,7 @@ export function GrowthClouds({
         mesh.getWorldPosition(center)
         material.uniforms.uCenter!.value.copy(center)
         material.uniforms.uRadii!.value.set(...mass.radii)
-        mesh.visible = opacity > 0 && settings.cloudDensity > 0
+        mesh.visible = opacity > 0 && settings.cloudDensity > 0 && (groupSettings?.opacity ?? 1) > 0 && (groupSettings?.density ?? 1) > 0
       }
       invalidate()
     }
@@ -107,7 +118,7 @@ export function GrowthClouds({
     center, environmentOpacity, frames, invalidate, masses, materials, moonColor, moonPosition,
     reducedMotion, rootOrigin, runtime, settings.cloudDensity, settings.cloudDriftSpeed,
     settings.cloudLightIntensity, settings.cloudOpacity, settings.moonLightColor,
-    settings.moonPositionY, settings.moonLightIntensity, settings.cloudShapeVariation, nightEstablished,
+    settings.cloudLayers, settings.moonPositionY, settings.moonLightIntensity, settings.cloudShapeVariation, nightEstablished,
   ])
 
   return <group ref={root} dispose={null}>
@@ -120,9 +131,9 @@ export function GrowthClouds({
       raycast={noRaycast}
       renderOrder={-4}
     >
-      <primitive object={geometry} attach="geometry" />
+      <primitive object={mass.raySteps !== undefined ? (mass.raySteps <= 5 ? geometries.far : geometries.mid) : geometries.detail} attach="geometry" />
       <primitive
-        object={materials[index]!}
+        object={materials.get(mass.id)!}
         attach="material"
         ref={(material: ShaderMaterial | null) => { materialRefs.current[index] = material }}
       />

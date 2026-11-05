@@ -1,6 +1,7 @@
 import '../../styles/fonts.css'
 import { type ArtFontId, isArtFontId } from './fontIds'
 import { isDeveloperMode } from '../../debug/developerMode'
+import { DEFAULT_GROWTH_CLOUD_LAYERS, normalizeGrowthCloudLayers, type GrowthCloudLayers } from './growthCloudLayers'
 
 export type QualityProfile = 'standard' | 'low'
 export type ScenePresetId = 'moonlit-letter' | 'stardust' | 'vasilisa-cinematic'
@@ -79,7 +80,7 @@ type DeepPartial<T> = { [Key in keyof T]?: T[Key] extends object ? DeepPartial<T
 export type SceneComposerConfigPatch = DeepPartial<SceneComposerConfig>
 
 export interface SceneComposerConfig {
-  readonly schemaVersion: 24
+  readonly schemaVersion: 25
   readonly global: Readonly<{
     quality: QualityProfile
     dprMin: number
@@ -218,6 +219,7 @@ export interface SceneComposerConfig {
       cloudPathDensity: number
       cloudShapeVariation: number
       cloudDepthVariation: number
+      cloudLayers: GrowthCloudLayers
     }>
     bloom: Readonly<{
       flowerBloomDuration: number
@@ -415,7 +417,7 @@ export interface SceneComposerConfig {
 }
 
 export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
-  schemaVersion: 24,
+  schemaVersion: 25,
   global: { quality: 'standard', dprMin: 1, dprMax: 1.5, playbackSpeed: 1 },
   scenes: {
     openingBackground: { zoom: 1, offsetX: 0, offsetY: 0 },
@@ -470,6 +472,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       cloudOpacity: 0.48, cloudLightIntensity: 0.7,
       cloudSizeVariation: 0.72, cloudLightVariation: 0.55, cloudPathDensity: 0.65,
       cloudShapeVariation: 0.72, cloudDepthVariation: 0.8,
+      cloudLayers: DEFAULT_GROWTH_CLOUD_LAYERS,
     },
     bloom: {
       flowerBloomDuration: 16, cameraApproachDuration: 10.7, cameraBloomSync: 0.67,
@@ -591,7 +594,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const root = asRecord(input)
   if (root && root.schemaVersion === undefined && Object.keys(root).length === 0) return DEFAULT_SCENE_COMPOSER_CONFIG
   const inputVersion = root?.schemaVersion === undefined ? 1 : root.schemaVersion
-  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 24) return DEFAULT_SCENE_COMPOSER_CONFIG
+  if (!root || !Number.isInteger(inputVersion) || Number(inputVersion) < 1 || Number(inputVersion) > 25) return DEFAULT_SCENE_COMPOSER_CONFIG
   const migratingV1 = inputVersion === 1
   const globalInput = asRecord(root.global)
   const scenesInput = asRecord(root.scenes)
@@ -816,6 +819,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       cloudPathDensity: numberValue(growthInput?.cloudPathDensity, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudPathDensity, 0, 1),
       cloudShapeVariation: numberValue(growthInput?.cloudShapeVariation, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudShapeVariation, 0, 1),
       cloudDepthVariation: numberValue(growthInput?.cloudDepthVariation, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.cloudDepthVariation, 0, 1),
+      cloudLayers: normalizeGrowthCloudLayers(growthInput?.cloudLayers),
     },
     bloom: {
       flowerBloomDuration: numberValue(bloomInput?.flowerBloomDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.bloom.flowerBloomDuration, 6, 24),
@@ -884,7 +888,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   }
   const preset = enumValue(root.preset, ['moonlit-letter', 'stardust', 'vasilisa-cinematic'] as const, DEFAULT_SCENE_COMPOSER_CONFIG.preset)
   // Construct each level explicitly so unknown keys never enter the active model.
-  return deepFreeze({ schemaVersion: 24, global, scenes, preset })
+  return deepFreeze({ schemaVersion: 25, global, scenes, preset })
 }
 
 function migrateGalaxySettings(input: Record<string, unknown> | undefined, version: unknown) {

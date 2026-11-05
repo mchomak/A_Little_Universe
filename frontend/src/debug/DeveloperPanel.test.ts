@@ -105,6 +105,9 @@ it('shows only the active scene controls and keeps playback in the timeline', ()
   expect(markup).toMatch(/id="composer-scenes-growth-cloudPathDensity"[^>]*min="0" max="1" step="0\.01" value="0\.65"/)
   expect(markup).toMatch(/id="composer-scenes-growth-cloudShapeVariation"[^>]*min="0" max="1" step="0\.01" value="0\.72"/)
   expect(markup).toMatch(/id="composer-scenes-growth-cloudDepthVariation"[^>]*min="0" max="1" step="0\.01" value="0\.8"/)
+  expect(markup).toMatch(/id="composer-scenes-growth-cloudLayers-far-count"[^>]*min="0" max="2" step="1"/)
+  expect(markup).toMatch(/id="composer-scenes-growth-cloudLayers-sides-height"[^>]*min="-3" max="3" step="0\.1"/)
+  expect(markup).toMatch(/id="composer-scenes-growth-cloudLayers-foreground-depth"[^>]*min="-8" max="8" step="0\.25"/)
   expect(markup).toContain('Лунное освещение')
   expect(markup).toContain('Диаметр луча · 2 × радиуса острова')
   expect(markup).toMatch(/id="composer-scenes-growth-moonLightIntensity"[^>]*min="0" max="2" step="0\.05" value="1\.2"/)
@@ -177,6 +180,8 @@ it('exposes the Lily bloom pollen controls in Scene 03', () => {
   expect(markup).toContain('id="composer-scenes-bloom-lilyBloomPollen-glowIntensity"')
   expect(markup).toContain('id="composer-scenes-bloom-lilyBloomPollen-riseSpeed"')
   expect(markup).toContain('id="composer-scenes-bloom-lilyBloomPollen-innerCupGlow"')
+  expect(markup).toMatch(/id="composer-scenes-growth-cloudLayers-far-count"[^>]*min="0" max="2" step="1"/)
+  expect(markup).toMatch(/id="composer-scenes-growth-cloudLayers-sides-height"[^>]*min="-3" max="3" step="0\.1"/)
 })
 
 it('exposes the Original/Enhanced A/B switch only while DEV scene 03 is active', () => {
