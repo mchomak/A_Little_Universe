@@ -12,7 +12,7 @@ import { attachLilyAnimationPlayer, LilyAnimationPlayer } from './animationPlaye
 import { subscribeLilyAnimationClock } from './animationClock'
 import { createLilyGeometryParticleSourceAsync, lilyDissolvePart, type LilySurfaceSource } from './particleSource'
 import { patchLilyMaterial, setLilySurfaceBounds, updateLilyDissolve, updateLilyParticleSettings, type LilyDissolveUniforms } from './dissolve'
-import { createLilyAppearanceUniforms, lilyAppearancePart, patchLilyAppearanceMaterial, updateLilyAppearance, type LilyAppearanceUniforms } from './lilyAppearance'
+import { createLilyAppearanceUniforms, getLilyMoonlightProgress, lilyAppearancePart, patchLilyAppearanceMaterial, updateLilyAppearance, type LilyAppearanceUniforms } from './lilyAppearance'
 import { createLilyGrowthVfx, type LilyGrowthVfx } from './lilyGrowthVfx'
 import { createLilyParticleGeometrySetup, lilyParticlePreparation } from './lilyParticlePreparation'
 import { getLilyParticleSourceSignature, LILY_PARTICLE_MODEL_POSITION, LILY_PARTICLE_MODEL_SCALE, seekLilyBloomEndpoint } from './lilyParticlePose'
@@ -260,8 +260,10 @@ export function AnimatedLily({ state, runtime, reducedMotion, onParticleSource, 
     const bloomProgress = scene === 'identity' ? 1 : bloomClipTime / Math.max(0.001, bloomClip?.duration ?? 9)
     const flowerCenter = modelObject.getObjectByName('Flower_Interior')
     if (flowerCenter) flowerCenter.getWorldPosition(appearanceUniforms.uLilyCupCenter.value)
+    const moonlightProgress = getLilyMoonlightProgress(scene, time, growthFrames.moonlight)
     updateLilyAppearance(appearanceUniforms, config.scenes.growth.lilyBudGlow, config.scenes.growth.lilyLeafMaterial,
-      growthProgress, bloomProgress, config.scenes.bloom.lilyBloomPollen)
+      growthProgress, bloomProgress, config.scenes.bloom.lilyBloomPollen,
+      moonlightProgress, config.scenes.growth.moonLightColor)
     growthVfxRef.current?.update({
       scene, time, clipTime: growthClipTime, clipDuration: growthClip?.duration ?? 9,
       frames: growthFrames, bloomFrames, bloomClipTime, bloomClipDuration: bloomClip?.duration ?? 9,

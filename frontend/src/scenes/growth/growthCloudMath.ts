@@ -12,6 +12,8 @@ export interface GrowthCloudMass {
   densityScale?: number
   /** Only sparse far masses persist into lily growth. */
   persistent?: boolean
+  /** Normalized camera-path point for the brief approach and pass of a cloud wisp. */
+  fallProgress?: number
 }
 
 interface GrowthCloudTemplate extends GrowthCloudMass {
@@ -56,10 +58,10 @@ const GROWTH_CLOUD_LAYOUT: readonly GrowthCloudTemplate[] = [
   { id: 'near-group-right-low', seed: 157, position: [3.2, 0, 2.55], radii: [1.02, 0.7, 1.3], fallProgress: 0.84, lightScale: 1 },
   { id: 'far-group-left-low', seed: 163, position: [-4.05, 0, -5.55], radii: [1.4, 0.82, 1.18], fallProgress: 0.91, lightScale: 1 },
   // Broad, distant banks sit below the island and overlap into a quiet cloud sea.
-  { id: 'island-back-left', seed: 179, position: [-3.15, -1.05, -5.75], radii: [3.2, 0.72, 1.45], persistent: true, lightScale: 1 },
-  { id: 'island-back-right', seed: 191, position: [3.1, -1.32, -6.25], radii: [3.45, 0.78, 1.6], persistent: true, lightScale: 1 },
-  { id: 'island-far-left', seed: 199, position: [-3.5, -2.05, -6.8], radii: [3.65, 0.8, 1.8], persistent: true, lightScale: 1 },
-  { id: 'island-far-right', seed: 211, position: [3.3, -2.4, -7.15], radii: [3.85, 0.76, 1.55], persistent: true, lightScale: 1 },
+  { id: 'island-back-left', seed: 179, position: [-2.75, -2.3, -5.75], radii: [5.4, 0.66, 1.6], persistent: true, lightScale: 1 },
+  { id: 'island-back-right', seed: 191, position: [2.75, -2.45, -6.25], radii: [5.4, 0.7, 1.72], persistent: true, lightScale: 1 },
+  { id: 'island-far-left', seed: 199, position: [-2.9, -3.25, -6.8], radii: [5.8, 0.72, 1.95], persistent: true, lightScale: 1 },
+  { id: 'island-far-right', seed: 211, position: [2.9, -3.5, -7.15], radii: [5.8, 0.68, 1.72], persistent: true, lightScale: 1 },
   { id: 'near-group-left-lower', seed: 223, position: [-3.35, 0, 2.6], radii: [1.24, 0.7, 1.1], fallProgress: 0.79, lightScale: 1 },
   { id: 'far-group-right-lower', seed: 227, position: [3.9, 0, -5.45], radii: [1.36, 0.92, 1.2], fallProgress: 0.8, lightScale: 1 },
   { id: 'near-group-right-deep', seed: 239, position: [3.45, 0, 3.45], radii: [1.06, 0.76, 1.16], fallProgress: 0.94, lightScale: 1 },
@@ -94,6 +96,7 @@ const cloudFragmentShader = `
   uniform float uDensity;
   uniform float uLightIntensity;
   uniform float uShapeVariation;
+  uniform float uSeaEdgeFade;
   uniform float uTime;
   varying vec3 vWorldPosition;
 
@@ -169,17 +172,19 @@ const cloudFragmentShader = `
       float coverage = smoothstep(0.26, 0.68, broadNoise * 0.58 + detailNoise * 0.42);
       float erosion = 0.25 + coverage * 0.75;
       float cloudDensity = cloudBody * erosion;
+      float seaEdgeFade = 1.0 - smoothstep(0.12, 0.9, localPoint.y);
+      cloudDensity *= mix(1.0, seaEdgeFade, uSeaEdgeFade);
 
       vec3 normalApprox = normalize(localPoint * inverseRadii);
       vec3 lightDirection = normalize(uMoonPosition - worldPoint);
       float moonFacing = max(dot(normalApprox, lightDirection), 0.0);
       float silverRim = smoothstep(0.18, 0.72, cloudBody) * (1.0 - smoothstep(0.72, 0.98, cloudBody));
-      float lunarAmount = clamp(uLightIntensity * (0.18 + moonFacing * 0.5 + silverRim * 0.62), 0.0, 1.15);
-      float innerShade = 0.64 + broadNoise * 0.26 + (1.0 - length(localPoint)) * 0.1;
-      vec3 midnightBlue = vec3(0.16, 0.20, 0.29) * innerShade;
-      vec3 silverBlue = mix(vec3(0.62, 0.72, 0.92), uMoonColor, 0.58);
+      float lunarAmount = clamp(uLightIntensity * (0.12 + moonFacing * 0.34 + silverRim * 0.44), 0.0, 0.82);
+      float innerShade = 0.54 + broadNoise * 0.2 + (1.0 - length(localPoint)) * 0.08;
+      vec3 midnightBlue = vec3(0.085, 0.12, 0.2) * innerShade;
+      vec3 silverBlue = mix(vec3(0.38, 0.49, 0.68), uMoonColor, 0.45);
       vec3 sampleColor = mix(midnightBlue, silverBlue, lunarAmount);
-      sampleColor += silverBlue * silverRim * uLightIntensity * 0.35;
+      sampleColor += silverBlue * silverRim * uLightIntensity * 0.19;
 
       float opticalDepth = cloudDensity * uDensity * uOpacity * stepLength * 1.15;
       float sampleAlpha = 1.0 - exp(-max(opticalDepth, 0.0));
@@ -293,23 +298,32 @@ export function getGrowthCloudVisibility(
   environmentOpacity: number,
   persistent = false,
   reducedMotion = false,
+  crossingProgress?: number,
+  nightEstablished = false,
 ): number {
   if (!Number.isFinite(time)) return 0
   const opacity = clampFinite(cloudOpacity, 0, 1, 0)
   const environment = clampFinite(environmentOpacity, 0, 1, 0)
-  const visibilityEnd = persistent ? frames.duration : frames.handoff[1]
-  if (opacity === 0 || environment === 0 || time >= visibilityEnd) return 0
-  const fadeOutStart = persistent
-    ? Math.max(frames.handoff[1], frames.duration - 0.9)
-    : Math.max(frames.handoff[0], frames.handoff[1] - 0.7)
-  const fadeOut = 1 - smoothstep(fadeOutStart, visibilityEnd, time)
+  if (opacity === 0 || environment === 0 || (nightEstablished && !persistent)) return 0
+  if (nightEstablished) return opacity * environment
+  const visibilityEnd = frames.handoff[1]
+  if (!persistent && time >= visibilityEnd) return 0
+  const fadeOutStart = Math.max(frames.handoff[0], frames.handoff[1] - 0.7)
+  const fadeOut = persistent ? 1 : 1 - smoothstep(fadeOutStart, visibilityEnd, time)
   if (reducedMotion) {
     if (!persistent) return 0
-    const fadeInStart = frames.fall[0] + (frames.fall[1] - frames.fall[0]) * 0.5
-    const fadeInEnd = Math.min(frames.handoff[0], frames.fall[1] + 0.45)
-    return opacity * environment * smoothstep(fadeInStart, fadeInEnd, time) * fadeOut
+    return opacity * environment * smoothstep(0.5, 1, getGrowthProgress(time, frames.fall)) * fadeOut
   }
-  return opacity * environment * fadeOut
+  const fallProgress = getGrowthProgress(time, frames.fall)
+  const fadeIn = crossingProgress === undefined
+    ? smoothstep(0.4, 0.75, fallProgress)
+    : smoothstep(Math.max(0.4, crossingProgress - 0.06), crossingProgress, fallProgress)
+      * (1 - smoothstep(
+        Math.min(1, crossingProgress + 0.035),
+        Math.min(1, crossingProgress + 0.1),
+        fallProgress,
+      ))
+  return opacity * environment * fadeIn * fadeOut
 }
 
 export function getGrowthCloudDrift(
@@ -319,7 +333,7 @@ export function getGrowthCloudDrift(
 ): readonly [number, number, number] {
   const safeTime = Number.isFinite(time) ? time : 0
   const safeSpeed = clampFinite(speed, 0, 2, 0)
-  if (safeTime === 0 || safeSpeed === 0) return [0, 0, 0]
+  if (mass.persistent || safeTime === 0 || safeSpeed === 0) return [0, 0, 0]
   const phase = safeTime * safeSpeed * 0.6 + mass.seed
   return [Math.sin(phase) * 0.055, Math.sin(phase * 0.73 + 0.9) * 0.018, Math.cos(phase * 0.81) * 0.045]
 }
@@ -345,6 +359,7 @@ export function createGrowthCloudVolumeMaterial(options: GrowthCloudMaterialOpti
       uDensity: { value: 0.8 },
       uLightIntensity: { value: 0.7 },
       uShapeVariation: { value: 0.65 },
+      uSeaEdgeFade: { value: 0 },
       uTime: { value: 0 },
     },
     defines: { CLOUD_STEPS: GROWTH_CLOUD_RAY_STEPS },

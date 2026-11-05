@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useThree } from '@react-three/fiber'
-import { AdditiveBlending, Color, DoubleSide, NormalBlending, Object3D, type DirectionalLight, type HemisphereLight, type ShaderMaterial } from 'three'
+import { AdditiveBlending, Color, DoubleSide, NormalBlending, Object3D, type DirectionalLight, type HemisphereLight, type PointLight, type ShaderMaterial } from 'three'
 import type { FilmRuntime } from '../../engine/runtime'
 import type { SceneId } from '../../engine/film'
 import {
@@ -36,6 +36,7 @@ export function GrowthMoonlight({
   const renderer = useThree(({ gl }) => gl)
   const key = useRef<DirectionalLight>(null)
   const fill = useRef<HemisphereLight>(null)
+  const subjectFill = useRef<PointLight>(null)
   const shadowController = useRef<GrowthShadowSceneController | null>(null)
   const beam = useRef<ShaderMaterial>(null)
   const contactShadow = useRef<ShaderMaterial>(null)
@@ -81,6 +82,7 @@ export function GrowthMoonlight({
         else { key.current.intensity = levels.key; key.current.castShadow = false }
       }
       if (fill.current) fill.current.intensity = levels.fill
+      if (subjectFill.current) subjectFill.current.intensity = levels.fill * 2.4
       if (beam.current) {
         beam.current.uniforms.uOpacity!.value = levels.beam
         beam.current.uniforms.uScatteringIntensity!.value = levels.scattering
@@ -101,7 +103,21 @@ export function GrowthMoonlight({
 
   return <group>
     <primitive object={lightTarget} />
-    <hemisphereLight ref={fill} color={settings.moonLightColor} groundColor="#101724" intensity={0} />
+    <hemisphereLight
+      ref={fill}
+      position={[-2.4, 0.35, 1.6]}
+      color={settings.moonLightColor}
+      groundColor="#101724"
+      intensity={0}
+    />
+    <pointLight
+      ref={subjectFill}
+      position={[0.1, 2.55, 1.15]}
+      color={settings.moonLightColor}
+      intensity={0}
+      distance={5.2}
+      decay={1.6}
+    />
     <directionalLight
       ref={key}
       position={layout.source}

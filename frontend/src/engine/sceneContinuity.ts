@@ -7,9 +7,11 @@ export function shouldKeepGrowthWorld(scene: SceneId, elapsed: number, duration:
   return scene === 'identity' && Number.isFinite(elapsed) && elapsed < duration
 }
 
-/** Clouds are transient scene 02 animation; the shared island world persists into scene 03. */
+/** Keep the world-space cloud sea with its island through bloom and the opening of identity. */
 export function shouldMountGrowthClouds(environmentOnly: boolean): boolean {
-  return !environmentOnly
+  // The caller distinguishes active growth from its carried environment; both keep this layer.
+  void environmentOnly
+  return true
 }
 
 /** Fade the carried scene 02 environment over the active scene 04 dissolve. */

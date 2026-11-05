@@ -125,7 +125,7 @@ function makeSoilTextures() {
 }
 
 /** Procedural island attached to the shared Scene 02 canvas and presentation clock. */
-export function FloatingIsland({ runtime, radius, thickness = 0.24, depth = 0.58, roughness = 0.5, grassDensity, grassHeight = 0.14, windStrength = 1, windSpeed, reducedMotion, opacity, shadowsEnabled = false }: {
+export function FloatingIsland({ runtime, radius, thickness = 0.24, depth = 0.58, roughness = 0.5, grassDensity, grassHeight = 0.14, windStrength = 1, windSpeed, reducedMotion, opacity, moonlightProgress, shadowsEnabled = false }: {
   runtime: FilmRuntime
   radius: number
   thickness?: number
@@ -137,6 +137,7 @@ export function FloatingIsland({ runtime, radius, thickness = 0.24, depth = 0.58
   windSpeed: number
   reducedMotion: boolean
   opacity: { current: number }
+  moonlightProgress: { current: number }
   shadowsEnabled?: boolean
 }) {
   const invalidate = useThree(({ invalidate }) => invalidate)
@@ -177,12 +178,13 @@ export function FloatingIsland({ runtime, radius, thickness = 0.24, depth = 0.58
         }
         material.depthWrite = !transparent && material !== shader
       }
-      if (localLight.current) localLight.current.intensity = 0.62 * alpha
+      const lunarFill = Math.min(1, Math.max(0, moonlightProgress.current))
+      if (localLight.current) localLight.current.intensity = 1.05 * alpha * lunarFill
       if (!reducedMotion || alpha < 0.999) invalidate()
     }
     update(runtime.presentationTime)
     return runtime.subscribePresentation(update)
-  }, [grassUniforms, invalidate, opacity, reducedMotion, runtime, windSpeed, windStrength])
+  }, [grassUniforms, invalidate, moonlightProgress, opacity, reducedMotion, runtime, windSpeed, windStrength])
 
   useLayoutEffect(() => () => {
     top.dispose()
@@ -205,6 +207,6 @@ export function FloatingIsland({ runtime, radius, thickness = 0.24, depth = 0.58
     {grassDensity > 0 && <mesh geometry={grass} castShadow={shadowsEnabled} receiveShadow={shadowsEnabled} frustumCulled={false}>
       <meshStandardMaterial ref={grassMaterial} vertexColors side={DoubleSide} roughness={0.78} metalness={0} transparent depthWrite={false} onBeforeCompile={onGrassCompile} customProgramCacheKey={() => 'floating-island-grass-v3'} />
     </mesh>}
-    <pointLight ref={localLight} position={[0.15, 0.58, 1.2]} color="#AABDAA" intensity={0.62} distance={3.8} decay={1.6} />
+    <pointLight ref={localLight} position={[0.15, 0.58, 1.2]} color="#AFC9F5" intensity={0} distance={4.2} decay={1.45} />
   </group>
 }

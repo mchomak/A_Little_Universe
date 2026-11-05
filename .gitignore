@@ -50,3 +50,6 @@ Thumbs.db
 !.autopilot/2026-10-29-scene04-portrait-direct/**
 !.autopilot/2026-11-03-phone-background-crop/
 !.autopilot/2026-11-03-phone-background-crop/**
+!.autopilot/2026-11-05-cinematic-background-continuity/
+!.autopilot/2026-11-05-cinematic-background-continuity/**
+.autopilot/2026-11-05-cinematic-background-continuity/screenshots/*.png

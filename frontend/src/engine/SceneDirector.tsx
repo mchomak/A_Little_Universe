@@ -1,7 +1,10 @@
 ﻿import { Suspense, useCallback, useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { Html } from '@react-three/drei'
+import { useThree } from '@react-three/fiber'
 import type { SceneProps } from './sceneTypes'
 import type { FilmRuntime } from './runtime'
+import { getGrowthSceneFrames } from './filmConfig'
+import { clearOpeningSceneBackground } from './openingSceneBackground'
 import { PrologueScene } from '../scenes/PrologueScene'
 import { GrowthScene } from '../scenes/GrowthScene'
 import { BloomScene } from '../scenes/BloomScene'
@@ -19,6 +22,7 @@ import { GalaxyExperience } from '../scenes/galaxy/GalaxyExperience'
 import { shouldKeepGrowthWorld } from './sceneContinuity'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { getSceneLighting } from './sceneLighting'
+import { GrowthSky } from '../scenes/growth/GrowthSky'
 
 
 const modules = { prologue: PrologueScene, bloom: BloomScene, gallery: GalleryScene, eye: EyeScene, cosmos: CosmosScene, greeting: GreetingScene, ending: EndingScene }
@@ -38,8 +42,13 @@ function IdentitySourceError({ runtime, onRetry }: { runtime: FilmRuntime; onRet
 export function SceneDirector(props: SceneProps) {
   const { dispatch, runtime, state } = props
   const { scene, elapsed, revision } = state
+  const renderScene = useThree(({ scene: currentScene }) => currentScene)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const openingScene = scene === 'prologue' || scene === 'growth' || scene === 'bloom' || scene === 'identity'
+  const growthSkyScene = scene === 'growth' || scene === 'bloom' || scene === 'identity'
+  const growthFallRange = useMemo(() => getGrowthSceneFrames(config.scenes.growth).fall, [config.scenes.growth])
+  const nightEstablished = scene === 'bloom' || scene === 'identity'
+    || (scene === 'growth' && runtime.time >= growthFallRange[1])
   const lighting = getSceneLighting(scene, config.scenes.gallery.coldLightIntensity)
   const Scene = scene === 'growth' || scene === 'identity' ? null : modules[scene]
   const [lilyParticleSource, setLilyParticleSource] = useState<LilySurfaceSource | null>(null)
@@ -64,12 +73,16 @@ export function SceneDirector(props: SceneProps) {
   // Keep the same world and its island, mound and moonlight through the
   // touch scene and the first seconds of the 04 handoff.
   const keepGrowthWorld = shouldKeepGrowthWorld(scene, elapsed, config.scenes.identity.dissolveDuration)
+  useLayoutEffect(() => {
+    clearOpeningSceneBackground(renderScene, openingScene)
+  }, [openingScene, renderScene])
   return <>
     {!openingScene && <color attach="background" args={['#080914']} />}
     <ambientLight intensity={lighting.ambientIntensity} />
     <directionalLight position={[-3, 5, 4]} intensity={lighting.keyIntensity} color={lighting.keyColor} />
     <directionalLight position={[3, 1, -2]} intensity={lighting.fillIntensity} color={lighting.fillColor} />
-    {keepGrowthWorld && <GrowthScene key="persistent-growth-world" {...props} environmentOnly={scene !== 'growth'} />}
+    {growthSkyScene && <GrowthSky key="persistent-night-sky" runtime={runtime} fallRange={growthFallRange} nightEstablished={nightEstablished} />}
+    {keepGrowthWorld && <GrowthScene key="persistent-growth-world" {...props} environmentOnly={scene !== 'growth'} nightEstablished={nightEstablished} />}
     <Suspense fallback={null}><AnimatedLily {...props} onParticleSource={publishLilyParticleSource} onParticleSourceError={reportLilyParticleSourceError} sourceAttempt={sourceAttempt} dissolveUniforms={dissolveUniforms} /></Suspense>
     <GalaxyExperience {...props} />
     {scene === 'identity' && (lilyParticleSource

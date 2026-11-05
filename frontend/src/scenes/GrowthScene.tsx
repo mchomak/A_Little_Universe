@@ -13,7 +13,6 @@ import { seedPointsFragmentShader, seedPointsVertexShader } from './growth/recst
 import { FloatingIsland } from './growth/FloatingIsland'
 import { GrowthClouds } from './growth/GrowthClouds'
 import { GrowthMoonlight } from './growth/GrowthMoonlight'
-import { GrowthSky } from './growth/GrowthSky'
 import { shouldUseGrowthShadows } from './growth/sceneShadows'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import type { FilmRuntime } from '../engine/runtime'
@@ -159,7 +158,7 @@ function SeedParticles({ mode, count, materialRef, fallRange, impactRadius, impa
 }
 
 /** Scene 02. The unchanged world root is also the future flower-model anchor. */
-export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = false }: SceneProps & { environmentOnly?: boolean }) {
+export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = false, nightEstablished = false }: SceneProps & { environmentOnly?: boolean; nightEstablished?: boolean }) {
   const height = useThree(({ size }) => getGrowthViewportHeight(size.width, size.height))
   const dpr = useThree(({ viewport }) => viewport.dpr)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
@@ -320,8 +319,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
       </group>
     </group>}
     <group key="growth-environment">
-      <GrowthSky />
-      {shouldMountGrowthClouds(environmentOnly) && <GrowthClouds runtime={runtime} reducedMotion={reducedMotion} frames={growthFrames} environmentOpacity={environmentOpacity} settings={growthSettings} />}
+      {shouldMountGrowthClouds(environmentOnly) && <GrowthClouds runtime={runtime} reducedMotion={reducedMotion} frames={growthFrames} environmentOpacity={environmentOpacity} settings={growthSettings} nightEstablished={nightEstablished} />}
       <FloatingIsland
         runtime={runtime}
         radius={growthSettings.islandRadius}
@@ -334,6 +332,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
         windSpeed={growthSettings.windSpeed}
         reducedMotion={reducedMotion}
         opacity={islandOpacity}
+        moonlightProgress={moonlightProgress}
         shadowsEnabled={shouldUseGrowthShadows(state.scene)}
       />
       <mesh ref={mound} position={[0, 0, 0]} scale={[0.115, 0.0001, 0.115]}>

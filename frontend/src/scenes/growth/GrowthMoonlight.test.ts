@@ -14,6 +14,13 @@ const defaultSettings = {
 }
 
 describe('Scene 02 moonlight', () => {
+  it('keeps the side-reflected fill at or below a quarter of the overhead key across the ramp', () => {
+    for (const progress of [0, 0.25, 0.5, 0.75, 1]) {
+      const levels = getGrowthMoonlightLevels(1.2, 0.55, progress, 1, 0.35)
+      expect(levels.fill).toBeLessThanOrEqual(levels.key * 0.25)
+    }
+  })
+
   it('keeps every lunar contribution off before impact and raises it smoothly afterward', () => {
     const beforeImpact = getGrowthMoonlightLevels(1.2, 0.55, 0, 1, 0.35)
     const earlyRamp = getGrowthMoonlightLevels(1.2, 0.55, 0.25, 1, 0.35)
@@ -22,11 +29,12 @@ describe('Scene 02 moonlight', () => {
     const duringHandoff = getGrowthMoonlightLevels(1.2, 0.55, 1, 0.35, 0.35)
 
     expect(beforeImpact).toEqual({ key: 0, fill: 0, beam: 0, scattering: 0, shadow: 0 })
-    expect(earlyRamp.key).toBeCloseTo(0.3)
+    expect(earlyRamp.key).toBeCloseTo(0.6)
     expect(earlyRamp.beam).toBeCloseTo(0.1375)
-    expect(lateRamp.key).toBeCloseTo(0.9)
+    expect(lateRamp.key).toBeCloseTo(1.8)
     expect(lateRamp.beam).toBeCloseTo(0.4125)
-    expect(afterImpact.key).toBeCloseTo(1.2)
+    expect(afterImpact.key).toBeCloseTo(2.4)
+    expect(afterImpact.fill).toBeCloseTo(0.48)
     expect(afterImpact.beam).toBeCloseTo(0.55)
     expect(afterImpact.shadow).toBe(1)
     expect(duringHandoff.key).toBeCloseTo(afterImpact.key * 0.35)

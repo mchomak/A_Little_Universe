@@ -3,13 +3,14 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import { PhoneBackground } from './PhoneBackground'
 
-it('softens the cosmic image only in Scene 02 and respects reduced motion', () => {
+it('keeps the same unfiltered cosmic crop through seed formation', () => {
+  const prologue = renderToStaticMarkup(createElement(PhoneBackground, { scene: 'prologue' }))
   const growth = renderToStaticMarkup(createElement(PhoneBackground, { scene: 'growth' }))
   const bloom = renderToStaticMarkup(createElement(PhoneBackground, { scene: 'bloom' }))
-  const reducedMotionGrowth = renderToStaticMarkup(createElement(PhoneBackground, { scene: 'growth', reducedMotion: true }))
+  const initialCrop = 'transform:translate(0%, var(--background-pan-y, 0%)) scale(1.8)'
 
-  expect(growth).toContain('filter:brightness(0.48) saturate(0.72)')
-  expect(growth).toContain('transition:filter 700ms ease-in-out')
-  expect(bloom).toContain('filter:none')
-  expect(reducedMotionGrowth).toContain('transition:none')
+  expect(prologue).toContain(initialCrop)
+  expect(growth).toContain(initialCrop)
+  expect(bloom).toContain(initialCrop)
+  expect(growth).not.toContain('filter:')
 })

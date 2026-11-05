@@ -14,9 +14,9 @@ describe('growth world continuity', () => {
 })
 
 describe('growth environment handoff', () => {
-  it('mounts transient Scene 02 clouds only while the growth timeline is active', () => {
+  it('keeps world-space clouds mounted through the 02 to 03 environment handoff', () => {
     expect(shouldMountGrowthClouds(false)).toBe(true)
-    expect(shouldMountGrowthClouds(true)).toBe(false)
+    expect(shouldMountGrowthClouds(true)).toBe(true)
   })
 
   it('keeps the scene 02 environment visible through the slower scene 04 dissolve', () => {

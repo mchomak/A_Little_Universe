@@ -36,9 +36,11 @@ export function getGrowthMoonlightLevels(
   const intensity = Math.max(0, Number.isFinite(lightIntensity) ? lightIntensity : 0)
   const beam = Math.max(0, Number.isFinite(beamIntensity) ? beamIntensity : 0)
   const scattering = Math.max(0, Number.isFinite(scatteringIntensity) ? scatteringIntensity : 0.35)
+  const key = intensity * 2 * progress * opacity
+  const fill = key * 0.2
   return {
-    key: intensity * progress * opacity,
-    fill: intensity * progress * 0.4 * opacity,
+    key,
+    fill,
     beam: beam * progress * opacity,
     scattering: scattering * progress * opacity,
     shadow: progress * opacity,

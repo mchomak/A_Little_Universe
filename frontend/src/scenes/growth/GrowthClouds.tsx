@@ -20,12 +20,14 @@ export function GrowthClouds({
   frames,
   environmentOpacity,
   settings,
+  nightEstablished = false,
 }: {
   runtime: FilmRuntime
   reducedMotion: boolean
   frames: GrowthFrames
   environmentOpacity: MutableRefObject<number>
   settings: GrowthSettings
+  nightEstablished?: boolean
 }) {
   const invalidate = useThree(({ invalidate }) => invalidate)
   const viewportHeight = useThree(({ size }) => getGrowthViewportHeight(size.width, size.height))
@@ -74,11 +76,14 @@ export function GrowthClouds({
         if (!material) continue
         const opacity = getGrowthCloudVisibility(
           safeTime, frames, settings.cloudOpacity, environmentOpacity.current, mass?.persistent, reducedMotion,
+          mass?.pathCrossing ? mass.fallProgress : undefined, nightEstablished,
         )
-        material.uniforms.uOpacity!.value = opacity
-        material.uniforms.uDensity!.value = settings.cloudDensity * (mass?.densityScale ?? 1)
-        material.uniforms.uLightIntensity!.value = getGrowthCloudLunarLight(safeTime, frames, settings.cloudLightIntensity, settings.moonLightIntensity, mass?.lightScale ?? 1)
+        const settledSea = mass?.persistent ?? false
+        material.uniforms.uOpacity!.value = opacity * (settledSea ? 0.5 : 1)
+        material.uniforms.uDensity!.value = settings.cloudDensity * (mass?.densityScale ?? 1) * (settledSea ? 0.72 : 1)
+        material.uniforms.uLightIntensity!.value = getGrowthCloudLunarLight(safeTime, frames, settings.cloudLightIntensity, settings.moonLightIntensity, mass?.lightScale ?? 1) * (settledSea ? 0.4 : 1)
         material.uniforms.uShapeVariation!.value = settings.cloudShapeVariation
+        material.uniforms.uSeaEdgeFade!.value = settledSea ? 1 : 0
         material.uniforms.uMoonColor!.value.copy(moonColor)
         material.uniforms.uMoonPosition!.value.copy(moonPosition)
         material.uniforms.uTime!.value = motionTime * motionSpeed
@@ -102,7 +107,7 @@ export function GrowthClouds({
     center, environmentOpacity, frames, invalidate, masses, materials, moonColor, moonPosition,
     reducedMotion, rootOrigin, runtime, settings.cloudDensity, settings.cloudDriftSpeed,
     settings.cloudLightIntensity, settings.cloudOpacity, settings.moonLightColor,
-    settings.moonPositionY, settings.moonLightIntensity, settings.cloudShapeVariation,
+    settings.moonPositionY, settings.moonLightIntensity, settings.cloudShapeVariation, nightEstablished,
   ])
 
   return <group ref={root} dispose={null}>

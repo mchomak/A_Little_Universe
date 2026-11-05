@@ -86,7 +86,7 @@ describe('Scene 02 independent clouds', () => {
     )).toBe(true)
     const seaBanks = persistent.filter(({ id }) => id.startsWith('island-'))
     expect(seaBanks).toHaveLength(4)
-    expect(seaBanks.every(({ radii }) => radii[0] > 2)).toBe(true)
+    expect(seaBanks.every(({ position, radii }) => position[1] <= -2 && radii[0] > 3.8 && radii[1] < 0.8)).toBe(true)
   })
 
   it('builds a layered deterministic set outside the flower center', () => {
@@ -183,13 +183,15 @@ describe('Scene 02 independent clouds', () => {
     expect(getGrowthCloudMasses(1, Number.NaN)[0]!.radii[0]).toBeCloseTo(getGrowthCloudMasses(1, 1)[0]!.radii[0])
   })
 
-  it('keeps clouds at full strength from the opening and fades them only for the scene handoff', () => {
+  it('reveals clouds over normalized fall progress and fades transient clouds for the scene handoff', () => {
     const frames = getGrowthFrames(getConfig().scenes.growth)
-    const fallStart = frames.fall[0]
-    const opacity = getGrowthCloudVisibility(fallStart + 0.2, frames, 0.42, 1)
+    const atProgress = (progress: number) => frames.fall[0] + (frames.fall[1] - frames.fall[0]) * progress
 
-    expect(getGrowthCloudVisibility(0, frames, 0.42, 1)).toBe(0.42)
-    expect(opacity).toBe(0.42)
+    expect(getGrowthCloudVisibility(atProgress(0.2), frames, 0.42, 1)).toBe(0)
+    expect(getGrowthCloudVisibility(atProgress(0.4), frames, 0.42, 1)).toBe(0)
+    expect(getGrowthCloudVisibility(atProgress(0.55), frames, 0.42, 1)).toBeCloseTo(0.21)
+    expect(getGrowthCloudVisibility(atProgress(0.75), frames, 0.42, 1)).toBe(0.42)
+    expect(getGrowthCloudVisibility(atProgress(1), frames, 0.42, 1)).toBe(0.42)
     expect(getGrowthCloudVisibility(frames.handoff[0] + 0.05, frames, 0.42, 1)).toBe(0.42)
     expect(getGrowthCloudVisibility(frames.handoff[1] - 0.2, frames, 0.42, 1)).toBeLessThan(0.42)
     expect(getGrowthCloudVisibility(frames.handoff[1], frames, 0.42, 1)).toBe(0)
@@ -200,16 +202,38 @@ describe('Scene 02 independent clouds', () => {
       .toBeCloseTo(getGrowthCloudVisibility(0.5, frames, 0.42, 1) * 0.5)
   })
 
-  it('keeps only the sparse far island clouds through lily growth, then fades them before the next scene', () => {
+  it('limits each path wisp to a short approach and pass around its world-space crossing', () => {
+    const frames = getGrowthFrames(getConfig().scenes.growth)
+    const atTimelineFraction = (fraction: number) => frames.fall[0] + (frames.fall[1] - frames.fall[0]) * fraction
+    const visibility = (fraction: number) => getGrowthCloudVisibility(
+      atTimelineFraction(fraction), frames, 0.42, 1, false, false, 0.64,
+    )
+
+    expect(visibility(0.5)).toBe(0)
+    expect(visibility(0.594)).toBeGreaterThan(0.4)
+    expect(visibility(0.8)).toBe(0)
+  })
+
+  it('keeps only the sparse far island clouds through growth and lets the environment own their handoff fade', () => {
     const frames = getGrowthFrames(getConfig().scenes.growth)
     const handoffEnd = frames.handoff[1]
 
     expect(getGrowthCloudVisibility(handoffEnd + 0.4, frames, 0.42, 1)).toBe(0)
     expect(getGrowthCloudVisibility(handoffEnd + 0.4, frames, 0.42, 1, true)).toBeGreaterThan(0)
     expect(getGrowthCloudVisibility(frames.duration - 0.45, frames, 0.42, 1, true)).toBeGreaterThan(0)
-    expect(getGrowthCloudVisibility(frames.duration, frames, 0.42, 1, true)).toBe(0)
+    expect(getGrowthCloudVisibility(frames.duration, frames, 0.42, 1, true)).toBe(0.42)
+    expect(getGrowthCloudVisibility(frames.duration, frames, 0.42, 0, true)).toBe(0)
     expect(getGrowthCloudVisibility(handoffEnd + 0.4, frames, 0.42, 0.5, true))
       .toBeCloseTo(getGrowthCloudVisibility(handoffEnd + 0.4, frames, 0.42, 1, true) * 0.5)
+  })
+
+  it('uses an established night for direct entry and restores the fall reveal after reset', () => {
+    const frames = getGrowthFrames(getConfig().scenes.growth)
+
+    expect(getGrowthCloudVisibility(0, frames, 0.42, 1, true, false, undefined, true)).toBe(0.42)
+    expect(getGrowthCloudVisibility(0, frames, 0.42, 1, true, false, undefined, false)).toBe(0)
+    expect(getGrowthCloudVisibility(0, frames, 0.42, 0.5, true, false, undefined, true)).toBe(0.21)
+    expect(getGrowthCloudVisibility(0, frames, 0.42, 1, false, false, undefined, true)).toBe(0)
   })
 
   it('introduces only persistent background clouds after the midpoint in reduced motion', () => {
@@ -239,6 +263,12 @@ describe('Scene 02 independent clouds', () => {
     expect(getGrowthCloudMotionTime(Number.NaN, false)).toBe(0)
   })
 
+  it('holds the settled cloud sea at one world-space pose across the growth-to-bloom seam', () => {
+    const seaMass = getGrowthCloudMasses(24, 1).find(({ id }) => id.startsWith('island-'))!
+
+    expect(getGrowthCloudDrift(seaMass, 8, 0.3)).toEqual([0, 0, 0])
+  })
+
   it('keeps moon scattering aligned with the centered vertical source', () => {
     const target = new Vector3()
     setGrowthCloudMoonPosition(target, new Vector3(-2, -1.45, 3), 5.5)
@@ -258,13 +288,17 @@ describe('Scene 02 independent clouds', () => {
     expect(material.defines?.CLOUD_STEPS).toBe(12)
     expect(material.uniforms.uMoonPosition!.value.toArray()).toEqual([0, 5.5, 0])
     expect(material.uniforms.uShapeVariation!.value).toBe(0.65)
+    expect(material.uniforms.uSeaEdgeFade!.value).toBe(0)
     expect(material.fragmentShader).toContain('float discriminant = b * b - a * c')
     expect(material.fragmentShader).toContain('float cloudDensity = cloudBody * erosion')
     expect(material.fragmentShader).toContain('float lobeD =')
     expect(material.fragmentShader).toContain('sampleColor += silverBlue * silverRim')
+    expect(material.fragmentShader).toContain('vec3 midnightBlue = vec3(0.085, 0.12, 0.2) * innerShade')
+    expect(material.fragmentShader).toContain('vec3 silverBlue = mix(vec3(0.38, 0.49, 0.68), uMoonColor, 0.45)')
     expect(material.fragmentShader).toContain('float erosion = 0.25 + coverage * 0.75')
     expect(material.fragmentShader).toContain('uMoonPosition')
     expect(material.fragmentShader).toContain('uLightIntensity')
+    expect(material.fragmentShader).toContain('cloudDensity *= mix(1.0, seaEdgeFade, uSeaEdgeFade)')
     expect(material.fragmentShader).toContain('float shapeX = sin(uSeed * 0.19) * 0.15 * uShapeVariation')
     expect(material.fragmentShader).toContain('transmittance *= 1.0 - sampleAlpha')
     material.dispose()
