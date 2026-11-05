@@ -7,6 +7,7 @@ const { MediaFinalizer } = require('./media-finalizer.cjs')
 const { RecordingRecoveryScheduler } = require('./recording-recovery-scheduler.cjs')
 const { installRecordingHandlers } = require('./recording-ipc.cjs')
 const { createAppWindowCaptureHandler } = require('./media-capture.cjs')
+const { getRecordingRoot } = require('./recording-path.cjs')
 
 const APP_ENTRY = 'app://bundle/index.html'
 const DEVELOPMENT_URL = process.env.ALU_DEV_SERVER_URL
@@ -35,7 +36,7 @@ function finalizeStoredSession(sessionId, { signal } = {}) {
 }
 
 function registerRecordingIpc() {
-  recordingStore = new RecordingDiskStore(path.join(app.getPath('movies'), 'A_Little_Universe_Records'))
+  recordingStore = new RecordingDiskStore(getRecordingRoot(app))
   recordingFinalizer = new MediaFinalizer({ isPackaged: app.isPackaged, resourcesPath: process.resourcesPath })
   recoveryScheduler = new RecordingRecoveryScheduler({
     recover: async (sessionId, { signal } = {}) => {

@@ -11,7 +11,7 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-11-05T16:34:30+03:00",
-  "updatedAt": "2026-11-05T22:18:18+03:00",
+  "updatedAt": "2026-11-05T22:32:17+03:00",
   "finishedAt": null,
   "stages": [
     {
@@ -46,17 +46,21 @@ window.STATE =
     },
     {
       "id": "build",
-      "status": "active",
-      "startedAt": "2026-11-05T16:36:15+03:00"
+      "status": "done",
+      "startedAt": "2026-11-05T16:36:15+03:00",
+      "finishedAt": "2026-11-05T22:32:17+03:00"
     },
     {
       "id": "review",
-      "status": "active",
-      "startedAt": "2026-11-05T22:18:18+03:00"
+      "status": "done",
+      "startedAt": "2026-11-05T22:18:18+03:00",
+      "finishedAt": "2026-11-05T22:32:17+03:00"
     },
     {
       "id": "final",
-      "status": "pending"
+      "status": "active",
+      "startedAt": "2026-11-05T22:32:17+03:00",
+      "note": "macOS сборка ожидает доступного runner"
     }
   ],
   "requirements": {
@@ -137,19 +141,24 @@ window.STATE =
         "desktop",
         "frontend"
       ],
-      "status": "review",
+      "status": "done",
       "retries": 0,
       "repairs": 2,
       "handoffs": 0,
       "startedAt": "2026-11-05T18:21:43+03:00",
       "tests": {
-        "passed": 805,
+        "passed": 806,
         "failed": 0
-      }
+      },
+      "finishedAt": "2026-11-05T22:32:17+03:00",
+      "commit": "4a37d4d"
     }
   ],
   "singlePass": null,
-  "tests": null,
+  "tests": {
+    "passed": 806,
+    "failed": 0
+  },
   "debt": {
     "placeholders": [],
     "assumptions": [
@@ -165,11 +174,17 @@ window.STATE =
   },
   "concerns": [
     "Первый этап: ARM64 .app и разрешения macOS не проверены на Windows.",
-    "Не проверены накопление сдвига после множества групп и физический MacBook."
+    "Не проверены накопление сдвига после множества групп и физический MacBook.",
+    "GitHub Actions job 42092630438 не стартовал: аккаунт заблокирован из-за проблемы оплаты."
   ],
   "reviewers": {
     "manifestSpec": null,
     "craft": null
   },
-  "blind": null
+  "blind": {
+    "status": "partial",
+    "findings": [
+      "Исправлена ошибка getPath; Electron smoke на Windows прошёл. macOS ARM64 сборка и физический MacBook не проверены."
+    ]
+  }
 }
