@@ -5,7 +5,9 @@ import { createFrameParticleGeometry } from '../gallery/frameParticles'
 import type { PortraitCameraBasis } from './portraitTargets'
 
 const PORTRAIT_FRAME_MARGIN = 0.075
-const PORTRAIT_FRAME_SPACING = 0.105
+// The reveal is framed at close portrait scale, so gallery-distance spacing reads as isolated dots.
+// Tight spacing lets the same soft particles overlap into a continuous, still delicate outline.
+const PORTRAIT_FRAME_SPACING = 0.01
 const PORTRAIT_FRAME_DEPTH = -0.04
 
 /** Reuse the gallery frame's restrained particle geometry and register it to the portrait UV plane. */

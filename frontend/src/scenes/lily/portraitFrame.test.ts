@@ -12,6 +12,7 @@ describe('scene 04 portrait frame', () => {
     const positions = geometry.getAttribute('position')
     const starts = geometry.getAttribute('aStartPosition')
     const delays = geometry.getAttribute('aAssemblyDelay')
+    expect(positions.count).toBeGreaterThan(600)
     const rightCoordinates: number[] = []
     const upCoordinates: number[] = []
 
