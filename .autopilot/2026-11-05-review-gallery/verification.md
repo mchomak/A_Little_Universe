@@ -6,3 +6,6 @@
 - Projection and GLB column raycast tests cover two/three extras and landscape/portrait viewports.
 - Manual MacBook rendering and GPU profiling were unavailable; review notes remain ready_for_review.
 - Review source: codex-review_2, IDs 6c640464 and 32a4096c.
+
+- Follow-up layout: B collage slots 2/3 sit left/right; slot 4 remains above. Configured size and 0.3 m gap are unchanged.
+- npm run build passed (includes app and node typecheck); Vitest was not run for this adjustment.

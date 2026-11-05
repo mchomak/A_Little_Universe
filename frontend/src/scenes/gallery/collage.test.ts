@@ -90,18 +90,22 @@ describe('gallery collage layout', () => {
     expect(upper.position[1] - upper.height / 2 - 3.3 / 2).toBeCloseTo(0.3)
   })
 
-  it('stacks B collages above the main photo so neighboring columns and the gallery floor stay clear', () => {
+  it('places B collage photos left, right, and above the main photo with the configured gaps', () => {
     const settings = { photoScale: 0.9, photoGap: 0.3 }
     const first = getGalleryCollagePhotoLayout(2, -1, 3.3, 2.4, 0.72, settings, 'between-columns')
     const second = getGalleryCollagePhotoLayout(3, -1, 3.3, 2.4, 1.4, settings, 'between-columns')
     const top = getGalleryCollagePhotoLayout(4, -1, 3.3, 2.4, 0.55, settings, 'between-columns')
 
-    expect(first.position[0]).toBe(0)
-    expect(second.position[0]).toBe(0)
+    expect(first.position[0]).toBeLessThan(0)
+    expect(second.position[0]).toBeGreaterThan(0)
     expect(top.position[0]).toBe(0)
-    expect(first.position[1] - first.height / 2).toBeGreaterThanOrEqual(2.4 / 2 + 0.3)
-    expect(second.position[1] - second.height / 2 - (first.position[1] + first.height / 2)).toBeGreaterThanOrEqual(0.3)
-    expect(top.position[1] - top.height / 2 - (second.position[1] + second.height / 2)).toBeGreaterThanOrEqual(0.3)
+    expect(Math.abs(first.position[0]) - first.width / 2 - 3.3 / 2).toBeCloseTo(0.3)
+    expect(second.position[0] - second.width / 2 - 3.3 / 2).toBeCloseTo(0.3)
+    expect(top.position[1] - top.height / 2 - 2.4 / 2).toBeCloseTo(0.3)
+    expect(first.position[1]).toBeCloseTo(-2.4 / 2 + first.height / 2 + 0.3)
+    expect(second.position[1]).toBeCloseTo(-2.4 / 2 + second.height / 2 + 0.3)
+    expect(first.position[2]).toBe(0.85)
+    expect(second.position[2]).toBe(0.85)
     expect(Math.max(first.width, first.height)).toBeCloseTo(2.97)
     expect(Math.max(second.width, second.height)).toBeCloseTo(2.97)
     expect(Math.max(top.width, top.height)).toBeCloseTo(2.97)

@@ -81,17 +81,19 @@ export function getGalleryCollagePhotoLayout(
   const wallYaw = -side * 1.15
   const yawSin = Math.sin(wallYaw)
   const outwardDepth = Math.abs(yawSin) > 0.001 ? side * 0.18 / yawSin : 0.035
-  if (variant === 'between-columns') {
-    // Side-facing cards run along the column rows, so stacking upward keeps posts clear of the photo plane and water.
-    const stackBase = mainHeight / 2 + gap
-    const precedingSlots = slot - 2
-    const verticalOffset = stackBase + precedingSlots * (longestEdge + gap) + longestEdge / 2
-    return { position: [0, verticalOffset, outwardDepth], width, height }
-  }
   if (slot === 4) return { position: [0, mainHeight / 2 + height / 2 + gap, outwardDepth], width, height }
 
   const horizontal = slot === 2 ? -1 : 1
   const horizontalOffset = horizontal * (mainWidth / 2 + width / 2 + gap)
+  if (variant === 'between-columns') {
+    // Bring side-facing B photos into the aisle so the neighboring shafts do not cover them.
+    const aisleDepth = 0.85
+    return {
+      position: [horizontalOffset, -mainHeight / 2 + height / 2 + gap, aisleDepth],
+      width,
+      height,
+    }
+  }
   const facesPassage = slot === 2 ? side > 0 : side < 0
   const depthLayer = slot === 2 ? -0.025 : 0.025
   const localZ = outwardDepth + depthLayer - (facesPassage ? 0.08 : 0)

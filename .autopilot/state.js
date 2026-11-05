@@ -2,29 +2,29 @@ window.STATE =
 {
   "slug": "review-gallery",
   "dir": "2026-11-05-review-gallery",
-  "title": "Review C — геометрия галереи и коллажи",
+  "title": "Review C \u2014 \u0433\u0435\u043e\u043c\u0435\u0442\u0440\u0438\u044f \u0433\u0430\u043b\u0435\u0440\u0435\u0438 \u0438 \u043a\u043e\u043b\u043b\u0430\u0436\u0438",
   "mode": "full",
   "depth": "normal",
   "polish": null,
   "tier": "T0",
-  "briefFile": "2026-11-05-brief.md",
+  "briefFile": "2026-11-05-followup-brief.md",
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-11-05T02:26:14+03:00",
-  "updatedAt": "2026-11-05T15:35:31+03:00",
-  "finishedAt": "2026-11-05T15:35:31+03:00",
+  "updatedAt": "2026-11-05T15:54:38+03:00",
+  "finishedAt": "2026-11-05T15:54:38+03:00",
   "stages": [
     {
       "id": "preflight",
       "status": "done",
       "startedAt": "2026-11-05T02:26:14+03:00",
-      "finishedAt": "2026-11-05T15:35:31+03:00"
+      "finishedAt": "2026-11-05T15:54:38+03:00"
     },
     {
       "id": "manifest",
       "status": "done",
       "startedAt": "2026-11-05T02:26:14+03:00",
-      "finishedAt": "2026-11-05T15:35:31+03:00"
+      "finishedAt": "2026-11-05T15:54:38+03:00"
     },
     {
       "id": "briefing",
@@ -36,36 +36,36 @@ window.STATE =
       "id": "spec",
       "status": "done",
       "startedAt": "2026-11-05T02:26:14+03:00",
-      "finishedAt": "2026-11-05T15:35:31+03:00"
+      "finishedAt": "2026-11-05T15:54:38+03:00"
     },
     {
       "id": "plan",
       "status": "done",
       "startedAt": "2026-11-05T02:26:14+03:00",
-      "finishedAt": "2026-11-05T15:35:31+03:00"
+      "finishedAt": "2026-11-05T15:54:38+03:00"
     },
     {
       "id": "build",
       "status": "done",
-      "startedAt": "2026-11-05T02:26:14+03:00",
-      "finishedAt": "2026-11-05T15:35:31+03:00"
+      "startedAt": "2026-11-05T15:54:21+03:00",
+      "finishedAt": "2026-11-05T15:54:38+03:00"
     },
     {
       "id": "review",
       "status": "done",
       "startedAt": "2026-11-05T02:26:14+03:00",
-      "finishedAt": "2026-11-05T15:35:31+03:00"
+      "finishedAt": "2026-11-05T15:54:38+03:00"
     },
     {
       "id": "final",
       "status": "done",
       "startedAt": "2026-11-05T02:26:14+03:00",
-      "finishedAt": "2026-11-05T15:35:31+03:00"
+      "finishedAt": "2026-11-05T15:54:38+03:00"
     }
   ],
   "requirements": {
-    "total": 8,
-    "done": 8,
+    "total": 9,
+    "done": 9,
     "inTicket": 0,
     "inSpec": 0,
     "placeholder": 0,
@@ -75,12 +75,13 @@ window.STATE =
   "tickets": [],
   "singlePass": {
     "status": "done",
-    "startedAt": "2026-11-05T02:26:14+03:00",
-    "finishedAt": "2026-11-05T15:35:31+03:00"
+    "startedAt": "2026-11-05T15:54:21+03:00",
+    "finishedAt": "2026-11-05T15:54:38+03:00"
   },
   "tests": {
-    "passed": 768,
-    "failed": 0
+    "passed": null,
+    "failed": null,
+    "note": "Build and typecheck completed; tests not run for this layout adjustment."
   },
   "debt": {
     "placeholders": [],
