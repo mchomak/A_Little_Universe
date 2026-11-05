@@ -244,7 +244,7 @@ describe('Scene Composer controls', () => {
 
   it('imports, exports, bounds, and resets the schema v24 collage settings', async () => {
     const values = {
-      collageParticleCount: 1200,
+      collageParticleCount: 30000,
       collageParticleSize: 4.2,
       collageNoiseStrength: 0.08,
       collageDepth: 0.6,
@@ -264,9 +264,9 @@ describe('Scene Composer controls', () => {
     expect(exported.scenes.gallery).toMatchObject(values)
     expect((await importComposerJson(JSON.stringify(exported))).ok).toBe(true)
 
-    await setComposerField('scenes.gallery.collageParticleCount', 2401)
-    expect(getConfig().scenes.gallery.collageParticleCount).toBe(640)
-    await setComposerField('scenes.gallery.collageParticleCount', 1200)
+    await setComposerField('scenes.gallery.collageParticleCount', 90001)
+    expect(getConfig().scenes.gallery.collageParticleCount).toBe(90000)
+    await setComposerField('scenes.gallery.collageParticleCount', 30000)
     await resetComposerField('scenes.gallery.collageAssembleDuration')
     expect(getConfig().scenes.gallery.collageAssembleDuration).toBe(5)
     await resetComposerScope('gallery')

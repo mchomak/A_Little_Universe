@@ -7,12 +7,12 @@ window.STATE =
   "depth": "normal",
   "polish": null,
   "tier": "T0",
-  "briefFile": "2026-11-05-followup-brief.md",
+  "briefFile": "2026-11-05-particle-brief.md",
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-11-05T02:26:14+03:00",
-  "updatedAt": "2026-11-05T15:54:38+03:00",
-  "finishedAt": "2026-11-05T15:54:38+03:00",
+  "updatedAt": "2026-11-05T16:35:45+03:00",
+  "finishedAt": "2026-11-05T16:35:45+03:00",
   "stages": [
     {
       "id": "preflight",
@@ -40,32 +40,32 @@ window.STATE =
     },
     {
       "id": "plan",
-      "status": "done",
-      "startedAt": "2026-11-05T02:26:14+03:00",
-      "finishedAt": "2026-11-05T15:54:38+03:00"
+      "status": "skipped",
+      "startedAt": "2026-11-05T16:19:23+03:00",
+      "note": "Tier T0; one bounded implementation assignment."
     },
     {
       "id": "build",
       "status": "done",
-      "startedAt": "2026-11-05T15:54:21+03:00",
-      "finishedAt": "2026-11-05T15:54:38+03:00"
+      "startedAt": "2026-11-05T16:19:23+03:00",
+      "finishedAt": "2026-11-05T16:35:45+03:00"
     },
     {
       "id": "review",
       "status": "done",
-      "startedAt": "2026-11-05T02:26:14+03:00",
-      "finishedAt": "2026-11-05T15:54:38+03:00"
+      "startedAt": "2026-11-05T16:34:08+03:00",
+      "finishedAt": "2026-11-05T16:35:45+03:00"
     },
     {
       "id": "final",
       "status": "done",
-      "startedAt": "2026-11-05T02:26:14+03:00",
-      "finishedAt": "2026-11-05T15:54:38+03:00"
+      "startedAt": "2026-11-05T16:35:45+03:00",
+      "finishedAt": "2026-11-05T16:35:45+03:00"
     }
   ],
   "requirements": {
-    "total": 9,
-    "done": 9,
+    "total": 10,
+    "done": 10,
     "inTicket": 0,
     "inSpec": 0,
     "placeholder": 0,
@@ -75,13 +75,26 @@ window.STATE =
   "tickets": [],
   "singlePass": {
     "status": "done",
-    "startedAt": "2026-11-05T15:54:21+03:00",
-    "finishedAt": "2026-11-05T15:54:38+03:00"
+    "startedAt": "2026-11-05T16:19:23+03:00",
+    "finishedAt": "2026-11-05T16:35:45+03:00",
+    "files": [
+      "frontend/src/scenes/GalleryScene.tsx",
+      "frontend/src/scenes/gallery/collage.ts",
+      "frontend/src/scenes/gallery/collage.test.ts",
+      "frontend/src/debug/DeveloperPanel.tsx",
+      "frontend/src/debug/DeveloperPanel.test.ts",
+      "frontend/src/debug/composerControls.test.ts",
+      "frontend/src/systems/scene-config/config.ts",
+      "frontend/src/systems/scene-config/config.test.ts",
+      "frontend/src/systems/scene-config/README.md",
+      "AGENTS.md"
+    ],
+    "tests": { "passed": null, "failed": null, "note": "Test suite not run; npm run build passed." }
   },
   "tests": {
     "passed": null,
     "failed": null,
-    "note": "Build and typecheck completed; tests not run for this layout adjustment."
+    "note": "This follow-up requests a production build; the test suite is not being run."
   },
   "debt": {
     "placeholders": [],
@@ -100,6 +113,6 @@ window.STATE =
     "craft": null
   },
   "blind": {
-    "result": "Camera projection, visibility, column placement reviewed independently; visual MacBook and runtime GPU profiling remain unverified."
+    "result": "User visually confirmed the particle collage. Automated browser reported WebGL2 unavailable; GPU profiling was not performed."
   }
 }

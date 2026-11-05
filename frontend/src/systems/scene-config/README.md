@@ -1,7 +1,7 @@
 # Scene Composer configuration
 
 `SceneComposerConfig` is immutable schema version 24. `normalizeConfig(input)` accepts partial JSON from schema versions 1–24, discards unknown keys, and fills missing or invalid values with current defaults. The merged configuration preserves known legacy prologue, growth, gallery, identity, and galaxy settings. It includes the opening-background crop profile, current scene 02 growth and seed controls, Lily appearance, growth vortex and bloom pollen, and gallery controls for water and clouds, Ionic columns, the arch, and independent A/B photo layouts. Older saved presets remain importable and are normalized to the current defaults.
-Schema v23 added bounded collage particle settings for the focused gallery memory. Schema v24 keeps those settings, raises minimum assembly and reveal durations to 5 and 1.5 seconds, and adds photo scale and spacing controls. Older v23 snapshots with shorter durations import with those minimums.
+Schema v23 added bounded collage particle settings for the focused gallery memory. Schema v24 keeps those settings, raises minimum assembly and reveal durations to 5 and 1.5 seconds, and adds photo scale and spacing controls. The collage particle density now defaults to 90,000 with a 2,400–90,000 range so the 300 px Memory Signal raster can use its full image area; older snapshots carrying the previous 640 default migrate to the new default. Older v23 snapshots with shorter durations import with the v24 minimums.
 
 The public store is:
 
@@ -74,6 +74,7 @@ Lily settings are stored under `scenes.growth.lilyBudGlow`, `scenes.growth.lilyL
 | Gallery water | Distortion / micro-normal scale / ripple speed | 0–0.14 (0.04) / 0.25–4.5 (1.25) / 0–3 (1.35) |
 | Gallery water | Normal strength / moon highlight / moon spread | 0–3 (0.95) / 0–2 (0.92) / 0.25–4 (1.6) |
 | Gallery water | Water opacity | 0–1 (1) |
+| Gallery collage | Particle density | 2,400–90,000 integer; default 90,000, with the local Memory Signal source raster capped at 300 px per edge |
 | Prologue | Font size, line height, position Y | 16–160, 0.8–2.5, 10–80 |
 | Prologue | Handwriting duration/rhythm, phrase interval, readable hold | 0.5–20, 0.1–3, 0–8, 0–30 |
 | Prologue | Particle count | 300–6000 integer; default 1800 |

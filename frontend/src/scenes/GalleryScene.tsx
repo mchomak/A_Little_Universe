@@ -10,7 +10,7 @@ import { createMemoryThreadAccentGeometry, createMemoryThreadGeometry, createMem
 import { GALLERY_WORLD } from './gallery/world'
 import { createGalleryWaterReflectionBackplate } from './gallery/galleryBackplate'
 import { getMoonFrameTintStrength, getMoonPhotoIllumination } from './gallery/moonLighting'
-import { advanceCollageRevealPlayback, createCollageRevealGeometry, createCollageRevealPlayback, DEFAULT_COLLAGE_REVEAL_SETTINGS, getCollageRevealPlaybackFrame, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout, markCollageRevealTextureReady, type CollageRevealPlayback, type CollageRevealSettings } from './gallery/collage'
+import { advanceCollageRevealPlayback, createCollageRevealGeometry, createCollageRevealGeometryFromSignal, createCollageRevealPlayback, DEFAULT_COLLAGE_REVEAL_SETTINGS, getCollageParticleRasterDimensions, getCollageRevealPlaybackFrame, getFocusedGalleryCollagePhotos, getGalleryCollagePhotoLayout, markCollageRevealTextureReady, type CollageRevealPlayback, type CollageRevealSettings } from './gallery/collage'
 import { getGalleryCollageConfig } from './gallery/galleryCollageConfig'
 import { setGalleryPhotoAspect } from './gallery/galleryCameraFit'
 import { AdditiveBlending, BufferAttribute, BufferGeometry, CanvasTexture, ClampToEdgeWrapping, Color, DataTexture, DoubleSide, Group, LinearFilter, Material, Mesh, MeshBasicMaterial, NoColorSpace, Points, PointsMaterial, RedFormat, SRGBColorSpace, Texture, TextureLoader, UnsignedByteType, Vector2, Vector3, ShaderMaterial } from 'three'
@@ -25,6 +25,7 @@ import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, rese
 import { bindGalleryGestures } from './gallery/gestures'
 import { MoonlitWorld } from './gallery/MoonlitWorld'
 import { createProgressivePhotoRevealMap, progressivePhotoRevealGLSL } from './shared/progressivePhotoReveal'
+import { processMemorySignalBaselinePixels, type MemorySignalBaselineSample } from '../iris-lab/memorySignalBaseline'
 import firstPhotoUrl from '../assets/start_img.jpg'
 
 function canvasTexture(draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void, w = 768, h = 768) {
@@ -150,6 +151,7 @@ const collageParticleVertexShader = `
   attribute float size;
   attribute float phase;
   attribute vec2 photoUv;
+  attribute float edgeFactor;
   varying vec2 vPhotoUv;
   varying vec3 vPhotoColor;
   varying float vBrightness;
@@ -159,9 +161,18 @@ const collageParticleVertexShader = `
     float reveal = smoothstep(0.0, 1.0, uReveal);
     vec3 moved = mix(position, targetPosition, reveal);
     float phaseTime = uTime * 1.7 + phase;
-    vec2 drift = vec2(sin(phaseTime), cos(phaseTime * 0.83)) * uNoiseStrength * (1.0 - reveal);
+    vec2 flow = vec2(
+      sin(phaseTime + targetPosition.y * 1.4),
+      cos(phaseTime * 0.83 + targetPosition.x * 1.1)
+    );
+    flow += 0.35 * vec2(
+      cos(phaseTime * 0.47 + targetPosition.y * 0.8),
+      sin(phaseTime * 0.61 + targetPosition.x * 1.3)
+    );
+    float motion = uNoiseStrength * (0.45 + edgeFactor) * mix(1.0, 0.5, reveal);
+    vec2 drift = flow * motion;
     moved.xy = clamp(moved.xy + drift, -uBounds * 0.5, uBounds * 0.5);
-    moved.z += sin(phaseTime * 0.7) * uNoiseStrength * 0.2 * (1.0 - reveal);
+    moved.z += sin(phaseTime * 0.7 + targetPosition.x * 0.9) * motion * 0.22;
     vec3 photoColor = texture2D(uPhoto, photoUv).rgb;
     float brightness = dot(photoColor, vec3(0.2126, 0.7152, 0.0722));
     float arrival = texture2D(uRevealMap, photoUv).r;
@@ -172,7 +183,7 @@ const collageParticleVertexShader = `
     vec4 view = modelViewMatrix * vec4(moved, 1.0);
     gl_Position = projectionMatrix * view;
     gl_PointSize = uParticleSize * uDpr * size * mix(0.62, 1.32, brightness);
-    vAlpha = uAlpha * smoothstep(0.015, 0.2, brightness) * particleVisibility;
+    vAlpha = uAlpha * smoothstep(0.005, 0.055, brightness) * particleVisibility;
   }
 `
 const collageParticleFragmentShader = `
@@ -254,7 +265,7 @@ function CollageExtraPhoto({ memoryId, url, slot, side, mainWidth, mainHeight, f
   const [aspect, setAspect] = useState(1)
   const photoSession = useMemo(() => ({ url, fallback }), [fallback, url])
   const [photoResult, setPhotoResult] = useState<{ session: object; failed: boolean } | null>(null)
-  const photoReady = photoResult?.session === photoSession
+  const [particleSignal, setParticleSignal] = useState<{ session: object; sample: MemorySignalBaselineSample | null } | null>(null)
   const dpr = useThree((state) => state.viewport.dpr)
   const backplateMaterial = useRef<MeshBasicMaterial>(null)
   const layout = useMemo(() => getGalleryCollagePhotoLayout(slot, side, mainWidth, mainHeight, aspect, {
@@ -276,10 +287,17 @@ function CollageExtraPhoto({ memoryId, url, slot, side, mainWidth, mainHeight, f
   const photoMaterial = useMemo(() => collagePhotoMaterial(fallback), [fallback])
   const particlesEnabled = settings.particleEnabled && !reducedMotion
   const particleCount = settings.particleCount
+  const particleSampleReady = particleSignal?.session === photoSession
+  const photoReady = photoResult?.session === photoSession && (!particlesEnabled || particleSampleReady)
+  const signalSample = particleSampleReady ? particleSignal?.sample ?? null : null
   const particleGeometrySettings = useMemo(() => ({ depth: settings.depth }), [settings.depth])
-  const particles = useMemo(() => particlesEnabled
-    ? createCollageRevealGeometry(layout.width, layout.height, seed, particleCount, particleGeometrySettings)
-    : new BufferGeometry(), [layout.height, layout.width, particleCount, particleGeometrySettings, particlesEnabled, seed])
+  const particles = useMemo(() => {
+    if (!particlesEnabled) return new BufferGeometry()
+    if (!particleSampleReady) return new BufferGeometry()
+    return signalSample
+      ? createCollageRevealGeometryFromSignal(signalSample, layout.width, layout.height, seed, particleGeometrySettings, particleCount)
+      : createCollageRevealGeometry(layout.width, layout.height, seed, particleCount, particleGeometrySettings)
+  }, [layout.height, layout.width, particleCount, particleGeometrySettings, particleSampleReady, particlesEnabled, seed, signalSample])
   const bounds = useMemo(() => new Vector2(), [])
   const revealMaterial = useMemo(() => particlesEnabled ? collageParticleMaterial(fallback, bounds) : null, [bounds, fallback, particlesEnabled])
   const revealMaterialRef = useRef<ShaderMaterial | null>(null)
@@ -345,6 +363,34 @@ function CollageExtraPhoto({ memoryId, url, slot, side, mainWidth, mainHeight, f
       }
     }
   }, [fallback, memoryId, photoMaterial, photoSession, slot, url])
+  useEffect(() => {
+    if (!particlesEnabled || photoResult?.session !== photoSession) return
+    if (photoResult.failed) {
+      setParticleSignal({ session: photoSession, sample: null })
+      return
+    }
+
+    let active = true
+    try {
+      const image = loadedPhoto.current.image as HTMLImageElement
+      const dimensions = getCollageParticleRasterDimensions(image.naturalWidth, image.naturalHeight, particleCount)
+      const canvas = document.createElement('canvas')
+      canvas.width = dimensions.width
+      canvas.height = dimensions.height
+      const context = canvas.getContext('2d', { willReadFrequently: true })
+      if (!context) throw new Error('Canvas pixel sampling is unavailable')
+      context.drawImage(image, 0, 0, dimensions.width, dimensions.height)
+      const sample = processMemorySignalBaselinePixels(
+        context.getImageData(0, 0, dimensions.width, dimensions.height).data,
+        dimensions.width,
+        dimensions.height,
+      )
+      if (active) setParticleSignal({ session: photoSession, sample })
+    } catch {
+      if (active) setParticleSignal({ session: photoSession, sample: null })
+    }
+    return () => { active = false }
+  }, [particleCount, particlesEnabled, photoResult, photoSession])
   useEffect(() => () => particles.dispose(), [particles])
   useEffect(() => () => photoMaterial.dispose(), [photoMaterial])
   useEffect(() => () => revealMaterial?.dispose(), [revealMaterial])

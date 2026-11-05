@@ -12,3 +12,4 @@
 | R08 | «Проверь ... npm run check ... commit и push ... отдельном порту ... оба ID ... ready_for_review» | done | acceptance |
 
 | R09 | collage extras arranged left, right, and above main, preserving their scale and gaps | done | collage layout |
+| R10 | original collage photo forms a recognizable dense particle image, stays gently animated for 3–4 seconds, then progressively reveals the crisp original | done | collage particle portrait |

@@ -414,7 +414,7 @@ it('exposes ten bounded collage controls in one collapsed DEV section', () => {
   expect(section).not.toBeNull()
   expect((markup.match(/Частицы дополнительных фото/g) ?? [])).toHaveLength(1)
   expect(section?.[1]).toContain('id="composer-scenes-gallery-collageParticleCount"')
-  expect(section?.[1]).toMatch(/collageParticleCount"[^>]*min="96" max="2400" step="1" value="640"/)
+  expect(section?.[1]).toMatch(/collageParticleCount"[^>]*min="2400" max="90000" step="1000" value="90000"/)
   expect(section?.[1]).toMatch(/collageParticleSize"[^>]*min="1" max="8" step="0\.1" value="2\.6"/)
   expect(section?.[1]).toMatch(/collageNoiseStrength"[^>]*min="0" max="0\.12" step="0\.005" value="0\.035"/)
   expect(section?.[1]).toMatch(/collageDepth"[^>]*min="0" max="0\.8" step="0\.01" value="0\.42"/)

@@ -357,7 +357,7 @@ const GALLERY_CONTROLS: readonly NumericControl[] = [
 ]
 
 const GALLERY_COLLAGE_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.gallery.collageParticleCount', label: 'Плотность частиц на фото', unit: 'шт.', min: 96, max: 2400, step: 1 },
+  { path: 'scenes.gallery.collageParticleCount', label: 'Плотность частиц на фото', unit: 'шт.', min: 2400, max: 90000, step: 1000 },
   { path: 'scenes.gallery.collageParticleSize', label: 'Размер частицы', unit: 'px', min: 1, max: 8, step: 0.1 },
   { path: 'scenes.gallery.collageNoiseStrength', label: 'Шум движения', unit: '×', min: 0, max: 0.12, step: 0.005 },
   { path: 'scenes.gallery.collageDepth', label: 'Глубина рассеяния', unit: 'м', min: 0, max: 0.8, step: 0.01 },

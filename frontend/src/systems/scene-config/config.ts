@@ -499,7 +499,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       columnVisible: true, columnScale: 1, columnDepth: 0.15, columnOffsetX: 0, columnOffsetY: 0,
       archVisible: true, archScale: 19, archOpacity: 0.78, archPositionX: 0, archPositionY: 0, archPositionZ: -82, archRotationY: 0,
       frameIntensity: 1, particleCount: 220,
-      collageParticleCount: 640, collageParticleSize: 2.6, collageNoiseStrength: 0.035, collageDepth: 0.42,
+      collageParticleCount: 90000, collageParticleSize: 2.6, collageNoiseStrength: 0.035, collageDepth: 0.42,
       collageGlow: 1, collageAssembleDuration: 5, collageRevealDuration: 2.5, collageStaggerDelay: 0.14,
       collagePhotoScale: 0.9, collagePhotoGap: 0.3,
       moonBrightness: 0.8, moonSize: 1.2,
@@ -906,6 +906,7 @@ function migrateGalaxySettings(input: Record<string, unknown> | undefined, versi
 function normalizeGallery(input: Record<string, unknown> | undefined): SceneComposerConfig['scenes']['gallery'] {
   const d = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery
   const cloudLayers = normalizeGalleryCloudLayers(input)
+  const collageParticleCount = input?.collageParticleCount === 640 ? d.collageParticleCount : input?.collageParticleCount
   const layoutA = input?.galleryLayoutA && typeof input.galleryLayoutA === 'object' ? input.galleryLayoutA as Record<string, unknown> : undefined
   const layoutB = input?.galleryLayoutB && typeof input.galleryLayoutB === 'object' ? input.galleryLayoutB as Record<string, unknown> : undefined
   return {
@@ -940,7 +941,7 @@ function normalizeGallery(input: Record<string, unknown> | undefined): SceneComp
     archRotationY: numberValue(input?.archRotationY, d.archRotationY, -Math.PI, Math.PI),
     frameIntensity: numberValue(input?.frameIntensity, d.frameIntensity, 0, 2),
     particleCount: numberValue(input?.particleCount, d.particleCount, 0, 600, true),
-    collageParticleCount: numberValue(input?.collageParticleCount, d.collageParticleCount, 96, 2400, true),
+    collageParticleCount: numberValue(collageParticleCount, d.collageParticleCount, 2400, 90000, true),
     collageParticleSize: numberValue(input?.collageParticleSize, d.collageParticleSize, 1, 8),
     collageNoiseStrength: numberValue(input?.collageNoiseStrength, d.collageNoiseStrength, 0, 0.12),
     collageDepth: numberValue(input?.collageDepth, d.collageDepth, 0, 0.8),

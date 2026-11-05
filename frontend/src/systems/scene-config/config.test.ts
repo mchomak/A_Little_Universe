@@ -167,12 +167,12 @@ it('adds an independently persisted lunar cloud layer and preserves schema v18 i
 })
 
 it('migrates schema v19 photo-particle defaults into schema v24', () => {
-  const migrated = normalizeConfig({ schemaVersion: 19, scenes: { gallery: { moonBrightness: 1.1 } } })
+  const migrated = normalizeConfig({ schemaVersion: 19, scenes: { gallery: { moonBrightness: 1.1, collageParticleCount: 640 } } })
 
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.schemaVersion).toBe(24)
   expect(migrated.schemaVersion).toBe(24)
   expect(migrated.scenes.gallery).toMatchObject({
-    collageParticleCount: 640,
+    collageParticleCount: 90000,
     collageParticleSize: 2.6,
     collageNoiseStrength: 0.035,
     collageDepth: 0.42,
@@ -192,28 +192,28 @@ it('keeps collage settings within their inclusive DEV limits', () => {
     collagePhotoScale: 0.5, collagePhotoGap: 0.1,
   } } })
   const maximums = normalizeConfig({ schemaVersion: 20, scenes: { gallery: {
-    collageParticleCount: 2400, collageParticleSize: 8, collageNoiseStrength: 0.12, collageDepth: 0.8,
+    collageParticleCount: 90000, collageParticleSize: 8, collageNoiseStrength: 0.12, collageDepth: 0.8,
     collageGlow: 2, collageAssembleDuration: 10, collageRevealDuration: 6, collageStaggerDelay: 0.5,
     collagePhotoScale: 1, collagePhotoGap: 1.5,
   } } })
   const outOfRange = normalizeConfig({ schemaVersion: 20, scenes: { gallery: {
-    collageParticleCount: 2401, collageParticleSize: 8.1, collageNoiseStrength: -0.01, collageDepth: 0.81,
+    collageParticleCount: 90001, collageParticleSize: 8.1, collageNoiseStrength: -0.01, collageDepth: 0.81,
     collageGlow: -0.01, collageAssembleDuration: 10.1, collageRevealDuration: 1.4, collageStaggerDelay: 0.51,
     collagePhotoScale: 1.1, collagePhotoGap: 1.6,
   } } })
 
   expect(minimums.scenes.gallery).toMatchObject({
-    collageParticleCount: 96, collageParticleSize: 1, collageNoiseStrength: 0, collageDepth: 0,
+    collageParticleCount: 2400, collageParticleSize: 1, collageNoiseStrength: 0, collageDepth: 0,
     collageGlow: 0, collageAssembleDuration: 5, collageRevealDuration: 1.5, collageStaggerDelay: 0,
     collagePhotoScale: 0.5, collagePhotoGap: 0.1,
   })
   expect(maximums.scenes.gallery).toMatchObject({
-    collageParticleCount: 2400, collageParticleSize: 8, collageNoiseStrength: 0.12, collageDepth: 0.8,
+    collageParticleCount: 90000, collageParticleSize: 8, collageNoiseStrength: 0.12, collageDepth: 0.8,
     collageGlow: 2, collageAssembleDuration: 10, collageRevealDuration: 6, collageStaggerDelay: 0.5,
     collagePhotoScale: 1, collagePhotoGap: 1.5,
   })
   expect(outOfRange.scenes.gallery).toMatchObject({
-    collageParticleCount: 640, collageParticleSize: 2.6, collageNoiseStrength: 0.035, collageDepth: 0.42,
+    collageParticleCount: 90000, collageParticleSize: 2.6, collageNoiseStrength: 0.035, collageDepth: 0.42,
     collageGlow: 1, collageAssembleDuration: 5, collageRevealDuration: 2.5, collageStaggerDelay: 0.14,
     collagePhotoScale: 0.9, collagePhotoGap: 0.3,
   })
@@ -1098,7 +1098,7 @@ it('merges colliding schema v20 collage settings with crop, Lily, pollen, and ga
       galleryLayoutVariant: 'between-columns',
       galleryLayoutA: { laneWidth: 8.2, offsetX: -0.4 },
       galleryLayoutB: { laneWidth: 8.4, offsetX: 2.1 },
-      collageParticleCount: 1200,
+      collageParticleCount: 30000,
       collageParticleSize: 4.2,
       collageNoiseStrength: 0.08,
       collageDepth: 0.6,
@@ -1117,7 +1117,7 @@ it('merges colliding schema v20 collage settings with crop, Lily, pollen, and ga
     galleryLayoutVariant: 'between-columns',
     galleryLayoutA: { laneWidth: 8.2, offsetX: -0.4 },
     galleryLayoutB: { laneWidth: 8.4, offsetX: 2.1 },
-    collageParticleCount: 1200,
+    collageParticleCount: 30000,
     collageParticleSize: 4.2,
     collageNoiseStrength: 0.08,
     collageDepth: 0.6,
@@ -1143,7 +1143,7 @@ it('imports review schema v23 collage profiles with a five-second assembly and p
   expect(migrated.scenes.gallery).toMatchObject({
     collageAssembleDuration: 5,
     collageRevealDuration: 2.5,
-    collageParticleCount: 960,
+    collageParticleCount: 2400,
     collagePhotoScale: 0.9,
     collagePhotoGap: 0.3,
     columnScale: 1.4,
