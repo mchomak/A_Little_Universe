@@ -66,3 +66,5 @@
 | 2026-11-03 | `2026-11-03-lily-magical-growth-bloom` | сдан с оговорками | Вихрь под бутоном и плавный внутренний дрейф пыльцы; 582 теста; визуальная проверка ожидает подтверждения |
 
 | 2026-11-04 | `2026-11-04-gallery-particle-reveal` | completed | Photo particles, progressive reveal and gallery settings |
+
+| 2026-11-05 | `2026-11-05-review-selective-integration--wip` | в работе | ? |

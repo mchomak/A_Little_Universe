@@ -1,192 +1,128 @@
 window.STATE =
 {
-  "slug": "scene-presets",
-  "dir": "2026-11-03-scene-presets--wip",
-  "title": "Пресеты настроек сцен",
+  "slug": "review-selective-integration",
+  "dir": "2026-11-05-review-selective-integration--wip",
+  "title": "Review 02 / 04 / 05",
   "mode": "full",
   "depth": "normal",
   "polish": null,
   "tier": "T2",
-  "briefFile": "2026-11-03-brief.md",
+  "briefFile": "2026-11-05-brief.md",
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
-  "startedAt": "2026-11-03T17:55:00+03:00",
-  "updatedAt": "2026-11-03T19:45:22+03:00",
-  "finishedAt": "2026-11-03T19:45:22+03:00",
+  "startedAt": "2026-11-05T16:43:00+03:00",
+  "updatedAt": "2026-11-05T17:30:56+03:00",
+  "finishedAt": null,
   "stages": [
     {
       "id": "preflight",
       "status": "done",
-      "startedAt": "2026-11-03T17:55:00+03:00",
-      "finishedAt": "2026-11-03T18:02:20+03:00"
+      "startedAt": "2026-11-05T16:43:00+03:00",
+      "finishedAt": "2026-11-05T16:43:00+03:00"
     },
     {
       "id": "manifest",
       "status": "done",
-      "startedAt": "2026-11-03T18:02:20+03:00",
-      "finishedAt": "2026-11-03T18:03:54+03:00"
+      "startedAt": "2026-11-05T16:43:00+03:00",
+      "finishedAt": "2026-11-05T16:43:00+03:00"
     },
     {
       "id": "briefing",
-      "status": "skipped",
-      "note": "полный автомат — самобрифинг"
+      "status": "done",
+      "startedAt": "2026-11-05T16:43:00+03:00",
+      "finishedAt": "2026-11-05T16:43:00+03:00"
     },
     {
       "id": "spec",
       "status": "done",
-      "startedAt": "2026-11-03T18:03:54+03:00",
-      "finishedAt": "2026-11-03T18:19:49+03:00"
+      "startedAt": "2026-11-05T16:43:00+03:00",
+      "finishedAt": "2026-11-05T16:43:00+03:00"
     },
     {
       "id": "plan",
       "status": "done",
-      "startedAt": "2026-11-03T18:19:49+03:00",
-      "finishedAt": "2026-11-03T18:24:23+03:00",
-      "note": "4 таска, ярус T2"
+      "startedAt": "2026-11-05T16:43:00+03:00",
+      "finishedAt": "2026-11-05T16:43:00+03:00"
     },
     {
       "id": "build",
       "status": "done",
-      "startedAt": "2026-11-03T18:24:23+03:00",
-      "note": "Таск 01 из 4 — формат пресета и снимок сцены",
-      "finishedAt": "2026-11-03T19:45:22+03:00"
+      "startedAt": "2026-11-05T16:43:00+03:00",
+      "finishedAt": "2026-11-05T17:30:56+03:00"
     },
     {
       "id": "review",
       "status": "done",
-      "finishedAt": "2026-11-03T19:45:22+03:00"
+      "startedAt": "2026-11-05T17:16:03+03:00",
+      "finishedAt": "2026-11-05T17:30:56+03:00"
     },
     {
       "id": "final",
-      "status": "done",
-      "finishedAt": "2026-11-03T19:45:22+03:00"
+      "status": "active",
+      "startedAt": "2026-11-05T17:30:56+03:00"
     }
   ],
-  "requirements": {
-    "total": 5,
-    "done": 5,
-    "inTicket": 0,
-    "inSpec": 0,
-    "placeholder": 0,
-    "deferred": 0,
-    "dropped": 0
-  },
   "tickets": [
     {
       "id": "01",
-      "title": "Формат и преобразование полного пресета сцены",
+      "title": "Seed audit",
       "requirements": [
-        "R02",
-        "R04",
-        "R05"
+        "R04"
       ],
-      "blockedBy": [],
       "wave": 1,
-      "zone": [
-        "frontend/src/debug/scenePresetModel.ts"
-      ],
+      "zone": "seed",
       "status": "done",
-      "retries": 0,
-      "repairs": 0,
-      "handoffs": 0,
-      "startedAt": "2026-11-03T18:35:32+03:00",
-      "finishedAt": "2026-11-03T19:45:22+03:00"
+      "startedAt": "2026-11-05T16:46:08+03:00",
+      "finishedAt": "2026-11-05T16:46:08+03:00",
+      "note": "No seed changes in source"
     },
     {
       "id": "02",
-      "title": "Файловое хранилище и локальный API пресетов",
+      "title": "Portrait",
       "requirements": [
-        "R03",
-        "R05",
-        "R03.1",
-        "R03.2"
-      ],
-      "blockedBy": [
-        "01"
+        "R05"
       ],
       "wave": 2,
-      "zone": [
-        "frontend/dev-scene-preset-store.ts",
-        "frontend/vite.config.ts"
-      ],
+      "zone": "identity",
       "status": "done",
-      "retries": 0,
-      "repairs": 0,
-      "handoffs": 0,
-      "finishedAt": "2026-11-03T19:45:22+03:00"
+      "startedAt": "2026-11-05T16:46:08+03:00",
+      "note": "9b72f6d, 4b8181d, 475fdd9",
+      "finishedAt": "2026-11-05T17:30:56+03:00"
     },
     {
       "id": "03",
-      "title": "Управление пресетами в Scene Editor",
+      "title": "Gallery",
       "requirements": [
-        "R01",
-        "R03",
-        "R04",
-        "R01.1",
-        "R03.1",
-        "R03.2"
+        "R06"
       ],
-      "blockedBy": [
-        "02"
-      ],
-      "wave": 3,
-      "zone": [
-        "frontend/src/debug/scenePresetApi.ts",
-        "frontend/src/debug/ScenePresetControls.tsx"
-      ],
+      "wave": 2,
+      "zone": "gallery",
       "status": "done",
-      "retries": 0,
-      "repairs": 0,
-      "handoffs": 0,
-      "finishedAt": "2026-11-03T19:45:22+03:00"
+      "startedAt": "2026-11-05T16:46:08+03:00",
+      "note": "7ed6565",
+      "finishedAt": "2026-11-05T17:30:56+03:00"
     },
     {
       "id": "04",
-      "title": "Снимок и применение пресета выбранной сцены",
+      "title": "Regression audit",
       "requirements": [
-        "R01",
-        "R02",
-        "R04",
-        "R05",
-        "R04.1"
+        "R10",
+        "R11",
+        "R12",
+        "R13"
       ],
-      "blockedBy": [
-        "03"
-      ],
-      "wave": 4,
-      "zone": [
-        "frontend/src/debug/DeveloperPanel.tsx"
-      ],
-      "status": "done",
-      "retries": 0,
-      "repairs": 0,
-      "handoffs": 0,
-      "finishedAt": "2026-11-03T19:45:22+03:00"
+      "wave": 3,
+      "zone": "verification",
+      "status": "in-progress",
+      "startedAt": "2026-11-05T17:16:03+03:00"
     }
   ],
-  "singlePass": null,
-  "tests": "npm run check: 566 tests, lint, typecheck, build passed",
-  "debt": {
-    "placeholders": [],
-    "assumptions": [],
-    "emptyEnv": []
-  },
-  "additions": [],
   "coverage": {
-    "found": 1,
-    "fixed": 1,
-    "deferred": 0,
-    "findings": [
-      "Независимая проверка: пропусков нет; половинчатых требований нет; все уточнения привязаны к R01–R05. Удалён лишний список не запрошенных функций из раздела «Вне рамок»."
-    ]
+    "findings": 3,
+    "resolved": 3
   },
-  "concerns": [],
-  "reviewers": {
-    "manifestSpec": null,
-    "craft": null
-  },
-  "blind": {
-    "status": "passed",
-    "detail": "Browser: save, reload, apply, undo and redo verified for scene and background."
+  "acceptance": {
+    "finding": "saved arch Z ignored",
+    "resolution": "fixed in b191f80; independently rechecked"
   }
 }
