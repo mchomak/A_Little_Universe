@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getPhoneBackgroundPanPercent, getPhoneBackgroundProgress } from './phoneBackgroundMotion'
+import { getPhoneBackgroundFilter, getPhoneBackgroundPanPercent, getPhoneBackgroundProgress } from './phoneBackgroundMotion'
 
 describe('phone background camera travel', () => {
   it('stays still until seed fall starts, then eases through the whole fall', () => {
@@ -13,6 +13,13 @@ describe('phone background camera travel', () => {
     expect(getPhoneBackgroundPanPercent(1, 1.8, 0)).toBe(-40)
     expect(getPhoneBackgroundPanPercent(0.5, 2.8, 0.5)).toBeCloseTo(-22.5)
     expect(getPhoneBackgroundPanPercent(1, 2.8, 1)).toBeCloseTo(-90)
+  })
+
+  it('preserves the prologue image through seed formation and dims it only during the fall', () => {
+    expect(getPhoneBackgroundFilter(0)).toBe('none')
+    expect(getPhoneBackgroundFilter(0.5)).toBe('brightness(0.74) saturate(0.86)')
+    expect(getPhoneBackgroundFilter(1)).toBe('brightness(0.48) saturate(0.72)')
+    expect(getPhoneBackgroundFilter(Number.NaN)).toBe('none')
   })
 
   it('handles non-finite clock values without jumping outside the image', () => {

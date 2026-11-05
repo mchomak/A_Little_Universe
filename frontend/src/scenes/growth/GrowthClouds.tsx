@@ -3,7 +3,7 @@ import { useThree } from '@react-three/fiber'
 import { Color, Group, Mesh, ShaderMaterial, SphereGeometry, Vector3 } from 'three'
 import type { FilmRuntime } from '../../engine/runtime'
 import {
-  createGrowthCloudVolumeMaterial, getGrowthCloudDrift, getGrowthCloudLunarLight, getGrowthCloudMasses, MAX_GROWTH_CLOUD_MASSES,
+  createGrowthCloudVolumeMaterial, getGrowthCloudLunarLight, getGrowthCloudMasses, getGrowthCloudPosition, MAX_GROWTH_CLOUD_MASSES,
   getGrowthCloudMotionTime, getGrowthCloudVisibility, setGrowthCloudMoonPosition,
 } from './growthCloudMath'
 import {
@@ -64,7 +64,7 @@ export function GrowthClouds({
       const motionTime = getGrowthCloudMotionTime(safeTime, reducedMotion)
       const motionSpeed = reducedMotion ? 0 : settings.cloudDriftSpeed
       root.current?.getWorldPosition(rootOrigin)
-      setGrowthCloudMoonPosition(moonPosition, rootOrigin, settings.moonPositionY)
+      setGrowthCloudMoonPosition(moonPosition, rootOrigin, settings.moonPositionY, settings.moonPositionX, settings.moonPositionZ)
       moonColor.set(settings.moonLightColor)
 
       for (let index = 0; index < CLOUD_RENDER_LIMIT; index++) {
@@ -74,6 +74,7 @@ export function GrowthClouds({
         if (!material) continue
         const opacity = getGrowthCloudVisibility(
           safeTime, frames, settings.cloudOpacity, environmentOpacity.current, mass?.persistent, reducedMotion,
+          settings.seedFallAcceleration,
         )
         material.uniforms.uOpacity!.value = opacity
         material.uniforms.uDensity!.value = settings.cloudDensity * (mass?.densityScale ?? 1)
@@ -85,8 +86,7 @@ export function GrowthClouds({
         material.uniforms.uSeed!.value = mass?.seed ?? 0
 
         if (!mesh || !mass) continue
-        const drift = getGrowthCloudDrift(mass, motionTime, motionSpeed)
-        mesh.position.set(mass.position[0] + drift[0], mass.position[1] + drift[1], mass.position[2] + drift[2])
+        mesh.position.set(...getGrowthCloudPosition(mass, motionTime, motionSpeed))
         mesh.scale.set(...mass.radii)
         mesh.getWorldPosition(center)
         material.uniforms.uCenter!.value.copy(center)
@@ -102,7 +102,8 @@ export function GrowthClouds({
     center, environmentOpacity, frames, invalidate, masses, materials, moonColor, moonPosition,
     reducedMotion, rootOrigin, runtime, settings.cloudDensity, settings.cloudDriftSpeed,
     settings.cloudLightIntensity, settings.cloudOpacity, settings.moonLightColor,
-    settings.moonPositionY, settings.moonLightIntensity, settings.cloudShapeVariation,
+    settings.moonPositionX, settings.moonPositionY, settings.moonPositionZ, settings.seedFallAcceleration,
+    settings.moonLightIntensity, settings.cloudShapeVariation,
   ])
 
   return <group ref={root} dispose={null}>

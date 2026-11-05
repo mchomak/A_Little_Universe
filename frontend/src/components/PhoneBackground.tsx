@@ -4,7 +4,7 @@ import { getGrowthSceneFrames } from '../engine/filmConfig'
 import type { FilmRuntime } from '../engine/runtime'
 import type { SceneId } from '../engine/film'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
-import { getPhoneBackgroundPanPercent, getPhoneBackgroundProgress } from './phoneBackgroundMotion'
+import { getPhoneBackgroundFilter, getPhoneBackgroundPanPercent, getPhoneBackgroundProgress } from './phoneBackgroundMotion'
 import './phone-background.css'
 
 const CAMERA_TRAVEL_OVERSCAN_ZOOM = 0.8
@@ -33,6 +33,7 @@ export function PhoneBackground({ active = true, scene, runtime, reducedMotion =
         : isGrowth ? getPhoneBackgroundProgress(time, getGrowthSceneFrames(config.scenes.growth).fall)
           : scene === 'bloom' || scene === 'identity' ? 1 : 0
       element.style.setProperty('--background-pan-y', `${getPhoneBackgroundPanPercent(progress, zoom, offsetY)}%`)
+      element.style.filter = isGrowth ? getPhoneBackgroundFilter(progress) : 'none'
     }
 
     update(scene === 'growth' ? runtime?.time ?? 0 : 0)
@@ -47,8 +48,8 @@ export function PhoneBackground({ active = true, scene, runtime, reducedMotion =
     backgroundPosition: `${50 + offsetX * 50}% ${50 + offsetY * 50}%`,
     transform: `translate(${(zoom - 1) * offsetX * 50}%, var(--background-pan-y, 0%)) scale(${zoom})`,
     '--background-pan-y': '0%',
-    filter: scene === 'growth' ? 'brightness(0.48) saturate(0.72)' : 'none',
-    transition: reducedMotion ? 'none' : 'filter 700ms ease-in-out',
+    filter: 'none',
+    transition: reducedMotion || scene === 'growth' ? 'none' : 'filter 700ms ease-in-out',
   }
 
   return <div className="phone-background" aria-hidden="true"><div ref={image} className="phone-background-image" style={style} /></div>

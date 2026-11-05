@@ -6,6 +6,7 @@ import {
 } from 'three'
 import type { FilmRuntime } from '../../engine/runtime'
 import { createGrassBladeData, createIslandSideGeometryData, createIslandTopGeometryData, type IslandGeometryData } from './floatingIslandGeometry'
+import { getGrowthIslandLocalLightIntensity } from './moonlight'
 import { createSoilTextureData } from './soilTextureData'
 
 function makeGeometry(data: IslandGeometryData) {
@@ -125,7 +126,7 @@ function makeSoilTextures() {
 }
 
 /** Procedural island attached to the shared Scene 02 canvas and presentation clock. */
-export function FloatingIsland({ runtime, radius, thickness = 0.24, depth = 0.58, roughness = 0.5, grassDensity, grassHeight = 0.14, windStrength = 1, windSpeed, reducedMotion, opacity, shadowsEnabled = false }: {
+export function FloatingIsland({ runtime, radius, thickness = 0.24, depth = 0.58, roughness = 0.5, grassDensity, grassHeight = 0.14, windStrength = 1, windSpeed, reducedMotion, opacity, settleProgress, shadowsEnabled = false }: {
   runtime: FilmRuntime
   radius: number
   thickness?: number
@@ -137,6 +138,7 @@ export function FloatingIsland({ runtime, radius, thickness = 0.24, depth = 0.58
   windSpeed: number
   reducedMotion: boolean
   opacity: { current: number }
+  settleProgress: { current: number }
   shadowsEnabled?: boolean
 }) {
   const invalidate = useThree(({ invalidate }) => invalidate)
@@ -177,12 +179,14 @@ export function FloatingIsland({ runtime, radius, thickness = 0.24, depth = 0.58
         }
         material.depthWrite = !transparent && material !== shader
       }
-      if (localLight.current) localLight.current.intensity = 0.62 * alpha
+      if (localLight.current) {
+        localLight.current.intensity = getGrowthIslandLocalLightIntensity(settleProgress.current) * alpha
+      }
       if (!reducedMotion || alpha < 0.999) invalidate()
     }
     update(runtime.presentationTime)
     return runtime.subscribePresentation(update)
-  }, [grassUniforms, invalidate, opacity, reducedMotion, runtime, windSpeed, windStrength])
+  }, [grassUniforms, invalidate, opacity, reducedMotion, runtime, settleProgress, windSpeed, windStrength])
 
   useLayoutEffect(() => () => {
     top.dispose()

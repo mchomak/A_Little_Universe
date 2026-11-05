@@ -4,8 +4,8 @@ import { AdditiveBlending, Color, DoubleSide, NormalBlending, Object3D, type Dir
 import type { FilmRuntime } from '../../engine/runtime'
 import type { SceneId } from '../../engine/film'
 import {
-  getGrowthMoonlightBeamLayout, getGrowthMoonlightLevels, growthContactShadowFragmentShader,
-  growthContactShadowVertexShader, growthMoonBeamFragmentShader, type GrowthMoonlightSettings,
+  getGrowthMoonlightBeamLayout, getGrowthMoonlightBeamRadius, getGrowthMoonlightLevels, getGrowthMoonlightRigGains, growthContactShadowFragmentShader,
+  growthContactShadowVertexShader, growthMoonBeamFragmentShader, syncGrowthDirectionalKeyPose, type GrowthMoonlightSettings,
 } from './moonlight'
 import {
   configureGrowthDirectionalShadow, createGrowthShadowSceneController, getGrowthShadowStrength,
@@ -19,6 +19,7 @@ export function GrowthMoonlight({
   settings,
   runtime,
   growthProgress,
+  settleProgress,
   environmentOpacity,
   shadowsEnabled,
   scene,
@@ -27,6 +28,7 @@ export function GrowthMoonlight({
   settings: GrowthMoonlightSettings
   runtime: FilmRuntime
   growthProgress: { current: number }
+  settleProgress: { current: number }
   environmentOpacity: { current: number }
   shadowsEnabled: boolean
   scene: SceneId
@@ -69,14 +71,19 @@ export function GrowthMoonlight({
   useLayoutEffect(() => {
     lightTarget.position.set(0, 0, 0)
     const update = () => {
+      const focused = scene === 'growth'
+      const gains = getGrowthMoonlightRigGains(settleProgress.current, focused)
       const levels = getGrowthMoonlightLevels(
         settings.moonLightIntensity,
         settings.moonBeamIntensity,
         growthProgress.current,
         environmentOpacity.current,
         settings.moonScatteringIntensity,
+        gains.key,
+        gains.fill,
       )
       if (key.current) {
+        syncGrowthDirectionalKeyPose(key.current, lightTarget, layout)
         if (shadowsEnabled) shadowController.current?.sync(levels, getGrowthShadowStrength(scene, runtime.time, bloomDuration))
         else { key.current.intensity = levels.key; key.current.castShadow = false }
       }
@@ -85,7 +92,7 @@ export function GrowthMoonlight({
         beam.current.uniforms.uOpacity!.value = levels.beam
         beam.current.uniforms.uScatteringIntensity!.value = levels.scattering
         ;(beam.current.uniforms.uMoonColor!.value as Color).copy(lightColor)
-        beam.current.uniforms.uBeamRadius!.value = layout.radius
+        beam.current.uniforms.uBeamRadius!.value = getGrowthMoonlightBeamRadius(layout.radius, settleProgress.current, focused)
         beam.current.uniforms.uSoftness!.value = settings.moonBeamSoftness
       }
       if (contactShadow.current) contactShadow.current.uniforms.uOpacity!.value = levels.shadow
@@ -94,8 +101,8 @@ export function GrowthMoonlight({
     update()
     return runtime.subscribePresentation(update)
   }, [
-    bloomDuration, environmentOpacity, growthProgress, invalidate, lightColor, lightTarget, renderer, runtime, scene, shadowsEnabled,
-    layout.radius, settings.moonBeamIntensity, settings.moonBeamRadius, settings.moonBeamSoftness,
+    bloomDuration, environmentOpacity, growthProgress, invalidate, lightColor, lightTarget, renderer, runtime, scene, settleProgress, shadowsEnabled,
+    layout, settings.moonBeamIntensity, settings.moonBeamRadius, settings.moonBeamSoftness,
     settings.moonLightIntensity, settings.moonPositionY, settings.moonScatteringIntensity,
   ])
 

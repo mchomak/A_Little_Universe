@@ -8,12 +8,13 @@ import {
   getGrowthCloudLunarLight,
   getGrowthCloudMasses,
   getGrowthCloudMotionTime,
+  getGrowthCloudPosition,
   getGrowthCloudVisibility,
   setGrowthCloudMoonPosition,
 } from './growthCloudMath'
 
 describe('Scene 02 independent clouds', () => {
-  it('frames a side cloud during early fall with the saved long-fall configuration', () => {
+  it('keeps side clouds out of frame at the beginning of the saved long fall', () => {
     const settings = {
       ...getConfig().scenes.growth,
       formationDuration: 3.5, seedFallDuration: 8, seedFallAcceleration: 5, seedFallHeight: 6.4,
@@ -36,12 +37,14 @@ describe('Scene 02 independent clouds', () => {
         && worldY + mass.radii[1] * 0.5 > camera.y - halfHeight
         && worldY - mass.radii[1] < camera.y + halfHeight
     })
-    expect(visibleSide).toBe(true)
+    expect(visibleSide).toBe(false)
   })
   it('keeps a near cloud mass in the camera frame around the middle of the falling seed', () => {
     const settings = getConfig().scenes.growth
     const viewportHeight = getGrowthViewportHeight(1280, 720)
-    const camera = getGrowthCameraPose(7.76, false, settings, viewportHeight)
+    const frames = getGrowthFrames(settings)
+    const midPathTime = frames.fall[0] + (frames.fall[1] - frames.fall[0]) * 0.62 ** (1 / settings.seedFallAcceleration)
+    const camera = getGrowthCameraPose(midPathTime, false, settings, viewportHeight)
     const masses = getGrowthCloudMasses(settings.cloudCount, settings.cloudScale, {
       fallDistance: getSeedFallDistance(viewportHeight) * settings.seedFallHeight,
       viewportHeight, sizeVariation: settings.cloudSizeVariation,
@@ -54,6 +57,25 @@ describe('Scene 02 independent clouds', () => {
         && mass.position[1] + SEED_ROOT[1] - mass.radii[1] < camera.y + halfHeight
     })
     expect(visibleNearBank).toBe(true)
+  })
+  it('places fall cloud banks at static world heights along the seed path', () => {
+    const settings = getConfig().scenes.growth
+    const viewportHeight = getGrowthViewportHeight(1280, 720)
+    const fallDistance = getSeedFallDistance(viewportHeight) * settings.seedFallHeight
+    const masses = getGrowthCloudMasses(24, settings.cloudScale, {
+      fallDistance, viewportHeight, sizeVariation: settings.cloudSizeVariation,
+      pathDensity: 1, depthVariation: settings.cloudDepthVariation,
+    }).filter((mass) => mass.fallProgress !== undefined)
+    const firstBank = masses.reduce((first, mass) => mass.fallProgress! < first.fallProgress! ? mass : first)
+
+    expect(masses.length).toBeGreaterThan(12)
+    for (const mass of masses) {
+      expect(mass.position[1]).toBeCloseTo(fallDistance * (1 - mass.fallProgress!), 0)
+    }
+    expect(firstBank.fallProgress).toBeCloseTo(0.51)
+    expect(firstBank.position[1]).toBeCloseTo(fallDistance * 0.49, 0)
+    expect(firstBank.position[0]).not.toBe(0)
+    expect(firstBank.position[2]).not.toBe(0)
   })
   it('keeps directional cloud illumination off until the impact cue and rewinds it with the scene', () => {
     const frames = getGrowthFrames(getConfig().scenes.growth)
@@ -123,17 +145,20 @@ describe('Scene 02 independent clouds', () => {
     expect(new Set(fullField.map(({ radii }) => radii[0].toFixed(2))).size).toBeGreaterThan(18)
     expect(Math.max(...maxDistanceField.map(({ position }) => position[1])))
       .toBeGreaterThan(Math.max(...defaultField.map(({ position }) => position[1])) + 3)
-    expect(maxDistanceField.filter(({ pathCrossing }) => pathCrossing).every(({ position, radii }) => position[1] + radii[1]
-      < 15.3 - flight.viewportHeight / 2)).toBe(true)
-    expect(minimumDistanceField.every(({ position, radii }) => position[1] + radii[1]
-      < minimumFallDistance - flight.viewportHeight / 2)).toBe(true)
+    expect(maxDistanceField.filter(({ fallProgress }) => fallProgress !== undefined).every(({ position, fallProgress }) =>
+      Math.abs(position[1] - 15.3 * (1 - fallProgress!)) < 0.05,
+    )).toBe(true)
+    expect(minimumDistanceField.filter(({ fallProgress }) => fallProgress !== undefined).every(({ position, fallProgress }) =>
+      Math.abs(position[1] - minimumFallDistance * (1 - fallProgress!)) < 0.05,
+    )).toBe(true)
     expect(minimumDistanceField.filter(({ pathCrossing }) => pathCrossing).length).toBeGreaterThan(0)
     expect(minimumDistanceField.filter(({ pathCrossing }) => pathCrossing).every(({ position }) =>
       position[1] > 0 && position[1] < minimumFallDistance * 0.5,
     )).toBe(true)
     expect(reducedMotionField.filter(({ pathCrossing }) => pathCrossing)).toHaveLength(0)
-    expect(reducedMotionField.every(({ position, radii }) => position[1] + radii[1]
-      < getSeedFallDistance(flight.viewportHeight) - flight.viewportHeight / 2)).toBe(true)
+    expect(reducedMotionField.filter(({ fallProgress }) => fallProgress !== undefined).every(({ position, fallProgress }) =>
+      Math.abs(position[1] - getSeedFallDistance(flight.viewportHeight) * (1 - fallProgress!)) < 0.08,
+    )).toBe(true)
     expect(getGrowthCloudMasses(4, 1, flight)).toEqual(masses)
     expect(getGrowthCloudMasses(0, 1)).toEqual([])
   })
@@ -180,21 +205,29 @@ describe('Scene 02 independent clouds', () => {
     expect(getGrowthCloudMasses(1, Number.NaN)[0]!.radii[0]).toBeCloseTo(getGrowthCloudMasses(1, 1)[0]!.radii[0])
   })
 
-  it('keeps clouds at full strength from the opening and fades them only for the scene handoff', () => {
+  it('reveals clouds near the middle of the seed path and fades them for the scene handoff', () => {
     const frames = getGrowthFrames(getConfig().scenes.growth)
-    const fallStart = frames.fall[0]
-    const opacity = getGrowthCloudVisibility(fallStart + 0.2, frames, 0.42, 1)
+    const acceleration = getConfig().scenes.growth.seedFallAcceleration
+    const atFallProgress = (progress: number) => frames.fall[0]
+      + (frames.fall[1] - frames.fall[0]) * progress ** (1 / acceleration)
+    const earlyFall = frames.fall[0] + 0.2
+    const cloudReveal = getGrowthCloudVisibility(atFallProgress(0.42), frames, 0.42, 1, false, false, acceleration)
+    const opacity = getGrowthCloudVisibility(atFallProgress(0.52), frames, 0.42, 1, false, false, acceleration)
 
-    expect(getGrowthCloudVisibility(0, frames, 0.42, 1)).toBe(0.42)
-    expect(opacity).toBe(0.42)
+    expect(getGrowthCloudVisibility(0, frames, 0.42, 1)).toBe(0)
+    expect(getGrowthCloudVisibility(earlyFall, frames, 0.42, 1, false, false, acceleration)).toBe(0)
+    expect(getGrowthCloudVisibility(frames.fall[0] + 1.556, frames, 0.42, 1, false, false, acceleration)).toBe(0)
+    expect(cloudReveal).toBeGreaterThan(0)
+    expect(cloudReveal).toBeLessThan(0.42)
+    expect(opacity).toBeCloseTo(0.42)
     expect(getGrowthCloudVisibility(frames.handoff[0] + 0.05, frames, 0.42, 1)).toBe(0.42)
     expect(getGrowthCloudVisibility(frames.handoff[1] - 0.2, frames, 0.42, 1)).toBeLessThan(0.42)
     expect(getGrowthCloudVisibility(frames.handoff[1], frames, 0.42, 1)).toBe(0)
     expect(getGrowthCloudVisibility(0.5, frames, 0.42, 0)).toBe(0)
     expect(getGrowthCloudVisibility(0.5, frames, 0, 1)).toBe(0)
     expect(getGrowthCloudVisibility(Number.NaN, frames, 0.42, 1)).toBe(0)
-    expect(getGrowthCloudVisibility(0.5, frames, 0.42, 0.5))
-      .toBeCloseTo(getGrowthCloudVisibility(0.5, frames, 0.42, 1) * 0.5)
+    expect(getGrowthCloudVisibility(atFallProgress(0.42), frames, 0.42, 0.5, false, false, acceleration))
+      .toBeCloseTo(cloudReveal * 0.5)
   })
 
   it('keeps only the sparse far island clouds through lily growth, then fades them before the next scene', () => {
@@ -212,11 +245,14 @@ describe('Scene 02 independent clouds', () => {
   it('introduces only persistent background clouds after the midpoint in reduced motion', () => {
     const frames = getGrowthFrames(getConfig().scenes.growth)
     const midpoint = (frames.fall[0] + frames.fall[1]) / 2
-    const revealEnd = Math.min(frames.handoff[0], frames.fall[1] + 0.45)
+    const acceleration = getConfig().scenes.growth.seedFallAcceleration
+    const atFallProgress = (progress: number) => frames.fall[0]
+      + (frames.fall[1] - frames.fall[0]) * progress ** (1 / acceleration)
+    const revealEnd = atFallProgress(0.52)
 
     expect(getGrowthCloudVisibility(0, frames, 0.42, 1, true, true)).toBe(0)
     expect(getGrowthCloudVisibility(midpoint, frames, 0.42, 1, true, true)).toBe(0)
-    expect(getGrowthCloudVisibility(midpoint + 0.1, frames, 0.42, 1, true, true)).toBeGreaterThan(0)
+    expect(getGrowthCloudVisibility(atFallProgress(0.42), frames, 0.42, 1, true, true)).toBeGreaterThan(0)
     expect(getGrowthCloudVisibility(revealEnd, frames, 0.42, 1, true, true)).toBe(0.42)
     expect(getGrowthCloudVisibility(revealEnd, frames, 0.42, 1, false, true)).toBe(0)
     expect(getGrowthCloudVisibility(frames.handoff[1] + 0.4, frames, 0.42, 1, true, true)).toBeGreaterThan(0)
@@ -231,15 +267,21 @@ describe('Scene 02 independent clouds', () => {
     expect(getGrowthCloudDrift(mass, Number.NaN, 0.3)).toEqual([0, 0, 0])
     expect(Math.hypot(...first)).toBeLessThan(0.15)
     expect(getGrowthCloudDrift(mass, 9, 0.3)).not.toEqual(first)
+    expect(getGrowthCloudPosition(mass, 8, 0)).toEqual(mass.position)
+    expect(getGrowthCloudPosition(mass, 8, 0.3)).toEqual([
+      mass.position[0] + first[0], mass.position[1] + first[1], mass.position[2] + first[2],
+    ])
     expect(getGrowthCloudMotionTime(9, false)).toBe(9)
     expect(getGrowthCloudMotionTime(9, true)).toBe(0)
     expect(getGrowthCloudMotionTime(Number.NaN, false)).toBe(0)
   })
 
-  it('keeps moon scattering aligned with the centered vertical source', () => {
+  it('keeps moon scattering aligned with the configured lunar source', () => {
     const target = new Vector3()
     setGrowthCloudMoonPosition(target, new Vector3(-2, -1.45, 3), 5.5)
     expect(target.toArray()).toEqual([-2, 4.05, 3])
+    setGrowthCloudMoonPosition(target, new Vector3(-2, -1.45, 3), 5.5, -0.65, 1)
+    expect(target.toArray()).toEqual([-2.65, 4.05, 4])
     setGrowthCloudMoonPosition(target, new Vector3(0, 0, 0), Number.NaN)
     expect(target.toArray()).toEqual([0, 5.5, 0])
   })

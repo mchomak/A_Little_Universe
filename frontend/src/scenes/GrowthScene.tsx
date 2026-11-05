@@ -5,7 +5,7 @@ import type { SceneProps } from '../engine/sceneTypes'
 import { getBloomSceneFrames } from '../engine/filmConfig'
 import { getIdentityEnvironmentOpacity, shouldMountGrowthClouds } from '../engine/sceneContinuity'
 import { useSceneAnimation } from './shared/animation'
-import { getGrowthFrames, getGrowthViewportHeight, getSeedCorePose, getSeedFallHeightMultiplier, getSeedParticleCount, getSeedPose, getSeedShellCenterY, getSeedShatterOpacity, sampleSeedParticleSeeds, SEED_ROOT, SEED_SHELL_HALF_HEIGHT, type GrowthSettings } from './growth/seedProcedure'
+import { getGrowthFrames, getGrowthProgress, getGrowthViewportHeight, getSeedCorePose, getSeedFallHeightMultiplier, getSeedParticleCount, getSeedPose, getSeedShellCenterY, getSeedShatterOpacity, sampleSeedParticleSeeds, SEED_ROOT, SEED_SHELL_HALF_HEIGHT, type GrowthSettings } from './growth/seedProcedure'
 import { coreFragment, haloFragment, impactWaveFragment, particleFragment, particleVertex, seedFragment, seedSurfaceVertex, surfaceVertex } from './growth/seedShaders'
 import { createSeedParticleReferences } from './growth/seedTargets'
 import { RecStudioParticleSimulation } from './growth/recstudioSimulation'
@@ -175,6 +175,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
   const islandOpacity = useRef(1)
   const environmentOpacity = useRef(1)
   const moonlightProgress = useRef(0)
+  const settleProgress = useRef(0)
   const orbit = useRef<ShaderMaterial>(null)
   const trail = useRef<ShaderMaterial>(null)
   const sparks = useRef<ShaderMaterial>(null)
@@ -227,6 +228,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
     environmentOpacity.current = worldOpacity
     islandOpacity.current = worldOpacity
     moonlightProgress.current = pose.moonlight
+    settleProgress.current = environmentOnly ? 1 : getGrowthProgress(time, frames.settle)
     if (!environmentOnly) {
       matterSyncRef.current?.(time, growthSettings)
       for (const [material, opacity] of [[orbit.current, pose.orbitOpacity * 0.86], [trail.current, pose.trailOpacity], [sparks.current, pose.sparkOpacity]] as const) {
@@ -332,6 +334,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
         windSpeed={growthSettings.windSpeed}
         reducedMotion={reducedMotion}
         opacity={islandOpacity}
+        settleProgress={settleProgress}
         shadowsEnabled={shouldUseGrowthShadows(state.scene)}
       />
       <mesh ref={mound} position={[0, 0, 0]} scale={[0.115, 0.0001, 0.115]}>
@@ -346,6 +349,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
         settings={growthSettings}
         runtime={runtime}
         growthProgress={moonlightProgress}
+        settleProgress={settleProgress}
         environmentOpacity={environmentOpacity}
         shadowsEnabled={shouldUseGrowthShadows(state.scene)}
         scene={state.scene}

@@ -1,5 +1,5 @@
 import { BackSide, Color, NormalBlending, ShaderMaterial, Vector3 } from 'three'
-import { getGrowthProgress, type GrowthFrames } from './seedProcedure'
+import { getGrowthProgress, getSeedFallProgress, type GrowthFrames } from './seedProcedure'
 
 export interface GrowthCloudMass {
   id: string
@@ -9,15 +9,14 @@ export interface GrowthCloudMass {
   lightScale: number
   /** Thin wisps can cross the seed path briefly while keeping its silhouette readable. */
   pathCrossing?: boolean
+  /** Scene-local seed fall progress whose world-space height this cloud accompanies. */
+  fallProgress?: number
   densityScale?: number
   /** Only sparse far masses persist into lily growth. */
   persistent?: boolean
 }
 
-interface GrowthCloudTemplate extends GrowthCloudMass {
-  /** Fraction of the seed's fall completed when this mass intersects its world-space path. */
-  fallProgress?: number
-}
+type GrowthCloudTemplate = GrowthCloudMass
 
 export interface GrowthCloudLayoutOptions {
   fallDistance?: number
@@ -216,41 +215,32 @@ export function getGrowthCloudMasses(
   const safeScale = Number.isFinite(scale) ? Math.max(0.4, Math.min(2, scale)) : 1
   const fallDistance = clampFinite(options.fallDistance ?? DEFAULT_CLOUD_LAYOUT_OPTIONS.fallDistance, 1, 40, DEFAULT_CLOUD_LAYOUT_OPTIONS.fallDistance)
   const viewportHeight = clampFinite(options.viewportHeight ?? DEFAULT_CLOUD_LAYOUT_OPTIONS.viewportHeight, 1, 20, DEFAULT_CLOUD_LAYOUT_OPTIONS.viewportHeight)
+  const lowestPathY = Math.max(0.08, Math.min(0.2, viewportHeight * 0.035))
   const sizeVariation = clampFinite(options.sizeVariation ?? DEFAULT_CLOUD_LAYOUT_OPTIONS.sizeVariation, 0, 1, DEFAULT_CLOUD_LAYOUT_OPTIONS.sizeVariation)
   const lightVariation = clampFinite(options.lightVariation ?? DEFAULT_CLOUD_LAYOUT_OPTIONS.lightVariation, 0, 1, DEFAULT_CLOUD_LAYOUT_OPTIONS.lightVariation)
   const pathDensity = clampFinite(options.pathDensity ?? DEFAULT_CLOUD_LAYOUT_OPTIONS.pathDensity, 0, 1, DEFAULT_CLOUD_LAYOUT_OPTIONS.pathDensity)
   const depthVariation = clampFinite(options.depthVariation ?? DEFAULT_CLOUD_LAYOUT_OPTIONS.depthVariation, 0, 1, DEFAULT_CLOUD_LAYOUT_OPTIONS.depthVariation)
   const depthSpread = 0.32 + depthVariation * 1.08
   const positionScale = 1 + (safeScale - 1) * 0.35
-  const initialViewportBottom = fallDistance - viewportHeight / 2
-  // Side banks enter the upper fall view while the sparse central wisps remain below it.
-  const sideBankRise = fallDistance > viewportHeight * 1.5 ? viewportHeight * 0.75 : 0
-  const maxPathRadius = Math.max(...GROWTH_CLOUD_LAYOUT.filter(({ pathCrossing }) => pathCrossing).map(({ radii }) => radii[1]))
-    * safeScale * (1 + 0.4 * sizeVariation)
-  const highestPathY = Math.min(fallDistance * 0.48, initialViewportBottom - maxPathRadius - 0.28)
   const dynamicLayout = GROWTH_CLOUD_LAYOUT.map((mass) => {
     const crossing = mass.pathCrossing ?? false
     const xJitter = seededVariation(mass.seed, 1) * (crossing ? 0 : 0.52)
-    const yJitter = mass.persistent ? 0 : seededVariation(mass.seed, 2) * (crossing ? 0.035 : 0.055)
+    const yJitter = mass.persistent ? 0 : seededVariation(mass.seed, 2) * (crossing ? 0.025 : 0.035)
     const zJitter = seededVariation(mass.seed, 3) * (crossing ? 0 : 0.95)
     const sizeFactors = [4, 5, 6].map((salt) => 1 + seededVariation(mass.seed, salt) * sizeVariation * 0.42) as [number, number, number]
     const lightScale = clampFinite(1 + seededVariation(mass.seed, 7) * lightVariation * 0.72, 0.35, 1.65, 1)
     const radii = [mass.radii[0] * sizeFactors[0], mass.radii[1] * sizeFactors[1], mass.radii[2] * sizeFactors[2]] as const
     const fallProgress = mass.fallProgress
     const anchoredBank = mass.persistent && fallProgress === undefined
-    const highestMassY = anchoredBank
+    // Fall-related masses are fixed to the seed's authored world-space height at
+    // their progress marker. The camera moves through this layer, so it gains
+    // parallax without parenting cloud positions to the animated seed.
+    const fallY = fallProgress === undefined
       ? mass.position[1]
-      : Math.min(fallDistance * 1.1, initialViewportBottom + sideBankRise - radii[1] * safeScale - 0.28)
-    const lowestMassY = Math.min(0.12, highestMassY - Math.max(0.55, fallDistance * 0.34))
-    const pathHigh = crossing ? highestPathY : highestMassY
-    const pathLow = crossing ? 0.12 : lowestMassY
-    const pathY = fallProgress === undefined
-      ? mass.position[1]
-      : pathHigh + (pathLow - pathHigh) * clampFinite((fallProgress - 0.5) / 0.48, 0, 1, 0)
-    const desiredY = pathY + yJitter * Math.max(0.5, pathHigh - pathLow)
-    const y = anchoredBank ? desiredY : crossing
-      ? Math.max(pathLow, Math.min(pathHigh, desiredY))
-      : Math.min(desiredY, initialViewportBottom + sideBankRise - radii[1] * safeScale - 0.28)
+      : fallDistance * (1 - clampFinite(fallProgress, 0, 1, 0))
+    const y = anchoredBank ? mass.position[1]
+      : fallProgress === undefined ? fallY + yJitter
+        : Math.max(lowestPathY, fallY + yJitter)
     return {
       ...mass,
       position: [mass.position[0] + xJitter, y, (mass.position[2] + zJitter) * depthSpread] as const,
@@ -292,6 +282,7 @@ export function getGrowthCloudVisibility(
   environmentOpacity: number,
   persistent = false,
   reducedMotion = false,
+  seedFallAcceleration = 3.2,
 ): number {
   if (!Number.isFinite(time)) return 0
   const opacity = clampFinite(cloudOpacity, 0, 1, 0)
@@ -302,13 +293,14 @@ export function getGrowthCloudVisibility(
     ? Math.max(frames.handoff[1], frames.duration - 0.9)
     : Math.max(frames.handoff[0], frames.handoff[1] - 0.7)
   const fadeOut = 1 - smoothstep(fadeOutStart, visibilityEnd, time)
+  const fallDuration = Math.max(0.001, frames.fall[1] - frames.fall[0])
+  const fallProgress = getSeedFallProgress((time - frames.fall[0]) / fallDuration, seedFallAcceleration)
+  const fadeIn = smoothstep(0.32, 0.52, fallProgress)
   if (reducedMotion) {
     if (!persistent) return 0
-    const fadeInStart = frames.fall[0] + (frames.fall[1] - frames.fall[0]) * 0.5
-    const fadeInEnd = Math.min(frames.handoff[0], frames.fall[1] + 0.45)
-    return opacity * environment * smoothstep(fadeInStart, fadeInEnd, time) * fadeOut
+    return opacity * environment * fadeIn * fadeOut
   }
-  return opacity * environment * fadeOut
+  return opacity * environment * fadeIn * fadeOut
 }
 
 export function getGrowthCloudDrift(
@@ -323,13 +315,33 @@ export function getGrowthCloudDrift(
   return [Math.sin(phase) * 0.055, Math.sin(phase * 0.73 + 0.9) * 0.018, Math.cos(phase * 0.81) * 0.045]
 }
 
+/** Local world-layer motion uses only its own fixed mass and time, never the seed pose. */
+export function getGrowthCloudPosition(
+  mass: GrowthCloudMass,
+  time: number,
+  speed: number,
+): readonly [number, number, number] {
+  const drift = getGrowthCloudDrift(mass, time, speed)
+  return [mass.position[0] + drift[0], mass.position[1] + drift[1], mass.position[2] + drift[2]]
+}
+
 export function getGrowthCloudMotionTime(time: number, reducedMotion: boolean): number {
   return reducedMotion || !Number.isFinite(time) ? 0 : time
 }
 
-export function setGrowthCloudMoonPosition(target: Vector3, rootPosition: Vector3, sourceHeight: number): void {
+export function setGrowthCloudMoonPosition(
+  target: Vector3,
+  rootPosition: Vector3,
+  sourceHeight: number,
+  sourceX = 0,
+  sourceZ = 0,
+): void {
   const safeHeight = Number.isFinite(sourceHeight) ? Math.max(0.05, sourceHeight) : 5.5
-  target.set(rootPosition.x, rootPosition.y + safeHeight, rootPosition.z)
+  target.set(
+    rootPosition.x + (Number.isFinite(sourceX) ? sourceX : 0),
+    rootPosition.y + safeHeight,
+    rootPosition.z + (Number.isFinite(sourceZ) ? sourceZ : 0),
+  )
 }
 
 export function createGrowthCloudVolumeMaterial(options: GrowthCloudMaterialOptions): ShaderMaterial {
