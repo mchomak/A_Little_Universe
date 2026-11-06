@@ -298,6 +298,7 @@ export function updateGalleryWaterMaterial(
   settings: GalleryWaterSettings,
   galleryTime: number,
   reducedMotion: boolean,
+  entryRevealAlpha = 1,
 ) {
   material.uniforms.uReflectionStrength!.value = settings.reflectionStrength
   material.uniforms.uReflectionBlur!.value = settings.reflectionBlur
@@ -313,7 +314,10 @@ export function updateGalleryWaterMaterial(
   material.uniforms.uMoonLightIntensity!.value = settings.moonLightIntensity
   material.uniforms.uMoonBrightness!.value = settings.moonBrightness
   material.uniforms.uColdLightIntensity!.value = settings.coldLightIntensity
-  material.uniforms.uWaterOpacity!.value = settings.waterOpacity
+  const safeEntryRevealAlpha = Number.isFinite(entryRevealAlpha)
+    ? Math.max(0, Math.min(1, entryRevealAlpha))
+    : 0
+  material.uniforms.uWaterOpacity!.value = settings.waterOpacity * safeEntryRevealAlpha
   ;(material.uniforms.uMoonPosition!.value as Vector3).set(settings.moonPositionX, settings.moonPositionY, settings.moonPositionZ)
   ;(material.uniforms.uMoonTarget!.value as Vector3).set(settings.moonTargetX, settings.moonTargetY, settings.moonTargetZ)
   material.uniforms.uTime!.value = reducedMotion || !Number.isFinite(galleryTime) ? 0 : galleryTime

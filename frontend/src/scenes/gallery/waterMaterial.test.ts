@@ -2,6 +2,7 @@ import { DataTexture, Matrix4, PerspectiveCamera, RepeatWrapping, Texture } from
 import { describe, expect, it } from 'vitest'
 import { GALLERY } from './content'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
+import { getGalleryEntryRevealAlpha } from './entryReveal'
 import { calculateGalleryMoonTrackLongitudinal, calculateMoonReflectionTrack, calculateWaterMoonReflectionGain, createGalleryWaterMaterial, createGalleryWaterNormalTexture, updateGalleryWaterCamera, updateGalleryWaterMaterial } from './waterMaterial'
 
 describe('gallery water material', () => {
@@ -124,6 +125,36 @@ describe('gallery water material', () => {
 
     updateGalleryWaterMaterial(material, settings, 6, true)
     expect(material.uniforms.uTime?.value).toBe(0)
+
+    material.dispose()
+    normal.dispose()
+    reflection.dispose()
+  })
+
+  it('reveals the water and its reflection together using the configured opacity', () => {
+    const reflection = new Texture()
+    const normal = new Texture()
+    const material = createGalleryWaterMaterial(reflection, normal, new Matrix4())
+    const settings = {
+      ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery,
+      waterOpacity: 0.4,
+    }
+
+    updateGalleryWaterMaterial(material, settings, 0, false, getGalleryEntryRevealAlpha(0, 'water'))
+    expect(material.uniforms.uWaterOpacity?.value).toBe(0)
+
+    const halfwayAlpha = getGalleryEntryRevealAlpha(0.35, 'water')
+    expect(halfwayAlpha).toBe(0.5)
+    updateGalleryWaterMaterial(material, settings, 0.35, false, halfwayAlpha)
+    expect(material.uniforms.uWaterOpacity?.value).toBeCloseTo(0.2)
+
+    updateGalleryWaterMaterial(material, settings, 0.7, false, getGalleryEntryRevealAlpha(0.7, 'water'))
+    expect(material.uniforms.uWaterOpacity?.value).toBe(settings.waterOpacity)
+
+    updateGalleryWaterMaterial(material, settings, 0.7, false, 2)
+    expect(material.uniforms.uWaterOpacity?.value).toBe(settings.waterOpacity)
+    updateGalleryWaterMaterial(material, settings, 0.7, false, -1)
+    expect(material.uniforms.uWaterOpacity?.value).toBe(0)
 
     material.dispose()
     normal.dispose()

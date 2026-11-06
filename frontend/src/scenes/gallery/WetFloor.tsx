@@ -4,6 +4,7 @@ import { Mesh } from 'three'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
 import { GALLERY_WORLD, type GalleryQuality } from './world'
 import { galleryMotion } from './controller'
+import { getGalleryEntryRevealAlpha } from './entryReveal'
 import { createGalleryPlanarReflectionPass } from './planarReflection'
 import { createGalleryWaterMaterial, createGalleryWaterNormalTexture, updateGalleryWaterCamera, updateGalleryWaterMaterial } from './waterMaterial'
 
@@ -39,7 +40,13 @@ export function WetFloor({
   }, [normalTexture, reflectionPass, waterMaterial])
 
   useLayoutEffect(() => {
-    updateGalleryWaterMaterial(waterMaterial, settings, galleryMotion.time, reducedMotion)
+    updateGalleryWaterMaterial(
+      waterMaterial,
+      settings,
+      galleryMotion.time,
+      reducedMotion,
+      getGalleryEntryRevealAlpha(galleryMotion.entryReveal, 'water'),
+    )
     const mesh = floor.current
     if (!mesh) return
     const previousOnBeforeRender = mesh.onBeforeRender
@@ -55,7 +62,13 @@ export function WetFloor({
   }, [reflectionPass, reducedMotion, settings, waterMaterial])
 
   useFrame(() => {
-    updateGalleryWaterMaterial(waterMaterial, settings, galleryMotion.time, reducedMotion)
+    updateGalleryWaterMaterial(
+      waterMaterial,
+      settings,
+      galleryMotion.time,
+      reducedMotion,
+      getGalleryEntryRevealAlpha(galleryMotion.entryReveal, 'water'),
+    )
   })
 
   return <mesh

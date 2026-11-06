@@ -4,7 +4,7 @@
 **Blocked by:** —
 **Зона:** общий Gallery entry clock/controller и чистые функции расписания
 **Волна:** 1
-**Status:** ready
+**Status:** done · commit `3cd7e65`
 
 ## Что должно заработать
 

@@ -37,3 +37,9 @@
 - Каждая последующая карточка получает индекс ближайшей к ней опоры через `photoIndices`; фотография без опоры получает индекс своего фото-шага.
 - `getGalleryEntryRevealDuration(entryCount)` и `getGalleryEntryRevealAlpha(elapsed, phase, index?)` используют общий список шагов; для фазы `arch` индекс равен длине списка и арка всегда последняя.
 - `advanceGallery(dt, reducedMotion?, entryCount?)` получает число шагов от текущего gallery layout в `galleryCameraPose`. Если пользователь меняет layout во время входа, таймлайн синхронно использует число элементов нового layout.
+
+## Из таска 02 — alpha воды
+
+- `WetFloor` читает `getGalleryEntryRevealAlpha(galleryMotion.entryReveal, 'water')` из общих часов и передаёт его в `updateGalleryWaterMaterial`.
+- `updateGalleryWaterMaterial(material, settings, galleryTime, reducedMotion, entryRevealAlpha = 1)` умножает только штатный `waterOpacity` на ограниченный коэффициент этапа; текущие shader uniforms, normal map, reflection target, quality и cleanup остаются прежними.
+- Вода и её planar reflection используют этот же материал и коэффициент alpha, чтобы появляться синхронно.
