@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('desktopRecording', Object.freeze({
   closeSegment: invoke('recording:close-segment'),
   reportError: invoke('recording:report-error'),
   finishSession: invoke('recording:finish-session'),
+  markStartupComplete: invoke('recording:mark-startup-complete'),
+  discardSession: invoke('recording:discard-session'),
   getStatus: invoke('recording:get-status'),
   openFolder: invoke('recording:open-folder'),
 }))

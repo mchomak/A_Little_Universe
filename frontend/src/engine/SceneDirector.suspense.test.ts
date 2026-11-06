@@ -12,9 +12,18 @@ vi.mock('@react-three/drei', () => ({
     createElement('div', { 'data-pointer-events': pointerEvents }, children),
 }))
 vi.mock('@react-three/fiber', async () => {
-  const { Scene } = await import('three')
+  const { PerspectiveCamera, Scene } = await import('three')
   return {
-    useThree: (selector: (state: { scene: InstanceType<typeof Scene> }) => unknown) => selector({ scene: new Scene() }),
+    useThree: (selector: (state: {
+      scene: InstanceType<typeof Scene>
+      camera: object
+      size: { width: number; height: number }
+    }) => unknown) => selector({
+      scene: new Scene(),
+      camera: new PerspectiveCamera(50, 16 / 9, 0.1, 1000),
+      size: { width: 1440, height: 810 },
+    }),
+    useFrame: () => {},
   }
 })
 vi.mock('../scenes/PrologueScene', () => ({ PrologueScene: () => null }))

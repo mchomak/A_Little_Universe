@@ -48,7 +48,7 @@ class RecordingDiskStore {
         sources: Object.fromEntries(SOURCES.map((source) => [source, { status: 'pending', segments: [], errors: [] }])),
         errors: [],
         finalization: { status: 'pending', startedAt: null, endedAt: null, files: {}, errors: [] },
-      }, handles: new Map(), metadataQueue: Promise.resolve(),
+      }, handles: new Map(), metadataQueue: Promise.resolve(), startupComplete: false, startedSources: new Set(),
     }
     this.sessions.set(session.id, session)
     await this.persist(session)
@@ -60,6 +60,16 @@ class RecordingDiskStore {
     const session = this.sessions.get(sessionId)
     if (!session) throw new Error('Unknown recording session')
     return session
+  }
+
+  markStartupComplete(sessionId) {
+    const session = this.getSession(sessionId)
+    if (session.manifest.status !== 'recording') throw new Error('Cannot mark startup complete for an inactive recording session')
+    if (!SOURCES.every((source) => session.startedSources.has(source) && session.manifest.sources[source].segments.some((segment) => segment.status === 'recording'))) {
+      throw new Error('Cannot mark startup complete before every required source is recording')
+    }
+    session.startupComplete = true
+    return { sessionId, startupComplete: true }
   }
 
   async serialize(session, operation) {
@@ -158,7 +168,7 @@ class RecordingDiskStore {
       const session = {
         id: entry.name, directory,
         createdAt: Number.isFinite(startedAt) ? startedAt : now.getTime(),
-        manifest, handles: new Map(), metadataQueue: Promise.resolve(),
+        manifest, handles: new Map(), metadataQueue: Promise.resolve(), startupComplete: false, startedSources: new Set(),
       }
       this.sessions.set(session.id, session)
       if (manifestFromTemporary || wasActive || finalizationWasActive) {
@@ -220,6 +230,7 @@ class RecordingDiskStore {
       const manifestHandle = await fs.open(temporary, 'w')
       try { await manifestHandle.writeFile(`${JSON.stringify(session.manifest, null, 2)}\n`); await manifestHandle.sync() } finally { await manifestHandle.close() }
       await fs.rename(temporary, target)
+      session.startedSources.add(source)
     })
   }
 
@@ -292,6 +303,26 @@ class RecordingDiskStore {
       await fs.rename(temporary, target)
     })
     await this.log(session, `${source} error: ${error}`)
+  }
+
+  async discardSession(sessionId) {
+    const session = this.getSession(sessionId)
+    if (typeof sessionId !== 'string' || !SESSION_DIRECTORY.test(sessionId) || session.manifest.status !== 'recording' || session.startupComplete) {
+      throw new Error('Only a registered active recording session with incomplete startup can be discarded')
+    }
+    const directory = path.resolve(session.directory)
+    if (path.dirname(directory) !== this.root || path.basename(directory) !== sessionId) {
+      throw new Error('Unsafe recording session directory')
+    }
+    const directoryStat = await fs.lstat(directory)
+    if (!directoryStat.isDirectory() || directoryStat.isSymbolicLink()) throw new Error('Unsafe recording session directory')
+
+    await session.metadataQueue
+    for (const handle of session.handles.values()) await handle.close()
+    session.handles.clear()
+    await fs.rm(directory, { recursive: true })
+    this.sessions.delete(sessionId)
+    return { sessionId, discarded: true }
   }
 
   async finishSession(sessionId, status = 'stopped') {

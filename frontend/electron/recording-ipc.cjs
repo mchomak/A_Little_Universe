@@ -6,6 +6,7 @@ const CHANNELS = [
   'recording:close-segment', 'recording:report-error', 'recording:finish-session',
   'recording:get-status', 'recording:open-folder', 'recording:mark-segment-started',
   'recording:get-recovery-status', 'recording:set-film-active', 'recording:retry-recovery',
+  'recording:discard-session', 'recording:mark-startup-complete',
 ]
 
 function trusted(event, originCheck = isAppOrigin) {
@@ -55,6 +56,11 @@ function installRecordingHandlers(ipcMain, store, { openPath = shell.openPath, o
   handle(CHANNELS[9], () => getRecoveryStatus())
   handle(CHANNELS[10], (value) => onFilmActivity(value?.active === true))
   handle(CHANNELS[11], () => retryRecovery())
+  handle(CHANNELS[12], async (value) => {
+    try { return await store.discardSession(value?.sessionId) }
+    finally { onRecordingActivity(false) }
+  })
+  handle(CHANNELS[13], (value) => store.markStartupComplete(value?.sessionId))
   return () => CHANNELS.forEach((channel) => ipcMain.removeHandler(channel))
 }
 

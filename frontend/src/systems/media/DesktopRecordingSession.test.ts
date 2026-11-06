@@ -44,24 +44,29 @@ function deferred<T>() {
 
 function harness(options: {
   capture?: (source: DesktopSource) => Promise<MediaStream>
+  recorder?: (stream: MediaStream, source: DesktopSource) => Recorder
+  discardSession?: (value: { sessionId: string }) => Promise<unknown>
+  markStartupComplete?: (value: { sessionId: string }) => Promise<unknown>
   openSegment?: (value: unknown) => Promise<unknown>
   markSegmentStarted?: (value: { source: DesktopSource; timelineMs: number }) => Promise<void>
-  appendChunk?: (value: { bytes: ArrayBuffer; timelineMs: number }) => Promise<void>
+  appendChunk?: (value: { source: DesktopSource; bytes: ArrayBuffer; timelineMs: number }) => Promise<void>
   closeSegment?: (value: { source: DesktopSource; sequence: number }) => Promise<void>
   wallNow?: () => number
   monotonicNow?: () => number
 } = {}) {
   const recorders: Recorder[] = []
-  const timers: { callback: () => void; delay: number }[] = []
+  const timers: { callback: () => void; delay: number; cancelled: boolean }[] = []
   const openSegment = vi.fn(options.openSegment ?? (async () => undefined))
   const markSegmentStarted = vi.fn(options.markSegmentStarted ?? (async () => undefined))
   const appendChunk = vi.fn(options.appendChunk ?? (async () => undefined))
   const closeSegment = vi.fn(options.closeSegment ?? (async () => undefined))
+  const discardSession = vi.fn(options.discardSession ?? (async () => ({ discarded: true })))
+  const markStartupComplete = vi.fn(options.markStartupComplete ?? (async () => ({ startupComplete: true })))
   const finishSession = vi.fn(async () => undefined)
   const bridge = {
     available: true,
     createSession: async () => ({ id: 'session-test', directory: 'Movies/session-test', startedAt: 1000 }),
-    openSegment, markSegmentStarted, appendChunk, closeSegment, reportError: vi.fn(async () => undefined), finishSession,
+    openSegment, markSegmentStarted, appendChunk, closeSegment, discardSession, markStartupComplete, reportError: vi.fn(async () => undefined), finishSession,
     getRecoveryStatus: async () => ({ status: 'idle' as const, pending: 0, currentSessionId: null, error: null, failed: 0, retryable: false }),
     retryRecovery: async () => ({ status: 'idle' as const, pending: 0, currentSessionId: null, error: null, failed: 0, retryable: false }),
     setFilmActive: async () => undefined,
@@ -73,19 +78,28 @@ function harness(options: {
     environment: {
       capture: options.capture ?? (async () => makeStream().stream),
       mimeFor: (source) => source === 'microphone' ? 'audio/webm' : 'video/webm',
-      recorder: (input) => { const recorder = new Recorder(input); recorders.push(recorder); return recorder as unknown as MediaRecorder },
+      recorder: (input, source) => {
+        const recorder = options.recorder?.(input, source) ?? new Recorder(input)
+        recorders.push(recorder)
+        return recorder as unknown as MediaRecorder
+      },
       wallNow: options.wallNow ?? (() => 1000), monotonicNow: options.monotonicNow ?? (() => 0),
-      every: (callback, delay) => { timers.push({ callback, delay }); return timers.length as unknown as ReturnType<typeof setInterval> },
-      cancel: () => undefined,
+      every: (callback, delay) => { timers.push({ callback, delay, cancelled: false }); return timers.length as unknown as ReturnType<typeof setInterval> },
+      cancel: (timer) => {
+        const timerIndex = timer as unknown as number
+        const entry = timers[timerIndex - 1]
+        if (entry) entry.cancelled = true
+      },
     },
   })
-  return { session, bridge, recorders, timers, openSegment, markSegmentStarted, appendChunk, closeSegment, finishSession }
+  return { session, bridge, recorders, timers, openSegment, markSegmentStarted, appendChunk, closeSegment, discardSession, markStartupComplete, finishSession }
 }
 
 describe('DesktopRecordingSession', () => {
   it('persists each recorder start offset after its own delayed segment-open IPC', async () => {
     let monotonic = 0
     const gates = { camera: deferred<void>(), microphone: deferred<void>(), screen: deferred<void>() }
+    const markGates = { camera: deferred<void>(), microphone: deferred<void>(), screen: deferred<void>() }
     const h = harness({
       monotonicNow: () => monotonic,
       wallNow: () => 1_000 + monotonic,
@@ -93,34 +107,52 @@ describe('DesktopRecordingSession', () => {
         const source = (value as { source: DesktopSource }).source
         await gates[source].promise
       },
+      markSegmentStarted: async ({ source }) => { await markGates[source].promise },
     })
-    await h.session.start()
+    const starting = h.session.start()
+    let startupResolved = false
+    void starting.then(() => { startupResolved = true })
     await vi.waitFor(() => expect(h.openSegment).toHaveBeenCalledTimes(3))
 
     monotonic = 120
     gates.camera.resolve()
     await vi.waitFor(() => expect(h.markSegmentStarted).toHaveBeenCalledWith(expect.objectContaining({ source: 'camera', timelineMs: 120 })))
+    expect(h.session.getSnapshot().sources.camera).toBe('starting')
+    markGates.camera.resolve()
+    await vi.waitFor(() => expect(h.session.getSnapshot().sources.camera).toBe('recording'))
     monotonic = 470
     gates.microphone.resolve()
     await vi.waitFor(() => expect(h.markSegmentStarted).toHaveBeenCalledWith(expect.objectContaining({ source: 'microphone', timelineMs: 470 })))
+    markGates.microphone.resolve()
+    await vi.waitFor(() => expect(h.session.getSnapshot().sources.microphone).toBe('recording'))
     monotonic = 920
     gates.screen.resolve()
     await vi.waitFor(() => expect(h.markSegmentStarted).toHaveBeenCalledWith(expect.objectContaining({ source: 'screen', timelineMs: 920 })))
+    expect(h.session.getSnapshot().sources.screen).toBe('starting')
+    await Promise.resolve()
+    expect(startupResolved).toBe(false)
+    expect(h.markStartupComplete).not.toHaveBeenCalled()
+    markGates.screen.resolve()
+    await starting
+    expect(h.markStartupComplete).toHaveBeenCalledOnce()
+    expect(h.markStartupComplete).toHaveBeenCalledWith({ sessionId: 'session-test' })
 
     expect(h.openSegment.mock.calls.map(([value]) => (value as { timelineMs: number }).timelineMs)).toEqual([0, 0, 0])
     expect(h.markSegmentStarted.mock.calls.map(([value]) => value.timelineMs).sort((a, b) => a - b)).toEqual([120, 470, 920])
+    expect(h.session.getSnapshot().sources).toEqual({ camera: 'recording', microphone: 'recording', screen: 'recording' })
     await h.session.stop()
   })
 
-  it('starts each resolved source without waiting for the other permission prompts', async () => {
+  it('invokes all capture APIs synchronously and resolves after every required source is recording', async () => {
     const requests = { camera: deferred<MediaStream>(), microphone: deferred<MediaStream>(), screen: deferred<MediaStream>() }
     const capture = vi.fn((source: DesktopSource) => requests[source].promise)
     const h = harness({ capture })
 
     expect(capture).not.toHaveBeenCalled()
-    const start = h.session.start()
-    await start
+    const starting = h.session.start()
     expect(capture).toHaveBeenCalledTimes(3)
+    let startupResolved = false
+    void starting.then(() => { startupResolved = true })
 
     const camera = makeStream()
     requests.camera.resolve(camera.stream)
@@ -128,22 +160,171 @@ describe('DesktopRecordingSession', () => {
     expect(h.session.getSnapshot().sources.camera).toBe('recording')
     expect(h.session.getSnapshot().sources.microphone).toBe('starting')
     expect(h.session.getSnapshot().sources.screen).toBe('starting')
+    await Promise.resolve()
+    expect(startupResolved).toBe(false)
+
+    const microphone = makeStream()
+    requests.microphone.resolve(microphone.stream)
+    await vi.waitFor(() => expect(h.session.getSnapshot().sources.microphone).toBe('recording'))
+    await Promise.resolve()
+    expect(startupResolved).toBe(false)
+
+    const screen = makeStream()
+    requests.screen.resolve(screen.stream)
+    await starting
+    expect(h.session.getSnapshot().sources).toEqual({ camera: 'recording', microphone: 'recording', screen: 'recording' })
+    expect(h.session.getSnapshot().status).toBe('recording')
+    expect(startupResolved).toBe(true)
+    await h.session.stop()
+  })
+
+  it('rejects a required capture failure, cleans sibling sources, and permits retry', async () => {
+    const requests = { camera: deferred<MediaStream>(), microphone: deferred<MediaStream>(), screen: deferred<MediaStream>() }
+    const retryStreams = { camera: makeStream(), microphone: makeStream(), screen: makeStream() }
+    let retryAvailable = false
+    const capture = vi.fn((source: DesktopSource) => retryAvailable
+      ? Promise.resolve(retryStreams[source].stream)
+      : requests[source].promise)
+    const streams = { camera: makeStream(), microphone: makeStream(), screen: makeStream() }
+    const holder: { harness?: ReturnType<typeof harness> } = {}
+    const h = harness({ capture, discardSession: async ({ sessionId }: { sessionId: string }) => {
+      expect(sessionId).toBe('session-test')
+      expect(holder.harness?.recorders.every((recorder) => recorder.state === 'inactive')).toBe(true)
+      expect(streams.camera.track.stopCount).toBe(1)
+      expect(holder.harness?.timers.length).toBeGreaterThan(0)
+      expect(holder.harness?.timers.every((timer) => timer.cancelled)).toBe(true)
+    } })
+    holder.harness = h
+
+    const starting = h.session.start()
+    expect(capture).toHaveBeenCalledTimes(3)
+    requests.camera.resolve(streams.camera.stream)
+    await vi.waitFor(() => expect(h.session.getSnapshot().sources.camera).toBe('recording'))
+    requests.microphone.reject(new Error('microphone permission denied'))
+
+    await expect(starting).rejects.toThrow('microphone permission denied')
+    expect(h.session.getSnapshot().status).toBe('error')
+    expect(h.session.getSnapshot().sources.microphone).toBe('error')
+    expect(h.session.getSnapshot().errors.join(' ')).toContain('microphone permission denied')
+    expect(h.recorders[0]?.state).toBe('inactive')
+    expect(streams.camera.track.stopCount).toBe(1)
+    expect(h.discardSession).toHaveBeenCalledOnce()
+    expect(h.markStartupComplete).not.toHaveBeenCalled()
+    expect(h.discardSession).toHaveBeenCalledWith({ sessionId: 'session-test' })
+    expect(h.timers.length).toBeGreaterThan(0)
+    expect(h.timers.every((timer) => timer.cancelled)).toBe(true)
 
     await h.session.stop()
-    requests.microphone.resolve(makeStream().stream)
-    requests.screen.resolve(makeStream().stream)
-    await vi.waitFor(() => {
-      expect(h.session.getSnapshot().sources.microphone).toBe('idle')
-      expect(h.session.getSnapshot().sources.screen).toBe('idle')
+    expect(h.finishSession).not.toHaveBeenCalled()
+
+    retryAvailable = true
+    await h.session.start()
+    expect(capture).toHaveBeenCalledTimes(6)
+    expect(h.session.getSnapshot().sources).toEqual({ camera: 'recording', microphone: 'recording', screen: 'recording' })
+
+    requests.screen.resolve(streams.screen.stream)
+    await vi.waitFor(() => expect(streams.screen.track.stopCount).toBe(1))
+
+    await h.session.stop()
+
+    expect(retryStreams.camera.track.stopCount).toBe(1)
+    expect(retryStreams.microphone.track.stopCount).toBe(1)
+    expect(retryStreams.screen.track.stopCount).toBe(1)
+    expect(h.finishSession).toHaveBeenCalledOnce()
+    expect(h.discardSession).toHaveBeenCalledOnce()
+    expect(h.timers.every((timer) => timer.cancelled)).toBe(true)
+    expect(h.session.getSnapshot().status).toBe('saved')
+  })
+
+  it('rejects source segment persistence failures without finalizing a partial session', async () => {
+    const streams = { camera: makeStream(), microphone: makeStream(), screen: makeStream() }
+    const h = harness({
+      capture: async (source) => streams[source].stream,
+      openSegment: async (value) => {
+        if ((value as { source: DesktopSource }).source === 'screen') throw new Error('screen segment could not be saved')
+      },
     })
-    expect(h.recorders).toHaveLength(1)
+
+    await expect(h.session.start()).rejects.toThrow('screen segment could not be saved')
+    expect(h.session.getSnapshot().status).toBe('error')
+    expect(h.session.getSnapshot().sources.screen).toBe('error')
+    expect(h.session.getSnapshot().errors.join(' ')).toContain('screen segment could not be saved')
+
+    expect(streams.camera.track.stopCount).toBe(1)
+    expect(streams.microphone.track.stopCount).toBe(1)
+    expect(streams.screen.track.stopCount).toBe(1)
+    await h.session.stop()
+    expect(streams.camera.track.stopCount).toBe(1)
+    expect(streams.microphone.track.stopCount).toBe(1)
+    expect(streams.screen.track.stopCount).toBe(1)
+    expect(h.finishSession).not.toHaveBeenCalled()
+    expect(h.discardSession).toHaveBeenCalledOnce()
+  })
+
+  it('rejects MediaRecorder startup failures without finalizing a partial session', async () => {
+    const streams = { camera: makeStream(), microphone: makeStream(), screen: makeStream() }
+    const h = harness({
+      capture: async (source) => streams[source].stream,
+      recorder: (stream, source) => {
+        const recorder = new Recorder(stream)
+        if (source === 'screen') recorder.start = () => { throw new Error('MediaRecorder start failed') }
+        return recorder
+      },
+    })
+
+    await expect(h.session.start()).rejects.toThrow('MediaRecorder start failed')
+    expect(h.session.getSnapshot().status).toBe('error')
+    expect(h.session.getSnapshot().sources.screen).toBe('error')
+    expect(h.session.getSnapshot().errors.join(' ')).toContain('MediaRecorder start failed')
+
+    expect(streams.camera.track.stopCount).toBe(1)
+    expect(streams.microphone.track.stopCount).toBe(1)
+    expect(streams.screen.track.stopCount).toBe(1)
+    await h.session.stop()
+    expect(streams.camera.track.stopCount).toBe(1)
+    expect(streams.microphone.track.stopCount).toBe(1)
+    expect(streams.screen.track.stopCount).toBe(1)
+    expect(h.finishSession).not.toHaveBeenCalled()
+    expect(h.discardSession).toHaveBeenCalledOnce()
+  })
+
+  it('preserves the failed session reference and reports discard errors after stopping sources', async () => {
+    const streams = { camera: makeStream(), microphone: makeStream(), screen: makeStream() }
+    const holder: { harness?: ReturnType<typeof harness> } = {}
+    const h = harness({
+      capture: async (source) => streams[source].stream,
+      discardSession: async ({ sessionId }: { sessionId: string }) => {
+        expect(sessionId).toBe('session-test')
+        expect(streams.camera.track.stopCount).toBe(1)
+        expect(streams.microphone.track.stopCount).toBe(1)
+        expect(streams.screen.track.stopCount).toBe(1)
+        expect(holder.harness?.recorders.every((recorder) => recorder.state === 'inactive')).toBe(true)
+        expect(holder.harness?.timers.every((timer) => timer.cancelled)).toBe(true)
+        throw new Error('disk refused removal')
+      },
+      openSegment: async (value) => {
+        if ((value as { source: DesktopSource }).source === 'screen') throw new Error('screen could not start')
+      },
+    })
+    holder.harness = h
+
+    await expect(h.session.start()).rejects.toThrow(/screen could not start; disk: Could not discard failed recording session session-test: disk refused removal/)
+
+    expect(h.session.getSnapshot().status).toBe('error')
+    expect(h.session.getSnapshot().sessionId).toBe('session-test')
+    expect(h.session.getSnapshot().errors.join(' ')).toContain('disk: Could not discard failed recording session session-test: disk refused removal')
+    expect(h.discardSession).toHaveBeenCalledOnce()
+    expect(h.finishSession).not.toHaveBeenCalled()
+    await expect(h.session.start()).rejects.toThrow('Stop & Save the previous recording session before retrying')
   })
 
   it('stops tracks that resolve after Stop & Save and never opens late segments', async () => {
     const requests = { camera: deferred<MediaStream>(), microphone: deferred<MediaStream>(), screen: deferred<MediaStream>() }
     const h = harness({ capture: (source) => requests[source].promise })
-    await h.session.start()
-    await h.session.stop()
+    const starting = h.session.start()
+    const stopping = h.session.stop()
+    await expect(starting).rejects.toThrow('stopped before sources became ready')
+    await stopping
 
     const late = [makeStream(), makeStream(), makeStream()]
     requests.camera.resolve(late[0]!.stream)
@@ -181,8 +362,9 @@ describe('DesktopRecordingSession', () => {
     const appended: string[] = []
     let closedAfter: string[] = []
     const h = harness({
-      capture: async (source) => source === 'camera' ? makeStream().stream : Promise.reject(new Error('unavailable')),
-      appendChunk: async ({ bytes }: { bytes: ArrayBuffer }) => {
+      capture: async () => makeStream().stream,
+      appendChunk: async ({ source, bytes }: { source: DesktopSource; bytes: ArrayBuffer }) => {
+        if (source !== 'camera') return
         const value = new TextDecoder().decode(bytes)
         if (value === 'queued-before-stop') await appendGate.promise
         appended.push(value)
@@ -192,7 +374,7 @@ describe('DesktopRecordingSession', () => {
       },
     })
     await h.session.start()
-    await vi.waitFor(() => expect(h.recorders).toHaveLength(1))
+    await vi.waitFor(() => expect(h.recorders).toHaveLength(3))
     const camera = h.recorders[0]!
     camera.emitChunk('queued-before-stop')
     await vi.waitFor(() => expect(h.appendChunk).toHaveBeenCalledOnce())
@@ -213,8 +395,9 @@ describe('DesktopRecordingSession', () => {
     const appended: string[] = []
     let closedWithError: string | undefined
     const h = harness({
-      capture: async (source) => source === 'camera' ? makeStream().stream : Promise.reject(new Error('unavailable')),
-      appendChunk: async ({ bytes }: { bytes: ArrayBuffer }) => {
+      capture: async () => makeStream().stream,
+      appendChunk: async ({ source, bytes }: { source: DesktopSource; bytes: ArrayBuffer }) => {
+        if (source !== 'camera') return
         const value = new TextDecoder().decode(bytes)
         if (value === 'accepted') await appendGate.promise
         appended.push(value)
@@ -224,7 +407,7 @@ describe('DesktopRecordingSession', () => {
       },
     })
     await h.session.start()
-    await vi.waitFor(() => expect(h.recorders).toHaveLength(1))
+    await vi.waitFor(() => expect(h.recorders).toHaveLength(3))
     const camera = h.recorders[0]!
     camera.stopChunkSize = 12 * 1024 * 1024
     camera.stopPrelude = { value: 'queued-during-stop', size: 1024 * 1024 }
@@ -252,8 +435,9 @@ describe('DesktopRecordingSession', () => {
     const appended: string[] = []
     let closedWithError: string | undefined
     const h = harness({
-      capture: async (source) => source === 'camera' ? makeStream().stream : Promise.reject(new Error('unavailable')),
-      appendChunk: async ({ bytes }: { bytes: ArrayBuffer }) => {
+      capture: async () => makeStream().stream,
+      appendChunk: async ({ source, bytes }: { source: DesktopSource; bytes: ArrayBuffer }) => {
+        if (source !== 'camera') return
         const value = new TextDecoder().decode(bytes)
         if (value === 'accepted') await appendGate.promise
         appended.push(value)
@@ -263,7 +447,7 @@ describe('DesktopRecordingSession', () => {
       },
     })
     await h.session.start()
-    await vi.waitFor(() => expect(h.recorders).toHaveLength(1))
+    await vi.waitFor(() => expect(h.recorders).toHaveLength(3))
     const camera = h.recorders[0]!
     camera.stopChunkSize = 12 * 1024 * 1024 + 1
 
@@ -281,10 +465,12 @@ describe('DesktopRecordingSession', () => {
   })
 
   it('does not deadlock when a new segment cannot be opened during rotation', async () => {
-    const openSegment = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('disk full'))
+    const openSegment = vi.fn(async (value: unknown) => {
+      const segment = value as { source: DesktopSource; sequence: number }
+      if (segment.source === 'camera' && segment.sequence === 2) throw new Error('disk full')
+    })
     const h = harness({
       openSegment,
-      capture: async (source) => source === 'camera' ? makeStream().stream : Promise.reject(new Error('unavailable')),
     })
     await h.session.start()
     await vi.waitFor(() => expect(h.session.getSnapshot().sources.camera).toBe('recording'))
@@ -293,7 +479,7 @@ describe('DesktopRecordingSession', () => {
     await vi.waitFor(() => expect(h.session.getSnapshot().sources.camera).toBe('error'))
     await h.session.stop()
 
-    expect(openSegment).toHaveBeenCalledTimes(2)
+    expect(openSegment).toHaveBeenCalledTimes(4)
     expect(h.finishSession).toHaveBeenCalledOnce()
     expect(h.session.getSnapshot().errors.join(' ')).toContain('disk full')
   })
@@ -301,10 +487,9 @@ describe('DesktopRecordingSession', () => {
   it('immediately stops only a source whose incremental disk write fails', async () => {
     const h = harness({
       appendChunk: async () => { throw new Error('write failed') },
-      capture: async (source) => source === 'microphone' ? Promise.reject(new Error('unavailable')) : makeStream().stream,
     })
     await h.session.start()
-    await vi.waitFor(() => expect(h.recorders).toHaveLength(2))
+    await vi.waitFor(() => expect(h.recorders).toHaveLength(3))
     const camera = h.recorders[0]!
     camera.emitChunk()
     await vi.waitFor(() => expect(h.session.getSnapshot().sources.camera).toBe('error'))

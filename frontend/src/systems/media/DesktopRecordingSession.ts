@@ -37,6 +37,8 @@ interface DesktopBridge {
   closeSegment(value: { sessionId: string; source: DesktopSource; sequence: number; endedAt: number; error?: string }): Promise<void>
   reportError(value: { sessionId: string; source: DesktopSource; message: string }): Promise<void>
   finishSession(value: { sessionId: string }): Promise<unknown>
+  markStartupComplete(value: { sessionId: string }): Promise<unknown>
+  discardSession(value: { sessionId: string }): Promise<unknown>
   getStatus(value: { sessionId: string }): Promise<DesktopRecordingStatus>
   openFolder(value: { sessionId: string }): Promise<unknown>
   getRecoveryStatus(): Promise<DesktopRecoveryStatus>
@@ -138,8 +140,10 @@ export class DesktopRecordingSession {
   private sessionMonotonicStart = 0
   private durationTimer: ReturnType<typeof setInterval> | null = null
   private startup: Promise<void> | null = null
+  private cancelStartup: (() => void) | null = null
   private stopping: Promise<void> | null = null
   private generation = 0
+  private readyGeneration = -1
   private finalizedGeneration = -1
   private stopRequested = false
 
@@ -171,14 +175,22 @@ export class DesktopRecordingSession {
     if (run) run.error ??= message
     if (!this.snapshot.errors.includes(display)) this.publish({ errors: [...this.snapshot.errors, display] })
     this.sourceStatus(source, 'error')
+    this.syncSessionStatus(this.generation)
     const sessionId = this.snapshot.sessionId
     if (this.bridge && sessionId) void this.bridge.reportError({ sessionId, source, message }).catch(() => undefined)
   }
 
   /** Must be called directly from the informed-consent click to retain getDisplayMedia's user activation. */
   start(): Promise<void> {
-    if (!this.available || ['starting', 'recording', 'stopping'].includes(this.snapshot.status)) return Promise.resolve()
-    if (this.stopping) return Promise.resolve()
+    if (!this.available) return Promise.reject(new Error('Desktop recording is unavailable.'))
+    if (this.startup) return this.startup
+    if (this.snapshot.status === 'recording') return Promise.resolve()
+    if (this.snapshot.status === 'stopping' || this.stopping) {
+      return Promise.reject(new Error('Recording is still stopping.'))
+    }
+    if (this.finalizedGeneration !== this.generation && (this.snapshot.sessionId !== null || this.runs.size > 0 || this.pendingSources.size > 0)) {
+      return Promise.reject(new Error('Stop & Save the previous recording session before retrying.'))
+    }
 
     const generation = ++this.generation
     this.stopRequested = false
@@ -195,8 +207,16 @@ export class DesktopRecordingSession {
       try { return [source, this.environment.capture(source)] }
       catch (error) { return [source, Promise.reject(error)] }
     })) as Record<DesktopSource, Promise<MediaStream>>
+    // Capture can reject while createSession is still pending. Mark every
+    // request as handled now, then rethrow it through the startup pipeline.
+    Object.values(requests).forEach((request) => { void request.catch(() => undefined) })
     this.publish({ status: 'starting', errors: [], startedAt: wallStart, durationMs: 0 })
 
+    let rejectCancelled!: (error: Error) => void
+    const cancelled = new Promise<never>((_resolve, reject) => { rejectCancelled = reject })
+    void cancelled.catch(() => undefined)
+    const cancelStartup = () => rejectCancelled(new Error('Recording startup was stopped before sources became ready.'))
+    this.cancelStartup = cancelStartup
     const startup = (async () => {
       let session: Awaited<ReturnType<DesktopBridge['createSession']>>
       try { session = await this.bridge!.createSession() }
@@ -211,14 +231,14 @@ export class DesktopRecordingSession {
 
       if (generation !== this.generation) {
         SOURCES.forEach((source) => { void requests[source].then((stream) => stream.getTracks().forEach((track) => track.stop()), () => undefined) })
-        return
+        throw new Error('Recording startup was superseded before sources became ready.')
       }
       this.sessionMonotonicStart = monoStart
       this.publish({ sessionId: session.id, folder: session.directory, startedAt: session.startedAt })
       if (this.stopRequested) {
         SOURCES.forEach((source) => { void requests[source].then((stream) => stream.getTracks().forEach((track) => track.stop()), () => undefined) })
         this.pendingSources.clear()
-        return
+        throw new Error('Recording startup was stopped before sources became ready.')
       }
 
       this.durationTimer = this.environment.every(() => {
@@ -227,21 +247,52 @@ export class DesktopRecordingSession {
         void this.refreshStatus(generation)
       }, 1_000)
 
-      SOURCES.forEach((source) => {
-        void requests[source]
-          .then((stream) => this.startSource(generation, source, stream), (error: unknown) => {
-            if (this.isCurrent(generation) && !this.stopRequested) this.reportSourceError(source, error)
-          })
-          .finally(() => {
-            if (!this.isCurrent(generation)) return
-            this.pendingSources.delete(source)
-            this.syncSessionStatus(generation)
-            this.maybeFinishEmptySession(generation)
-          })
-      })
+      const sourceStarts = SOURCES.map((source) => requests[source]
+        .then(async (stream) => {
+          if (!this.isCurrent(generation) || this.stopRequested) {
+            stream.getTracks().forEach((track) => track.stop())
+            if (this.isCurrent(generation)) this.sourceStatus(source, 'idle')
+            throw new Error('Recording startup was stopped before sources became ready.')
+          }
+          try {
+            await this.startSource(generation, source, stream)
+            const run = this.runs.get(source)
+            if (this.snapshot.sources[source] !== 'recording' || !run || run.error || run.recorder?.state !== 'recording') {
+              throw new Error(`${SOURCE_LABELS[source]} did not reach recording state.`)
+            }
+          } catch (error) {
+            if (this.isCurrent(generation) && !this.stopRequested && this.snapshot.sources[source] !== 'error') {
+              this.reportSourceError(source, error, this.runs.get(source))
+            }
+            throw error
+          }
+        }, (error: unknown) => {
+          if (this.isCurrent(generation) && !this.stopRequested) this.reportSourceError(source, error)
+          throw error
+        })
+        .finally(() => {
+          if (!this.isCurrent(generation)) return
+          this.pendingSources.delete(source)
+          this.syncSessionStatus(generation)
+          this.maybeFinishEmptySession(generation)
+        }))
+      try {
+        await Promise.race([Promise.all(sourceStarts), cancelled])
+        if (SOURCES.some((source) => this.snapshot.sources[source] !== 'recording')) {
+          throw new Error('Recording startup completed without every required source recording.')
+        }
+        await this.bridge!.markStartupComplete({ sessionId: session.id })
+        this.readyGeneration = generation
+      } catch (error) {
+        if (this.isCurrent(generation) && !this.stopRequested) await this.abortFailedStartup(generation, session.id, error)
+        throw error
+      }
     })()
     this.startup = startup
-    return startup.finally(() => { if (this.startup === startup) this.startup = null })
+    return startup.finally(() => {
+      if (this.startup === startup) this.startup = null
+      if (this.cancelStartup === cancelStartup) this.cancelStartup = null
+    })
   }
 
   private isCurrent(generation: number) { return generation === this.generation }
@@ -256,7 +307,7 @@ export class DesktopRecordingSession {
     if (!mimeType) {
       stream.getTracks().forEach((track) => track.stop())
       this.reportSourceError(source, new Error('Запись этого источника в WebM не поддерживается.'))
-      return
+      throw new Error(`${SOURCE_LABELS[source]} could not start because WebM recording is unsupported.`)
     }
 
     const run: SourceRun = {
@@ -272,11 +323,18 @@ export class DesktopRecordingSession {
     const opening = this.openNextSegment(run, generation)
     run.transition = opening
     try { await opening }
-    catch (error) { await this.stopSource(run, error) }
+    catch (error) {
+      await this.stopSource(run, error)
+      throw error
+    }
     finally { if (run.transition === opening) run.transition = null }
 
-    if (run.stopRequested || this.stopRequested || !this.isCurrent(generation)) await this.stopSource(run)
-    else this.syncSessionStatus(generation)
+    if (run.stopRequested || this.stopRequested || !this.isCurrent(generation) || run.error || run.recorder?.state !== 'recording') {
+      await this.stopSource(run)
+      if (run.error) throw new Error(run.error)
+      throw new Error(`${SOURCE_LABELS[source]} stopped before reaching recording state.`)
+    }
+    this.syncSessionStatus(generation)
   }
 
   private async openNextSegment(run: SourceRun, generation = this.generation) {
@@ -323,6 +381,9 @@ export class DesktopRecordingSession {
     run.startedAt = startedAt
     startedPersisted = this.bridge!.markSegmentStarted({ sessionId: this.snapshot.sessionId!, source: run.source, sequence, startedAt, timelineMs })
     await startedPersisted
+    if (run.error || run.stopRequested || this.stopRequested || recorder.state !== 'recording') {
+      throw new Error(run.error ?? `${SOURCE_LABELS[run.source]} stopped before reaching recording state.`)
+    }
     this.sourceStatus(run.source, 'recording')
     if (run.interval) this.environment.cancel(run.interval)
     run.interval = this.environment.every(() => { void this.rotate(run) }, SEGMENT_DURATION_MS)
@@ -465,12 +526,39 @@ export class DesktopRecordingSession {
 
   private syncSessionStatus(generation: number) {
     if (!this.isCurrent(generation) || this.stopRequested || this.snapshot.status === 'stopping') return
-    if (this.runs.size > 0) this.publish({ status: 'recording' })
-    else if (this.pendingSources.size > 0) this.publish({ status: 'starting' })
+    if (SOURCES.every((source) => this.snapshot.sources[source] === 'recording')) this.publish({ status: 'recording' })
+    else if (SOURCES.some((source) => this.snapshot.sources[source] === 'error')) this.publish({ status: 'error' })
+    else this.publish({ status: 'starting' })
   }
 
   private maybeFinishEmptySession(generation: number) {
-    if (this.isCurrent(generation) && !this.stopRequested && this.snapshot.sessionId && this.runs.size === 0 && this.pendingSources.size === 0) void this.stop()
+    if (this.isCurrent(generation) && this.readyGeneration === generation && !this.stopRequested && this.snapshot.sessionId && this.runs.size === 0 && this.pendingSources.size === 0) void this.stop()
+  }
+
+  /** Stop sources from a failed startup without finalizing or saving a partial session. */
+  private async abortFailedStartup(generation: number, sessionId: string, startupError: unknown) {
+    if (!this.isCurrent(generation) || this.snapshot.sessionId !== sessionId) return
+    this.stopRequested = true
+    if (this.durationTimer) { this.environment.cancel(this.durationTimer); this.durationTimer = null }
+    for (const source of this.pendingSources) {
+      if (!this.runs.has(source)) this.sourceStatus(source, 'idle')
+    }
+    this.pendingSources.clear()
+    await Promise.all([...this.runs.values()].map((run) => this.stopSource(run)))
+    if (!this.isCurrent(generation) || this.snapshot.sessionId !== sessionId) return
+    try { await this.bridge!.discardSession({ sessionId }) }
+    catch (error) {
+      const startupMessage = startupError instanceof Error ? startupError.message : String(startupError)
+      const discardMessage = error instanceof Error ? error.message : String(error)
+      const message = `disk: Could not discard failed recording session ${sessionId}: ${discardMessage}`
+      if (!this.snapshot.errors.includes(message)) this.publish({ errors: [...this.snapshot.errors, message] })
+      throw new Error(`${startupMessage}; ${message}`, { cause: error })
+    }
+    this.finalizedGeneration = generation
+    this.publish({
+      status: 'error', sessionId: null, folder: null, startedAt: null, durationMs: 0, freeBytes: null,
+      segmentCounts: { camera: 0, microphone: 0, screen: 0 }, finalizationStatus: 'idle', finalizationFiles: {},
+    })
   }
 
   private async refreshStatus(generation: number) {
@@ -501,6 +589,7 @@ export class DesktopRecordingSession {
     if (!this.snapshot.sessionId && !this.startup) return Promise.resolve()
     const generation = this.generation
     this.stopRequested = true
+    this.cancelStartup?.()
     this.publish({ status: 'stopping' })
     for (const source of this.pendingSources) {
       if (!this.runs.has(source)) this.sourceStatus(source, 'idle')

@@ -54,6 +54,53 @@ test('Stop & Save finalizes the closed session before returning its recording st
   assert.deepEqual(events, ['finish:s', 'get-session:s', 'finalize', 'persist', 'log:finished', 'status:s'])
 })
 
+test('marks session startup complete through the trusted IPC boundary', async () => {
+  const { table, ipcMain } = handlers()
+  const calls = []
+  const store = { markStartupComplete: async (sessionId) => { calls.push(sessionId); return { sessionId, startupComplete: true } } }
+  installRecordingHandlers(ipcMain, store, { openPath: async () => '' })
+  const result = await table.get('recording:mark-startup-complete')({ senderFrame: { url: 'app://bundle/index.html' } }, { sessionId: 's' })
+  assert.deepEqual(result, { sessionId: 's', startupComplete: true })
+  assert.deepEqual(calls, ['s'])
+})
+
+test('discards a failed startup session without finalizing it and clears recording activity', async () => {
+  const { table, ipcMain } = handlers()
+  const events = []
+  let finalized = false
+  const store = {
+    createSession: async () => ({ id: 's' }),
+    discardSession: async (sessionId) => { events.push(`discard:${sessionId}`); return { sessionId, discarded: true } },
+  }
+  const finalizer = { finalizeSession: async () => { finalized = true } }
+  installRecordingHandlers(ipcMain, store, {
+    openPath: async () => '', finalizer,
+    onRecordingActivity: (active) => events.push(`recording:${active}`),
+  })
+  const event = { senderFrame: { url: 'app://bundle/index.html' } }
+
+  await table.get('recording:create-session')(event)
+  const result = await table.get('recording:discard-session')(event, { sessionId: 's' })
+
+  assert.deepEqual(result, { sessionId: 's', discarded: true })
+  assert.deepEqual(events, ['recording:true', 'discard:s', 'recording:false'])
+  assert.equal(finalized, false)
+})
+
+test('resets recording activity when failed-session discard reports an error', async () => {
+  const { table, ipcMain } = handlers()
+  const activity = []
+  const store = { discardSession: async () => { throw new Error('could not remove session') } }
+  installRecordingHandlers(ipcMain, store, {
+    openPath: async () => '',
+    onRecordingActivity: (active) => activity.push(active),
+  })
+  const event = { senderFrame: { url: 'app://bundle/index.html' } }
+
+  await assert.rejects(table.get('recording:discard-session')(event, { sessionId: 's' }), /could not remove session/)
+  assert.deepEqual(activity, [false])
+})
+
 test('exposes recovery progress and reports film/recording activity to the scheduler', async () => {
   const { table, ipcMain } = handlers()
   const activity = []

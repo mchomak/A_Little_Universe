@@ -11,7 +11,7 @@ export interface RuntimeAsset {
 }
 export interface RuntimeManifest { version: string; assets: RuntimeAsset[]; optionalAssets?: RuntimeAsset[] }
 export interface PreparationProgress {
-  phase: 'modules' | 'assets' | 'cache' | 'ready' | 'error'
+  phase: 'modules' | 'assets' | 'cache' | 'portrait' | 'ready' | 'error'
   completed: number
   total: number
   message: string
@@ -30,6 +30,7 @@ export interface AssetManagerOptions {
   fetch?: typeof fetch
   loadModules: () => Promise<unknown>
   verifyOffline?: (manifest: RuntimeManifest) => Promise<void>
+  preparePortrait?: () => Promise<unknown>
 }
 export class AssetManager {
   private completed = new Set<string>()
@@ -49,9 +50,15 @@ export class AssetManager {
     const errors: string[] = []
     const warnings: string[] = []
     const request = this.options.fetch ?? fetch
+    let portraitCompleted = false
     const emit = (phase: PreparationProgress['phase'], message: string) => report({
-      phase, completed: Number(this.completed.has('modules')) + (this.manifest?.assets.filter((asset) => asset.required && this.completed.has(asset.url)).length ?? 0),
-      total: 1 + (this.manifest?.assets.filter((asset) => asset.required).length ?? 0), message,
+      phase,
+      completed: Number(this.completed.has('modules'))
+        + (this.manifest?.assets.filter((asset) => asset.required && this.completed.has(asset.url)).length ?? 0)
+        + Number(portraitCompleted),
+      total: 1 + (this.manifest?.assets.filter((asset) => asset.required).length ?? 0)
+        + Number(Boolean(this.options.preparePortrait)),
+      message,
     })
     emit('modules', 'Создаём кое-что особенное…')
     try {
@@ -104,8 +111,21 @@ export class AssetManager {
         warnings.push(`Фильм загружен. Запуск после перезагрузки без сети не подтверждён: ${errorMessage(error)}`)
       }
     }
+    if (this.options.preparePortrait) {
+      try {
+        await loadStartupConfig()
+        emit('portrait', 'Подготавливаем частицы портрета…')
+        await this.options.preparePortrait()
+        portraitCompleted = true
+      } catch (error) {
+        errors.push(`portrait: ${errorMessage(error)}`)
+        emit('error', 'Не удалось подготовить портрет. Можно попробовать ещё раз.')
+        return { ready: false, offline: 'unavailable', recovery: 'retry', errors, warnings }
+      }
+    } else if (!this.options.development) {
+      void loadStartupConfig()
+    }
     emit('ready', 'Твоя маленькая вселенная готова.')
-    if (!this.options.development) void loadStartupConfig()
     return { ready: true, offline, errors, warnings }
   }
   retry(onProgress?: (progress: PreparationProgress) => void) { return this.prepare(onProgress) }

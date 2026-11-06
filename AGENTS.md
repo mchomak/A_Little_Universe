@@ -1,4 +1,4 @@
-# AGENTS.md — A Little Universe for You
+﻿# AGENTS.md — A Little Universe for You
 
 Keep this file compact. Current project status, setup, and architecture are in [README.md](README.md). Narrative, shot order, timing, and creative direction are in the [storyboard](A_Little_Universe_for_Vasilisa_Storyboard_v3.0.md). Approved keyframes are indexed in [references/keyframes/README.md](references/keyframes/README.md).
 
@@ -79,6 +79,9 @@ Gallery collage settings live under `scenes.gallery` in Scene Composer schema v2
 Последнее событие каталога — `2026_10_Planetarium`; его главный кадр `1.jpg` используется как live texture. `GalleryScene` захватывает экранные границы карточки через общую камеру. `galleryExit()` разрешён только в фазе explore, у конца галереи и при interaction `walk`; после завершения `GALLERY.exit` reducer входит в `cosmos` с `elapsed: GALLERY.exit` и флагом `planetariumTransition`. Обычный DEV-jump в `cosmos` сбрасывает этот флаг и сохраняет стандартный маршрут.
 
 `PlanetariumTransitionOverlay` в `SceneDirector` использует ту же `FilmCanvas` и камеру: расширяет фото от границ карточки до экрана, постоянно держит cover crop и обновляет viewport aspect по расширяющемуся кадру; фото гаснет после появления звёзд. `GalaxyExperience` активируется уже на выходе галереи, использует `galleryMotion.exit`, а после перехода — `runtime.time`; только для Planetarium route reveal считается на `time + scenes.galaxy.galaxyRevealAt`, тогда как движение и фаза Galaxy остаются на исходном `time`. Текстура удерживается на время overlay и освобождается при его деактивации. Сохранять одну камеру, renderer и существующие слои Galaxy.
+## Начальный запуск и подготовка портрета
+
+Загрузчик ждёт расчёт частиц сцены 04 для актуальной конфигурации и размеров. После загрузки единственное действие запускает локальную запись по согласию пользователя; пролог начинается после проверки источников. При сбое записи доступны повтор или явное продолжение без записи; сбой подготовки частиц требует повторной подготовки.
 <!-- autopilot:end -->
 
 

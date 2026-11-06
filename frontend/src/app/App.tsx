@@ -9,7 +9,7 @@ import { PersistentLight, type PersistentLightPhase } from '../components/Persis
 import { ReadingPanel } from '../components/ReadingPanel'
 import { RecordingControls } from '../components/RecordingControls'
 import { RecoveryPanel } from '../components/RecoveryPanel'
-import { MediaSession, type MediaOptions } from '../systems/media/MediaSession'
+import { MediaSession } from '../systems/media/MediaSession'
 import { AudioDirector } from '../systems/audio/AudioDirector'
 import { useAudioDirector } from '../systems/audio/useAudioDirector'
 import { AssetManager, type PreparationResult } from '../systems/assets/AssetManager'
@@ -33,6 +33,7 @@ const desktopRecording = new DesktopRecordingSession()
 const audio = new AudioDirector()
 let restore: Promise<void> | undefined
 let disposal: ReturnType<typeof setTimeout> | undefined
+type AppRoute = PreparationStep | 'film' | 'loading'
 // Film modules have already been prepared by Bootstrap; a rerun verifies resources/cache.
 const devManager = new AssetManager({ development: import.meta.env.DEV,
   ...(import.meta.env.DEV ? { manifest: { version: 'development-lily', assets: [LILY_MODEL_RUNTIME_ASSET] } } : {}),
@@ -44,7 +45,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   const { state, dispatch, runtime } = useFilm()
   const developerMode = isDeveloperMode()
   const reducedMotion = useReducedMotion()
-  const [route, setRoute] = useState<PreparationStep | 'film' | 'loading'>('settings')
+  const [route, setRoute] = useState<AppRoute>('ready')
   const [prepared, setPrepared] = useState(preparation)
   const [checked, setChecked] = useState(false)
   const [starting, setStarting] = useState(false)
@@ -52,7 +53,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   const [mountedFilm, setMountedFilm] = useState(false)
   const [debug, setDebug] = useState(developerMode)
   const operation = useRef(0)
-  const opening = useRef(false)
+  const opening = useRef<number | null>(null)
   const particlePreparation = useSyncExternalStore(lilyParticlePreparation.subscribe, lilyParticlePreparation.getSnapshot, lilyParticlePreparation.getSnapshot)
   useEffect(() => { void desktopRecording.setFilmActive(route === 'film').catch(() => undefined) }, [route])
   useAudioDirector(audio, state, runtime)
@@ -102,31 +103,50 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     })
   }, [state.scene])
 
-  const changeOptions = (options: MediaOptions) => { operation.current++; media.setOptions(options); setChecked(false) }
-  const withoutMedia = () => { changeOptions({ gaze: false, recording: false, upload: false }); setRoute('ready') }
-  const edit = () => { changeOptions({ gaze: false, recording: false, upload: false }); setRoute('settings') }
-  const prepare = async () => {
+  const start = (withRecording = true) => {
+    if (opening.current !== null) return
     const request = ++operation.current
-    setChecked(false)
-    if (!media.getSnapshot().options.gaze && !media.getSnapshot().options.recording) { setRoute('ready'); return }
-    setRoute('checking')
-    await media.prepare()
-    if (request === operation.current) setChecked(true)
-  }
-  const start = () => {
-    if (opening.current) return
-    opening.current = true
+    opening.current = request
     setStarting(true)
     setStartError(null)
-    const request = ++operation.current
-    // Start the gesture-sensitive audio unlock synchronously; keep the user on
-    // preparation until the matching scene-04 geometry is actually ready.
+    setChecked(false)
+    setRoute(withRecording ? 'checking' : 'ready')
+    const markChecked = () => { if (request === operation.current) setChecked(true) }
+    const unlockAudio = () => {
+      try { return audio.unlock().catch(() => false) }
+      catch { return Promise.resolve(false) }
+    }
     void startPreparedFilm({
       startGift: () => {
-        if (!desktopRecording.available) return openGift({ audio, media, onStart: () => undefined })
-        const audioUnlock = audio.unlock()
-        void desktopRecording.start().catch((error: unknown) => { console.error('Desktop recording could not start.', error) })
-        return audioUnlock.then(() => undefined)
+        if (!withRecording) {
+          media.setOptions({ gaze: false, recording: false, upload: false })
+          const audioUnlock = unlockAudio()
+          const cleanup = Promise.all([
+            media.stop(),
+            desktopRecording.available ? desktopRecording.stop() : Promise.resolve(),
+          ])
+          return cleanup.then(() => audioUnlock).then(markChecked)
+        }
+
+        if (desktopRecording.available) {
+          media.setOptions({ gaze: false, recording: false, upload: false })
+          const desktopMedia = {
+            getSnapshot: () => ({
+              options: { gaze: false, recording: true, upload: false },
+              recordingStatus: desktopRecording.getSnapshot().status === 'recording' ? 'recording' as const : 'ready' as const,
+              error: desktopRecording.getSnapshot().errors.join(' ') || null,
+            }),
+            start: async () => { await desktopRecording.start(); return true },
+          }
+          return openGift({ audio, media: desktopMedia, onStart: markChecked })
+        }
+
+        media.setOptions({ gaze: false, recording: true, upload: false })
+        return openGift({
+          audio,
+          media: { getSnapshot: media.getSnapshot, prepare: () => media.prepare(), start: () => media.start() },
+          onStart: markChecked,
+        })
       },
       prepareParticles: () => prepareLilyParticleGeometryForStart(
         lilyParticlePreparation,
@@ -141,6 +161,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
       },
     }).catch((failure: unknown) => {
       if (request !== operation.current) return
+      setRoute('ready')
       const tagged = isFilmStartupFailure(failure) ? failure : { source: 'gift' as const, reason: failure }
       if (tagged.source === 'particles' && tagged.reason instanceof Error && tagged.reason.name === 'AbortError'
         && lilyParticlePreparation.getSnapshot().status !== 'error') return
@@ -151,24 +172,36 @@ export function App({ preparation }: { preparation: PreparationResult }) {
       } else {
         setStartError({ source: 'particles', seedKey: createLilyParticlePreparationSeedKey(getParticlePreparationInput()), message })
       }
-    }).finally(() => { opening.current = false; setStarting(false) })
+    }).finally(() => {
+      if (opening.current !== request) return
+      opening.current = null
+      setStarting(false)
+    })
   }
   const devDispatch: Dispatch<FilmAction> = (action) => {
     if (action.type === 'dev-jump' || action.type === 'dev-restart') {
       operation.current++
+      opening.current = null
+      setStarting(false)
       media.setOptions({ gaze: false, recording: false, upload: false })
+      void media.stop()
+      if (desktopRecording.available) void desktopRecording.stop()
       setMountedFilm(true); setRoute('film')
     }
     dispatch(action)
   }
-  const devPrepare = (next: 'loading' | 'settings') => {
+  const devPrepare = (next: 'loading') => {
     operation.current++
+    opening.current = null
+    setStarting(false)
     media.setOptions({ gaze: false, recording: false, upload: false })
+    void media.stop()
+    if (desktopRecording.available) void desktopRecording.stop()
     // Ready has no running clock; pausing it would carry into the first start.
     if (state.mode !== 'ready' && !state.paused) dispatch({ type: 'toggle-pause' })
     setChecked(false); setRoute(next)
   }
-  const onReloadReady = useCallback((result: PreparationResult) => { setPrepared(result); setRoute('settings') }, [])
+  const onReloadReady = useCallback((result: PreparationResult) => { setPrepared(result); setRoute('ready') }, [])
   const cinematic = state.scene === 'prologue'
   const lightPhase: PersistentLightPhase = route === 'ready' ? 'ready' : route === 'film' && cinematic ? 'prologue' : route === 'film' && state.scene === 'growth' ? 'growth' : 'hidden'
   const lightInteractive = lightPhase === 'prologue' && state.mode === 'waiting'
@@ -176,8 +209,13 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   const showOpeningBackground = route === 'film'
     && (state.scene === 'prologue' || state.scene === 'growth' || state.scene === 'bloom' || state.scene === 'identity')
   const stopViewingForRecovery = () => {
+    operation.current++
+    opening.current = null
+    setStarting(false)
     if (!state.paused && (state.mode === 'playing' || state.mode === 'transitioning')) dispatch({ type: 'toggle-pause' })
-    setRoute('settings')
+    setRoute('ready')
+    void media.stop()
+    if (desktopRecording.available) void desktopRecording.stop()
   }
 
   return <main className={`universe${cinematic ? ' cinematic' : ''}`} data-route={route} data-scene={state.scene} data-mode={state.mode} data-reading={state.reading} data-paused={state.paused} data-debug={developerMode && debug ? 'true' : undefined}>
@@ -191,7 +229,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
       </div>
       {cinematic && <button className="cinematic-pause" type="button" data-testid="pause" aria-label={state.paused ? 'Продолжить фильм' : 'Пауза'} aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Ⅱ'}</button>}
     </div>}
-    {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} startError={visibleStartError} onOptions={changeOptions} onPrepare={() => { void prepare() }} onContinue={() => setRoute('ready')} onWithoutMedia={withoutMedia} onEdit={edit} onStart={start} desktopRecording={desktopRecording.available} />}
+    {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} startError={visibleStartError} onPrepare={() => start(true)} onWithoutMedia={() => start(false)} onStart={() => start(true)} desktopRecording={desktopRecording.available} />}
     <PersistentLight phase={lightPhase} interactive={lightInteractive} reducedMotion={reducedMotion} runtime={runtime} state={state} onActivate={() => dispatch({ type: 'interact' })} />
     {!desktopRecording.available && <RecordingControls session={media} />}
     <DesktopRecordingControls session={desktopRecording} filmActive={route === 'film'} onStopViewing={stopViewingForRecovery} />

@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest'
 import { AssetManager, verifyRuntimeCache } from './AssetManager'
 
-it('starts the optional startup config after real preload readiness without adding progress work', async () => {
+it('awaits startup config before mandatory portrait preparation and counts its progress', async () => {
   const events: string[] = []
   const configFetch = vi.fn(async (input: RequestInfo | URL) => {
     events.push(`config:${String(input)}`)
@@ -12,6 +12,7 @@ it('starts the optional startup config after real preload readiness without addi
     const manager = new AssetManager({ manifest: { version: 'optional-config', assets: [{ url: '/font.ttf', kind: 'file', required: true }],
       optionalAssets: [{ url: '/scene-composer.json', kind: 'file', required: false }] },
       loadModules: async () => undefined, fetch: async () => new Response('font'), verifyOffline: async () => undefined,
+      preparePortrait: async () => { events.push('portrait'); return { status: 'ready', key: 'current-geometry' } },
     })
     let finalProgress = { completed: 0, total: 0 }
     const result = await manager.prepare((progress) => {
@@ -19,12 +20,60 @@ it('starts the optional startup config after real preload readiness without addi
       finalProgress = progress
     })
     expect(result.ready).toBe(true)
-    expect(events.indexOf('ready')).toBeLessThan(events.findIndex((event) => event.startsWith('config:')))
+    expect(events.findIndex((event) => event.startsWith('config:'))).toBeLessThan(events.indexOf('portrait'))
+    expect(events.indexOf('portrait')).toBeLessThan(events.indexOf('ready'))
     expect(configFetch).toHaveBeenCalledWith('/scene-composer.json', expect.objectContaining({ cache: 'no-cache' }))
-    expect(finalProgress).toMatchObject({ phase: 'ready', completed: 2, total: 2 })
+    expect(finalProgress).toMatchObject({ phase: 'ready', completed: 3, total: 3 })
   } finally {
     vi.unstubAllGlobals()
   }
+})
+
+it('does not resolve readiness while current portrait geometry is still preparing', async () => {
+  let resolvePortrait!: (value: unknown) => void
+  const preparePortrait = vi.fn(() => new Promise<unknown>((resolve) => { resolvePortrait = resolve }))
+  const manager = new AssetManager({ development: true, manifest: { version: 'portrait-gate', assets: [] },
+    loadModules: async () => undefined, preparePortrait,
+  })
+  const progress: { phase: string; completed: number; total: number }[] = []
+  let ready = false
+  const preparing = manager.prepare((value) => progress.push(value)).then((result) => { ready = result.ready; return result })
+
+  await vi.waitFor(() => expect(preparePortrait).toHaveBeenCalledTimes(1))
+  expect(ready).toBe(false)
+  expect(progress.at(-1)).toMatchObject({ phase: 'portrait', completed: 1, total: 2 })
+
+  resolvePortrait({ status: 'ready', key: 'current-geometry' })
+  await expect(preparing).resolves.toMatchObject({ ready: true })
+  expect(progress.at(-1)).toMatchObject({ phase: 'ready', completed: 2, total: 2 })
+})
+
+it('keeps portrait preparation errors retryable without reloading prepared assets', async () => {
+  let portraitUnavailable = true
+  const modules = vi.fn(async () => undefined)
+  const fetchAsset = vi.fn(async () => new Response('font'))
+  const preparePortrait = vi.fn(async () => {
+    if (portraitUnavailable) throw new Error('Worker unavailable')
+    return { status: 'ready', key: 'current-geometry' }
+  })
+  const manager = new AssetManager({ development: true, loadModules: modules, fetch: fetchAsset, preparePortrait,
+    manifest: { version: 'portrait-retry', assets: [{ url: '/font.ttf', kind: 'file', required: true }] },
+  })
+  const firstProgress: string[] = []
+  const first = await manager.prepare((value) => firstProgress.push(value.phase))
+
+  expect(first).toMatchObject({ ready: false, recovery: 'retry', errors: ['portrait: Worker unavailable'] })
+  expect(firstProgress.at(-1)).toBe('error')
+
+  portraitUnavailable = false
+  const retryProgress: { phase: string; completed: number; total: number }[] = []
+  const retried = await manager.retry((value) => retryProgress.push(value))
+
+  expect(retried.ready).toBe(true)
+  expect(modules).toHaveBeenCalledTimes(1)
+  expect(fetchAsset).toHaveBeenCalledTimes(1)
+  expect(preparePortrait).toHaveBeenCalledTimes(2)
+  expect(retryProgress.at(-1)).toMatchObject({ phase: 'ready', completed: 3, total: 3 })
 })
 
 it('blocks a missing mandatory asset, then retries only unfinished work with real progress', async () => {

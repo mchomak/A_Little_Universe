@@ -2,11 +2,27 @@ import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties }
 import type { AssetManager, PreparationProgress, PreparationResult } from '../systems/assets/AssetManager'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { PhoneBackground } from '../components/PhoneBackground'
+import { runPreloaderAttempt } from './preloaderFlow'
 import './preload.css'
 
 interface PreloaderProps {
   manager: AssetManager
   onReady: (result: PreparationResult) => void
+}
+
+interface PreloaderRecoveryProps {
+  result: PreparationResult
+  onRetry: () => void
+  onReload: () => void
+}
+
+/** Retry affordances stay on the same lightweight loading surface after a failure. */
+export function PreloaderRecovery({ result, onRetry, onReload }: PreloaderRecoveryProps) {
+  return <div className="preloader-recovery">
+    <p>Кажется, что-то задержалось. Давай попробуем ещё раз.</p>
+    {result.recovery !== 'reload' && <button type="button" onClick={onRetry}>Попробовать ещё раз</button>}
+    <button type="button" onClick={onReload}>Начать заново</button>
+  </div>
 }
 
 /** Reusable for development reruns; it owns no film clock or media permissions. */
@@ -28,17 +44,21 @@ export function Preloader({ manager, onReady }: PreloaderProps) {
     let timer: ReturnType<typeof setTimeout> | undefined
     let secondFrame = 0
     const prepare = () => {
-      void manager.prepare((value) => {
-        if (cancelled) return
-        progressRef.current = value.completed / value.total
-        collapseRef.current = value.phase === 'ready'
-        setProgress(value)
-      }).then((value) => {
-        if (cancelled) return
-        setResult(value)
-        collapseRef.current = value.ready
-        // A quiet pause after real readiness, never a simulated loading duration.
-        if (value.ready) timer = setTimeout(() => onReady(value), 1250)
+      void runPreloaderAttempt({
+        manager,
+        onProgress: (value) => {
+          if (cancelled) return
+          progressRef.current = value.completed / value.total
+          collapseRef.current = value.phase === 'ready'
+          setProgress(value)
+        },
+        onResult: (value) => {
+          setResult(value)
+          collapseRef.current = value.ready
+        },
+        onReady,
+        isCurrent: () => !cancelled,
+        scheduleReady: (callback, delay) => { timer = setTimeout(callback, delay) },
       })
     }
     // Guarantee a painted lightweight frame before starting the heavy module graph.
@@ -105,18 +125,14 @@ export function Preloader({ manager, onReady }: PreloaderProps) {
   }, [])
 
   const retry = () => { setResult(null); collapseRef.current = false; setAttempt((value) => value + 1) }
-  const measured = progress.phase === 'assets' || progress.phase === 'ready'
+  const measured = progress.phase === 'assets' || progress.phase === 'portrait' || progress.phase === 'ready'
   return <main className="preloader" data-phase={progress.phase} aria-label="Подготовка подарка">
     <PhoneBackground />
     <canvas className="preloader-particles" ref={canvas} style={{ '--preload-glow': visual.glow } as CSSProperties} aria-hidden="true" />
     <div className="preloader-copy">
       <p role="status" aria-live="polite">{progress.message}</p>
       <progress aria-label="Подготовка подарка" max={progress.total} value={measured ? progress.completed : undefined} />
-      {result && !result.ready && <div className="preloader-recovery">
-        <p>Кажется, что-то задержалось. Давай попробуем ещё раз.</p>
-        {result.recovery !== 'reload' && <button type="button" onClick={retry}>Попробовать ещё раз</button>}
-        <button type="button" onClick={() => location.reload()}>Начать заново</button>
-      </div>}
+      {result && !result.ready && <PreloaderRecovery result={result} onRetry={retry} onReload={() => location.reload()} />}
     </div>
   </main>
 }

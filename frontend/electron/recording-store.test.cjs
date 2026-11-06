@@ -59,6 +59,40 @@ test('finishes only after active segments are closed and logs errors without rem
   } finally { await fs.rm(root, { recursive: true, force: true }) }
 })
 
+test('discards a failed startup session and removes its source segments and manifest', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'alu-recordings-discard-'))
+  try {
+    const store = new RecordingDiskStore(root)
+    const session = await store.createSession()
+    const segment = await store.openSegment(session.id, 'screen', 1, 'video/webm', Date.now())
+    await store.appendChunk(session.id, 'screen', 1, Buffer.from('partial-screen-bytes'))
+    assert.equal(store.getSession(session.id).handles.size, 1)
+    assert.equal((await fs.readFile(segment.path)).toString(), 'partial-screen-bytes')
+
+    const result = await store.discardSession(session.id)
+
+    assert.deepEqual(result, { sessionId: session.id, discarded: true })
+    assert.equal(store.sessions.has(session.id), false)
+    assert.deepEqual(await fs.readdir(root), [])
+    await assert.rejects(fs.access(session.directory))
+    assert.throws(() => store.getSession(session.id), /Unknown recording session/)
+    await assert.rejects(store.discardSession(session.id), /Unknown recording session/)
+  } finally { await fs.rm(root, { recursive: true, force: true }) }
+})
+
+test('refuses to discard a session after it has been stopped', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'alu-recordings-discard-'))
+  try {
+    const store = new RecordingDiskStore(root)
+    const session = await store.createSession()
+    await store.finishSession(session.id)
+
+    await assert.rejects(store.discardSession(session.id), /Only a registered active recording session/)
+    assert.equal((await fs.stat(session.directory)).isDirectory(), true)
+    assert.equal(store.sessions.has(session.id), true)
+  } finally { await fs.rm(root, { recursive: true, force: true }) }
+})
+
 test('reopens a crashed recording, preserves open segment bytes, and marks it for finalization', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'alu-recordings-recovery-'))
   try {
@@ -126,5 +160,89 @@ test('resets a finalization interrupted after Stop without changing the stopped 
     assert.equal(JSON.parse(await fs.readFile(manifestPath, 'utf8')).finalization.status, 'pending')
     const retried = await new MediaFinalizer({ ffmpegPath: 'ffmpeg', platform: 'win32' }).finalizeSession(restarted.getSession(session.id))
     assert.notEqual(retried.status, 'finalizing')
+  } finally { await fs.rm(root, { recursive: true, force: true }) }
+})
+
+test('rejects a registered session directory outside the store root without touching the target', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'alu-recordings-discard-root-'))
+  const outsideRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'alu-recordings-discard-outside-'))
+  try {
+    const store = new RecordingDiskStore(root)
+    const session = await store.createSession()
+    const registeredSession = store.getSession(session.id)
+    const registeredDirectory = registeredSession.directory
+    const outsideDirectory = path.join(outsideRoot, session.id)
+    await fs.mkdir(outsideDirectory)
+    const sentinelPath = path.join(outsideDirectory, 'keep.txt')
+    await fs.writeFile(sentinelPath, 'outside data')
+    registeredSession.directory = outsideDirectory
+
+    await assert.rejects(store.discardSession(session.id), /Unsafe recording session directory/)
+
+    assert.equal(await fs.readFile(sentinelPath, 'utf8'), 'outside data')
+    assert.equal((await fs.stat(registeredDirectory)).isDirectory(), true)
+    assert.equal(store.sessions.get(session.id), registeredSession)
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
+    await fs.rm(outsideRoot, { recursive: true, force: true })
+  }
+})
+
+test('rejects a registered session directory that is a symlink without touching its target', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'alu-recordings-discard-link-'))
+  const outsideRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'alu-recordings-discard-target-'))
+  try {
+    const store = new RecordingDiskStore(root)
+    const session = await store.createSession()
+    const registeredSession = store.getSession(session.id)
+    const targetSentinel = path.join(outsideRoot, 'keep.txt')
+    await fs.writeFile(targetSentinel, 'symlink target data')
+    await fs.rm(registeredSession.directory, { recursive: true, force: true })
+    try {
+      await fs.symlink(outsideRoot, registeredSession.directory, 'junction')
+    } catch (error) {
+      if (['EPERM', 'EACCES', 'ENOTSUP', 'ENOSYS', 'EINVAL'].includes(error.code)) {
+        t.skip(`Directory symlinks are unavailable: ${error.code}`)
+        return
+      }
+      throw error
+    }
+
+    await assert.rejects(store.discardSession(session.id), /Unsafe recording session directory/)
+
+    const linkStat = await fs.lstat(registeredSession.directory)
+    assert.equal(linkStat.isSymbolicLink(), true)
+    assert.equal(await fs.readFile(targetSentinel, 'utf8'), 'symlink target data')
+    assert.equal(store.sessions.get(session.id), registeredSession)
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
+    await fs.rm(outsideRoot, { recursive: true, force: true })
+  }
+})
+
+
+test('refuses to discard an active session after all sources completed startup', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'alu-recordings-discard-complete-'))
+  try {
+    const store = new RecordingDiskStore(root)
+    const session = await store.createSession()
+    for (const [index, source] of ['camera', 'microphone', 'screen'].entries()) {
+      const mimeType = source === 'microphone' ? 'audio/webm' : 'video/webm'
+      await store.openSegment(session.id, source, 1, mimeType, 1000 + index, index)
+    }
+    assert.equal(store.getSession(session.id).handles.size, 3)
+    assert.deepEqual([...store.getSession(session.id).startedSources], [])
+    assert.throws(() => store.markStartupComplete(session.id), /before every required source is recording/)
+    for (const [index, source] of ['camera', 'microphone', 'screen'].entries()) {
+      await store.markSegmentStarted(session.id, source, 1, 1000 + index, index)
+    }
+    const marked = await store.markStartupComplete(session.id)
+    for (const source of ['camera', 'microphone', 'screen']) await store.closeSegment(session.id, source, 1, 2000)
+
+    assert.deepEqual(marked, { sessionId: session.id, startupComplete: true })
+    assert.equal(store.getSession(session.id).startupComplete, true)
+    await assert.rejects(store.discardSession(session.id), /incomplete startup/)
+    assert.equal((await fs.stat(session.directory)).isDirectory(), true)
+    assert.equal(store.sessions.has(session.id), true)
   } finally { await fs.rm(root, { recursive: true, force: true }) }
 })

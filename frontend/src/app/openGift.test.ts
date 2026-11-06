@@ -29,15 +29,68 @@ it('continues without recording consent even if audio unlock is unavailable', as
   expect(onStart).toHaveBeenCalledOnce()
 })
 
-it('starts the film even if the optional recorder fails synchronously', async () => {
-  const onStart = vi.fn()
-  await openGift({
-    audio: { unlock: async () => true },
+it('requests camera and microphone from the consent gesture, then waits for recording before starting the film', async () => {
+  const events: string[] = []
+  let finishPreparation!: (value: boolean) => void
+  const preparation = new Promise<boolean>((resolve) => { finishPreparation = resolve })
+  const start = vi.fn(async () => { events.push('record'); return true })
+  const prepare = vi.fn(() => { events.push('prepare'); return preparation })
+  const onStart = vi.fn(() => { events.push('film') })
+  const gift = openGift({
+    audio: { unlock: () => { events.push('unlock'); return Promise.resolve(true) } },
     media: {
-      getSnapshot: () => ({ options: { gaze: false, recording: true }, recordingStatus: 'ready' }),
-      start: () => { throw new Error('Recorder unavailable') },
+      getSnapshot: () => ({ options: { gaze: false, recording: true }, recordingStatus: 'idle' }),
+      prepare,
+      start,
     },
     onStart,
   })
+
+  expect(events).toEqual(['unlock', 'prepare'])
+  expect(start).not.toHaveBeenCalled()
+  finishPreparation(true)
+  await gift
+
+  expect(start).toHaveBeenCalledOnce()
+  expect(events).toEqual(['unlock', 'prepare', 'record', 'film'])
   expect(onStart).toHaveBeenCalledOnce()
+})
+
+it('does not start the film when permission or recording startup fails', async () => {
+  const onStart = vi.fn()
+  const start = vi.fn(async () => false)
+  await expect(openGift({
+    audio: { unlock: async () => true },
+    media: {
+      getSnapshot: () => ({ options: { gaze: false, recording: true }, recordingStatus: 'error', error: 'Camera permission denied.' }),
+      prepare: async () => false,
+      start,
+    },
+    onStart,
+  })).rejects.toThrow('Camera permission denied.')
+  expect(start).not.toHaveBeenCalled()
+  expect(onStart).not.toHaveBeenCalled()
+
+  await expect(openGift({
+    audio: { unlock: async () => true },
+    media: {
+      getSnapshot: () => ({ options: { gaze: false, recording: true }, recordingStatus: 'ready', error: 'Storage unavailable.' }),
+      start,
+    },
+    onStart,
+  })).rejects.toThrow('Storage unavailable.')
+  expect(onStart).not.toHaveBeenCalled()
+})
+
+it('does not start the film if local recorder startup throws', async () => {
+  const onStart = vi.fn()
+  await expect(openGift({
+    audio: { unlock: async () => true },
+    media: {
+      getSnapshot: () => ({ options: { gaze: false, recording: true }, recordingStatus: 'ready', error: 'Recorder unavailable.' }),
+      start: () => { throw new Error('Recorder unavailable') },
+    },
+    onStart,
+  })).rejects.toThrow('Recorder unavailable.')
+  expect(onStart).not.toHaveBeenCalled()
 })
