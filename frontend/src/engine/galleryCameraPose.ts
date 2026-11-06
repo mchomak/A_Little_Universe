@@ -30,12 +30,13 @@ export interface GalleryCameraFrameOptions {
   aspect: number
   focusDistance?: number
   focusCenter?: readonly [number, number]
+  entryPose?: CameraPose | null
 }
 
 export function updateGalleryCameraPose(
   pose: CameraPose,
   settings: SceneComposerConfig['scenes']['gallery'],
-  { delta, speed, paused, reducedMotion, aspect, focusDistance = 4.8, focusCenter = [0, 0] }: GalleryCameraFrameOptions,
+  { delta, speed, paused, reducedMotion, aspect, focusDistance = 4.8, focusCenter = [0, 0], entryPose = null }: GalleryCameraFrameOptions,
 ) {
   if (!paused) {
     const entrySequence = getEntrySequence(settings)
@@ -45,6 +46,8 @@ export function updateGalleryCameraPose(
   const motion = galleryMotion
   const opening = Math.min(1, motion.intro / (reducedMotion ? 0.35 : GALLERY.intro))
   const eased = opening * opening * (3 - 2 * opening)
+  const cameraEased = entryPose ? 1 : eased
+  const cameraOpening = entryPose ? 1 : opening
   const exit = Math.min(1, motion.exit / GALLERY.exit)
   const aisleZ = GALLERY.startZ - motion.progress - exit * 2
   const memory = GALLERY_MEMORIES[motion.focusIndex]!
@@ -71,28 +74,42 @@ export function updateGalleryCameraPose(
   const focusCenterWorldZ = -Math.sin(focusYaw) * easedFocusCenter[0]
   const initial = firstMemoryCamera(34, reducedMotion)
   const initialFit = aspect < 1 ? Math.min(2.5, 1 / Math.max(0.3, aspect)) : 1
-  pose.x = initial.x * initialFit * (1 - eased)
-  pose.y = initial.y * initialFit * (1 - eased)
-  pose.z = aisleZ + (initial.z * initialFit - GALLERY.startZ) * (1 - eased)
+  pose.x = initial.x * initialFit * (1 - cameraEased)
+  pose.y = initial.y * initialFit * (1 - cameraEased)
+  pose.z = aisleZ + (initial.z * initialFit - GALLERY.startZ) * (1 - cameraEased)
   pose.tx = (x + focusCenterWorldX) * focal
   pose.ty = (y + easedFocusCenter[1] - 0.2) * focal
   pose.tz = (aisleZ - 8) * (1 - focal) + (z + focusCenterWorldZ) * focal
-  if (opening < 1) {
-    pose.tx *= eased
-    pose.ty *= eased
-    pose.tz = -8 * eased
+  if (cameraOpening < 1) {
+    pose.tx *= cameraOpening
+    pose.ty *= cameraOpening
+    pose.tz = -8 * cameraOpening
   }
 
-  const camera = focusCamera(
+  const galleryCamera = focusCamera(
     [pose.x, pose.y, pose.z],
     [x + focusCenterWorldX, y + easedFocusCenter[1], z + focusCenterWorldZ],
     focal,
     focusYaw,
     easedFocusDistance,
   )
+  const entryCameraDistance = entryPose
+    ? Math.hypot(entryPose.x - entryPose.tx, entryPose.y - entryPose.ty, entryPose.z - entryPose.tz)
+    : 0
+  const camera = entryPose ? {
+    x: entryPose.x + (galleryCamera.x - entryPose.x) * eased,
+    y: entryPose.y + (galleryCamera.y - entryPose.y) * eased,
+    z: entryPose.z + (galleryCamera.z - entryPose.z) * eased,
+    distance: entryCameraDistance + (galleryCamera.distance - entryCameraDistance) * eased,
+  } : galleryCamera
+  const target = entryPose ? [
+    entryPose.tx + (pose.tx - entryPose.tx) * eased,
+    entryPose.ty + (pose.ty - entryPose.ty) * eased,
+    entryPose.tz + (pose.tz - entryPose.tz) * eased,
+  ] as const : [pose.tx, pose.ty, pose.tz] as const
   return {
     camera,
-    target: [pose.tx, pose.ty, pose.tz] as const,
+    target,
     memory,
     eased,
     focal,

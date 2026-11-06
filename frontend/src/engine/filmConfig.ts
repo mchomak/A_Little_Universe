@@ -278,7 +278,7 @@ export const COPY = {
   greetingWish: 'Пусть в твоей жизни всегда будет место для чего-то по-настоящему волшебного',
   letterTitle: 'Временный текст поздравления',
   letter: 'Здесь появится личное письмо. Сейчас это обозначенное место для будущего текста.',
-  credits: 'Lily: “White lily” by Nmn9 · Blend Swap #74582 · CC BY 3.0 · modified for A Little Universe for You · blendswap.com/blends/view/74582 · creativecommons.org/licenses/by/3.0/', ending: 'Маленькая вселенная для тебя',
+  credits: '', ending: 'Маленькая вселенная для тебя',
 } as const
 
 export function getPrologueCopy(settings: Pick<SceneComposerConfig['scenes']['prologue'], 'copyVariant'>) {

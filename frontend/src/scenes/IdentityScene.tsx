@@ -15,7 +15,7 @@ import { IdentityAtmosphere } from './shared/IdentityAtmosphere'
 import { IdentityPortrait } from './shared/CosmicPortraitField'
 import { portraitPresence } from './shared/identityPortrait'
 import { restorationFrame, restorationMap, restorationGLSL, restoredPhotoFragment, restoredPhotoVertex, restoredRimFragment } from './shared/identityRestoration'
-import { firstMemoryFrame } from './shared/firstMemoryFrame'
+import { FIRST_MEMORY_POSITION, firstMemoryFrame } from './shared/firstMemoryFrame'
 import { FirstMemorySpace } from './shared/FirstMemorySpace'
 import photoUrl from '../assets/start_img.jpg'
 
@@ -355,7 +355,7 @@ export function IdentityScene({ state, runtime, reducedMotion, particleSource = 
     <points geometry={geometry} frustumCulled={false}><primitive object={material} ref={materialRef} attach="material" /></points>
     <IdentityTrails geometry={geometry} runtime={runtime} low={state.quality === 'low'} reducedMotion={reducedMotion} scale={vortexScale} />
     <group ref={orbitGroup} visible={false}>{Array.from({ length: 5 }, (_, i) => <line key={i}><bufferGeometry attach="geometry"><bufferAttribute attach="attributes-position" args={[orbitArrays[i]!, 3]} /></bufferGeometry><lineBasicMaterial color={new Color('#dca8bd')} transparent opacity={0.24} depthWrite={false} /></line>)}</group>
-    <group ref={memory} position={[0, .08, 0]}>
+    <group ref={memory} position={FIRST_MEMORY_POSITION}>
       <group ref={ascii} position={[0, 0, .01]}><mesh><planeGeometry args={[2.15, 2.15]} /><primitive ref={asciiMaterialRef} object={asciiMaterial} attach="material" /></mesh></group>
       <group><FirstMemoryCard photoRef={photo} frameRef={frame} photoMaterial={restoredPhoto} rimMaterial={restoredRim} /></group>
     </group>

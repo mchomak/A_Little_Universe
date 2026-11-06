@@ -6,7 +6,6 @@ import { useSceneTimeline } from '../engine/useSceneTimeline'
 import { createPrologueOverlayTimeline } from './PrologueOverlay'
 import { ART_FONT_CATALOG } from '../systems/scene-config/fontCatalog'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
-import { GREETING_LETTER } from '../scenes/greeting/content'
 import { createCreditsCrawlTween } from './creditsCrawl'
 
 interface Props { state: FilmState; dispatch: Dispatch<FilmAction>; runtime: FilmRuntime; reducedMotion: boolean }
@@ -158,12 +157,7 @@ export function GreetingOverlay({ state, dispatch, runtime, reducedMotion }: Pro
       <p ref={first} data-greeting-line="first" aria-label="С днём рождения, Василиса!" style={lineStyle('24%', 'clamp(30px, 5.1vw, 66px)')}>С днём рождения, Василиса!</p>
       <p ref={second} data-greeting-line="second" aria-label="Пусть в твоей жизни всегда будет место для маленького чуда." style={lineStyle('42%', 'clamp(22px, 3.4vw, 43px)')}>Пусть в твоей жизни всегда будет место для маленького чуда.</p>
     </div>}
-    <div className="credits-window" aria-hidden={!crawlStarted}>
-      <div ref={crawl} className="credits-crawl" data-testid="credits-crawl">
-        {GREETING_LETTER.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
-        <p className="credits-attribution">Lily: “White lily” by Nmn9 · Blend Swap #74582 · CC BY 3.0 · modified for A Little Universe for You.</p>
-      </div>
-    </div>
+
     {crawlStarted && <div className="greeting-controls"><button type="button" data-testid="credits-pause" aria-pressed={crawlPaused} onClick={toggleCrawl}>{crawlPaused ? 'Продолжить письмо' : 'Пауза письма'}</button></div>}
   </section>
 }

@@ -20,6 +20,7 @@ import type { SceneProps } from '../engine/sceneTypes'
 import { useSyncExternalStore } from 'react'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
+import { FIRST_MEMORY_POSITION, firstMemoryFrame } from './shared/firstMemoryFrame'
 import { GALLERY, GALLERY_MEMORIES, PLANETARIUM_GALLERY_EVENT_ID, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, gallerySupportGroupScale, gallerySupportLocalPositions, type GalleryMemory } from './gallery/content'
 import { getGalleryPhotoPosition } from './gallery/archPlacement'
 import { GalleryColumn } from './gallery/GalleryColumn'
@@ -598,6 +599,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
     : galleryColumnPositions(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
   const supportCount = supportPositions.length
   const photoYaw = galleryPhotoYaw(memory, settings.galleryLayoutVariant, settings.archRotationY)
+  const firstEntryFrame = firstMemoryFrame(34, reducedMotion)
   const supportLocalPositions = useMemo(
     () => gallerySupportLocalPositions(settings.galleryLayoutVariant, [x, y, z], supportPositions),
     [settings.galleryLayoutVariant, x, y, z, supportPositions],
@@ -624,12 +626,23 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
     const t = Math.min(1, m.intro / (reducedMotion ? 0.35 : GALLERY.intro))
     const e = t * t * (3 - 2 * t)
     const first = memory.order === 0
-    group.current.position.set(first ? x * e : x, y, first ? z * e : z)
+    // Hold the exact Scene 04 photo transform until the staged gallery reveal is complete.
+    group.current.position.set(
+      first ? FIRST_MEMORY_POSITION[0] + (x - FIRST_MEMORY_POSITION[0]) * e : x,
+      first ? FIRST_MEMORY_POSITION[1] + (y - FIRST_MEMORY_POSITION[1]) * e : y,
+      first ? FIRST_MEMORY_POSITION[2] + (z - FIRST_MEMORY_POSITION[2]) * e : z,
+    )
     group.current.scale.setScalar(first ? 1 + 0.35 * e : 1)
     const photoOffsetZ = camera.position.z - (first ? z * e : z)
     const photoFocusMix = m.focusIndex === memory.order ? m.focusMix : 0
     const approachYaw = galleryPhotoApproachYaw(memory, settings.galleryLayoutVariant, photoOffsetZ, settings.galleryPhotoFacingMaxDegrees, photoFocusMix, settings.archRotationY)
-    group.current.rotation.set(0, first && settings.galleryLayoutVariant === 'on-columns' ? (reducedMotion ? 0 : 0.065 * (1 - e)) + photoYaw * e : approachYaw, 0)
+    const galleryYaw = first && settings.galleryLayoutVariant === 'on-columns' ? photoYaw : approachYaw
+    const entryYaw = first ? firstEntryFrame.rotation[1] : galleryYaw
+    group.current.rotation.set(
+      first ? firstEntryFrame.rotation[0] * (1 - e) : 0,
+      entryYaw + (galleryYaw - entryYaw) * e,
+      first ? firstEntryFrame.rotation[2] * (1 - e) : 0,
+    )
     const [columnX, columnY, columnZ] = settings.galleryLayoutVariant === 'between-columns' || supportPositions.length === 0
       ? [x, y, z]
       : supportPositions[0]!
@@ -644,9 +657,9 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
       first ? 1 + 0.35 * e : 1,
     ))
     supportGroup.current.rotation.set(0, settings.galleryLayoutVariant === 'between-columns' ? 0 : group.current.rotation.y, 0)
-    visualGroup.current.position.set(0, reducedMotion ? 0 : Math.sin(m.time * 0.3 + memory.order) * 0.025, 0)
+    visualGroup.current.position.set(0, reducedMotion ? 0 : Math.sin(m.time * 0.3 + memory.order) * 0.025 * (first ? e : 1), 0)
     visualGroup.current.scale.setScalar(1)
-    visualGroup.current.rotation.set(first && !reducedMotion ? -0.022 * (1 - e) : 0, 0, first && !reducedMotion ? -0.009 * (1 - e) : 0)
+    visualGroup.current.rotation.set(0, 0, 0)
     if (planetarium) capturePlanetariumPhotoRect(visualGroup.current, camera, width, height)
 
     const introVisibility = first ? 1 : Math.max(0, Math.min(1, (m.intro - memory.order * 0.15) / 1.4))

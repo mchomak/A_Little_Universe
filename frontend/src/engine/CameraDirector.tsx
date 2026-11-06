@@ -35,6 +35,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
   const galaxySettings = config.scenes.galaxy
   const pose = useRef<CameraPose>({ x: 0, y: 0, z: 5.6, tx: 0, ty: 0, tz: 0 })
   const galleryRevision = useRef<number | null>(null)
+  const galleryEntryPose = useRef<CameraPose | null>(null)
   const galleryFocusDistance = useRef(4.8)
   const galleryFocusCenter = useRef<[number, number]>([0, 0])
   const { scene, mode, revision, paused, reading, speed, planetariumTransition } = state
@@ -61,17 +62,33 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const flowerCloseup = getBloomCloseupPose(bloomSettings)
     const bloomApproach = scene === 'bloom' ? getBloomCameraApproach(mode, bloomSettings, bloomFrames.opening) : null
     const timeline = gsap.timeline({ onUpdate: render })
+    const previousScene = hasBuiltScene.current ? lastBuiltScene.current : null
     if (scene === 'gallery') {
       if (galleryRevision.current !== revision) {
-        Object.assign(p, firstMemoryCamera(34, reducedMotion))
+        if (previousScene === 'identity' && !reducedMotion) {
+          const identityTarget = getIdentityCameraMoveTarget(flowerCloseup, identitySettings)
+          const identityEnd = getIdentityCameraPullbackPose(identityTarget, IDENTITY_CAMERA_PULLBACK_DISTANCE)
+          const cameraFit = aspect < 1 ? Math.min(2.5, 1 / Math.max(0.3, aspect)) : 1
+          galleryEntryPose.current = {
+            ...identityEnd,
+            x: identityTarget.tx + (identityEnd.x - identityTarget.tx) * cameraFit,
+            y: identityTarget.ty + (identityEnd.y - identityTarget.ty) * cameraFit,
+            z: identityTarget.tz + (identityEnd.z - identityTarget.tz) * cameraFit,
+          }
+          Object.assign(p, identityEnd)
+        } else {
+          galleryEntryPose.current = null
+          Object.assign(p, firstMemoryCamera(34, reducedMotion))
+        }
         galleryFocusDistance.current = 4.8
         galleryFocusCenter.current = [0, 0]
         galleryRevision.current = revision
       }
+      lastBuiltScene.current = scene
+      hasBuiltScene.current = true
       render()
       return timeline
     }
-    const previousScene = hasBuiltScene.current ? lastBuiltScene.current : null
     lastBuiltScene.current = scene
     hasBuiltScene.current = true
     const galaxyPose = (distance: number, angle: number) => galaxyCameraPose(
@@ -129,7 +146,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       if (slowdown > 0) timeline.to(p, { ...finish, duration: slowdown, ease: 'sine.out' })
     }
     return timeline
-  }, [bloomSettings, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, planetariumTransition, reducedMotion, render, revision, scene])
+  }, [aspect, bloomSettings, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, planetariumTransition, reducedMotion, render, revision, scene])
   useSceneTimeline(build, { runtime })
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return
@@ -151,6 +168,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       aspect,
       focusDistance: galleryFocusDistance.current,
       focusCenter: galleryFocusCenter.current,
+      entryPose: galleryEntryPose.current,
     })
     galleryFocusDistance.current = focusDistance
     galleryFocusCenter.current = [focusCenter[0], focusCenter[1]]
