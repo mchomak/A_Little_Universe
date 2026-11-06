@@ -41,6 +41,12 @@ export function galleryArchDistanceOpacity(distance: number) {
   return 1 - smooth * 0.45
 }
 
+/** Composes the configured arch opacity, its existing distance fade and the staged entry reveal. */
+export function galleryArchEntryOpacity(configuredOpacity: number, distanceOpacity: number, entryRevealAlpha: number) {
+  const clamp = (value: number) => Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0
+  return clamp(configuredOpacity) * clamp(distanceOpacity) * clamp(entryRevealAlpha)
+}
+
 /** Keeps faint nearby gallery context around the selected photo without time-based disappearance. */
 export function galleryFocusOpacity(focusMix: number, selected: boolean) {
   if (selected) return 1

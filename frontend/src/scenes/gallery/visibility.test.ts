@@ -2,7 +2,7 @@
 import { normalizeConfig } from '../../systems/scene-config/config'
 import { GALLERY_MEMORIES } from './content'
 import { createGalleryEntrySequence, getGalleryEntryRevealAlpha, getGalleryEntryRevealDuration } from './entryReveal'
-import { galleryArchDistanceOpacity, galleryColumnOpacity, galleryDistanceOpacity, galleryEntryItemAlpha, galleryEntryVisibility, galleryFocusOpacity, galleryFocusedPhotoDistanceOpacity, wakeOnVisible } from './visibility'
+import { galleryArchDistanceOpacity, galleryArchEntryOpacity, galleryColumnOpacity, galleryDistanceOpacity, galleryEntryItemAlpha, galleryEntryVisibility, galleryFocusOpacity, galleryFocusedPhotoDistanceOpacity, wakeOnVisible } from './visibility'
 it('wakes a visible demand canvas and removes the listener on disposal', () => {
   const source = new EventTarget() as EventTarget & { hidden: boolean }; source.hidden = true
   const invalidate = vi.fn(); const dispose = wakeOnVisible(source as unknown as Document, invalidate)
@@ -70,6 +70,10 @@ it('reveals every support in sequence and completes photo-only items before the 
   const archStart = 2.2 + sequence.steps.length * 0.3
   expect(galleryEntryItemAlpha(archStart, photoOnly.index)).toBe(1)
   expect(getGalleryEntryRevealAlpha(archStart, 'arch', sequence.steps.length)).toBe(0)
+  expect(galleryEntryItemAlpha(archStart, sequence.steps.length - 1)).toBe(1)
+  expect(galleryArchEntryOpacity(settings.archOpacity, galleryArchDistanceOpacity(40), getGalleryEntryRevealAlpha(archStart, 'arch', sequence.steps.length))).toBe(0)
+  const revealDuration = getGalleryEntryRevealDuration(sequence.steps.length)
+  expect(galleryArchEntryOpacity(settings.archOpacity, galleryArchDistanceOpacity(40), getGalleryEntryRevealAlpha(revealDuration, 'arch', sequence.steps.length))).toBeCloseTo(settings.archOpacity * galleryArchDistanceOpacity(40))
 })
 it('reveals photos in order when gallery columns are disabled', () => {
   const settings = normalizeConfig({ schemaVersion: 24, scenes: { gallery: { columnVisible: false } } }).scenes.gallery

@@ -56,3 +56,9 @@
 - `galleryEntryItemAlpha(elapsed, index)` использует общую фазу item; `galleryEntryVisibility(introAlpha, entryAlpha)` удерживает карточку видимой после её завершённого item во время последующего штатного camera intro.
 - `GalleryColumn` читает собственный индекс из одного ref-массива; shared alpha нескольких колонн запрещён. Факторы `exitMix` и distance остаются в обычной колонной alpha, focus/raycast остаются как прежде.
 - Dust и floor glints используют среды `clouds` и `water`; нить каждой пары воспоминаний получает минимум alpha двух карточек на её концах и не видна раньше обоих endpoint.
+
+## Из задачи 05 — alpha арки и переход к intro
+
+- `GalleryScene` передаёт `entrySequence.steps.length` в `GalleryArch` как `entryIndex`; фаза `arch` использует общий entry clock и начинает только после последнего шага фото/опоры.
+- `galleryArchEntryOpacity(configuredOpacity, distanceOpacity, entryRevealAlpha)` ограничивает каждое значение и перемножает их, сохраняя штатные `archOpacity` и distance fade при появлении арки.
+- `advanceGallery` начинает прежнюю кривую движения камеры/портрета после полного reveal duration с аркой; memo по-прежнему показывается текущим controller после старого intro.

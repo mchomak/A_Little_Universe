@@ -930,7 +930,7 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
     <color attach="background" args={[skyColor]} />
     <fog attach="fog" args={[skyColor, 55, 208 - settings.hazeDensity * 14]} />
     <MoonlitWorld settings={settings} quality={quality} halo={halo} reducedMotion={reducedMotion} />
-    <GalleryArch settings={settings} />
+    <GalleryArch settings={settings} entryIndex={entrySequence.steps.length} />
     <Dust low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
     {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} titleFontFamily={titleFontFamily} photoEntryStepIndex={entrySequence.photoIndices.get(memory.order)} supportEntryStepIndices={supportEntryStepIndices.get(memory.order)} />)}
     <MemoryThreads settings={settings} low={quality === 'low'} paused={state.paused} halo={halo} photoEntryIndices={entrySequence.photoIndices} />
