@@ -1,9 +1,11 @@
 ﻿import { GALLERY, GALLERY_MEMORIES } from './content'
+import { PLANETARIUM_GALLERY_EVENT_ID } from './content'
 import type { Object3D } from 'three'
 import { getGalleryEntryRevealDuration } from './entryReveal'
 type Phase = 'intro' | 'instruction' | 'explore' | 'exit'
 export type GalleryInteraction = 'walk' | 'focusing' | 'focused' | 'returning'
 export interface GallerySnapshot { phase: Phase; interaction: GalleryInteraction; focus: number | null; atEnd: boolean }
+const planetariumIndex = GALLERY_MEMORIES.findIndex(memory => memory.id === PLANETARIUM_GALLERY_EVENT_ID)
 const initial: GallerySnapshot = { phase: 'intro', interaction: 'walk', focus: null, atEnd: false }
 let snapshot = initial
 let instructionSeen = false
@@ -27,7 +29,8 @@ export function resetGalleryInstruction() { instructionSeen = false }
 export function galleryInstruction() { if (snapshot.phase === 'intro') publish({ ...snapshot, phase: instructionSeen ? 'explore' : 'instruction' }) }
 export function galleryStart() { if (snapshot.phase === 'instruction') { instructionSeen = true; publish({ ...snapshot, phase: 'explore' }) } }
 export function galleryExit() {
-  if (snapshot.phase !== 'explore' || !snapshot.atEnd || snapshot.interaction !== 'walk') return
+  const focusedPlanetarium = snapshot.focus === planetariumIndex && snapshot.interaction === 'focused'
+  if (snapshot.phase !== 'explore' || (!focusedPlanetarium && (!snapshot.atEnd || snapshot.interaction !== 'walk'))) return
   const focus = GALLERY_MEMORIES.length - 1
   galleryMotion.focusIndex = focus
   galleryMotion.focusTime = 0
@@ -75,7 +78,10 @@ export function advanceGallery(dt: number, reducedMotion = false, entryCount?: n
   m.focusMix += (targetFocusMix - m.focusMix) * (1 - Math.exp(-3.8 * dt))
   if (targetFocusMix === 1 && 1 - m.focusMix < .001) {
     m.focusMix = 1
-    if (snapshot.interaction === 'focusing') publish({ ...snapshot, interaction: 'focused' })
+    if (snapshot.interaction === 'focusing') {
+      publish({ ...snapshot, interaction: 'focused' })
+      if (snapshot.focus === planetariumIndex) galleryExit()
+    }
   } else if (targetFocusMix === 0 && m.focusMix < .001) {
     m.focusMix = 0
     if (snapshot.interaction === 'returning') publish({ ...snapshot, focus: null, interaction: 'walk' })

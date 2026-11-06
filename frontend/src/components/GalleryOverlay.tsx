@@ -83,7 +83,7 @@ export function GalleryOverlay({ paused }: { paused: boolean }) {
     </div>
     <aside className="gallery-guide-note">
       <GalleryGuideIcon name="arch" />
-      <div><h2>Последнее воспоминание</h2><p>Последняя фотография — под аркой. Открой её, когда рассмотришь остальные. Чтобы перейти дальше, вернись к прогулке и нажми «Продолжить».</p></div>
+      <div><h2>Последнее воспоминание</h2><p>Последняя фотография — под аркой. Сфокусируйся на ней, и переход в галактику начнётся автоматически.</p></div>
     </aside>
     <button type="button" disabled={paused} onClick={galleryStart}>Начать прогулку</button>
   </div></section>

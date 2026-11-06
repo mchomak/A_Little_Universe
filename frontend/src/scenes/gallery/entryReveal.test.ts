@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeConfig } from '../../systems/scene-config/config'
-import { GALLERY, GALLERY_MEMORIES, galleryColumnPositions, memoryPosition, PLANETARIUM_GALLERY_EVENT_ID } from './content'
+import { GALLERY_MEMORIES, galleryColumnPositions, memoryPosition, PLANETARIUM_GALLERY_EVENT_ID } from './content'
 import { createGalleryEntrySequence, getGalleryEntryRevealAlpha, getGalleryEntryRevealDuration } from './entryReveal'
 
 describe('gallery entry reveal timeline', () => {

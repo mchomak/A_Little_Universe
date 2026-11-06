@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Mesh, MeshBasicMaterial, PlaneGeometry, Raycaster, Vector3 } from 'three'
-import { galleryColumnPhotoCenterOffsetZ, galleryColumnPosition, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, GALLERY, GALLERY_MEMORIES, memoryPosition } from './content'
+import { galleryColumnPhotoCenterOffsetZ, galleryColumnPosition, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, GALLERY, GALLERY_MEMORIES, memoryPosition, PLANETARIUM_GALLERY_EVENT_ID } from './content'
 import { advanceGallery, galleryCanRaycastPhoto, galleryExit, galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, galleryStart, resetGallery, resetGalleryInstruction, travel } from './controller'
 import { galleryFocusOpacity } from './visibility'
 import { getGalleryEntryRevealDuration } from './entryReveal'
@@ -223,6 +223,18 @@ describe('gallery travel', () => {
     travel(1000); advanceGallery(3); expect(gallerySnapshot().atEnd).toBe(true); expect(gallerySnapshot().phase).toBe('explore')
     travel(-10); advanceGallery(1); expect(gallerySnapshot().atEnd).toBe(false); galleryExit(); expect(gallerySnapshot().phase).toBe('explore')
     travel(1000); advanceGallery(3); galleryExit(); expect(gallerySnapshot().phase).toBe('exit')
+  })
+  it('starts the galaxy transition after the final planetarium photo finishes focusing', () => {
+    const planetariumIndex = GALLERY_MEMORIES.findIndex(memory => memory.id === PLANETARIUM_GALLERY_EVENT_ID)
+    expect(planetariumIndex).toBe(GALLERY_MEMORIES.length - 1)
+
+    galleryFocus(planetariumIndex)
+    expect(gallerySnapshot()).toMatchObject({ phase: 'explore', interaction: 'focusing', focus: planetariumIndex })
+    advanceGallery(10)
+    expect(gallerySnapshot()).toMatchObject({ phase: 'exit', interaction: 'focusing', focus: planetariumIndex })
+    expect(galleryMotion.exit).toBe(0)
+    advanceGallery(0.5)
+    expect(galleryMotion.exit).toBeGreaterThan(0)
   })
   it('suppresses selection during a pinch', () => { galleryMotion.pinching = true; galleryFocus(1); expect(gallerySnapshot().focus).toBeNull() })
   it('shows instructions only once until a new film run', () => { resetGallery(); advanceGallery(GALLERY.intro); expect(gallerySnapshot().phase).toBe('explore'); resetGalleryInstruction(); resetGallery(); advanceGallery(GALLERY.intro); expect(gallerySnapshot().phase).toBe('instruction') })
