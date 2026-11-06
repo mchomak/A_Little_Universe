@@ -25,7 +25,14 @@ export function resetGallery() { Object.assign(galleryMotion, { progress: 0, tar
 export function resetGalleryInstruction() { instructionSeen = false }
 export function galleryInstruction() { if (snapshot.phase === 'intro') publish({ ...snapshot, phase: instructionSeen ? 'explore' : 'instruction' }) }
 export function galleryStart() { if (snapshot.phase === 'instruction') { instructionSeen = true; publish({ ...snapshot, phase: 'explore' }) } }
-export function galleryExit() { if (snapshot.phase === 'explore' && snapshot.atEnd && snapshot.interaction === 'walk') publish({ ...snapshot, phase: 'exit' }) }
+export function galleryExit() {
+  if (snapshot.phase !== 'explore' || !snapshot.atEnd || snapshot.interaction !== 'walk') return
+  const focus = GALLERY_MEMORIES.length - 1
+  galleryMotion.focusIndex = focus
+  galleryMotion.focusTime = 0
+  galleryMotion.target = galleryMotion.progress
+  publish({ ...snapshot, phase: 'exit', focus, interaction: 'focusing' })
+}
 export function galleryFocus(index: number | null) {
   if (snapshot.phase !== 'explore' || galleryMotion.pinching || galleryMotion.suppressClick || (index !== null && (!Number.isInteger(index) || index < 0 || index >= GALLERY_MEMORIES.length))) return
   if (snapshot.interaction === 'walk') {

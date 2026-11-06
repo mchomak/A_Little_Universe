@@ -49,9 +49,12 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 |---|---|
 | Первый запуск нового checkout | `Set-Location .\frontend; npm ci` |
 | Запуск (http://127.0.0.1:5173) | `Set-Location .\frontend; npm run dev` |
+| TypeScript-проверка | `Set-Location .\frontend; npm run typecheck` |
+| Production build | `Set-Location .\frontend; npm run build` |
 | Проверка в отдельном терминале | `Set-Location .\frontend; npm run check` |
 
 `npm run check` выполняет lint, Vitest, typecheck и production build.
+В текущем worktree `npm ci`, `npm run typecheck` и `npm run build` завершились успешно; build вывел существующие предупреждения Vite о расширении и крупных чанках. Dev-сервер проверен командой `npm run dev -- --host 127.0.0.1 --port 5173` и сообщил о готовности на `http://127.0.0.1:5173/`.
 
 
 ## Scene 05: gallery of memories
@@ -70,6 +73,12 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 `GalleryScene` reveals additional photos only for the focused memory. Particles assemble on the seconds-based `galleryMotion.time` timeline before the original photo becomes visible. A slot waits for its texture before starting, and repeated focus changes, reduced motion, and GPU cleanup must remain safe. Shared reveal timing lives in `frontend/src/scenes/shared/progressivePhotoReveal.ts`; deterministic particle geometry and slot timing live in `frontend/src/scenes/gallery/collage.ts`.
 
 Gallery collage settings live under `scenes.gallery` in Scene Composer schema v24. Per-memory opt-out uses stable event IDs in `frontend/src/scenes/gallery/galleryCollageConfig.ts`. The DEV controls cover count, size, noise, depth, glow, assembly duration, photo reveal duration, stagger, collage scale, and spacing. Keep all particles limited to the focused memory and the shared WebGL renderer.
+
+## Переход Planetarium → Galaxy
+
+Последнее событие каталога — `2026_10_Planetarium`; его главный кадр `1.jpg` используется как live texture. `GalleryScene` захватывает экранные границы карточки через общую камеру. `galleryExit()` разрешён только в фазе explore, у конца галереи и при interaction `walk`; после завершения `GALLERY.exit` reducer входит в `cosmos` с `elapsed: GALLERY.exit` и флагом `planetariumTransition`. Обычный DEV-jump в `cosmos` сбрасывает этот флаг и сохраняет стандартный маршрут.
+
+`PlanetariumTransitionOverlay` в `SceneDirector` использует ту же `FilmCanvas` и камеру: расширяет фото от границ карточки до экрана, постоянно держит cover crop и обновляет viewport aspect по расширяющемуся кадру; фото гаснет после появления звёзд. `GalaxyExperience` активируется уже на выходе галереи, использует `galleryMotion.exit`, а после перехода — `runtime.time`; только для Planetarium route reveal считается на `time + scenes.galaxy.galaxyRevealAt`, тогда как движение и фаза Galaxy остаются на исходном `time`. Текстура удерживается на время overlay и освобождается при его деактивации. Сохранять одну камеру, renderer и существующие слои Galaxy.
 <!-- autopilot:end -->
 
 

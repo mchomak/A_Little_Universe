@@ -1,4 +1,5 @@
-﻿import { getPrologueTouchDuration, getSceneDuration, MEMORIES, SCENES, SCENE_ORDER, TIMING } from './filmConfig'
+import { getPrologueTouchDuration, getSceneDuration, MEMORIES, SCENES, SCENE_ORDER, TIMING } from './filmConfig'
+import { GALLERY } from '../scenes/gallery/content'
 
 export type SceneId = 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'eye' | 'cosmos' | 'greeting' | 'ending'
 export type Quality = 'standard' | 'low'
@@ -14,6 +15,8 @@ export interface FilmState {
   quality: Quality
   /** Revisited gallery/letter closes back to the final screen. */
   returnToEnding: boolean
+  /** Continues the final gallery handoff through the existing Galaxy timeline. */
+  planetariumTransition?: boolean
   /** Frozen at the deliberate touch; live tuning cannot move an in-flight endpoint. */
   prologueTouchDuration?: number
   /** Raised when current Scene 04 geometry needs additional time to finish its photo reveal. */
@@ -38,7 +41,7 @@ export type FilmAction =
 
 export const initialFilmState: FilmState = {
   scene: 'prologue', mode: 'ready', elapsed: 0, paused: false, speed: 1,
-  revision: 0, galleryIndex: 0, reading: false, quality: 'standard', returnToEnding: false,
+  revision: 0, galleryIndex: 0, reading: false, quality: 'standard', returnToEnding: false, planetariumTransition: false,
 }
 
 const IDENTITY_PENDING_EXTENSION_SECONDS = 5
@@ -53,7 +56,7 @@ export function filmDuration(state: FilmState, config?: Parameters<typeof getSce
 
 function enter(state: FilmState, scene: SceneId): FilmState {
   return { ...state, scene, mode: SCENES[scene].entryMode, elapsed: 0, revision: state.revision + 1,
-    reading: false, identityDuration: undefined, identityPreparationPending: undefined }
+    reading: false, identityDuration: undefined, identityPreparationPending: undefined, planetariumTransition: false }
 }
 
 export function filmReducer(state: FilmState, action: FilmAction, allowDev = false): FilmState {
@@ -165,7 +168,8 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
     }
     case 'gallery-finish':
       if (state.scene !== 'gallery') return state
-      return state.returnToEnding ? { ...enter(state, 'ending'), returnToEnding: false } : enter(state, 'eye')
+      if (state.returnToEnding) return { ...enter(state, 'ending'), returnToEnding: false }
+      return { ...enter(state, 'cosmos'), elapsed: GALLERY.exit, planetariumTransition: true }
     case 'gallery-exit':
       if (state.scene === 'gallery' && state.returnToEnding) return { ...enter(state, 'ending'), returnToEnding: false }
       return state.scene === 'gallery' && state.galleryIndex === MEMORIES.length - 1 ? enter(state, 'eye') : state

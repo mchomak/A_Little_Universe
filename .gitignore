@@ -1,4 +1,4 @@
-# Dependencies and generated output
+﻿# Dependencies and generated output
 node_modules/
 dist/
 coverage/
@@ -56,3 +56,7 @@ Thumbs.db
 /frontend/release/
 /frontend/.cache/
 /frontend/resources/macos-arm64/
+
+!.autopilot/2026-11-05-cinematic-background-continuity/state.js
+!.autopilot/2026-11-06-planetarium-galaxy-transition--wip/
+!.autopilot/2026-11-06-planetarium-galaxy-transition--wip/**
