@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { filmDuration, filmReducer, initialFilmState, type FilmAction, type FilmState } from './film'
 import { getGrowthSceneFrames, MEMORIES } from './filmConfig'
 import { resetConfig, updateConfig } from '../systems/scene-config/config'
+import { GALLERY } from '../scenes/gallery/content'
 
 const complete = (state: FilmState) => filmReducer(
   filmReducer(state, { type: 'timeline-update', time: filmDuration(state), revision: state.revision }),
@@ -160,8 +161,10 @@ describe('film navigation', () => {
     expect(state.scene).toBe('identity')
   })
   it('allows deliberate developer navigation, bounded seeking and speed, and rejects stale or invalid input', () => {
-    let state = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'eye' }, true)
-    expect([state.scene, state.elapsed, state.mode]).toEqual(['eye', 0, 'playing'])
+    const eyeJump = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'eye' } as unknown as FilmAction, true)
+    expect(eyeJump).toBe(initialFilmState)
+    let state = filmReducer(initialFilmState, { type: 'dev-jump', scene: 'cosmos' }, true)
+    expect([state.scene, state.elapsed, state.mode]).toEqual(['cosmos', 0, 'playing'])
     expect(filmReducer(state, { type: 'dev-jump', scene: 'cosmos' })).toBe(state)
     expect(filmReducer(state, { type: 'timeline-complete', revision: state.revision })).toBe(state)
     const oldRevision = state.revision
@@ -179,7 +182,7 @@ describe('film navigation', () => {
     state = filmReducer(state, { type: 'set-speed', speed: 4 })
     expect(state.speed).toBe(4)
     state = filmReducer(state, { type: 'dev-seek', time: 999 }, true)
-    expect(state.elapsed).toBe(18)
+    expect(state.elapsed).toBe(26)
     state = filmReducer(state, { type: 'dev-seek', time: -9 }, true)
     expect(state.elapsed).toBe(0)
     state = filmReducer(state, { type: 'dev-jump', scene: 'gallery' }, true)
@@ -190,9 +193,9 @@ describe('film navigation', () => {
     state = filmReducer(state, { type: 'set-quality', quality: 'low' })
     expect(state.quality).toBe('low')
     state = filmReducer(state, { type: 'dev-skip' }, true)
-    expect(state.scene).toBe('eye')
+    expect(state.scene).toBe('cosmos')
     state = filmReducer(state, { type: 'dev-restart' }, true)
-    expect([state.scene, state.elapsed, state.paused]).toEqual(['eye', 0, false])
+    expect([state.scene, state.elapsed, state.paused]).toEqual(['cosmos', 0, false])
   })
   it('freezes reading independently of manual pause and returns revisits to ending', () => {
     let state: FilmState = { ...initialFilmState, scene: 'greeting', mode: 'playing', elapsed: 21 }
@@ -242,9 +245,7 @@ describe('film navigation', () => {
     expect(state.galleryIndex).toBe(MEMORIES.length - 1)
     expect(complete(state)).toBe(state)
     state = filmReducer(state, { type: 'gallery-exit' })
-    expect(state.scene).toBe('eye')
-    state = complete(state)
-    expect(state.scene).toBe('cosmos')
+    expect([state.scene, state.elapsed, state.planetariumTransition]).toEqual(['cosmos', GALLERY.exit, true])
     state = complete(state)
     expect(state.scene).toBe('greeting')
     expect(filmReducer(state, { type: 'finish' })).toBe(state)
@@ -284,7 +285,7 @@ describe('film navigation', () => {
 
 it('completes a gallery after the scene-owned exit sequence without depending on the old selected index', () => {
   const state = { ...initialFilmState, scene: 'gallery' as const, mode: 'exploring' as const, galleryIndex: 0 }
-  expect(filmReducer(state, { type: 'gallery-finish' }).scene).toBe('eye')
+  expect(filmReducer(state, { type: 'gallery-finish' }).scene).toBe('cosmos')
   expect(filmReducer({ ...state, returnToEnding: true }, { type: 'gallery-finish' }).scene).toBe('ending')
   expect(filmReducer(initialFilmState, { type: 'gallery-finish' })).toBe(initialFilmState)
 })

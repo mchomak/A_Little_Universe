@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react'
 import { gsap } from 'gsap'
 import { PerspectiveCamera } from 'three'
 import type { SceneProps } from './sceneTypes'
-import { getBloomSceneFrames, getGrowthSceneFrames, TIMING } from './filmConfig'
+import { getBloomSceneFrames, getGrowthSceneFrames } from './filmConfig'
 import { useSceneTimeline } from './useSceneTimeline'
 import type { CameraPose } from '../scenes/shared/galleryMotion'
 import { GALLERY } from '../scenes/gallery/content'
@@ -20,6 +20,7 @@ import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { getIdentityCameraMoveTarget, getIdentityCameraPullbackPose, IDENTITY_CAMERA_PULLBACK_DISTANCE,
   IDENTITY_CAMERA_PULLBACK_SECONDS } from './identityCamera'
 import { updateGalleryCameraPose } from './galleryCameraPose'
+import { getPlanetariumTransitionEnd } from '../scenes/gallery/planetariumTransition'
 
 /** Camera settings belong here, never inside an artistic scene module. */
 export function CameraDirector({ state, dispatch, runtime, reducedMotion }: SceneProps) {
@@ -36,7 +37,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
   const galleryRevision = useRef<number | null>(null)
   const galleryFocusDistance = useRef(4.8)
   const galleryFocusCenter = useRef<[number, number]>([0, 0])
-  const { scene, mode, revision, paused, reading, speed } = state
+  const { scene, mode, revision, paused, reading, speed, planetariumTransition } = state
   const lastBuiltScene = useRef(scene)
   const hasBuiltScene = useRef(false)
   const render = useCallback(() => {
@@ -82,13 +83,10 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const bloomEntry = previousScene === 'growth' ? flowerSide : getBloomEntryCameraPose(previousScene, previousPose, flowerSide)
     const initial = scene === 'growth' ? getGrowthCameraPose(0, reducedMotion, growthSettings, growthViewportHeight)
       : scene === 'bloom' ? bloomEntry : scene === 'identity' ? flowerCloseup
-      : scene === 'eye' ? { ...front, z: 4.8 }
       : scene === 'cosmos' ? galaxyPose(galaxySettings.cameraStartDistance, galaxySettings.cameraStartAngle)
         : scene === 'greeting' || scene === 'ending' ? galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle) : front
-    const preserveEyeEntry = scene === 'cosmos' && previousScene === 'eye' && !reducedMotion
     Object.assign(p, reducedMotion && scene === 'cosmos' ? galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
       : reducedMotion && scene !== 'growth' && scene !== 'bloom' ? front : initial)
-    if (preserveEyeEntry) Object.assign(p, previousPose)
     render()
     if (scene === 'growth') {
       const cursor = { time: 0 }
@@ -119,17 +117,19 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
         ease: 'sine.inOut',
       }, identitySettings.cameraMoveDuration)
     }
-    if (scene === 'eye') timeline.to(p, { z: 0.85, duration: TIMING.camera.eye, ease: 'power2.inOut' }, TIMING.eye.approach[0])
     if (scene === 'cosmos') {
       const finish = galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
       const target = interpolateCameraPose(p, finish, 0.91)
       const ease = galaxySettings.cameraEase === 'sine' ? 'sine.inOut' : galaxySettings.cameraEase === 'power2' ? 'power2.out' : 'power3.out'
-      const slowdown = Math.min(galaxySettings.cameraSlowdown, galaxySettings.cameraDuration * 0.6)
-      timeline.to(p, { ...target, duration: galaxySettings.cameraDuration - slowdown, ease })
+      const duration = planetariumTransition
+        ? Math.min(galaxySettings.cameraDuration, getPlanetariumTransitionEnd(galaxySettings))
+        : galaxySettings.cameraDuration
+      const slowdown = Math.min(galaxySettings.cameraSlowdown, duration * 0.6)
+      timeline.to(p, { ...target, duration: duration - slowdown, ease })
       if (slowdown > 0) timeline.to(p, { ...finish, duration: slowdown, ease: 'sine.out' })
     }
     return timeline
-  }, [bloomSettings, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, reducedMotion, render, revision, scene])
+  }, [bloomSettings, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, planetariumTransition, reducedMotion, render, revision, scene])
   useSceneTimeline(build, { runtime })
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return

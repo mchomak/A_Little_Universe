@@ -6,7 +6,6 @@ const SCENE_STATUS_LABELS: Record<SceneId, string> = {
   bloom: 'Сцена 03 · раскрытие лилии',
   identity: 'Сцена 04 · растворение лилии',
   gallery: 'Сцена 05 · лунная галерея',
-  eye: 'Сцена 06 · глаз',
   cosmos: 'Сцена 07 · космос',
   greeting: 'Сцена 08 · поздравление',
   ending: 'Сцена 09 · финал',

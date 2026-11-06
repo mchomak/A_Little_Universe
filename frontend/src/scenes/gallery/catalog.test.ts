@@ -10,7 +10,6 @@ describe('gallery event catalogue', () => {
       '2026_02_23_February_23',
       '2026_03_Movie_Night',
       '2026_04_Theater_Night',
-      '2026_04_Artems_Birthday',
       '2026_05_Annas_Graduation',
       '2026_05_Tula_Trip',
       '2026_06_Visiting_Anna',
@@ -111,14 +110,14 @@ describe('gallery event catalogue', () => {
     expect(memory?.images).toEqual(['main', 'left', undefined, 'top'])
   })
 
-  it('builds all 17 events in the declared order when each folder has a main photo', () => {
+  it('builds all 16 events in the declared order when each folder has a main photo', () => {
     const assets = Object.fromEntries(GALLERY_EVENT_ORDER.map((eventId) => [
       `../../../../images/${eventId}/1.jpg`, eventId,
     ]))
     const selections = Object.fromEntries(GALLERY_EVENT_ORDER.map((eventId) => [eventId, ['1.jpg']]))
     const memories = createGalleryEventMemories(GALLERY_EVENT_ORDER, assets, {}, selections)
 
-    expect(memories).toHaveLength(17)
+    expect(memories).toHaveLength(16)
     expect(memories.map(({ id }) => id)).toEqual(GALLERY_EVENT_ORDER)
     expect(memories.map(({ side }) => side)).toEqual(memories.map((_, index) => index % 2 === 0 ? -1 : 1))
   })
@@ -140,9 +139,9 @@ describe('gallery event catalogue', () => {
     expect(memory?.images).toEqual(['main', 'left', 'right', 'selected-top'])
   })
 
-  it('declares selected filenames for the same 17 exact event folders', () => {
+  it('declares selected filenames for the same 16 exact event folders', () => {
     expect(Object.keys(GALLERY_EVENT_PHOTO_FILES)).toEqual(GALLERY_EVENT_ORDER)
-    expect(GALLERY_EVENT_ORDER).toHaveLength(17)
+    expect(GALLERY_EVENT_ORDER).toHaveLength(16)
     expect(Object.values(GALLERY_EVENT_PHOTO_FILES).every((files) => files.length >= 1 && files.length <= 4)).toBe(true)
   })
 })

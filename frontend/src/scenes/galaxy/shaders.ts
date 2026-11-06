@@ -1,5 +1,6 @@
 import type { IUniform } from 'three'
-import { AdditiveBlending, Color, ShaderMaterial } from 'three'
+import { AdditiveBlending, Color, ShaderMaterial, Vector2 } from 'three'
+import type { Texture } from 'three'
 
 export type GalaxyUniforms = Record<string, IUniform>
 
@@ -15,6 +16,8 @@ export function createStarMaterial() {
     uTime: { value: 0 }, uRotTime: { value: 0 }, uSize: { value: 1.03 },
     uPixelRatio: { value: 1 }, uRotationSpeed: { value: 0.045 }, uTwinkle: { value: 0.5 }, uTwinkleSpeed: { value: 0.72 },
     uExposure: { value: 1 }, uReveal: { value: 0 }, uProjectionScale: { value: 24.6 }, uMaxPointSize: { value: 48 },
+    uPhotoMap: { value: null as Texture | null }, uPhotoMask: { value: 0 }, uPhotoAspect: { value: 1 },
+    uViewportAspect: { value: 1 }, uPhotoZoom: { value: 1 }, uPhotoResolution: { value: new Vector2(1, 1) },
   }
   const material = new ShaderMaterial({
     uniforms,
@@ -61,13 +64,28 @@ export function createStarMaterial() {
       varying vec3 vColor;
       varying float vGlow;
       varying float vCore;
+      uniform sampler2D uPhotoMap;
+      uniform float uPhotoMask;
+      uniform float uPhotoAspect;
+      uniform float uViewportAspect;
+      uniform float uPhotoZoom;
+      uniform vec2 uPhotoResolution;
       ${LOCAL_ACES}
+      float photoStarMask() {
+        if (uPhotoMask <= 0.001) return 1.0;
+        float cropX = min(1.0, uViewportAspect / max(0.001, uPhotoAspect));
+        float cropY = min(1.0, uPhotoAspect / max(0.001, uViewportAspect));
+        vec2 screenUv = gl_FragCoord.xy / max(uPhotoResolution, vec2(1.0));
+        vec2 photoUv = (screenUv - 0.5) * vec2(cropX, cropY) / max(1.0, uPhotoZoom) + 0.5;
+        float luminance = dot(texture2D(uPhotoMap, photoUv).rgb, vec3(0.299, 0.587, 0.114));
+        return mix(1.0, smoothstep(0.2, 0.62, luminance), uPhotoMask);
+      }
       void main() {
         vec2 uv = gl_PointCoord - 0.5;
         float d = length(uv) * 2.0;
         float halo = pow(1.0 - smoothstep(0.0, 1.0, d), 1.9);
         float core = 1.0 - smoothstep(0.0, 0.32, d);
-        float intensity = (halo * 0.85 + core * 0.7) * vGlow * mix(1.0, 0.14, vCore);
+        float intensity = (halo * 0.85 + core * 0.7) * vGlow * mix(1.0, 0.14, vCore) * photoStarMask();
         if (intensity < 0.003) discard;
         vec3 color = mix(vColor, vec3(1.0, 0.96, 0.88), vCore * 0.5);
         gl_FragColor = vec4(localAces(color * intensity), 1.0);
@@ -84,6 +102,8 @@ export function createSunMaterial() {
     uPixelRatio: { value: 1 }, uRotationSpeed: { value: 0.045 }, uTwinkleSpeed: { value: 0.72 },
     uExposure: { value: 1.1 }, uReveal: { value: 0 }, uBrightTint: { value: new Color('#7FB4FF') },
     uProjectionScale: { value: 26.24 }, uMaxPointSize: { value: 48 },
+    uPhotoMap: { value: null as Texture | null }, uPhotoMask: { value: 0 }, uPhotoAspect: { value: 1 },
+    uViewportAspect: { value: 1 }, uPhotoZoom: { value: 1 }, uPhotoResolution: { value: new Vector2(1, 1) },
   }
   const material = new ShaderMaterial({
     uniforms,
@@ -129,13 +149,28 @@ export function createSunMaterial() {
       varying vec3 vColor;
       varying float vPulse;
       varying vec3 vTint;
+      uniform sampler2D uPhotoMap;
+      uniform float uPhotoMask;
+      uniform float uPhotoAspect;
+      uniform float uViewportAspect;
+      uniform float uPhotoZoom;
+      uniform vec2 uPhotoResolution;
+      float photoStarMask() {
+        if (uPhotoMask <= 0.001) return 1.0;
+        float cropX = min(1.0, uViewportAspect / max(0.001, uPhotoAspect));
+        float cropY = min(1.0, uPhotoAspect / max(0.001, uViewportAspect));
+        vec2 screenUv = gl_FragCoord.xy / max(uPhotoResolution, vec2(1.0));
+        vec2 photoUv = (screenUv - 0.5) * vec2(cropX, cropY) / max(1.0, uPhotoZoom) + 0.5;
+        float luminance = dot(texture2D(uPhotoMap, photoUv).rgb, vec3(0.299, 0.587, 0.114));
+        return mix(1.0, smoothstep(0.2, 0.62, luminance), uPhotoMask);
+      }
       ${LOCAL_ACES}
       void main() {
         vec2 uv = gl_PointCoord - 0.5;
         float d = length(uv) * 2.0;
         float halo = pow(1.0 - smoothstep(0.0, 1.0, d), 2.4);
         float core = 1.0 - smoothstep(0.0, 0.22, d);
-        float intensity = (halo * 0.7 + core * 1.1) * vPulse;
+        float intensity = (halo * 0.7 + core * 1.1) * vPulse * photoStarMask();
         if (intensity < 0.003) discard;
         vec3 color = mix(vColor, vTint, 0.12);
         color = mix(color, vec3(1.0), core * 0.35) * intensity;

@@ -9,7 +9,6 @@ import { PrologueScene } from '../scenes/PrologueScene'
 import { GrowthScene } from '../scenes/GrowthScene'
 import { BloomScene } from '../scenes/BloomScene'
 import { GalleryScene } from '../scenes/GalleryScene'
-import { EyeScene } from '../scenes/EyeScene'
 import { CosmosScene } from '../scenes/CosmosScene'
 import { GreetingScene } from '../scenes/GreetingScene'
 import { EndingScene } from '../scenes/EndingScene'
@@ -26,7 +25,7 @@ import { GrowthSky } from '../scenes/growth/GrowthSky'
 import { PlanetariumTransitionOverlay } from '../scenes/gallery/planetariumTransition'
 
 
-const modules = { prologue: PrologueScene, bloom: BloomScene, gallery: GalleryScene, eye: EyeScene, cosmos: CosmosScene, greeting: GreetingScene, ending: EndingScene }
+const modules = { prologue: PrologueScene, bloom: BloomScene, gallery: GalleryScene, cosmos: CosmosScene, greeting: GreetingScene, ending: EndingScene }
 
 function IdentityLoading({ runtime }: { runtime: FilmRuntime }) {
   useLayoutEffect(() => runtime.hold(), [runtime])

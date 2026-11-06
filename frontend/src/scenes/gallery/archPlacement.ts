@@ -1,9 +1,9 @@
-import { GALLERY, GALLERY_COLUMN_SHAFT_CENTER_Z, GALLERY_COLUMN_SHAFT_FRONT_Z, galleryColumnPositions, galleryPhotoYaw, gallerySupportColumnOffsetX, memoryPosition } from './content'
+import { GALLERY, GALLERY_COLUMN_SHAFT_CENTER_Z, GALLERY_COLUMN_SHAFT_FRONT_Z, PLANETARIUM_GALLERY_EVENT_ID, galleryColumnPositions, galleryPhotoYaw, gallerySupportColumnOffsetX, memoryPosition } from './content'
 import type { GalleryLayoutVariant, GalleryMemory } from './content'
 import { getGalleryColumnPlacement } from './columnModel'
-import type { GalleryPhotoLayout } from '../../systems/scene-config/config'
+import type { GalleryPhotoLayout, SceneComposerConfig } from '../../systems/scene-config/config'
 
-/** Preserves the existing 12-photo composition: 13.69m beyond the actual default shaft centers. */
+/** Places the arch 13.69m beyond the final visible support pair. */
 export const GALLERY_ARCH_COLUMN_GAP = 13.69
 /** Historical Z value at the default 12-photo position; deviations remain relative to the final columns. */
 export const GALLERY_ARCH_DEFAULT_POSITION_Z = -82
@@ -33,6 +33,7 @@ function actualColumnCenters(
 ): Point[] {
   const columns = { columnScale: settings.columnScale, columnDepth: settings.columnDepth }
   return memories.flatMap((memory) => {
+    if (memory.id === PLANETARIUM_GALLERY_EVENT_ID) return []
     const anchors = galleryColumnPositions(memory, galleryWidth, variant, layout)
     if (anchors.length === 0) return []
     const origin = variant === 'between-columns'
@@ -104,5 +105,43 @@ export function getGalleryArchPosition(
     (first[0] + second[0]) / 2 + xOffset,
     floorY + yOffset,
     (first[2] + second[2]) / 2 - GALLERY_ARCH_COLUMN_GAP + archOffsetZ,
+  ]
+}
+
+/** Uses the same arch-derived Planetarium anchor for card rendering and camera focus. */
+export function getGalleryPhotoPosition(
+  memories: readonly GalleryMemory[],
+  memory: GalleryMemory,
+  settings: SceneComposerConfig['scenes']['gallery'],
+  floorY = 0,
+): [number, number, number] {
+  const variant = settings.galleryLayoutVariant
+  const layout = variant === 'between-columns' ? settings.galleryLayoutB : settings.galleryLayoutA
+  if (memory.id !== PLANETARIUM_GALLERY_EVENT_ID) {
+    return memoryPosition(memory, settings.galleryWidth, variant, layout, settings)
+  }
+
+  const archPosition = getGalleryArchPosition(
+    memories,
+    settings.galleryWidth,
+    variant,
+    layout,
+    settings.archPositionX,
+    settings.archPositionY,
+    floorY,
+    {
+      columnScale: settings.columnScale,
+      columnDepth: settings.columnDepth,
+      columnOffsetX: settings.columnOffsetX,
+      columnOffsetY: settings.columnOffsetY,
+    },
+    settings.archPositionZ,
+  )
+  const archYaw = Number.isFinite(settings.archRotationY) ? settings.archRotationY : 0
+  const frontOffset = Math.min(GALLERY.spacing, Math.max(1.5, settings.archScale * 0.22))
+  return [
+    archPosition[0] + Math.sin(archYaw) * frontOffset,
+    archPosition[1] - floorY + (layout.offsetY ?? 0),
+    archPosition[2] + Math.cos(archYaw) * frontOffset,
   ]
 }

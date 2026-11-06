@@ -1,7 +1,7 @@
 import { getPrologueTouchDuration, getSceneDuration, MEMORIES, SCENES, SCENE_ORDER, TIMING } from './filmConfig'
 import { GALLERY } from '../scenes/gallery/content'
 
-export type SceneId = 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'eye' | 'cosmos' | 'greeting' | 'ending'
+export type SceneId = 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'cosmos' | 'greeting' | 'ending'
 export type Quality = 'standard' | 'low'
 export interface FilmState {
   scene: SceneId
@@ -125,7 +125,7 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
         return extendPendingIdentityEndpoint(state, state.elapsed)
       }
       if (state.scene === 'prologue' && state.mode === 'transitioning') return enter(state, 'growth')
-      const next = { growth: 'bloom', bloom: 'identity', identity: 'gallery', eye: 'cosmos', cosmos: 'greeting' } as const
+      const next = { growth: 'bloom', bloom: 'identity', identity: 'gallery', cosmos: 'greeting' } as const
       if (state.scene in next) return enter(state, next[state.scene as keyof typeof next])
       return { ...state, mode: 'waiting', revision: state.scene === 'prologue' ? state.revision + 1 : state.revision }
     }
@@ -172,7 +172,9 @@ export function filmReducer(state: FilmState, action: FilmAction, allowDev = fal
       return { ...enter(state, 'cosmos'), elapsed: GALLERY.exit, planetariumTransition: true }
     case 'gallery-exit':
       if (state.scene === 'gallery' && state.returnToEnding) return { ...enter(state, 'ending'), returnToEnding: false }
-      return state.scene === 'gallery' && state.galleryIndex === MEMORIES.length - 1 ? enter(state, 'eye') : state
+      return state.scene === 'gallery' && state.galleryIndex === MEMORIES.length - 1
+        ? { ...enter(state, 'cosmos'), elapsed: GALLERY.exit, planetariumTransition: true }
+        : state
     case 'finish':
       return state.scene === 'greeting' && state.mode === 'waiting' ? { ...enter(state, 'ending'), returnToEnding: false } : state
   }

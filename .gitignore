@@ -60,3 +60,6 @@ Thumbs.db
 !.autopilot/2026-11-05-cinematic-background-continuity/state.js
 !.autopilot/2026-11-06-planetarium-galaxy-transition/
 !.autopilot/2026-11-06-planetarium-galaxy-transition/**
+
+!.autopilot/2026-11-06-planetarium-gallery-galaxy-reveal/
+!.autopilot/2026-11-06-planetarium-gallery-galaxy-reveal/**
