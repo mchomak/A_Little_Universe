@@ -4,7 +4,7 @@
 **Blocked by:** —
 **Зона:** `frontend/src/scenes/gallery/`, `frontend/src/engine/`, `frontend/src/scenes/galaxy/`
 **Волна:** 1
-**Status:** in-progress
+**Status:** done
 
 ## Что должно заработать
 

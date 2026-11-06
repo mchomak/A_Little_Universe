@@ -58,5 +58,5 @@ Thumbs.db
 /frontend/resources/macos-arm64/
 
 !.autopilot/2026-11-05-cinematic-background-continuity/state.js
-!.autopilot/2026-11-06-planetarium-galaxy-transition--wip/
-!.autopilot/2026-11-06-planetarium-galaxy-transition--wip/**
+!.autopilot/2026-11-06-planetarium-galaxy-transition/
+!.autopilot/2026-11-06-planetarium-galaxy-transition/**

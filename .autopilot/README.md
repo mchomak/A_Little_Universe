@@ -70,4 +70,4 @@
 | 2026-11-05 | `2026-11-05-review-selective-integration` | сдан с оговорками | 776 tests; visual MacBook and two-extra collage pending |
 
 | 2026-11-06 | `2026-11-05-cinematic-background-continuity` | сдан | Ночной переход 01–04; без изменений галерея 05 и галактика; 788 тестов, браузерные скриншоты |
-| 2026-11-06 | `2026-11-06-planetarium-galaxy-transition--wip` | в работе | — |
+| 2026-11-06 | `2026-11-06-planetarium-galaxy-transition` | сдан | Достижимый переход из фото планетария в Scene 07 с ранним reveal галактики, crop без растяжения, TypeScript/build прошли; визуальная проверка отложена пользователю |
