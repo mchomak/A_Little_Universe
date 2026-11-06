@@ -48,14 +48,14 @@ describe('gallery support transforms', () => {
 })
 
 describe('gallery event content', () => {
-  it('places start_img first, followed by all 17 events in order on alternating sides', () => {
-    expect(GALLERY_EVENT_ORDER).toHaveLength(17)
-    expect(GALLERY_MEMORIES).toHaveLength(18)
+  it('places start_img first, followed by all 16 events in order on alternating sides', () => {
+    expect(GALLERY_EVENT_ORDER).toHaveLength(16)
+    expect(GALLERY_MEMORIES).toHaveLength(17)
     expect(GALLERY_MEMORIES.map(({ id }) => id)).toEqual(['start_img.jpg', ...GALLERY_EVENT_ORDER])
     expect(GALLERY_MEMORIES.map(({ side }) => side)).toEqual(
       GALLERY_MEMORIES.map((_, index) => index % 2 === 0 ? -1 : 1),
     )
-    expect(GALLERY_MEMORIES.map(({ order }) => order)).toEqual(Array.from({ length: 18 }, (_, index) => index))
+    expect(GALLERY_MEMORIES.map(({ order }) => order)).toEqual(Array.from({ length: 17 }, (_, index) => index))
     expect(GALLERY_MEMORIES.every(({ image }) => Boolean(image))).toBe(true)
     expect(GALLERY.travel).toBeGreaterThan(GALLERY_MEMORIES.length * GALLERY.spacing)
   })

@@ -19,7 +19,8 @@ import type { SceneProps } from '../engine/sceneTypes'
 import { useSyncExternalStore } from 'react'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
-import { GALLERY, GALLERY_MEMORIES, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, gallerySupportGroupScale, gallerySupportLocalPositions, memoryPosition, type GalleryMemory } from './gallery/content'
+import { GALLERY, GALLERY_MEMORIES, PLANETARIUM_GALLERY_EVENT_ID, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, gallerySupportGroupScale, gallerySupportLocalPositions, type GalleryMemory } from './gallery/content'
+import { getGalleryPhotoPosition } from './gallery/archPlacement'
 import { GalleryColumn } from './gallery/GalleryColumn'
 import { GalleryArch } from './gallery/GalleryArch'
 import { galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, resetGallery, subscribeGallery } from './gallery/controller'
@@ -589,10 +590,12 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
   )
   useEffect(() => () => frameParticles.dispose(), [frameParticles])
   const layout = settings.galleryLayoutVariant === 'between-columns' ? settings.galleryLayoutB : settings.galleryLayoutA
-  const [x, y, z] = memoryPosition(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout, settings)
-  const supportPositions = galleryColumnPositions(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
-  const photoYaw = galleryPhotoYaw(memory, settings.galleryLayoutVariant)
-  const planetarium = memory.id === '2026_10_Planetarium'
+  const planetarium = memory.id === PLANETARIUM_GALLERY_EVENT_ID
+  const [x, y, z] = getGalleryPhotoPosition(GALLERY_MEMORIES, memory, settings, GALLERY_WORLD.floor.y)
+  const supportPositions = planetarium
+    ? []
+    : galleryColumnPositions(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
+  const photoYaw = galleryPhotoYaw(memory, settings.galleryLayoutVariant, settings.archRotationY)
   const supportLocalPositions = useMemo(
     () => gallerySupportLocalPositions(settings.galleryLayoutVariant, [x, y, z], supportPositions),
     [settings.galleryLayoutVariant, x, y, z, supportPositions],
@@ -623,9 +626,9 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
     group.current.scale.setScalar(first ? 1 + 0.35 * e : 1)
     const photoOffsetZ = camera.position.z - (first ? z * e : z)
     const photoFocusMix = m.focusIndex === memory.order ? m.focusMix : 0
-    const approachYaw = galleryPhotoApproachYaw(memory, settings.galleryLayoutVariant, photoOffsetZ, settings.galleryPhotoFacingMaxDegrees, photoFocusMix)
+    const approachYaw = galleryPhotoApproachYaw(memory, settings.galleryLayoutVariant, photoOffsetZ, settings.galleryPhotoFacingMaxDegrees, photoFocusMix, settings.archRotationY)
     group.current.rotation.set(0, first && settings.galleryLayoutVariant === 'on-columns' ? (reducedMotion ? 0 : 0.065 * (1 - e)) + photoYaw * e : approachYaw, 0)
-    const [columnX, columnY, columnZ] = settings.galleryLayoutVariant === 'between-columns'
+    const [columnX, columnY, columnZ] = settings.galleryLayoutVariant === 'between-columns' || supportPositions.length === 0
       ? [x, y, z]
       : supportPositions[0]!
     const animateSupportsWithPhoto = first && settings.galleryLayoutVariant === 'on-columns'

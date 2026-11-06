@@ -1,5 +1,7 @@
 import { advanceGallery, galleryMotion } from '../scenes/gallery/controller'
-import { GALLERY, GALLERY_MEMORIES, galleryPhotoYaw, memoryPosition } from '../scenes/gallery/content'
+import { GALLERY, GALLERY_MEMORIES, galleryPhotoYaw } from '../scenes/gallery/content'
+import { getGalleryPhotoPosition } from '../scenes/gallery/archPlacement'
+import { GALLERY_WORLD } from '../scenes/gallery/world'
 import { focusCamera } from '../scenes/gallery/camera'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
 import type { SceneComposerConfig } from '../systems/scene-config/config'
@@ -32,8 +34,7 @@ export function updateGalleryCameraPose(
   const exit = Math.min(1, motion.exit / GALLERY.exit)
   const aisleZ = GALLERY.startZ - motion.progress - exit * 2
   const memory = GALLERY_MEMORIES[motion.focusIndex]!
-  const layout = settings.galleryLayoutVariant === 'between-columns' ? settings.galleryLayoutB : settings.galleryLayoutA
-  const [x, y, z] = memoryPosition(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout, settings)
+  const [x, y, z] = getGalleryPhotoPosition(GALLERY_MEMORIES, memory, settings, GALLERY_WORLD.floor.y)
   const focal = motion.focusMix
   const collageFrame = getGalleryCollageCameraFrame(memory, settings, getGalleryPhotoAspectProfile(memory.id))
   const fittedFocusDistance = getGalleryCollageFocusDistance(collageFrame, aspect, getGalleryNormalFov(aspect, eased))
@@ -51,7 +52,7 @@ export function updateGalleryCameraPose(
     focusCenter[0] + (targetCenterX - focusCenter[0]) * distanceBlend,
     focusCenter[1] + (targetCenterY - focusCenter[1]) * distanceBlend,
   ] as const
-  const focusYaw = galleryPhotoYaw(memory, settings.galleryLayoutVariant)
+  const focusYaw = galleryPhotoYaw(memory, settings.galleryLayoutVariant, settings.archRotationY)
   const focusCenterWorldX = Math.cos(focusYaw) * easedFocusCenter[0]
   const focusCenterWorldZ = -Math.sin(focusYaw) * easedFocusCenter[0]
   const initial = firstMemoryCamera(34, reducedMotion)

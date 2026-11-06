@@ -30,6 +30,6 @@ describe('04.7 first memory and gallery entry', () => {
     expect(filmReducer(state, { type: 'gallery-focus', index: 0 }).galleryIndex).toBe(0)
     state = filmReducer(state, { type: 'toggle-pause' })
     expect(state.paused).toBe(true)
-    expect(filmReducer(state, { type: 'gallery-exit' }).scene).toBe('eye')
+    expect(filmReducer(state, { type: 'gallery-exit' }).scene).toBe('cosmos')
   })
 })

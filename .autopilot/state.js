@@ -1,164 +1,246 @@
 window.STATE =
 {
-  "slug": "planetarium-galaxy-transition",
-  "dir": "2026-11-06-planetarium-galaxy-transition",
-  "title": "Переход из планетария в галактику",
+  "slug": "planetarium-gallery-galaxy-reveal",
+  "dir": "2026-11-06-planetarium-gallery-galaxy-reveal",
+  "title": "Галерея планетария и переход к галактике",
   "mode": "full",
   "depth": "normal",
   "polish": null,
-  "tier": "T0",
+  "tier": "T1",
   "briefFile": "2026-11-06-brief.md",
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
-  "startedAt": "2026-11-06T02:42:01+03:00",
-  "updatedAt": "2026-11-06T04:26:18+03:00",
-  "finishedAt": "2026-11-06T04:26:18+03:00",
+  "startedAt": "2026-11-06T01:43:24Z",
+  "updatedAt": "2026-11-06T03:01:47.037Z",
+  "finishedAt": "2026-11-06T03:01:47.037Z",
   "stages": [
     {
+      "startedAt": "2026-11-06T01:43:24Z",
       "id": "preflight",
       "status": "done",
-      "startedAt": "2026-11-06T02:42:01+03:00",
-      "finishedAt": "2026-11-06T03:05:50+03:00"
+      "finishedAt": "2026-11-06T01:47:08Z"
     },
     {
+      "status": "done",
       "id": "manifest",
-      "status": "done",
-      "finishedAt": "2026-11-06T03:05:50+03:00",
-      "startedAt": "2026-11-06T03:05:50+03:00"
+      "startedAt": "2026-11-06T01:47:08Z",
+      "finishedAt": "2026-11-06T01:57:13Z"
     },
     {
+      "note": "полный автомат — самобрифинг",
+      "startedAt": "2026-11-06T01:43:24Z",
+      "finishedAt": "2026-11-06T01:43:24Z",
       "id": "briefing",
-      "status": "skipped",
-      "finishedAt": "2026-11-06T03:05:50+03:00",
-      "startedAt": "2026-11-06T03:05:50+03:00",
-      "note": "полный автомат — самобрифинг"
+      "status": "skipped"
     },
     {
+      "status": "done",
       "id": "spec",
-      "status": "done",
-      "startedAt": "2026-11-06T03:05:50+03:00",
-      "finishedAt": "2026-11-06T03:11:48+03:00"
+      "startedAt": "2026-11-06T01:57:13Z",
+      "finishedAt": "2026-11-06T02:16:49Z"
     },
     {
+      "status": "done",
       "id": "plan",
-      "status": "skipped",
-      "startedAt": "2026-11-06T03:11:48+03:00",
-      "finishedAt": "2026-11-06T03:11:48+03:00",
-      "note": "ярус T0 — один атомарный переход на существующем FilmCanvas, без разбивки на таски"
+      "startedAt": "2026-11-06T02:16:49Z",
+      "finishedAt": "2026-11-06T02:18:04Z"
     },
     {
+      "status": "done",
       "id": "build",
-      "status": "done",
-      "startedAt": "2026-11-06T03:11:48+03:00",
-      "finishedAt": "2026-11-06T04:23:05+03:00"
+      "startedAt": "2026-11-06T02:18:04Z",
+      "finishedAt": "2026-11-06T03:01:47.037Z"
     },
     {
+      "status": "done",
       "id": "review",
-      "status": "done",
-      "startedAt": "2026-11-06T03:36:04+03:00",
-      "finishedAt": "2026-11-06T04:20:00+03:00"
+      "startedAt": "2026-11-06T03:01:47.037Z",
+      "finishedAt": "2026-11-06T03:01:47.037Z"
     },
     {
-      "id": "final",
       "status": "done",
-      "startedAt": "2026-11-06T04:20:00+03:00",
-      "finishedAt": "2026-11-06T04:26:18+03:00"
+      "id": "final",
+      "startedAt": "2026-11-06T03:01:47.037Z",
+      "finishedAt": "2026-11-06T03:01:47.037Z"
     }
   ],
   "requirements": {
-    "total": 62,
-    "done": 62,
-    "inTicket": 0,
-    "inSpec": 0,
-    "placeholder": 0,
     "deferred": 0,
-    "dropped": 0
+    "dropped": 0,
+    "total": 42,
+    "inTicket": 0,
+    "placeholder": 0,
+    "inSpec": 0,
+    "done": 42
   },
   "tickets": [
     {
+      "status": "done",
+      "repairFindings": [],
+      "concerns": [
+        "Visual composition and transition timing need the user’s requested visual review."
+      ],
       "id": "01",
-      "title": "Достижимый переход и раннее проявление галактики",
-      "requirements": ["R01", "R04", "R08", "R09", "R23", "R24", "R26", "R30", "R31", "R34", "R35"],
-      "blockedBy": [],
       "wave": 1,
+      "retries": 0,
+      "files": [
+        "frontend/src/scenes/gallery/catalog.ts",
+        "frontend/src/scenes/gallery/content.ts",
+        "frontend/src/scenes/gallery/archPlacement.ts",
+        "frontend/src/scenes/gallery/catalog.test.ts",
+        "frontend/src/scenes/gallery/content.test.ts",
+        "frontend/src/scenes/GalleryScene.tsx",
+        "frontend/src/engine/galleryCameraPose.ts",
+        "frontend/src/data/galleryCaptions.json",
+        "images/2026_01_Country_House_New_Year/1.jpg"
+      ],
       "zone": [
         "frontend/src/scenes/gallery/",
-        "frontend/src/engine/",
-        "frontend/src/scenes/galaxy/"
+        "frontend/src/scenes/GalleryScene.tsx",
+        "frontend/src/engine/galleryCameraPose.ts",
+        "images/2026_01_Country_House_New_Year/"
       ],
-      "status": "done",
-      "startedAt": "2026-11-06T03:56:11+03:00",
-      "finishedAt": "2026-11-06T04:26:18+03:00",
-      "retries": 0,
+      "requirements": [
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "R05",
+        "R06",
+        "R07",
+        "R08",
+        "R09",
+        "R25",
+        "R26"
+      ],
       "repairs": 0,
-      "repairFindings": [],
-      "handoffs": 0,
-      "files": [
-        "frontend/src/scenes/galaxy/GalaxyExperience.tsx",
-        "frontend/src/scenes/gallery/planetariumTransition.tsx"
-      ],
       "tests": {
         "typecheck": "passed",
         "build": "passed",
-        "unitTests": "not run per explicit user instruction"
+        "unitTests": "not run; only TypeScript and production build checks were requested",
+        "visual": "not run per user request"
       },
-      "commit": "05ed06f",
-      "concerns": []
+      "blockedBy": [],
+      "title": "Актуальный каталог и Planetarium под аркой",
+      "handoffs": 0,
+      "startedAt": "2026-11-06T02:18:04Z",
+      "finishedAt": "2026-11-06T03:01:47.037Z"
+    },
+    {
+      "status": "done",
+      "repairFindings": [],
+      "concerns": [
+        "Visual composition and transition timing need the user’s requested visual review."
+      ],
+      "id": "02",
+      "wave": 2,
+      "retries": 0,
+      "files": [
+        "frontend/src/engine/film.ts",
+        "frontend/src/engine/filmConfig.ts",
+        "frontend/src/engine/CameraDirector.tsx",
+        "frontend/src/engine/SceneDirector.tsx",
+        "frontend/src/engine/film.test.ts",
+        "frontend/src/engine/runtime.test.ts",
+        "frontend/src/engine/sceneLighting.test.ts",
+        "frontend/src/components/SceneOverlay.tsx",
+        "frontend/src/debug/timelineModel.ts",
+        "frontend/src/app/filmStatus.ts",
+        "frontend/src/app/filmStatus.test.ts",
+        "frontend/src/scenes/EyeScene.tsx (deleted)",
+        "frontend/src/scenes/gallery/planetariumTransition.tsx",
+        "frontend/src/scenes/gallery/camera.test.ts",
+        "frontend/src/scenes/galaxy/GalaxyExperience.tsx",
+        "frontend/src/scenes/galaxy/shaders.ts",
+        "frontend/src/scenes/shared/firstMemoryFrame.test.ts"
+      ],
+      "zone": [
+        "frontend/src/engine/",
+        "frontend/src/scenes/gallery/planetariumTransition.tsx",
+        "frontend/src/scenes/galaxy/"
+      ],
+      "requirements": [
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18",
+        "R19",
+        "R20",
+        "R21",
+        "R22",
+        "R23",
+        "R24",
+        "R27",
+        "R28",
+        "R29",
+        "R30",
+        "R31",
+        "R32",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37",
+        "R38",
+        "R39",
+        "R40",
+        "R41",
+        "R42"
+      ],
+      "repairs": 0,
+      "tests": {
+        "typecheck": "passed",
+        "build": "passed",
+        "unitTests": "not run; only TypeScript and production build checks were requested",
+        "visual": "not run per user request"
+      },
+      "blockedBy": [
+        "01"
+      ],
+      "title": "Прямой переход Gallery → Galaxy",
+      "handoffs": 0,
+      "finishedAt": "2026-11-06T03:01:47.037Z"
     }
   ],
-  "singlePass": {
-    "status": "done",
-    "repairs": 1,
-    "zone": [
-      "frontend/src/engine/",
-      "frontend/src/scenes/gallery/",
-      "frontend/src/scenes/galaxy/"
-    ],
-    "startedAt": "2026-11-06T03:11:48+03:00",
-    "finishedAt": "2026-11-06T04:26:18+03:00",
-    "files": [
-      "frontend/src/engine/film.ts",
-      "frontend/src/engine/SceneDirector.tsx",
-      "frontend/src/scenes/GalleryScene.tsx",
-      "frontend/src/scenes/galaxy/GalaxyExperience.tsx",
-      "frontend/src/scenes/gallery/controller.ts",
-      "frontend/src/scenes/gallery/planetariumTransition.tsx"
-    ],
-    "tests": {
-      "typecheck": "passed",
-      "build": "passed",
-      "unitTests": "not run per explicit user instruction"
-    },
-    "commit": "05ed06f"
-  },
   "tests": null,
   "debt": {
-    "placeholders": [],
     "assumptions": [],
-    "emptyEnv": []
+    "emptyEnv": [],
+    "placeholders": []
   },
   "additions": [],
   "coverage": {
-    "result": "Blind brief/spec pass found 5 gaps; all corrected before implementation.",
-    "resolved": 5,
-    "findings": 5,
+    "independentPasses": 1,
     "resolution": [
-      "Fullscreen plane now matches projected card bounds before expanding.",
-      "Camera keeps configured galaxy center and avoids center-crossing/orbit.",
-      "No duplicate GalaxyExperience or star layer; reveal phase persists.",
-      "Final report includes implementation and visual caveats.",
-      "Git branch/main contradiction resolved and recorded."
+      "Country House poster and production asset copy acceptance",
+      "Git branch/push workflow and dirty-worktree preservation",
+      "Planetarium 1.jpg and matching card/fullscreen crop",
+      "Short crossfade, front-on approach, lower photo gradient",
+      "Skip sparse Galaxy opening while preserving ordinary Dev jump",
+      "Replay, no-blank-frame and no-duplicate star requirements",
+      "Same-port restart and complete final delivery report",
+      "Smooth camera path without center crossing/orbit",
+      "No external reference search or prolonged tuning",
+      "Full blur reached before photo opacity completes",
+      "Existing canvas, camera, and Galaxy systems only",
+      "One-pass completion with no interim approval request"
     ],
-    "independentPasses": 1
+    "findings": 12,
+    "resolved": 12,
+    "result": "All 42 requirements implemented; TypeScript and production build pass; visual checks omitted by request."
   },
-  "concerns": [],
+  "concerns": [
+    "No browser or visual validation was run per user request; gallery placement, the extracted Country House poster frame, and transition timing need visual review.",
+    "Production build retains Vite native config-loader extension warnings and the large chunk warning."
+  ],
   "reviewers": {
-    "manifestSpec": "Independent reader reviewed only brief.md and spec.md; five findings fixed before build.",
-    "craft": "/root/planetarium_transition_review"
+    "manifestSpec": "Independent G2 brief/spec coverage recheck clean; all 12 findings resolved.",
+    "craft": "Coordinator reviewed the implementation diff and successful TypeScript/build output; visual review omitted per user request."
   },
-  "blind": {
-    "result": "Final brief-only source recheck: the Planetarium Continue path reaches the special route, cover crop tracks the expanding plane, the sparse Galaxy opening is skipped, and normal Scene 07/DEV navigation remains intact.",
-    "runtime": "Not launched for acceptance; browser and visual checks were not run per explicit user instruction.",
-    "findings": []
-  }
-}
+  "blind": {}
+};

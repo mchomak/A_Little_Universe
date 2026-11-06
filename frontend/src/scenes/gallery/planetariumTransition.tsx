@@ -6,8 +6,7 @@ import type { FilmRuntime } from '../../engine/runtime'
 import type { FilmState } from '../../engine/film'
 import { GALLERY, GALLERY_MEMORIES } from './content'
 import { galleryMotion, gallerySnapshot, subscribeGallery } from './controller'
-import { getConfig, subscribeConfig } from '../../systems/scene-config/config'
-import { getGalaxyRevealState } from '../galaxy/animation'
+import { getConfig, subscribeConfig, type SceneComposerConfig } from '../../systems/scene-config/config'
 
 export interface PlanetariumPhotoRect {
   left: number
@@ -42,6 +41,8 @@ export function capturePlanetariumPhotoRect(photoRoot: Object3D, camera: Camera,
 
 export function registerPlanetariumPhotoTexture(texture: Texture) { planetariumTexture = texture }
 
+export function getPlanetariumPhotoTexture() { return planetariumTexture }
+
 export function releasePlanetariumPhotoTexture(texture: Texture) {
   if (planetariumTexture !== texture) { texture.dispose(); return }
   if (transitionActive) heldTexture = texture
@@ -62,23 +63,58 @@ function smooth(start: number, end: number, time: number) {
   return value * value * (3 - 2 * value)
 }
 
+const PHOTO_FADE_DURATION = 2.2
+
+function photoFadeStart(settings: SceneComposerConfig['scenes']['galaxy']) {
+  return Math.max(
+    GALLERY.exit + 2.1,
+    settings.firstStarsAt + 1.25,
+    settings.galaxyRevealAt + settings.revealDuration * 0.58,
+  )
+}
+
+export function getPlanetariumTransitionEnd(settings: SceneComposerConfig['scenes']['galaxy']) {
+  const photoFadeEnd = photoFadeStart(settings) + PHOTO_FADE_DURATION
+  return Math.max(settings.galaxyRevealAt + settings.revealDuration, photoFadeEnd)
+}
+
+export function getPlanetariumPhotoFade(time: number, settings: SceneComposerConfig['scenes']['galaxy']) {
+  const start = photoFadeStart(settings)
+  return smooth(start, start + PHOTO_FADE_DURATION, time)
+}
+
+export function getPlanetariumPhotoZoom(time: number) {
+  return 1 + 0.015 * smooth(GALLERY.exit, GALLERY.exit + 2.2, time)
+}
+
+/** Existing Galaxy points are clipped to bright photo areas only while the photo is in frame. */
+export function getPlanetariumPhotoStarMask(time: number, settings: SceneComposerConfig['scenes']['galaxy']) {
+  return time < GALLERY.exit ? 0 : 1 - getPlanetariumPhotoFade(time, settings)
+}
+
 function createTransitionMaterial() {
   return new ShaderMaterial({
     uniforms: {
       map: { value: null as Texture | null },
-      uOpacity: { value: 0 }, uCrop: { value: 0 }, uZoom: { value: 1 }, uBottomDark: { value: 0 },
+      uOpacity: { value: 0 }, uCrop: { value: 0 }, uZoom: { value: 1 }, uBlur: { value: 0 }, uBottomDark: { value: 0 },
       uImageAspect: { value: 1 }, uViewportAspect: { value: 1 },
     },
     vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
     fragmentShader: `
-      uniform sampler2D map; uniform float uOpacity; uniform float uCrop; uniform float uZoom;
+      uniform sampler2D map; uniform float uOpacity; uniform float uCrop; uniform float uZoom; uniform float uBlur;
       uniform float uBottomDark; uniform float uImageAspect; uniform float uViewportAspect; varying vec2 vUv;
+      vec4 photoSample(vec2 uv) { return texture2D(map, uv); }
       void main() {
         float cropX = min(1.0, uViewportAspect / max(0.001, uImageAspect));
         float cropY = min(1.0, uImageAspect / max(0.001, uViewportAspect));
         vec2 coverUv = (vUv - 0.5) * vec2(cropX, cropY) / uZoom + 0.5;
         vec2 uv = mix(vUv, coverUv, uCrop);
-        vec4 photo = texture2D(map, uv);
+        vec2 blurStep = vec2(0.034 / max(0.001, uImageAspect), 0.034) * uBlur;
+        vec4 photo = photoSample(uv) * 0.28;
+        photo += (photoSample(uv + vec2(blurStep.x, 0.0)) + photoSample(uv - vec2(blurStep.x, 0.0))
+          + photoSample(uv + vec2(0.0, blurStep.y)) + photoSample(uv - vec2(0.0, blurStep.y))) * 0.12;
+        photo += (photoSample(uv + blurStep) + photoSample(uv - blurStep)
+          + photoSample(uv + vec2(blurStep.x, -blurStep.y)) + photoSample(uv + vec2(-blurStep.x, blurStep.y))) * 0.06;
         float lowerFade = 1.0 - smoothstep(0.12, 0.8, vUv.y);
         photo.rgb *= 1.0 - uBottomDark * lowerFade;
         gl_FragColor = vec4(photo.rgb, photo.a * uOpacity);
@@ -106,7 +142,7 @@ export function PlanetariumTransitionOverlay({ state, runtime }: { state: FilmSt
   const isGalleryExit = state.scene === 'gallery' && snapshot.phase === 'exit' && snapshot.focus === GALLERY_MEMORIES.length - 1
   const isSpecialCosmos = state.scene === 'cosmos' && Boolean(state.planetariumTransition)
   const active = isGalleryExit || isSpecialCosmos
-  const revealEnd = config.scenes.galaxy.galaxyRevealAt + config.scenes.galaxy.revealDuration
+  const revealEnd = getPlanetariumTransitionEnd(config.scenes.galaxy)
 
   useEffect(() => {
     if (!active) setPlanetariumTransitionActive(false)
@@ -143,17 +179,18 @@ export function PlanetariumTransitionOverlay({ state, runtime }: { state: FilmSt
     const startHeight = Math.max(0.001, ((rect.top - rect.bottom) / 2) * fullHeight)
     const progress = Math.max(0, currentTime)
     const expand = smooth(1.5, GALLERY.exit, progress)
-    const starsVisible = getGalaxyRevealState(progress, config.scenes.galaxy).stars >= 0.99
-    const fadeStart = Math.max(GALLERY.exit + 2.1, config.scenes.galaxy.firstStarsAt + 1.25)
-    const photoFade = starsVisible ? smooth(fadeStart, fadeStart + 2.2, progress) : 0
+    const photoFade = getPlanetariumPhotoFade(progress, config.scenes.galaxy)
     const opacity = isGalleryExit ? smooth(0.02, 0.7, progress) : 1 - photoFade
-    const environmentOpacity = isGalleryExit ? 0.9 * smooth(0.05, GALLERY.exit, progress) : 0.9 * (1 - photoFade)
+    const environmentOpacity = isGalleryExit
+      ? smooth(0.05, GALLERY.exit, progress)
+      : 1 - smooth(GALLERY.exit, GALLERY.exit + 1.4, progress)
     const frameAspect = (startWidth + (fullWidth - startWidth) * expand) / (startHeight + (fullHeight - startHeight) * expand)
     const crop = 1
     const lowerDark = smooth(1.1, GALLERY.exit, progress) * (1 - photoFade)
     uniforms.uOpacity!.value = opacity
     uniforms.uCrop!.value = crop
-    uniforms.uZoom!.value = 1 + 0.015 * smooth(GALLERY.exit, GALLERY.exit + 2.2, progress)
+    uniforms.uZoom!.value = getPlanetariumPhotoZoom(progress)
+    uniforms.uBlur!.value = smooth(1.4, photoFadeStart(config.scenes.galaxy), progress)
     uniforms.uBottomDark!.value = lowerDark * 0.72
     uniforms.uImageAspect!.value = imageAspect
     uniforms.uViewportAspect!.value = frameAspect

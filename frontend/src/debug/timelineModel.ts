@@ -26,7 +26,6 @@ export function timelineFrames(scene: SceneId, config: SceneComposerConfig, cred
     case 'bloom': return [{ label: '03 Раскрытие лилии', start: 0 }, { label: '03.6 Созерцание', start: getBloomSceneFrames(config.scenes.bloom).contemplate[0] }]
     case 'identity': return [{ label: '04.1 Растворение лилии', start: 0 }]
     case 'gallery': return [{ label: '05 Галерея · свободный просмотр', start: 0 }]
-    case 'eye': return [{ label: '06 Голубой глаз', start: 0 }, { label: '06.5 Приближение', start: TIMING.eye.approach[0] }]
     case 'cosmos': return [
       { label: '07.1 Радужка', start: 0 }, { label: '07.2 Галактика', start: TIMING.cosmos.particles[0] },
       { label: '07.3 Космос', start: TIMING.cosmos.spiral[0] }, { label: '07.4 Плавное замедление', start: getGalaxyRevealState(0, config.scenes.galaxy).settleStart },

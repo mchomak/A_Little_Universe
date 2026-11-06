@@ -10,7 +10,7 @@ describe('scene lighting ownership', () => {
       fillIntensity: 1.1,
       fillColor: '#B9A4E8',
     }
-    for (const scene of ['prologue', 'growth', 'bloom', 'identity', 'eye', 'cosmos', 'greeting', 'ending']) {
+    for (const scene of ['prologue', 'growth', 'bloom', 'identity', 'cosmos', 'greeting', 'ending']) {
       expect(getSceneLighting(scene, 0)).toEqual(original)
       expect(getSceneLighting(scene, 1.8)).toEqual(original)
     }

@@ -46,6 +46,8 @@ export interface GalleryColumnCenteringSettings {
   columnDepth?: number
 }
 
+export const PLANETARIUM_GALLERY_EVENT_ID = '2026_10_Planetarium'
+
 /** Offset a B photo from the support anchors to the midpoint of their visible shafts. */
 export function galleryColumnPhotoCenterOffsetZ(settings: Readonly<GalleryColumnCenteringSettings> = {}): number {
   const columnScale = Number.isFinite(settings.columnScale) && (settings.columnScale ?? 0) > 0
@@ -136,7 +138,8 @@ export function gallerySupportColumnOffsetX(supportX: number, variant: GalleryLa
 }
 
 /** Side-facing cardinal yaw makes B exhibits face each other across the walkway. */
-export function galleryPhotoYaw(memory: GalleryMemory, variant: GalleryLayoutVariant = 'on-columns'): number {
+export function galleryPhotoYaw(memory: GalleryMemory, variant: GalleryLayoutVariant = 'on-columns', planetariumYaw = 0): number {
+  if (memory.id === PLANETARIUM_GALLERY_EVENT_ID) return Number.isFinite(planetariumYaw) ? planetariumYaw : 0
   const sideYaw = variant === 'between-columns' ? Math.PI / 2 : 1.15
   return -memory.side * sideYaw
 }
@@ -148,8 +151,10 @@ export function galleryPhotoApproachYaw(
   cameraOffsetZ: number,
   maxFacingDegrees = 45,
   focusMix = 0,
+  planetariumYaw = 0,
 ): number {
-  const baseYaw = galleryPhotoYaw(memory, variant)
+  const baseYaw = galleryPhotoYaw(memory, variant, planetariumYaw)
+  if (memory.id === PLANETARIUM_GALLERY_EVENT_ID) return baseYaw
   if (variant !== 'between-columns') return baseYaw
   const safeOffsetZ = Number.isFinite(cameraOffsetZ) ? cameraOffsetZ : 0
   const distance = Math.abs(safeOffsetZ)

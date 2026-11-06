@@ -2,7 +2,7 @@ import type { FilmState, SceneId } from './film'
 import { getConfig, type SceneComposerConfig } from '../systems/scene-config/config'
 export type { SceneId } from './film'
 
-export const SCENE_ORDER = ['prologue', 'growth', 'bloom', 'identity', 'gallery', 'eye', 'cosmos', 'greeting', 'ending'] as const satisfies readonly SceneId[]
+export const SCENE_ORDER = ['prologue', 'growth', 'bloom', 'identity', 'gallery', 'cosmos', 'greeting', 'ending'] as const satisfies readonly SceneId[]
 
 export const TIMING = {
   prologue: { duration: 18, seed: [0, 2], first: [2, 5.5], second: [7, 10.5], hold: [10.5, 12.5], dissolve: [12.5, 16], prompt: 18 },
@@ -10,11 +10,10 @@ export const TIMING = {
   bloom: { duration: 22, opening: [0, 16], contemplate: [16, 22] },
   identity: { duration: 34, flower: [0, 4], particles: [4, 8], name: [8, 13], morph: [13, 17], portrait: [17, 23], photo: [23, 34], caption: [28, 34] },
   gallery: { duration: 0, move: 1.2 },
-  eye: { duration: 18, approach: [15, 18] },
   cosmos: { duration: 26, iris: [0, 5], particles: [5, 11], spiral: [11, 15], settle: [22, 26] },
   greeting: { duration: 300, crawlSpeed: 26, postDissolvePause: 1 },
   ending: { duration: 0 }, transition: 0.7,
-  camera: { bloom: 16, gallery: 1.2, eye: 3, cosmos: 26 },
+  camera: { bloom: 16, gallery: 1.2, cosmos: 26 },
 } as const
 
 export interface GrowthSceneFrames {
@@ -264,7 +263,6 @@ export const SCENES: Record<SceneId, SceneConfig> = {
   bloom: { id: 'bloom', label: 'Раскрытие', duration: TIMING.bloom.duration, entryMode: 'playing' },
   identity: { id: 'identity', label: 'Василиса', duration: TIMING.identity.duration, entryMode: 'playing' },
   gallery: { id: 'gallery', label: 'Галерея', duration: TIMING.gallery.duration, entryMode: 'exploring' },
-  eye: { id: 'eye', label: 'Глаз', duration: TIMING.eye.duration, entryMode: 'playing' },
   cosmos: { id: 'cosmos', label: 'Космос', duration: TIMING.cosmos.duration, entryMode: 'playing' },
   greeting: { id: 'greeting', label: 'Поздравление', duration: TIMING.greeting.duration, entryMode: 'playing' },
   ending: { id: 'ending', label: 'Конец', duration: TIMING.ending.duration, entryMode: 'ended' },

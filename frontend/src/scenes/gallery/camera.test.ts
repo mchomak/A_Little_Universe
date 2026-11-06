@@ -78,7 +78,7 @@ describe('focus dolly', () => {
     expect(camera.far).toBe(100)
     expect(updates).toEqual([220, 100])
 
-    const restoreOtherScene = configureCameraFarPlane(camera, 'eye')
+    const restoreOtherScene = configureCameraFarPlane(camera, 'cosmos')
     expect(camera.far).toBe(100)
     expect(updates).toEqual([220, 100])
     restoreOtherScene()

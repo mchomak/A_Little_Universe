@@ -29,7 +29,7 @@ it('releases an old loading hold after switching scenes without reviving the old
   const previous = createFilmClock({ state, runtime, dispatch: () => {} })
   const release = runtime.hold()
   previous.dispose()
-  const next = createFilmClock({ state: { ...state, scene: 'eye', revision: 8 }, runtime, dispatch: () => {} })
+  const next = createFilmClock({ state: { ...state, scene: 'cosmos', revision: 8 }, runtime, dispatch: () => {} })
   expect(next.timeline.paused()).toBe(true)
   release()
   expect(next.timeline.paused()).toBe(false)
@@ -88,7 +88,7 @@ it('runs the Bloom scene clock automatically after growth hands off', () => {
 
 it('completes an endpoint seek after explicit resume and keeps old revisions inert', () => {
   const runtime = createFilmRuntime()
-  let state = { ...initialFilmState, scene: 'eye' as const, mode: 'playing' as const, elapsed: 18, paused: true, revision: 7 }
+  let state = { ...initialFilmState, scene: 'cosmos' as const, mode: 'playing' as const, elapsed: 26, paused: true, revision: 7 }
   const actions: FilmAction[] = []
   const clock = createFilmClock({ state, runtime, dispatch: (action) => actions.push(action) })
   expect(actions).toEqual([])
