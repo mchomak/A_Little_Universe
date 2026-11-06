@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeConfig } from '../../systems/scene-config/config'
-import { GALLERY_MEMORIES, PLANETARIUM_GALLERY_EVENT_ID } from './content'
+import { GALLERY, GALLERY_MEMORIES, galleryColumnPositions, memoryPosition, PLANETARIUM_GALLERY_EVENT_ID } from './content'
 import { createGalleryEntrySequence, getGalleryEntryRevealAlpha, getGalleryEntryRevealDuration } from './entryReveal'
 
 describe('gallery entry reveal timeline', () => {
@@ -55,6 +55,39 @@ describe('gallery entry reveal timeline', () => {
         if (sameDepth) expect(previous.position[0]).toBeLessThanOrEqual(step.position[0])
         else expect(previous.position[2]).toBeGreaterThan(step.position[2])
       })
+    }
+  })
+
+  it('includes every visible support and assigns each photo to its nearest support', () => {
+    const settings = normalizeConfig({ schemaVersion: 24, scenes: { gallery: { galleryLayoutVariant: 'between-columns' } } }).scenes.gallery
+    const sequence = createGalleryEntrySequence(GALLERY_MEMORIES, settings)
+    const expectedSupportKeys = GALLERY_MEMORIES
+      .filter(memory => memory.id !== PLANETARIUM_GALLERY_EVENT_ID)
+      .flatMap(memory => galleryColumnPositions(memory, settings.galleryWidth, settings.galleryLayoutVariant, settings.galleryLayoutB)
+        .map((_, supportIndex) => `${memory.order}:${supportIndex}`))
+      .sort()
+    const actualSupportKeys = sequence.steps
+      .filter(step => step.kind === 'column')
+      .map(step => `${step.memoryOrder}:${step.supportIndex}`)
+      .sort()
+
+    expect(actualSupportKeys).toEqual(expectedSupportKeys)
+    for (const memory of GALLERY_MEMORIES.filter(candidate => candidate.order > 0)) {
+      const photoIndex = sequence.photoIndices.get(memory.order)!
+      const supports = sequence.steps.filter(step => step.kind === 'column' && step.memoryOrder === memory.order)
+      if (supports.length === 0) {
+        expect(sequence.steps[photoIndex]).toMatchObject({ kind: 'photo', memoryOrder: memory.order })
+        continue
+      }
+
+      const photoPosition = memoryPosition(memory, settings.galleryWidth, settings.galleryLayoutVariant, settings.galleryLayoutB, settings)
+      const nearestSupport = supports
+        .map(support => ({
+          index: support.index,
+          distance: support.position.reduce((sum, value, axis) => sum + (value - photoPosition[axis]!) ** 2, 0),
+        }))
+        .sort((a, b) => a.distance - b.distance || a.index - b.index)[0]!
+      expect(photoIndex).toBe(nearestSupport.index)
     }
   })
 

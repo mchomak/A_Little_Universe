@@ -1,5 +1,8 @@
 ﻿import { expect, it, vi } from 'vitest'
-import { galleryArchDistanceOpacity, galleryColumnOpacity, galleryDistanceOpacity, galleryFocusOpacity, galleryFocusedPhotoDistanceOpacity, wakeOnVisible } from './visibility'
+import { normalizeConfig } from '../../systems/scene-config/config'
+import { GALLERY_MEMORIES } from './content'
+import { createGalleryEntrySequence, getGalleryEntryRevealAlpha, getGalleryEntryRevealDuration } from './entryReveal'
+import { galleryArchDistanceOpacity, galleryColumnOpacity, galleryDistanceOpacity, galleryEntryItemAlpha, galleryEntryVisibility, galleryFocusOpacity, galleryFocusedPhotoDistanceOpacity, wakeOnVisible } from './visibility'
 it('wakes a visible demand canvas and removes the listener on disposal', () => {
   const source = new EventTarget() as EventTarget & { hidden: boolean }; source.hidden = true
   const invalidate = vi.fn(); const dispose = wakeOnVisible(source as unknown as Document, invalidate)
@@ -43,4 +46,45 @@ it('keeps column opacity tied to scene visibility, exit, and distance rather tha
   expect(galleryColumnOpacity(1, 0, 0.6)).toBeCloseTo(0.6)
   expect(galleryColumnOpacity(1, 0.4, 0.6)).toBeCloseTo(0.36)
   expect(galleryColumnOpacity(0.5, 0, 1)).toBe(0.5)
+})
+it('reveals every support in sequence and completes photo-only items before the arch', () => {
+  const settings = normalizeConfig({ schemaVersion: 24, scenes: { gallery: { galleryLayoutVariant: 'between-columns' } } }).scenes.gallery
+  const sequence = createGalleryEntrySequence(GALLERY_MEMORIES, settings)
+  const supports = sequence.steps.filter(step => step.kind === 'column')
+
+  expect(supports.length).toBeGreaterThan(1)
+  for (const support of supports) {
+    const halfway = 2.2 + support.index * 0.3 + 0.15
+    const stageAlpha = galleryEntryItemAlpha(halfway, support.index)
+    expect(stageAlpha).toBeGreaterThan(0)
+    expect(stageAlpha).toBeLessThan(1)
+    expect(galleryEntryVisibility(0, stageAlpha)).toBe(stageAlpha)
+    for (const other of supports) {
+      if (other.index < support.index) expect(galleryEntryItemAlpha(halfway, other.index)).toBe(1)
+      if (other.index > support.index) expect(galleryEntryItemAlpha(halfway, other.index)).toBe(0)
+    }
+  }
+
+  const photoOnly = sequence.steps.find(step => step.kind === 'photo')!
+  expect(sequence.photoIndices.get(photoOnly.memoryOrder)).toBe(photoOnly.index)
+  const archStart = 2.2 + sequence.steps.length * 0.3
+  expect(galleryEntryItemAlpha(archStart, photoOnly.index)).toBe(1)
+  expect(getGalleryEntryRevealAlpha(archStart, 'arch', sequence.steps.length)).toBe(0)
+})
+it('reveals photos in order when gallery columns are disabled', () => {
+  const settings = normalizeConfig({ schemaVersion: 24, scenes: { gallery: { columnVisible: false } } }).scenes.gallery
+  const sequence = createGalleryEntrySequence(GALLERY_MEMORIES, settings)
+  const photos = sequence.steps.filter(step => step.kind === 'photo')
+  const itemStart = getGalleryEntryRevealDuration(0) - 0.65
+
+  expect(photos).toHaveLength(GALLERY_MEMORIES.length - 1)
+  expect(sequence.steps).toHaveLength(photos.length)
+  photos.forEach((photo, index) => {
+    expect(sequence.photoIndices.get(photo.memoryOrder)).toBe(index)
+    const halfway = itemStart + index * 0.3 + 0.15
+    expect(galleryEntryItemAlpha(halfway, photo.index)).toBeGreaterThan(0)
+    expect(galleryEntryItemAlpha(halfway, photo.index)).toBeLessThan(1)
+    if (index > 0) expect(galleryEntryItemAlpha(halfway, photo.index - 1)).toBe(1)
+    if (index + 1 < photos.length) expect(galleryEntryItemAlpha(halfway, photo.index + 1)).toBe(0)
+  })
 })

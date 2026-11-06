@@ -1,7 +1,8 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useLoader, useThree } from '@react-three/fiber'
 import type { RefObject } from 'react'
-import { galleryColumnOpacity, galleryDistanceOpacity, galleryFocusOpacity, galleryFocusedPhotoDistanceOpacity } from './gallery/visibility'
+import { galleryColumnOpacity, galleryDistanceOpacity, galleryEntryItemAlpha, galleryEntryVisibility, galleryFocusOpacity, galleryFocusedPhotoDistanceOpacity } from './gallery/visibility'
+import { createGalleryEntrySequence, getGalleryEntryRevealAlpha } from './gallery/entryReveal'
 import { galleryPhotoBlurAtFocus, galleryPhotoLightAtFocus } from './gallery/artDirection'
 import { createFrameParticleGeometry } from './gallery/frameParticles'
 import { getGalleryCaptionLayout, GALLERY_CAPTION_CANVAS_WIDTH, GALLERY_CAPTION_GAP, GALLERY_CAPTION_HORIZONTAL_PADDING, GALLERY_CAPTION_PLANE_WIDTH, type GalleryCaptionLayout } from './gallery/captionLayout'
@@ -487,7 +488,7 @@ function Photo({ url, width, height, fallback, onAspect, material, planetarium =
 }
 function setMaterialAlpha(saved: { material: Material; opacity: number; transparent: boolean; depthWrite: boolean }, alpha: number) { saved.material.opacity = saved.opacity * alpha; saved.material.transparent = alpha < 1 || saved.transparent; saved.material.depthWrite = alpha < 1 ? false : saved.depthWrite }
 function setFocusFog(material: Material, focus: boolean) { if (material instanceof MeshBasicMaterial && material.fog === focus) { material.fog = !focus; material.needsUpdate = true } }
-function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily }: { memory: GalleryMemory; reducedMotion: boolean; halo: CanvasTexture; paused: boolean; settings: GalleryArtSettings; titleFontFamily: string }) {
+function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily, photoEntryStepIndex, supportEntryStepIndices }: { memory: GalleryMemory; reducedMotion: boolean; halo: CanvasTexture; paused: boolean; settings: GalleryArtSettings; titleFontFamily: string; photoEntryStepIndex?: number | undefined; supportEntryStepIndices?: ReadonlyMap<number, number> | undefined }) {
   const materials = useRef<{ material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[]>([])
   const group = useRef<Group>(null)
   const supportGroup = useRef<Group>(null)
@@ -509,7 +510,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
   const frameMaterial = useMemo(() => frameShaderMaterial(), [])
   const frameMaterialRef = useRef(frameMaterial)
   const visual = useRef({ alpha: 0, focusAmount: 0, timelineDirection: 0 as -1 | 0 | 1 })
-  const columnOpacity = useRef(0)
+  const columnOpacityValues = useRef<number[]>([])
 
   useEffect(() => {
     photoMaterialRef.current = photoMaterial
@@ -595,6 +596,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
   const supportPositions = planetarium
     ? []
     : galleryColumnPositions(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
+  const supportCount = supportPositions.length
   const photoYaw = galleryPhotoYaw(memory, settings.galleryLayoutVariant, settings.archRotationY)
   const supportLocalPositions = useMemo(
     () => gallerySupportLocalPositions(settings.galleryLayoutVariant, [x, y, z], supportPositions),
@@ -647,7 +649,9 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
     visualGroup.current.rotation.set(first && !reducedMotion ? -0.022 * (1 - e) : 0, 0, first && !reducedMotion ? -0.009 * (1 - e) : 0)
     if (planetarium) capturePlanetariumPhotoRect(visualGroup.current, camera, width, height)
 
-    const visible = first ? 1 : Math.max(0, Math.min(1, (m.intro - memory.order * 0.15) / 1.4))
+    const introVisibility = first ? 1 : Math.max(0, Math.min(1, (m.intro - memory.order * 0.15) / 1.4))
+    const entryAlpha = first ? 1 : galleryEntryItemAlpha(m.entryReveal, photoEntryStepIndex ?? -1)
+    const visible = first ? 1 : galleryEntryVisibility(introVisibility, entryAlpha)
     const snapshot = gallerySnapshot()
     const selected = snapshot.focus === memory.order
     const focusTarget = m.focusMix > 0.001 && m.focusIndex === memory.order
@@ -685,13 +689,17 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
     const alpha = visible * exitOpacity * focusAlpha * photoDistanceAlpha
     // Columns belong to the gallery architecture, so focusing a photo may fade
     // neighboring photos but must not fade their columns with them.
-    columnOpacity.current = galleryColumnOpacity(visible, exitMix, distanceAlpha)
+    const columnAlpha = galleryColumnOpacity(1, exitMix, distanceAlpha)
+    for (let supportIndex = 0; supportIndex < supportCount; supportIndex++) {
+      const stepIndex = supportEntryStepIndices?.get(supportIndex) ?? -1
+      columnOpacityValues.current[supportIndex] = columnAlpha * galleryEntryItemAlpha(m.entryReveal, stepIndex)
+    }
     for (const saved of materials.current) {
       setMaterialAlpha(saved, alpha)
       setFocusFog(saved.material, focusTarget)
     }
     group.current.visible = visible > 0 && photoDistanceAlpha > 0 && alpha > 0.001
-    supportGroup.current.visible = group.current.visible && settings.columnVisible
+    supportGroup.current.visible = settings.columnVisible && columnAlpha > 0.001
     visual.current = { alpha, focusAmount, timelineDirection }
 
     setShaderUniform(photoMaterialRef.current, 'uAlpha', alpha)
@@ -715,7 +723,8 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
           depth={settings.columnDepth}
           offsetX={gallerySupportColumnOffsetX(supportX, settings.galleryLayoutVariant, settings.columnOffsetX)}
           offsetY={settings.columnOffsetY}
-          opacity={columnOpacity}
+          opacities={columnOpacityValues}
+          opacityIndex={index}
         />
       </group>)}
     </group>
@@ -773,6 +782,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
 }
 const dustVertexShader = [
   'uniform float uTime;',
+  'uniform float uEntryOpacity;',
   'attribute float size;',
   'attribute float phase;',
   'attribute float speed;',
@@ -788,7 +798,7 @@ const dustVertexShader = [
   '  vec4 view = modelViewMatrix * vec4(moved, 1.0);',
   '  gl_Position = projectionMatrix * view;',
   '  gl_PointSize = size * 280.0 / max(1.0, -view.z);',
-  '  vAlpha = particleAlpha * (0.76 + 0.24 * sin(t));',
+  '  vAlpha = particleAlpha * (0.76 + 0.24 * sin(t)) * uEntryOpacity;',
   '  vDepth = -view.z;',
   '  vColor = color;',
   '}',
@@ -813,12 +823,15 @@ function Dust({ low, reducedMotion, settings }: { low: boolean; reducedMotion: b
   const count = getGalleryDustCount(settings.particleCount, low, reducedMotion)
   const geometry = useMemo(() => createGalleryDustGeometry(count), [count])
   useEffect(() => () => geometry.dispose(), [geometry])
-  useFrame(() => { setShaderUniform(material.current, 'uTime', reducedMotion ? 0 : galleryMotion.time) })
+  useFrame(() => {
+    setShaderUniform(material.current, 'uTime', reducedMotion ? 0 : galleryMotion.time)
+    setShaderUniform(material.current, 'uEntryOpacity', getGalleryEntryRevealAlpha(galleryMotion.entryReveal, 'clouds'))
+  })
   return <points geometry={geometry} raycast={() => undefined}>
-    <shaderMaterial ref={material} uniforms={{ uTime: { value: 0 } }} vertexShader={dustVertexShader} fragmentShader={dustFragmentShader} transparent depthWrite={false} />
+    <shaderMaterial ref={material} uniforms={{ uTime: { value: 0 }, uEntryOpacity: { value: 0 } }} vertexShader={dustVertexShader} fragmentShader={dustFragmentShader} transparent depthWrite={false} />
   </points>
 }
-function MemoryThreads({ settings, low, paused, halo }: { settings: GalleryArtSettings; low: boolean; paused: boolean; halo: CanvasTexture }) {
+function MemoryThreads({ settings, low, paused, halo, photoEntryIndices }: { settings: GalleryArtSettings; low: boolean; paused: boolean; halo: CanvasTexture; photoEntryIndices: ReadonlyMap<number, number> }) {
   const layout = settings.galleryLayoutVariant === 'between-columns' ? settings.galleryLayoutB : settings.galleryLayoutA
   const { columnDepth, columnScale, galleryLayoutVariant, galleryWidth } = settings
   const paths = useMemo(() => createMemoryThreadPaths(
@@ -832,42 +845,53 @@ function MemoryThreads({ settings, low, paused, halo }: { settings: GalleryArtSe
     () => paths.map(path => createMemoryThreadGeometry(path, { segments: low ? 22 : 38, radius: 0.01, radialSegments: 4 })),
     [low, paths],
   )
-  const accentGeometry = useMemo(() => createMemoryThreadAccentGeometry(paths), [paths])
-  const material = useMemo(() => createMemoryThreadMaterial(settings, galleryMotion.focusMix), [settings])
-  const accentMaterial = useRef<PointsMaterial>(null)
+  const accentGeometries = useMemo(() => paths.map(path => createMemoryThreadAccentGeometry([path])), [paths])
+  const threadMaterials = useMemo(() => paths.map(() => {
+    const material = createMemoryThreadMaterial(settings, galleryMotion.focusMix)
+    material.opacity = 0
+    return material
+  }), [paths, settings])
+  const accentMaterials = useMemo(() => paths.map(() => new PointsMaterial({
+    map: halo,
+    color: '#ead8bd',
+    size: 0.13,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    blending: AdditiveBlending,
+  })), [halo, paths])
 
   useEffect(() => () => {
     geometries.forEach(geometry => geometry.dispose())
-    accentGeometry.dispose()
-    material.dispose()
-  }, [geometries, accentGeometry, material])
-  useEffect(() => {
+    accentGeometries.forEach(geometry => geometry.dispose())
+    threadMaterials.forEach(material => material.dispose())
+    accentMaterials.forEach(material => material.dispose())
+  }, [accentGeometries, accentMaterials, geometries, threadMaterials])
+  const updateOpacity = useCallback(() => {
     const focus = galleryMotion.focusMix
-    updateMemoryThreadMaterial(material, settings, focus)
-    if (accentMaterial.current) accentMaterial.current.opacity = memoryThreadOpacity(settings, focus) * 1.25
-  }, [material, settings])
+    paths.forEach((path, index) => {
+      const photoAlpha = (memoryOrder: number) => {
+        if (memoryOrder === 0) return 1
+        const stepIndex = photoEntryIndices.get(memoryOrder)
+        return stepIndex === undefined ? 0 : galleryEntryItemAlpha(galleryMotion.entryReveal, stepIndex)
+      }
+      const entryAlpha = Math.min(photoAlpha(path.startOrder), photoAlpha(path.endOrder))
+      const material = threadMaterials[index]!
+      updateMemoryThreadMaterial(material, settings, focus)
+      material.opacity *= entryAlpha
+      accentMaterials[index]!.opacity = memoryThreadOpacity(settings, focus) * 1.25 * entryAlpha
+    })
+  }, [accentMaterials, paths, photoEntryIndices, settings, threadMaterials])
+  useEffect(() => { updateOpacity() }, [updateOpacity])
 
   useFrame(() => {
     if (paused || document.hidden) return
-    const focus = galleryMotion.focusMix
-    updateMemoryThreadMaterial(material, settings, focus)
-    if (accentMaterial.current) accentMaterial.current.opacity = memoryThreadOpacity(settings, focus) * 1.25
+    updateOpacity()
   })
 
   return <group raycast={() => undefined}>
-    {geometries.map((geometry, index) => <mesh key={index} geometry={geometry} material={material} renderOrder={GALLERY_THREAD_RENDER_ORDER} raycast={() => undefined} />)}
-    <points geometry={accentGeometry} renderOrder={GALLERY_THREAD_RENDER_ORDER} raycast={() => undefined}>
-      <pointsMaterial
-        ref={accentMaterial}
-        map={halo}
-        color="#ead8bd"
-        size={0.13}
-        transparent
-        opacity={memoryThreadOpacity(settings, galleryMotion.focusMix) * 1.25}
-        depthWrite={false}
-        blending={AdditiveBlending}
-      />
-    </points>
+    {geometries.map((geometry, index) => <mesh key={index} geometry={geometry} material={threadMaterials[index]!} renderOrder={GALLERY_THREAD_RENDER_ORDER} raycast={() => undefined} />)}
+    {accentGeometries.map((geometry, index) => <points key={`accent-${index}`} geometry={geometry} material={accentMaterials[index]!} renderOrder={GALLERY_THREAD_RENDER_ORDER} raycast={() => undefined} />)}
   </group>
 }
 
@@ -875,6 +899,17 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
   const gl = useThree(s => s.gl)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const settings = config.scenes.gallery
+  const entrySequence = useMemo(() => createGalleryEntrySequence(GALLERY_MEMORIES, settings), [settings])
+  const supportEntryStepIndices = useMemo(() => {
+    const indices = new Map<number, Map<number, number>>()
+    for (const step of entrySequence.steps) {
+      if (step.kind !== 'column') continue
+      const memoryIndices = indices.get(step.memoryOrder) ?? new Map<number, number>()
+      memoryIndices.set(step.supportIndex, step.index)
+      indices.set(step.memoryOrder, memoryIndices)
+    }
+    return indices
+  }, [entrySequence])
   const prologueFont = ART_FONT_CATALOG.find(({ id }) => id === config.scenes.prologue.fontFamily) ?? ART_FONT_CATALOG[0]!
   const [loadedTitleFontId, setLoadedTitleFontId] = useState<ArtFontId | null>(null)
   useEffect(() => {
@@ -897,13 +932,14 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
     <MoonlitWorld settings={settings} quality={quality} halo={halo} reducedMotion={reducedMotion} />
     <GalleryArch settings={settings} />
     <Dust low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
-    {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} titleFontFamily={titleFontFamily} />)}
-    <MemoryThreads settings={settings} low={quality === 'low'} paused={state.paused} halo={halo} />
+    {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} titleFontFamily={titleFontFamily} photoEntryStepIndex={entrySequence.photoIndices.get(memory.order)} supportEntryStepIndices={supportEntryStepIndices.get(memory.order)} />)}
+    <MemoryThreads settings={settings} low={quality === 'low'} paused={state.paused} halo={halo} photoEntryIndices={entrySequence.photoIndices} />
     <FloorLights halo={halo} low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
   </>
 }
 
 function FloorLights({ halo, low, reducedMotion, settings }: { halo: CanvasTexture; low: boolean; reducedMotion: boolean; settings: GalleryArtSettings }) {
+  const material = useRef<PointsMaterial>(null)
   const count = Math.round(getGalleryDustCount(settings.particleCount, low, reducedMotion) * 0.09)
   const geometry = useMemo(() => {
     const positions = new Float32Array(count * 3)
@@ -919,7 +955,11 @@ function FloorLights({ halo, low, reducedMotion, settings }: { halo: CanvasTextu
     return result
   }, [count])
   useEffect(() => () => geometry.dispose(), [geometry])
+  useFrame(() => {
+    if (document.hidden) return
+    if (material.current) material.current.opacity = 0.16 * getGalleryEntryRevealAlpha(galleryMotion.entryReveal, 'water')
+  })
   return <points geometry={geometry} raycast={() => undefined}>
-    <pointsMaterial map={halo} color="#d8c8b3" size={0.14} transparent opacity={0.16} depthWrite={false} blending={AdditiveBlending} />
+    <pointsMaterial ref={material} map={halo} color="#d8c8b3" size={0.14} transparent opacity={0} depthWrite={false} blending={AdditiveBlending} />
   </points>
 }

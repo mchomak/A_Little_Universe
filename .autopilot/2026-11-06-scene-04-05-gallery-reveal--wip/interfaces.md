@@ -49,3 +49,10 @@
 - `getGalleryAtmosphereRevealAlpha(elapsed, phase: 'clouds' | 'moon')` оборачивает общую `getGalleryEntryRevealAlpha` с дополнительным clamp и не задаёт собственные длительности.
 - `MoonlitWorld` подаёт alpha `clouds` в cloud/haze visibility fade; отдельная alpha `moon` управляет лунным диском, ореолами, scattering, источниками света и лунной подсветкой в cloud/haze шейдерах.
 - Базовые Scene Composer opacities/intensities, движение атмосферы, качество шейдера, depth/cleanup остаются прежними; настройки только умножаются на текущую alpha-фазу.
+
+## Из таска 04 — фото и отдельные опоры
+
+- `GalleryScene` строит `createGalleryEntrySequence` по актуальному gallery settings и передаёт индекс фото и отдельные `supportIndex` в `Memory`.
+- `galleryEntryItemAlpha(elapsed, index)` использует общую фазу item; `galleryEntryVisibility(introAlpha, entryAlpha)` удерживает карточку видимой после её завершённого item во время последующего штатного camera intro.
+- `GalleryColumn` читает собственный индекс из одного ref-массива; shared alpha нескольких колонн запрещён. Факторы `exitMix` и distance остаются в обычной колонной alpha, focus/raycast остаются как прежде.
+- Dust и floor glints используют среды `clouds` и `water`; нить каждой пары воспоминаний получает минимум alpha двух карточек на её концах и не видна раньше обоих endpoint.

@@ -4,7 +4,7 @@
 **Blocked by:** 01
 **Зона:** Cloud volume material и `MoonlitWorld`
 **Волна:** 2
-**Status:** review
+**Status:** done · commit `8e62998`
 
 ## Что должно заработать
 

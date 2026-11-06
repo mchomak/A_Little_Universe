@@ -43,7 +43,7 @@ function createColumnModel(scene: Group): ColumnModelInstance {
  * Original Sketchfab ionic column, attached to one photo's Memory transform.
  * Local photo face is +Z, so a positive depth puts the column behind the card.
  */
-export function GalleryColumn({ visible, scale, depth, offsetX, offsetY, opacity }: GalleryColumnSettings & { opacity: RefObject<number> }) {
+export function GalleryColumn({ visible, scale, depth, offsetX, offsetY, opacities, opacityIndex }: GalleryColumnSettings & { opacities: RefObject<number[]>; opacityIndex: number }) {
   const gltf = useGLTF(columnModelUrl)
   const rootRef = useRef<Group>(null)
   const model = useMemo(() => createColumnModel(gltf.scene), [gltf.scene])
@@ -65,7 +65,7 @@ export function GalleryColumn({ visible, scale, depth, offsetX, offsetY, opacity
     )
     root.position.set(...placement.position)
     root.scale.set(...placement.scale)
-    setGalleryColumnOpacity(model.root, opacity.current)
+    setGalleryColumnOpacity(model.root, opacities.current[opacityIndex] ?? 0)
   })
 
   return <group ref={rootRef} visible={visible} raycast={IGNORE_RAYCAST}>

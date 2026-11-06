@@ -1,4 +1,6 @@
-﻿/** Wake a demand-rendered scene when the browser makes it visible again. */
+import { getGalleryEntryRevealAlpha } from './entryReveal'
+
+/** Wake a demand-rendered scene when the browser makes it visible again. */
 export function wakeOnVisible(visibility: Pick<Document, 'hidden' | 'addEventListener' | 'removeEventListener'>, invalidate: () => void) {
   const wake = () => { if (!visibility.hidden) invalidate() }
   visibility.addEventListener('visibilitychange', wake)
@@ -52,4 +54,16 @@ export function galleryColumnOpacity(visible: number, exitMix: number, distanceO
   const safeExitMix = Number.isFinite(exitMix) ? Math.max(0, Math.min(1, exitMix)) : 0
   const distanceAlpha = Number.isFinite(distanceOpacity) ? Math.max(0, Math.min(1, distanceOpacity)) : 0
   return visibleAlpha * (1 - safeExitMix) * distanceAlpha
+}
+
+/** Per-item reveal alpha, kept separate so scene and material opacity remain intact. */
+export function galleryEntryItemAlpha(elapsed: number, index: number) {
+  return getGalleryEntryRevealAlpha(elapsed, 'item', index)
+}
+
+/** Keeps a staged memory visible after its reveal while the existing intro progresses. */
+export function galleryEntryVisibility(introAlpha: number, entryAlpha: number) {
+  const intro = Number.isFinite(introAlpha) ? Math.max(0, Math.min(1, introAlpha)) : 0
+  const entry = Number.isFinite(entryAlpha) ? Math.max(0, Math.min(1, entryAlpha)) : 0
+  return Math.max(intro, entry)
 }
