@@ -4,7 +4,7 @@
 **Blocked by:** 01
 **Зона:** Water material и `WetFloor`
 **Волна:** 2
-**Status:** ready
+**Status:** done · commit `aa8a686`
 
 ## Что должно заработать
 

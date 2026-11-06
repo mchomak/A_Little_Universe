@@ -43,3 +43,9 @@
 - `WetFloor` читает `getGalleryEntryRevealAlpha(galleryMotion.entryReveal, 'water')` из общих часов и передаёт его в `updateGalleryWaterMaterial`.
 - `updateGalleryWaterMaterial(material, settings, galleryTime, reducedMotion, entryRevealAlpha = 1)` умножает только штатный `waterOpacity` на ограниченный коэффициент этапа; текущие shader uniforms, normal map, reflection target, quality и cleanup остаются прежними.
 - Вода и её planar reflection используют этот же материал и коэффициент alpha, чтобы появляться синхронно.
+
+## Из таска 03 — alpha атмосферы и лунного света
+
+- `getGalleryAtmosphereRevealAlpha(elapsed, phase: 'clouds' | 'moon')` оборачивает общую `getGalleryEntryRevealAlpha` с дополнительным clamp и не задаёт собственные длительности.
+- `MoonlitWorld` подаёт alpha `clouds` в cloud/haze visibility fade; отдельная alpha `moon` управляет лунным диском, ореолами, scattering, источниками света и лунной подсветкой в cloud/haze шейдерах.
+- Базовые Scene Composer opacities/intensities, движение атмосферы, качество шейдера, depth/cleanup остаются прежними; настройки только умножаются на текущую alpha-фазу.

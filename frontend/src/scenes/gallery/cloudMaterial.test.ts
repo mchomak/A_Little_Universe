@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BackSide, FrontSide, NormalBlending } from 'three'
 import { GALLERY_WORLD } from './world'
-import { createGalleryCloudVolumeMaterial, getGalleryVolumeDepthFade, getGalleryVolumeRaySamples, setGalleryAtmosphereTime, setGalleryAtmosphereView } from './cloudMaterial'
+import { createGalleryCloudVolumeMaterial, getGalleryAtmosphereRevealAlpha, getGalleryVolumeDepthFade, getGalleryVolumeRaySamples, setGalleryAtmosphereTime, setGalleryAtmosphereView } from './cloudMaterial'
 
 const cloudOptions = {
   kind: 'cloud' as const,
@@ -18,6 +18,17 @@ const cloudOptions = {
 }
 
 describe('gallery volumetric atmosphere material', () => {
+  it('stages cloud and moon atmosphere reveals with finite bounded alpha', () => {
+    expect(getGalleryAtmosphereRevealAlpha(0.7, 'clouds')).toBe(0)
+    expect(getGalleryAtmosphereRevealAlpha(1.1, 'clouds')).toBeCloseTo(0.5)
+    expect(getGalleryAtmosphereRevealAlpha(1.5, 'clouds')).toBe(1)
+    expect(getGalleryAtmosphereRevealAlpha(1.5, 'moon')).toBe(0)
+    expect(getGalleryAtmosphereRevealAlpha(1.85, 'moon')).toBeCloseTo(0.5)
+    expect(getGalleryAtmosphereRevealAlpha(2.2, 'moon')).toBe(1)
+    expect(getGalleryAtmosphereRevealAlpha(Number.NaN, 'moon')).toBe(0)
+    expect(getGalleryAtmosphereRevealAlpha(Number.POSITIVE_INFINITY, 'clouds')).toBe(0)
+  })
+
   it('ray-marches seeded density through a world-space cloud volume', () => {
     const material = createGalleryCloudVolumeMaterial(cloudOptions)
 

@@ -1,5 +1,14 @@
 import { BackSide, Color, FrontSide, NormalBlending, ShaderMaterial, Vector3 } from 'three'
 import { getGalleryAtmosphereStepCount, getGalleryAtmosphereVisibilityFade, type GalleryAtmosphereLayer, type GalleryQuality } from './world'
+import { getGalleryEntryRevealAlpha } from './entryReveal'
+
+export type GalleryAtmosphereRevealPhase = 'clouds' | 'moon'
+
+/** Bounds the shared entry timeline alpha for atmosphere materials and light coefficients. */
+export function getGalleryAtmosphereRevealAlpha(elapsed: number, phase: GalleryAtmosphereRevealPhase): number {
+  const alpha = getGalleryEntryRevealAlpha(elapsed, phase)
+  return Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 0
+}
 
 export interface GalleryCloudVolumeMaterialOptions {
   kind: 'cloud' | 'haze'
@@ -51,6 +60,7 @@ const cloudVolumeFragmentShader = `
   uniform float uTime;
   uniform float uDriftSpeed;
   uniform float uMoonLightIntensity;
+  uniform float uMoonReveal;
   uniform float uIsHaze;
   uniform float uStepCount;
   uniform float uVisibilityFade;
@@ -181,7 +191,7 @@ const cloudVolumeFragmentShader = `
       float lightResponse = 0.045 + moonFacing * 0.11 + silverEdge * 0.24 * whiteStrength + moonNearby * 0.075;
       if (isHaze > 0.5) lightResponse = 0.012 + moonNearby * 0.065 * whiteStrength;
       float lightBreath = 0.96 + 0.04 * sin(time * 0.22 + uSeed * 0.07);
-      float lunarLift = clamp(lightResponse * uMoonLightIntensity * lightBreath * 0.95, 0.0, 0.32);
+      float lunarLift = clamp(lightResponse * uMoonLightIntensity * clamp(uMoonReveal, 0.0, 1.0) * lightBreath * 0.95, 0.0, 0.32);
       float innerShade = 0.48 + broad * 0.34 + detail * 0.2 + (1.0 - radius) * 0.1;
       vec3 blueAir = vec3(0.025, 0.11, 0.28);
       vec3 coolBase = mix(uBaseColor, blueAir, clamp(uCoolTint / 1.5, 0.0, 1.0));
@@ -227,6 +237,7 @@ export function createGalleryCloudVolumeMaterial(options: GalleryCloudVolumeMate
       uCoolTint: { value: Math.max(0, Math.min(1.5, options.coolTint ?? 1)) },
       uWhiteHighlight: { value: Math.max(0, Math.min(1.5, options.whiteHighlight ?? 0.48)) },
       uMoonLightIntensity: { value: Math.max(0, options.moonLightIntensity) },
+      uMoonReveal: { value: 0 },
       uIsHaze: { value: options.kind === 'haze' ? 1 : 0 },
       uStepCount: { value: steps },
       uVisibilityFade: { value: 1 },
