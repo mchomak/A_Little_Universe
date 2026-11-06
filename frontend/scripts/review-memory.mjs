@@ -64,7 +64,7 @@ fs.mkdirSync(output, { recursive: true })
       return { camera: [...camera.matrixWorld.elements, ...camera.projectionMatrix.elements], photo: photos[0] }
     })
     const endPose = await readPose()
-    const worldOnly = '#developer-panel,.debug-toggle,.page-header,.page-footer,.first-memory-caption,.gallery-panel{visibility:hidden!important}'
+    const worldOnly = '#developer-panel,.debug-toggle,.page-header,.first-memory-caption,.gallery-panel{visibility:hidden!important}'
     await page.addStyleTag({ content: worldOnly })
     const end = await filmCanvas.screenshot({ path: path.join(output, 'identity-end-canvas.png') })
     await page.locator('style').last().evaluate((element) => element.remove())

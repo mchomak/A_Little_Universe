@@ -36,9 +36,7 @@ export function getLilyFilmSurfaceDimensions(): { width: number; height: number 
   const bounds = root?.getBoundingClientRect()
   const width = bounds?.width || window.innerWidth || 1
   const totalHeight = bounds?.height || window.innerHeight || 1
-  const footerValue = getComputedStyle(root ?? document.documentElement).getPropertyValue('--film-footer')
-  const footer = Number.parseFloat(footerValue) || 0
-  return { width, height: Math.max(1, totalHeight - footer) }
+  return { width, height: Math.max(1, totalHeight) }
 }
 
 export function subscribeLilyFilmSurfaceDimensions(listener: () => void) {
