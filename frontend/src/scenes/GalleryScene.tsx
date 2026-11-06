@@ -30,6 +30,7 @@ import { processMemorySignalBaselinePixels, type MemorySignalBaselineSample } fr
 import firstPhotoUrl from '../assets/start_img.jpg'
 import { ART_FONT_CATALOG, loadArtFont } from '../systems/scene-config/fontCatalog'
 import type { ArtFontId } from '../systems/scene-config/fontIds'
+import { capturePlanetariumPhotoRect, registerPlanetariumPhotoTexture, releasePlanetariumPhotoTexture } from './gallery/planetariumTransition'
 
 function canvasTexture(draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void, w = 768, h = 768) {
   const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h
@@ -473,13 +474,13 @@ function frameShaderMaterial() {
     toneMapped: false,
   })
 }
-function Photo({ url, width, height, fallback, onAspect, material }: { url: string; width: number; height: number; fallback: Texture | null; onAspect: (value: number) => void; material: RefObject<ShaderMaterial | null> }) {
+function Photo({ url, width, height, fallback, onAspect, material, planetarium = false }: { url: string; width: number; height: number; fallback: Texture | null; onAspect: (value: number) => void; material: RefObject<ShaderMaterial | null>; planetarium?: boolean }) {
   const [texture, setTexture] = useState<Texture | null>(null)
   useEffect(() => {
     let active = true; let loaded: Texture | null = null
-    new TextureLoader().load(url, (value) => { if (!active) { value.dispose(); return } loaded = value; setColorSpace(value); const image = value.image as HTMLImageElement; if (image.naturalWidth && image.naturalHeight) onAspect(image.naturalWidth / image.naturalHeight); setShaderUniform(material.current, 'map', value); setTexture(value) }, undefined, () => { if (active) setTexture(null) })
-    return () => { active = false; loaded?.dispose() }
-  }, [url, onAspect, material])
+    new TextureLoader().load(url, (value) => { if (!active) { value.dispose(); return } loaded = value; setColorSpace(value); if (planetarium) registerPlanetariumPhotoTexture(value); const image = value.image as HTMLImageElement; if (image.naturalWidth && image.naturalHeight) onAspect(image.naturalWidth / image.naturalHeight); setShaderUniform(material.current, 'map', value); setTexture(value) }, undefined, () => { if (active) setTexture(null) })
+    return () => { active = false; if (loaded) planetarium ? releasePlanetariumPhotoTexture(loaded) : loaded.dispose() }
+  }, [url, onAspect, material, planetarium])
   useEffect(() => { setShaderUniform(material.current, 'map', texture ?? fallback) }, [fallback, material, texture])
   return <mesh><planeGeometry args={[width, height]} /><primitive object={material.current!} attach="material" /></mesh>
 }
@@ -591,6 +592,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
   const [x, y, z] = memoryPosition(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout, settings)
   const supportPositions = galleryColumnPositions(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
   const photoYaw = galleryPhotoYaw(memory, settings.galleryLayoutVariant)
+  const planetarium = memory.id === '2026_10_Planetarium'
   const supportLocalPositions = useMemo(
     () => gallerySupportLocalPositions(settings.galleryLayoutVariant, [x, y, z], supportPositions),
     [settings.galleryLayoutVariant, x, y, z, supportPositions],
@@ -640,6 +642,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
     visualGroup.current.position.set(0, reducedMotion ? 0 : Math.sin(m.time * 0.3 + memory.order) * 0.025, 0)
     visualGroup.current.scale.setScalar(1)
     visualGroup.current.rotation.set(first && !reducedMotion ? -0.022 * (1 - e) : 0, 0, first && !reducedMotion ? -0.009 * (1 - e) : 0)
+    if (planetarium) capturePlanetariumPhotoRect(visualGroup.current, camera, width, height)
 
     const visible = first ? 1 : Math.max(0, Math.min(1, (m.intro - memory.order * 0.15) / 1.4))
     const snapshot = gallerySnapshot()
@@ -720,7 +723,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
       {memory.order === 0
         ? <FirstMemoryCard photoMaterial={photoMaterial} frameTone="moonlight" />
         : memory.image
-          ? <Photo url={memory.image} width={width} height={height} fallback={firstPhoto} onAspect={reportMainPhotoAspect} material={photoMaterialRef} />
+          ? <Photo url={memory.image} width={width} height={height} fallback={firstPhoto} onAspect={reportMainPhotoAspect} material={photoMaterialRef} planetarium={planetarium} />
           : null}
       {([-1, 1] as const).map(side => <group key={side}>
         <mesh position={[0, side * (height / 2 + 0.025), 0.01]}>
@@ -894,13 +897,7 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
     {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} titleFontFamily={titleFontFamily} />)}
     <MemoryThreads settings={settings} low={quality === 'low'} paused={state.paused} halo={halo} />
     <FloorLights halo={halo} low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
-    <Outro />
   </>
-}
-function Outro() {
-  const mesh = useRef<Mesh>(null); const material = useRef<MeshBasicMaterial>(null); const direction = useMemo(() => new Vector3(), [])
-  useFrame(({ camera }) => { if (!mesh.current || !material.current) return; const progress = galleryMotion.exit / GALLERY.exit; mesh.current.visible = progress > 0; camera.getWorldDirection(direction); mesh.current.position.copy(camera.position).addScaledVector(direction, .4); mesh.current.quaternion.copy(camera.quaternion); material.current.opacity = Math.min(.93, progress * .93) })
-  return <mesh ref={mesh} visible={false} renderOrder={999}><planeGeometry args={[5, 5]} /><meshBasicMaterial ref={material} color="#071225" transparent opacity={0} depthTest={false} depthWrite={false} /></mesh>
 }
 
 function FloorLights({ halo, low, reducedMotion, settings }: { halo: CanvasTexture; low: boolean; reducedMotion: boolean; settings: GalleryArtSettings }) {

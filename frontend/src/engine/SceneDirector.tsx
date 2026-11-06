@@ -1,4 +1,4 @@
-﻿import { Suspense, useCallback, useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { Suspense, useCallback, useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { Html } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
 import type { SceneProps } from './sceneTypes'
@@ -23,6 +23,7 @@ import { shouldKeepGrowthWorld } from './sceneContinuity'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { getSceneLighting } from './sceneLighting'
 import { GrowthSky } from '../scenes/growth/GrowthSky'
+import { PlanetariumTransitionOverlay } from '../scenes/gallery/planetariumTransition'
 
 
 const modules = { prologue: PrologueScene, bloom: BloomScene, gallery: GalleryScene, eye: EyeScene, cosmos: CosmosScene, greeting: GreetingScene, ending: EndingScene }
@@ -91,5 +92,6 @@ export function SceneDirector(props: SceneProps) {
         ? <IdentitySourceError runtime={props.runtime} onRetry={retryLilyParticleSource} />
         : <IdentityLoading runtime={props.runtime} />)}
     {Scene && <Scene key={`${scene}:${props.state.revision}`} {...props} />}
+    <PlanetariumTransitionOverlay state={props.state} runtime={props.runtime} />
   </>
 }

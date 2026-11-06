@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { useThree } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { gsap } from 'gsap'
 import { BackSide, CircleGeometry, Color, Group, Mesh, MeshBasicMaterial, PlaneGeometry, Points, PointsMaterial } from 'three'
 import type { SceneProps } from '../../engine/sceneTypes'
@@ -13,6 +13,8 @@ import { getGalaxyRenderPalette } from './palette'
 import { createNebulaClouds } from './nebulaClouds'
 import { deferGalaxyCloudDisposal } from './resourceLifecycle'
 import { createBackgroundStarsMaterial, createBlackCenterMaterial, faceBlackCenterToCamera, GALAXY_RENDER_ORDER } from './rendering'
+import { galleryMotion, gallerySnapshot, subscribeGallery } from '../gallery/controller'
+import { GALLERY_MEMORIES } from '../gallery/content'
 
 type GalaxySceneName = 'cosmos' | 'greeting' | 'ending'
 type GalaxySettings = SceneComposerConfig['scenes']['galaxy']
@@ -93,6 +95,7 @@ function updateLiveUniforms(settings: GalaxySettings, dpr: number, palette: Retu
 }
 
 export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) {
+  const gallery = useSyncExternalStore(subscribeGallery, gallerySnapshot, gallerySnapshot)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const settings = config.scenes.galaxy
   const palette = useMemo(() => getGalaxyRenderPalette({
@@ -112,7 +115,9 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
   const camera = useThree((three) => three.camera)
   const invalidate = useThree((three) => three.invalidate)
   const dpr = useThree((three) => three.viewport.dpr)
-  const active = state.scene === 'cosmos' || state.scene === 'greeting' || state.scene === 'ending'
+  const planetariumExit = state.scene === 'gallery' && gallery.phase === 'exit' && gallery.focus === GALLERY_MEMORIES.length - 1
+  const planetariumRoute = planetariumExit || Boolean(state.planetariumTransition)
+  const active = planetariumExit || Boolean(state.planetariumTransition) || state.scene === 'cosmos' || state.scene === 'greeting' || state.scene === 'ending'
   const scene: GalaxySceneName = state.scene === 'greeting' || state.scene === 'ending' ? state.scene : 'cosmos'
   const materials = useMemo(() => ({
     disk: createStarMaterial(), bright: createSunMaterial(), gas: createGasMaterial(), core: createCoreMaterial(),
@@ -155,18 +160,20 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
   }, [clouds])
 
   const draw = useCallback((localTime: number) => {
+    const time = planetariumExit ? galleryMotion.exit : localTime
     const current = getConfig().scenes.galaxy
-    const revealState = getGalaxyRevealState(localTime, current)
+    const revealTime = time + (planetariumRoute ? current.galaxyRevealAt : 0)
+    const revealState = getGalaxyRevealState(revealTime, current)
     const reveal = scene === 'cosmos' ? revealState.galaxy : 1
     const initialStars = scene === 'cosmos' ? revealState.stars : 1
-    const calculatedPhaseTime = scene === 'cosmos' ? localTime
-      : scene === 'greeting' ? TIMING.cosmos.duration + localTime
-        : TIMING.cosmos.duration + TIMING.greeting.duration + localTime
+    const calculatedPhaseTime = scene === 'cosmos' ? time
+      : scene === 'greeting' ? TIMING.cosmos.duration + time
+        : TIMING.cosmos.duration + TIMING.greeting.duration + time
     const phaseTime = ambientPhase.current.active ? ambientPhase.current.phaseTime : calculatedPhaseTime
     const motionTime = ambientPhase.current.active ? ambientPhase.current.motionTime
-      : getGalaxyMotionPhase(scene, localTime, current, TIMING.cosmos.duration, TIMING.greeting.duration, reducedMotion)
-    const light = getGalaxyLight(scene, localTime, current, TIMING.cosmos.duration)
-    const fogOpacity = getGalaxyFogOpacity(scene, localTime, current, TIMING.cosmos.duration)
+      : getGalaxyMotionPhase(scene, time, current, TIMING.cosmos.duration, TIMING.greeting.duration, reducedMotion)
+    const light = getGalaxyLight(scene, time, current, TIMING.cosmos.duration)
+    const fogOpacity = getGalaxyFogOpacity(scene, time, current, TIMING.cosmos.duration)
 
     if (galaxy.current) {
       galaxy.current.visible = active
@@ -206,7 +213,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
     if (brightPoints.current) brightPoints.current.visible = active && current.brightStarCount > 0
     if (backgroundPoints.current) backgroundPoints.current.visible = active && current.backgroundStarCount > 0
     invalidate()
-  }, [active, camera, clouds, invalidate, materials, reducedMotion, scene])
+  }, [active, camera, clouds, invalidate, materials, planetariumExit, planetariumRoute, reducedMotion, scene])
 
   useLayoutEffect(() => {
     updateLiveUniforms(settings, dpr, palette, materials)
@@ -218,6 +225,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
 
   const duration = scene === 'cosmos' ? TIMING.cosmos.duration : TIMING.greeting.duration
   useSceneAnimation(runtime, duration, draw)
+  useFrame(() => { if (planetariumExit) draw(galleryMotion.exit) })
   useEffect(() => {
     const ambient = ambientPhase.current
     if (state.scene === 'prologue' || state.scene === 'cosmos') {
