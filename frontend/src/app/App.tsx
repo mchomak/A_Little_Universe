@@ -24,9 +24,12 @@ import { LilyParticlePreparationBanner } from './LilyParticlePreparationBanner'
 import { createLilyParticlePreparationSeedKey, getLilyFilmSurfaceDimensions, lilyParticlePreparation, prepareLilyParticleGeometryForStart, subscribeLilyFilmSurfaceDimensions } from '../scenes/lily/lilyParticlePreparation'
 import { LILY_MODEL_RUNTIME_ASSET, preloadLilyModel } from '../assets/lily/lilyAsset'
 import { isDeveloperMode } from '../debug/developerMode'
+import { DesktopRecordingSession } from '../systems/media/DesktopRecordingSession'
+import { DesktopRecordingControls } from '../components/DesktopRecordingControls'
 
 // Application-lifetime ownership survives scene changes and StrictMode effect replay.
 const media = new MediaSession()
+const desktopRecording = new DesktopRecordingSession()
 const audio = new AudioDirector()
 let restore: Promise<void> | undefined
 let disposal: ReturnType<typeof setTimeout> | undefined
@@ -51,6 +54,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   const operation = useRef(0)
   const opening = useRef(false)
   const particlePreparation = useSyncExternalStore(lilyParticlePreparation.subscribe, lilyParticlePreparation.getSnapshot, lilyParticlePreparation.getSnapshot)
+  useEffect(() => { void desktopRecording.setFilmActive(route === 'film').catch(() => undefined) }, [route])
   useAudioDirector(audio, state, runtime)
   const getParticlePreparationInput = useCallback(() => ({
     config: getConfig(),
@@ -93,7 +97,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   useEffect(() => {
     if (state.scene !== 'ending') return
     const request = ++operation.current
-    void media.stop().then(() => {
+    if (!desktopRecording.available) void media.stop().then(() => {
       if (request === operation.current) media.setOptions({ gaze: false, recording: false, upload: false })
     })
   }, [state.scene])
@@ -118,13 +122,18 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     // Start the gesture-sensitive audio unlock synchronously; keep the user on
     // preparation until the matching scene-04 geometry is actually ready.
     void startPreparedFilm({
-      startGift: () => openGift({ audio, media, onStart: () => undefined }),
+      startGift: () => {
+        if (!desktopRecording.available) return openGift({ audio, media, onStart: () => undefined })
+        const audioUnlock = audio.unlock()
+        void desktopRecording.start().catch((error: unknown) => { console.error('Desktop recording could not start.', error) })
+        return audioUnlock.then(() => undefined)
+      },
       prepareParticles: () => prepareLilyParticleGeometryForStart(
         lilyParticlePreparation,
         getParticlePreparationInput,
         () => request === operation.current,
       ),
-      stopRecording: () => media.stop(),
+      stopRecording: () => desktopRecording.available ? desktopRecording.stop() : media.stop(),
       isCurrent: () => request === operation.current,
       onReady: () => {
         resetGalleryInstruction(); setMountedFilm(true); setRoute('film')
@@ -166,6 +175,10 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   const implementationStatus = getImplementationStatus(state.scene)
   const showOpeningBackground = route === 'film'
     && (state.scene === 'prologue' || state.scene === 'growth' || state.scene === 'bloom' || state.scene === 'identity')
+  const stopViewingForRecovery = () => {
+    if (!state.paused && (state.mode === 'playing' || state.mode === 'transitioning')) dispatch({ type: 'toggle-pause' })
+    setRoute('settings')
+  }
 
   return <main className={`universe${cinematic ? ' cinematic' : ''}`} data-route={route} data-scene={state.scene} data-mode={state.mode} data-reading={state.reading} data-paused={state.paused} data-debug={developerMode && debug ? 'true' : undefined}>
     <LilyParticlePreparationBanner snapshot={particlePreparation} development={import.meta.env.DEV} onRetry={retryParticlePreparation} />
@@ -178,12 +191,13 @@ export function App({ preparation }: { preparation: PreparationResult }) {
       </div>
       {cinematic && <button className="cinematic-pause" type="button" data-testid="pause" aria-label={state.paused ? 'Продолжить фильм' : 'Пауза'} aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Ⅱ'}</button>}
     </div>}
-    {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} startError={visibleStartError} onOptions={changeOptions} onPrepare={() => { void prepare() }} onContinue={() => setRoute('ready')} onWithoutMedia={withoutMedia} onEdit={edit} onStart={start} />}
+    {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} startError={visibleStartError} onOptions={changeOptions} onPrepare={() => { void prepare() }} onContinue={() => setRoute('ready')} onWithoutMedia={withoutMedia} onEdit={edit} onStart={start} desktopRecording={desktopRecording.available} />}
     <PersistentLight phase={lightPhase} interactive={lightInteractive} reducedMotion={reducedMotion} runtime={runtime} state={state} onActivate={() => dispatch({ type: 'interact' })} />
-    <RecordingControls session={media} />
-    <RecoveryPanel session={media} />
+    {!desktopRecording.available && <RecordingControls session={media} />}
+    <DesktopRecordingControls session={desktopRecording} filmActive={route === 'film'} onStopViewing={stopViewingForRecovery} />
+    {!desktopRecording.available && <RecoveryPanel session={media} />}
     {state.reading && route === 'film' && <ReadingPanel dispatch={dispatch} />}
     {developerMode && <button className="debug-toggle" type="button" aria-expanded={debug} aria-controls="developer-panel" onClick={() => setDebug((value) => !value)}>DEV</button>}
-    {developerMode && debug && <Suspense fallback={<p className="debug-loading">Загрузка Developer Mode…</p>}><DeveloperPanel state={state} dispatch={devDispatch} runtime={runtime} route={route} reducedMotion={reducedMotion} onPreload={() => devPrepare('loading')} /><SceneTimeline state={state} dispatch={devDispatch} runtime={runtime} route={route} onPreload={() => devPrepare('loading')} /></Suspense>}
+    {developerMode && debug && <Suspense fallback={<p className="debug-loading">Загрузка Developer Mode…</p>}><DeveloperPanel state={state} dispatch={devDispatch} runtime={runtime} route={route} reducedMotion={reducedMotion} onPreload={() => devPrepare('loading')} desktopRecording={desktopRecording} /><SceneTimeline state={state} dispatch={devDispatch} runtime={runtime} route={route} onPreload={() => devPrepare('loading')} /></Suspense>}
   </main>
 }

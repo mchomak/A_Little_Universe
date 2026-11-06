@@ -53,3 +53,6 @@ Thumbs.db
 !.autopilot/2026-11-05-cinematic-background-continuity/
 !.autopilot/2026-11-05-cinematic-background-continuity/**
 .autopilot/2026-11-05-cinematic-background-continuity/screenshots/*.png
+/frontend/release/
+/frontend/.cache/
+/frontend/resources/macos-arm64/

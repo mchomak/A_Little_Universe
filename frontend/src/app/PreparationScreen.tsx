@@ -24,6 +24,7 @@ interface Props {
   onWithoutMedia(): void
   onEdit(): void
   onStart(): void
+  desktopRecording?: boolean
 }
 
 function OptionIcon({ kind }: { kind: 'gaze' | 'recording' | 'upload' }) {
@@ -34,7 +35,7 @@ function OptionIcon({ kind }: { kind: 'gaze' | 'recording' | 'upload' }) {
   </svg>
 }
 
-export function PreparationScreen({ step, session, preparation, checked, starting, startError, onOptions, onPrepare, onContinue, onWithoutMedia, onEdit, onStart }: Props) {
+export function PreparationScreen({ step, session, preparation, checked, starting, startError, onOptions, onPrepare, onContinue, onWithoutMedia, onEdit, onStart, desktopRecording = false }: Props) {
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => { heading.current?.focus() }, [step])
@@ -55,7 +56,11 @@ export function PreparationScreen({ step, session, preparation, checked, startin
     <header className="preparation-header"><span>A LITTLE UNIVERSE FOR YOU</span><span>00.1 / {step === 'settings' ? 'ПОДГОТОВКА' : step === 'checking' ? 'ПРОВЕРКА КАМЕРЫ' : 'ГОТОВО'}</span></header>
     <div className="preparation-content">
       <h1 id="preparation-title" ref={heading} tabIndex={-1}>{title}{step === 'settings' && <svg className="preparation-light-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.25c.7 4.35 2.65 6.55 7.5 7.5-4.85.95-6.8 3.15-7.5 7.5-.7-4.35-2.65-6.55-7.5-7.5 4.85-.95 6.8-3.15 7.5-7.5Z" /><circle cx="19.75" cy="18.75" r="1" /></svg>}</h1>
-      {step === 'settings' ? <>
+      {step === 'settings' && desktopRecording ? <>
+        <p className="preparation-subtitle">После подтверждения фильм начнётся, а камера, микрофон и окно приложения будут записываться и сохраняться на этом Mac.</p>
+        <p className="permission-note">Запись не отправляется по сети. Остановить всю запись и сохранить её можно кнопкой Stop &amp; Save во время фильма; macOS может запросить разрешения на камеру, микрофон и запись экрана.</p>
+        <button type="button" className="preparation-primary" data-testid="desktop-recording-consent" disabled={starting} onClick={onStart}>{starting ? 'Готовим фильм…' : 'Начать фильм и запись'}<span aria-hidden="true">→</span></button>
+      </> : step === 'settings' ? <>
         <p className="preparation-subtitle">Для тебя подготовлено кое-что необычное.<br />Осталось несколько настроек.</p>
         <div className="permission-options">
           {([
