@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { advanceGallery, galleryFocus, galleryMotion, gallerySnapshot, galleryStart, resetGallery, resetGalleryInstruction } from '../scenes/gallery/controller'
 import { GALLERY, GALLERY_MEMORIES, galleryPhotoYaw, memoryPosition } from '../scenes/gallery/content'
+import { createGalleryEntrySequence, getGalleryEntryRevealDuration } from '../scenes/gallery/entryReveal'
 import { clearGalleryPhotoAspects, getGalleryCollageCameraFrame, getGalleryCollageFocusDistance, getGalleryNormalFov, getGalleryPhotoAspectProfile, setGalleryPhotoAspect } from '../scenes/gallery/galleryCameraFit'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, normalizeConfig } from '../systems/scene-config/config'
 import { updateGalleryCameraPose } from './galleryCameraPose'
@@ -38,6 +39,34 @@ describe('gallery camera layout switching', () => {
     expect(frameB.target[2]).toBe(expectedBTarget[2])
     expect(frameB.camera.z).toBeCloseTo(expectedBTarget[2], 6)
     expect(galleryMotion.progress).toBe(progress)
+  })
+
+  it('uses the active layout sequence count and preserves pause/reduced-motion entry behavior', () => {
+    const settings = normalizeConfig({ schemaVersion: 24, scenes: { gallery: { galleryLayoutVariant: 'between-columns' } } }).scenes.gallery
+    const entryCount = createGalleryEntrySequence(GALLERY_MEMORIES, settings).steps.length
+    const revealDuration = getGalleryEntryRevealDuration(entryCount)
+    const pose = { x: 0, y: 0, z: 5.6, tx: 0, ty: 0, tz: 0 }
+    const options = { delta: 0.05, speed: 1, paused: true, reducedMotion: false, aspect: 16 / 9 }
+
+    resetGalleryInstruction()
+    resetGallery()
+    updateGalleryCameraPose(pose, settings, options)
+    expect(galleryMotion.entryReveal).toBe(0)
+    expect(galleryMotion.intro).toBe(0)
+
+    const activeOptions = { ...options, paused: false }
+    for (let elapsed = 0; elapsed < revealDuration; elapsed += activeOptions.delta) {
+      updateGalleryCameraPose(pose, settings, activeOptions)
+    }
+    expect(galleryMotion.entryReveal).toBe(revealDuration)
+    expect(galleryMotion.intro).toBeCloseTo(0, 10)
+    updateGalleryCameraPose(pose, settings, activeOptions)
+    expect(galleryMotion.intro).toBeCloseTo(activeOptions.delta)
+
+    resetGallery()
+    updateGalleryCameraPose(pose, settings, { ...activeOptions, reducedMotion: true })
+    expect(galleryMotion.entryReveal).toBe(revealDuration)
+    expect(galleryMotion.intro).toBeCloseTo(activeOptions.delta)
   })
 
   it('smoothly refits after texture aspects load, then returns to the corridor and can focus another photo', () => {

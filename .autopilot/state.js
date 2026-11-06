@@ -1,240 +1,53 @@
-﻿window.STATE =
+window.STATE =
 {
-    "slug":  "loading-portrait-preparation",
-    "dir":  "2026-11-06-loading-portrait-preparation--wip",
-    "title":  "Загрузочный поток и запуск пролога",
-    "mode":  "full",
-    "depth":  "normal",
-    "polish":  null,
-    "tier":  "T2",
-    "briefFile":  "2026-11-06-brief.md",
-    "memoryFile":  "AGENTS.md",
-    "skillDir":  "C:/Users/McHomak/.agents/skills/autopilot",
-    "startedAt":  "2026-11-06T04:09:42+03:00",
-    "updatedAt":  "2026-11-06T06:25:57+03:00",
-    "finishedAt":  "2026-11-06T06:25:57+03:00",
-    "stages":  [
-                   {
-                       "id":  "preflight",
-                       "status":  "done",
-                       "startedAt":  "2026-11-06T04:09:42+03:00",
-                       "finishedAt":  "2026-11-06T04:11:05+03:00"
-                   },
-                   {
-                       "id":  "manifest",
-                       "status":  "done",
-                       "startedAt":  "2026-11-06T04:11:05+03:00",
-                       "finishedAt":  "2026-11-06T04:12:11+03:00"
-                   },
-                   {
-                       "id":  "briefing",
-                       "status":  "skipped",
-                       "startedAt":  "2026-11-06T04:12:11+03:00",
-                       "finishedAt":  "2026-11-06T04:12:11+03:00",
-                       "note":  "Полный автомат — самобрифинг; закрыты реализационные развилки."
-                   },
-                   {
-                       "id":  "spec",
-                       "status":  "done",
-                       "startedAt":  "2026-11-06T04:12:11+03:00",
-                       "finishedAt":  "2026-11-06T04:25:39+03:00"
-                   },
-                   {
-                       "id":  "plan",
-                       "status":  "done",
-                       "startedAt":  "2026-11-06T04:25:39+03:00",
-                       "note":  "4 задачи T2; волна 1 — три изолированные части, волна 2 — интеграция.",
-                       "finishedAt":  "2026-11-06T04:29:42+03:00"
-                   },
-                   {
-                       "id":  "build",
-                       "status":  "done",
-                       "startedAt":  "2026-11-06T04:29:42+03:00",
-                       "finishedAt":  "2026-11-06T06:17:11+03:00",
-                       "note":  "Vitest 832/832, Electron 42/42; production build passes with the user-owned GreetingOverlay edit temporarily isolated. Full npm run check stops at unrelated ESLint errors."
-                   },
-                   {
-                       "id":  "review",
-                       "status":  "done",
-                       "startedAt":  "2026-11-06T04:45:40+03:00",
-                       "finishedAt":  "2026-11-06T06:17:11+03:00",
-                       "note":  "Independent Manifest/Spec and craft reviews cleared all blocking findings."
-                   },
-                   {
-                       "id":  "final",
-                       "status":  "done",
-                       "startedAt":  "2026-11-06T06:17:11+03:00",
-                       "finishedAt":  "2026-11-06T06:25:57+03:00"
-                   }
-               ],
-    "requirements":  {
-                         "done":  5,
-                         "inTicket":  0,
-                         "inSpec":  0,
-                         "total":  5,
-                         "deferred":  0,
-                         "dropped":  0,
-                         "placeholder":  0
-                     },
-    "tickets":  [
-                    {
-                        "id":  "01",
-                        "title":  "Частицы портрета внутри загрузки",
-                        "requirements":  [
-                                             "R03",
-                                             "R04",
-                                             "R04.1"
-                                         ],
-                        "blockedBy":  [
-
-                                      ],
-                        "wave":  1,
-                        "zone":  [
-                                     "frontend/src/bootstrap/",
-                                     "frontend/src/systems/assets/"
-                                 ],
-                        "status":  "done",
-                        "retries":  0,
-                        "repairs":  0,
-                        "repairFindings":  [
-
-                                           ],
-                        "handoffs":  0,
-                        "concerns":  [
-
-                                     ],
-                        "startedAt":  "2026-11-06T04:30:27+03:00",
-                        "finishedAt":  "2026-11-06T06:17:11+03:00"
-                    },
-                    {
-                        "id":  "02",
-                        "title":  "Ожидание готовности записи",
-                        "requirements":  [
-                                             "R02",
-                                             "R05i",
-                                             "R02.1"
-                                         ],
-                        "blockedBy":  [
-
-                                      ],
-                        "wave":  1,
-                        "zone":  [
-                                     "frontend/src/systems/media/DesktopRecordingSession.*"
-                                 ],
-                        "status":  "done",
-                        "retries":  0,
-                        "repairs":  0,
-                        "repairFindings":  [
-
-                                           ],
-                        "handoffs":  0,
-                        "concerns":  [
-
-                                     ],
-                        "startedAt":  "2026-11-06T04:30:27+03:00",
-                        "finishedAt":  "2026-11-06T06:17:11+03:00"
-                    },
-                    {
-                        "id":  "03",
-                        "title":  "Убрать страницу настроек",
-                        "requirements":  [
-                                             "R01",
-                                             "R01.1"
-                                         ],
-                        "blockedBy":  [
-
-                                      ],
-                        "wave":  1,
-                        "zone":  [
-                                     "frontend/src/app/PreparationScreen.*",
-                                     "frontend/src/app/preparation.css"
-                                 ],
-                        "status":  "done",
-                        "retries":  0,
-                        "repairs":  0,
-                        "repairFindings":  [
-
-                                           ],
-                        "handoffs":  0,
-                        "concerns":  [
-
-                                     ],
-                        "startedAt":  "2026-11-06T04:30:27+03:00",
-                        "finishedAt":  "2026-11-06T06:17:11+03:00"
-                    },
-                    {
-                        "id":  "04",
-                        "title":  "Связать загрузку, медиа-проверку и пролог",
-                        "requirements":  [
-                                             "R01",
-                                             "R02",
-                                             "R03",
-                                             "R04",
-                                             "R05i",
-                                             "R01.1",
-                                             "R02.1",
-                                             "R04.1"
-                                         ],
-                        "blockedBy":  [
-                                          "01",
-                                          "02",
-                                          "03"
-                                      ],
-                        "wave":  2,
-                        "zone":  [
-                                     "frontend/src/app/App.tsx",
-                                     "frontend/src/app/openGift.ts",
-                                     "frontend/src/app/filmStartup.ts"
-                                 ],
-                        "status":  "done",
-                        "retries":  0,
-                        "repairs":  0,
-                        "repairFindings":  [
-
-                                           ],
-                        "handoffs":  0,
-                        "concerns":  [
-
-                                     ],
-                        "startedAt":  "2026-11-06T06:02:18+03:00",
-                        "finishedAt":  "2026-11-06T06:17:11+03:00"
-                    }
-                ],
-    "singlePass":  null,
-    "tests":  null,
-    "debt":  {
-                 "placeholders":  [
-
-                                  ],
-                 "assumptions":  [
-                                     "Единое явное согласие на локальную запись остаётся частью завершающего состояния загрузчика, так как захват экрана требует жеста пользователя."
-                                 ],
-                 "emptyEnv":  [
-
-                              ]
-             },
-    "additions":  [
-
-                  ],
-    "coverage":  {
-                     "result":  "passed",
-                     "actions":  [
-                                     "Первый blind-проход выявил, что согласие выглядело отдельным экраном; спецификация исправлена: одно действие встроено в тот же загрузчик, после media-check дополнительного действия нет.",
-                                     "Повторный blind-проход не выявил пропусков; уточнено, что успешный путь автоматически открывает пролог, а fallback применяется только при отказе/недоступности медиа. Подробности о проверке записи и DEV — границы реализации/сохранение существующего поведения."
-                                 ],
-                     "findings":  2
-                 },
-    "concerns":  [
-                     "Full npm run check is blocked at ESLint by 16 errors and 1 warning in current-main GalleryScene/planetariumTransition code and the user-owned GreetingOverlay edit. Production build passes with that user edit temporarily isolated; all 832 Vitest and 42 Electron tests pass."
-                 ],
-    "reviewers":  {
-                      "manifestSpec":  "/root/ticket03_manifest_spec_review",
-                      "craft":  "/root/ticket03_craft_review"
-                  },
-    "blind": {
-                      "result": "passed",
-                      "findings": 0,
-                      "drift": 0,
-                      "note": "Independent browser/code acceptance: loading includes portrait particles; consent then readiness starts Prologue."
-                  }
+  "slug": "scene-04-05-gallery-reveal",
+  "dir": "2026-11-06-scene-04-05-gallery-reveal--wip",
+  "title": "Плавный переход сцены 04→05",
+  "mode": "full",
+  "depth": "normal",
+  "polish": null,
+  "tier": "T2",
+  "briefFile": "2026-11-06-brief.md",
+  "memoryFile": "AGENTS.md",
+  "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
+  "startedAt": "2026-11-06T08:05:53+03:00",
+  "updatedAt": "2026-11-06T09:17:06+03:00",
+  "finishedAt": null,
+  "stages": [
+    { "id": "preflight", "status": "done", "startedAt": "2026-11-06T08:05:53+03:00", "finishedAt": "2026-11-06T08:09:16+03:00" },
+    { "id": "manifest", "status": "done", "startedAt": "2026-11-06T08:09:16+03:00", "finishedAt": "2026-11-06T08:18:36+03:00" },
+    { "id": "briefing", "status": "skipped", "startedAt": "2026-11-06T08:18:36+03:00", "finishedAt": "2026-11-06T08:18:36+03:00", "note": "Полный автомат: вопросы не требуются; порядок и ограничения зафиксированы в самобрифинге." },
+    { "id": "spec", "status": "done", "startedAt": "2026-11-06T08:18:36+03:00", "finishedAt": "2026-11-06T08:50:00+03:00" },
+    { "id": "plan", "status": "done", "startedAt": "2026-11-06T08:34:58+03:00", "finishedAt": "2026-11-06T08:52:40+03:00", "note": "5 тасков, ярус T2, 3 волны" },
+    { "id": "build", "status": "active", "startedAt": "2026-11-06T08:52:40+03:00", "note": "таск 01 проверен, запускаю волну 2" },
+    { "id": "review", "status": "active", "startedAt": "2026-11-06T09:10:17+03:00", "note": "Manifest/Spec clean; Craft: нет блокировок, 1 concern" },
+    { "id": "final", "status": "pending" }
+  ],
+  "requirements": {
+    "total": 22, "done": 8, "inTicket": 13, "inSpec": 0,
+    "placeholder": 0, "deferred": 1, "dropped": 0
+  },
+  "tickets": [
+    { "id": "01", "title": "Временная модель входа в галерею", "requirements": ["R09", "R10", "R12", "R13", "R14", "R16", "R18"], "blockedBy": [], "wave": 1, "zone": ["frontend/src/scenes/gallery/controller.ts", "frontend/src/scenes/gallery/entryReveal.ts", "frontend/src/engine/galleryCameraPose.ts"], "status": "review", "startedAt": "2026-11-06T08:54:12+03:00", "retries": 0, "repairs": 0, "handoffs": 0 },
+    { "id": "02", "title": "Первой проявляется вода", "requirements": ["R13", "R14", "R15"], "blockedBy": ["01"], "wave": 2, "zone": ["frontend/src/scenes/gallery/WetFloor.tsx", "frontend/src/scenes/gallery/waterMaterial.ts"], "status": "pending", "retries": 0, "repairs": 0, "handoffs": 0 },
+    { "id": "03", "title": "Облака, ночь и лунный свет", "requirements": ["R13", "R14", "R15"], "blockedBy": ["01"], "wave": 2, "zone": ["frontend/src/scenes/gallery/MoonlitWorld.tsx", "frontend/src/scenes/gallery/cloudMaterial.ts"], "status": "pending", "retries": 0, "repairs": 0, "handoffs": 0 },
+    { "id": "04", "title": "Фотографии и колонны от ближних к дальним", "requirements": ["R14", "R15", "R16", "R17"], "blockedBy": ["01"], "wave": 2, "zone": ["frontend/src/scenes/GalleryScene.tsx", "frontend/src/scenes/gallery/GalleryColumn.tsx", "frontend/src/scenes/gallery/visibility.ts"], "status": "pending", "retries": 0, "repairs": 0, "handoffs": 0 },
+    { "id": "05", "title": "Арка завершает раскрытие", "requirements": ["R09", "R14", "R15", "R18", "R19", "R20", "R21", "R22"], "blockedBy": ["02", "03", "04"], "wave": 3, "zone": ["frontend/src/scenes/gallery/GalleryArch.tsx", "frontend/src/scenes/gallery/visibility.ts"], "status": "pending", "retries": 0, "repairs": 0, "handoffs": 0 }
+  ],
+  "singlePass": null,
+  "tests": { "passed": 838, "failed": 0, "files": 142 },
+  "debt": { "placeholders": [], "assumptions": [], "emptyEnv": [] },
+  "additions": [],
+  "coverage": {
+    "result": "passed",
+    "findings": 12,
+    "actions": [
+      "Первый слепой проход выявил несогласованность порядка и отсутствующие acceptance для поведения памятки и публикации; уточнено до реализации.",
+      "Последующие слепые сверки выявили неоднозначность пар колонн, лишний полный project check и отсутствие явного сохранения штатных alpha-модификаторов; всё приведено в соответствие с брифом и фактическим поведением.",
+      "Финальные крайние случаи: арка должна ждать фото без опоры; критерий и тест это явно проверяют."
+    ]
+  },
+  "concerns": ["T01 craft · entryReveal.test.ts:33 — strengthen assertions for the full support set and nearest-support photo mappings; non-blocking, review at final"],
+  "reviewers": { "manifestSpec": "/root/spec_coverage_audit", "craft": null },
+  "blind": null
 }

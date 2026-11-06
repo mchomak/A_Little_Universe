@@ -3,10 +3,33 @@ import { Mesh, MeshBasicMaterial, PlaneGeometry, Raycaster, Vector3 } from 'thre
 import { galleryColumnPhotoCenterOffsetZ, galleryColumnPosition, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, GALLERY, GALLERY_MEMORIES, memoryPosition } from './content'
 import { advanceGallery, galleryCanRaycastPhoto, galleryExit, galleryFocus, galleryMotion, galleryPhotoRaycast, gallerySnapshot, galleryStart, resetGallery, resetGalleryInstruction, travel } from './controller'
 import { galleryFocusOpacity } from './visibility'
+import { getGalleryEntryRevealDuration } from './entryReveal'
 
 function enter() { advanceGallery(GALLERY.intro); expect(gallerySnapshot().phase).toBe('instruction'); galleryStart() }
 describe('gallery travel', () => {
   beforeEach(() => { resetGalleryInstruction(); resetGallery(); enter() })
+  it('holds the portrait and intro at the entry pose until the staged reveal completes', () => {
+    resetGalleryInstruction()
+    resetGallery()
+    const entryCount = 2
+    const revealDuration = getGalleryEntryRevealDuration(entryCount)
+
+    advanceGallery(revealDuration - 0.1, false, entryCount)
+    expect(galleryMotion.entryReveal).toBeCloseTo(revealDuration - 0.1)
+    expect(galleryMotion.intro).toBe(0)
+    expect(gallerySnapshot().phase).toBe('intro')
+
+    advanceGallery(0.2, false, entryCount)
+    expect(galleryMotion.entryReveal).toBe(revealDuration)
+    expect(galleryMotion.intro).toBeCloseTo(0.1)
+    expect(gallerySnapshot().phase).toBe('intro')
+
+    advanceGallery(GALLERY.intro, false, entryCount)
+    expect(gallerySnapshot().phase).toBe('instruction')
+    resetGallery()
+    expect(galleryMotion.entryReveal).toBe(0)
+    expect(galleryMotion.intro).toBe(0)
+  })
   it('has unique, alternating, independently positioned exhibits', () => {
     expect(GALLERY_MEMORIES.length).toBeGreaterThan(0)
     expect(new Set(GALLERY_MEMORIES.map(m => m.id)).size).toBe(GALLERY_MEMORIES.length)

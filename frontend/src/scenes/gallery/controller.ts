@@ -1,5 +1,6 @@
 ﻿import { GALLERY, GALLERY_MEMORIES } from './content'
 import type { Object3D } from 'three'
+import { getGalleryEntryRevealDuration } from './entryReveal'
 type Phase = 'intro' | 'instruction' | 'explore' | 'exit'
 export type GalleryInteraction = 'walk' | 'focusing' | 'focused' | 'returning'
 export interface GallerySnapshot { phase: Phase; interaction: GalleryInteraction; focus: number | null; atEnd: boolean }
@@ -7,7 +8,7 @@ const initial: GallerySnapshot = { phase: 'intro', interaction: 'walk', focus: n
 let snapshot = initial
 let instructionSeen = false
 const listeners = new Set<() => void>()
-export const galleryMotion = { progress: 0, target: 0, intro: 0, exit: 0, focusMix: 0, focusIndex: 0, focusTime: 0, time: 0, pinching: false, suppressClick: false }
+export const galleryMotion = { progress: 0, target: 0, intro: 0, entryReveal: 0, exit: 0, focusMix: 0, focusIndex: 0, focusTime: 0, time: 0, pinching: false, suppressClick: false }
 function publish(next: GallerySnapshot) { snapshot = next; listeners.forEach((listener) => listener()) }
 export function gallerySnapshot() { return snapshot }
 export function galleryCanRaycastPhoto(index: number) {
@@ -21,7 +22,7 @@ export function galleryPhotoRaycast(index: number, raycast: Object3D['raycast'],
   }
 }
 export function subscribeGallery(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener) } }
-export function resetGallery() { Object.assign(galleryMotion, { progress: 0, target: 0, intro: 0, exit: 0, focusMix: 0, focusIndex: 0, focusTime: 0, time: 0, pinching: false, suppressClick: false }); publish(initial) }
+export function resetGallery() { Object.assign(galleryMotion, { progress: 0, target: 0, intro: 0, entryReveal: 0, exit: 0, focusMix: 0, focusIndex: 0, focusTime: 0, time: 0, pinching: false, suppressClick: false }); publish(initial) }
 export function resetGalleryInstruction() { instructionSeen = false }
 export function galleryInstruction() { if (snapshot.phase === 'intro') publish({ ...snapshot, phase: instructionSeen ? 'explore' : 'instruction' }) }
 export function galleryStart() { if (snapshot.phase === 'instruction') { instructionSeen = true; publish({ ...snapshot, phase: 'explore' }) } }
@@ -48,11 +49,25 @@ export function galleryFocus(index: number | null) {
   }
 }
 export function travel(delta: number) { if (snapshot.phase !== 'explore' || snapshot.interaction !== 'walk' || !Number.isFinite(delta)) return; galleryMotion.target = Math.max(0, Math.min(GALLERY.travel, galleryMotion.target + delta)) }
-export function advanceGallery(dt: number) {
+export function advanceGallery(dt: number, reducedMotion = false, entryCount?: number) {
   const m = galleryMotion
   m.time += dt
   if (snapshot.focus !== null && snapshot.interaction !== 'returning') m.focusTime += dt
-  if (snapshot.phase === 'intro') { m.intro = Math.min(GALLERY.intro, m.intro + dt); if (m.intro >= GALLERY.intro) galleryInstruction() }
+  if (snapshot.phase === 'intro') {
+    const revealDuration = Number.isFinite(entryCount) ? getGalleryEntryRevealDuration(entryCount!) : 0
+    let introDelta = dt
+    if (reducedMotion) m.entryReveal = revealDuration
+    else {
+      const revealRemaining = Math.max(0, revealDuration - m.entryReveal)
+      const revealDelta = Math.min(Math.max(0, dt), revealRemaining)
+      m.entryReveal += revealDelta
+      introDelta = Math.max(0, dt - revealDelta)
+    }
+    if (m.entryReveal >= revealDuration) {
+      m.intro = Math.min(GALLERY.intro, m.intro + introDelta)
+      if (m.intro >= GALLERY.intro) galleryInstruction()
+    }
+  }
   if (snapshot.phase === 'exit') m.exit = Math.min(GALLERY.exit, m.exit + dt)
   const blend = 1 - Math.exp(-5 * dt)
   m.progress += (m.target - m.progress) * blend

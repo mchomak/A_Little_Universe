@@ -1,6 +1,7 @@
 import { advanceGallery, galleryMotion } from '../scenes/gallery/controller'
 import { GALLERY, GALLERY_MEMORIES, galleryPhotoYaw } from '../scenes/gallery/content'
 import { getGalleryPhotoPosition } from '../scenes/gallery/archPlacement'
+import { createGalleryEntrySequence, type GalleryEntrySequence } from '../scenes/gallery/entryReveal'
 import { GALLERY_WORLD } from '../scenes/gallery/world'
 import { focusCamera } from '../scenes/gallery/camera'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
@@ -10,6 +11,16 @@ import { getGalleryCollageCameraFrame, getGalleryCollageFocusDistance, getGaller
 
 const MIN_FOCUS_DISTANCE = 4.8
 const OPPOSITE_PHOTO_CLEARANCE = 0.9
+let cachedEntrySettings: SceneComposerConfig['scenes']['gallery'] | null = null
+let cachedEntrySequence: GalleryEntrySequence | null = null
+
+function getEntrySequence(settings: SceneComposerConfig['scenes']['gallery']): GalleryEntrySequence {
+  if (cachedEntrySettings !== settings || cachedEntrySequence === null) {
+    cachedEntrySettings = settings
+    cachedEntrySequence = createGalleryEntrySequence(GALLERY_MEMORIES, settings)
+  }
+  return cachedEntrySequence
+}
 
 export interface GalleryCameraFrameOptions {
   delta: number
@@ -26,7 +37,10 @@ export function updateGalleryCameraPose(
   settings: SceneComposerConfig['scenes']['gallery'],
   { delta, speed, paused, reducedMotion, aspect, focusDistance = 4.8, focusCenter = [0, 0] }: GalleryCameraFrameOptions,
 ) {
-  if (!paused) advanceGallery(Math.min(delta, 0.05) * speed)
+  if (!paused) {
+    const entrySequence = getEntrySequence(settings)
+    advanceGallery(Math.min(delta, 0.05) * speed, reducedMotion, entrySequence.steps.length)
+  }
 
   const motion = galleryMotion
   const opening = Math.min(1, motion.intro / (reducedMotion ? 0.35 : GALLERY.intro))
