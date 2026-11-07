@@ -75,7 +75,8 @@ export function advanceGallery(dt: number, reducedMotion = false, entryCount?: n
   const blend = 1 - Math.exp(-5 * dt)
   m.progress += (m.target - m.progress) * blend
   const targetFocusMix = snapshot.interaction === 'focusing' || snapshot.interaction === 'focused' ? 1 : 0
-  m.focusMix += (targetFocusMix - m.focusMix) * (1 - Math.exp(-3.8 * dt))
+  const focusRate = targetFocusMix === 1 && m.focusIndex === planetariumIndex ? 2.4 : 3.8
+  m.focusMix += (targetFocusMix - m.focusMix) * (1 - Math.exp(-focusRate * dt))
   if (targetFocusMix === 1 && 1 - m.focusMix < .001) {
     m.focusMix = 1
     if (snapshot.interaction === 'focusing') {

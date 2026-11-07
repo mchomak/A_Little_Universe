@@ -20,7 +20,7 @@ import type { SceneProps } from '../engine/sceneTypes'
 import { useSyncExternalStore } from 'react'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { FirstMemoryCard } from './shared/FirstMemoryCard'
-import { FIRST_MEMORY_POSITION, firstMemoryFrame } from './shared/firstMemoryFrame'
+import { getFirstMemoryHandoffPose } from './shared/firstMemoryHandoff'
 import { GALLERY, GALLERY_MEMORIES, PLANETARIUM_GALLERY_EVENT_ID, galleryColumnPositions, galleryPhotoApproachYaw, galleryPhotoYaw, gallerySupportColumnOffsetX, gallerySupportGroupScale, gallerySupportLocalPositions, type GalleryMemory } from './gallery/content'
 import { getGalleryPhotoPosition } from './gallery/archPlacement'
 import { GalleryColumn } from './gallery/GalleryColumn'
@@ -34,6 +34,8 @@ import firstPhotoUrl from '../assets/start_img.jpg'
 import { ART_FONT_CATALOG, loadArtFont } from '../systems/scene-config/fontCatalog'
 import type { ArtFontId } from '../systems/scene-config/fontIds'
 import { capturePlanetariumPhotoRect, registerPlanetariumPhotoTexture, releasePlanetariumPhotoTexture } from './gallery/planetariumTransition'
+
+useLoader.preload(TextureLoader, firstPhotoUrl)
 
 function canvasTexture(draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void, w = 768, h = 768) {
   const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h
@@ -489,7 +491,7 @@ function Photo({ url, width, height, fallback, onAspect, material, planetarium =
 }
 function setMaterialAlpha(saved: { material: Material; opacity: number; transparent: boolean; depthWrite: boolean }, alpha: number) { saved.material.opacity = saved.opacity * alpha; saved.material.transparent = alpha < 1 || saved.transparent; saved.material.depthWrite = alpha < 1 ? false : saved.depthWrite }
 function setFocusFog(material: Material, focus: boolean) { if (material instanceof MeshBasicMaterial && material.fog === focus) { material.fog = !focus; material.needsUpdate = true } }
-function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily, photoEntryStepIndex, supportEntryStepIndices }: { memory: GalleryMemory; reducedMotion: boolean; halo: CanvasTexture; paused: boolean; settings: GalleryArtSettings; titleFontFamily: string; photoEntryStepIndex?: number | undefined; supportEntryStepIndices?: ReadonlyMap<number, number> | undefined }) {
+function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily, firstMemoryHandoff, photoEntryStepIndex, supportEntryStepIndices }: { memory: GalleryMemory; reducedMotion: boolean; halo: CanvasTexture; paused: boolean; settings: GalleryArtSettings; titleFontFamily: string; firstMemoryHandoff: ReturnType<typeof getFirstMemoryHandoffPose>; photoEntryStepIndex?: number | undefined; supportEntryStepIndices?: ReadonlyMap<number, number> | undefined }) {
   const materials = useRef<{ material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[]>([])
   const group = useRef<Group>(null)
   const supportGroup = useRef<Group>(null)
@@ -599,7 +601,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
     : galleryColumnPositions(memory, settings.galleryWidth, settings.galleryLayoutVariant, layout)
   const supportCount = supportPositions.length
   const photoYaw = galleryPhotoYaw(memory, settings.galleryLayoutVariant, settings.archRotationY)
-  const firstEntryFrame = firstMemoryFrame(34, reducedMotion)
+  const firstEntryFrame = firstMemoryHandoff
   const supportLocalPositions = useMemo(
     () => gallerySupportLocalPositions(settings.galleryLayoutVariant, [x, y, z], supportPositions),
     [settings.galleryLayoutVariant, x, y, z, supportPositions],
@@ -628,12 +630,14 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
     const first = memory.order === 0
     // Hold the exact Scene 04 photo transform until the staged gallery reveal is complete.
     group.current.position.set(
-      first ? FIRST_MEMORY_POSITION[0] + (x - FIRST_MEMORY_POSITION[0]) * e : x,
-      first ? FIRST_MEMORY_POSITION[1] + (y - FIRST_MEMORY_POSITION[1]) * e : y,
-      first ? FIRST_MEMORY_POSITION[2] + (z - FIRST_MEMORY_POSITION[2]) * e : z,
+      first ? firstEntryFrame.position[0] + (x - firstEntryFrame.position[0]) * e : x,
+      first ? firstEntryFrame.position[1] + (y - firstEntryFrame.position[1]) * e : y,
+      first ? firstEntryFrame.position[2] + (z - firstEntryFrame.position[2]) * e : z,
     )
-    group.current.scale.setScalar(first ? 1 + 0.35 * e : 1)
-    const photoOffsetZ = camera.position.z - (first ? z * e : z)
+    group.current.scale.setScalar(first ? firstEntryFrame.scale + (1.35 - firstEntryFrame.scale) * e : 1)
+    const photoOffsetZ = camera.position.z - (first
+      ? firstEntryFrame.position[2] + (z - firstEntryFrame.position[2]) * e
+      : z)
     const photoFocusMix = m.focusIndex === memory.order ? m.focusMix : 0
     const approachYaw = galleryPhotoApproachYaw(memory, settings.galleryLayoutVariant, photoOffsetZ, settings.galleryPhotoFacingMaxDegrees, photoFocusMix, settings.archRotationY)
     const galleryYaw = first && settings.galleryLayoutVariant === 'on-columns' ? photoYaw : approachYaw
@@ -910,8 +914,13 @@ function MemoryThreads({ settings, low, paused, halo, photoEntryIndices }: { set
 
 export function GalleryScene({ state, reducedMotion }: SceneProps) {
   const gl = useThree(s => s.gl)
+  const viewportAspect = useThree(({ size }) => size.width / Math.max(size.height, 1))
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const settings = config.scenes.gallery
+  const firstMemoryHandoff = useMemo(
+    () => getFirstMemoryHandoffPose(config.scenes.bloom, config.scenes.identity, viewportAspect, reducedMotion),
+    [config.scenes.bloom, config.scenes.identity, reducedMotion, viewportAspect],
+  )
   const entrySequence = useMemo(() => createGalleryEntrySequence(GALLERY_MEMORIES, settings), [settings])
   const supportEntryStepIndices = useMemo(() => {
     const indices = new Map<number, Map<number, number>>()
@@ -945,7 +954,7 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
     <MoonlitWorld settings={settings} quality={quality} halo={halo} reducedMotion={reducedMotion} />
     <GalleryArch settings={settings} entryIndex={entrySequence.steps.length} />
     <Dust low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
-    {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} titleFontFamily={titleFontFamily} photoEntryStepIndex={entrySequence.photoIndices.get(memory.order)} supportEntryStepIndices={supportEntryStepIndices.get(memory.order)} />)}
+    {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} titleFontFamily={titleFontFamily} firstMemoryHandoff={firstMemoryHandoff} photoEntryStepIndex={entrySequence.photoIndices.get(memory.order)} supportEntryStepIndices={supportEntryStepIndices.get(memory.order)} />)}
     <MemoryThreads settings={settings} low={quality === 'low'} paused={state.paused} halo={halo} photoEntryIndices={entrySequence.photoIndices} />
     <FloorLights halo={halo} low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
   </>

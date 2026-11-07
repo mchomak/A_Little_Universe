@@ -63,7 +63,7 @@ function smooth(start: number, end: number, time: number) {
   return value * value * (3 - 2 * value)
 }
 
-const PHOTO_FADE_DURATION = 2.2
+const PHOTO_FADE_DURATION = 3
 
 function photoFadeStart(settings: SceneComposerConfig['scenes']['galaxy']) {
   return Math.max(
@@ -89,19 +89,20 @@ export function getPlanetariumPhotoZoom(time: number) {
 
 /** Existing Galaxy points are clipped to bright photo areas only while the photo is in frame. */
 export function getPlanetariumPhotoStarMask(time: number, settings: SceneComposerConfig['scenes']['galaxy']) {
-  return time < GALLERY.exit ? 0 : 1 - getPlanetariumPhotoFade(time, settings)
+  const emergence = smooth(GALLERY.exit * 0.55, photoFadeStart(settings), time)
+  return emergence * (1 - getPlanetariumPhotoFade(time, settings))
 }
 
 function createTransitionMaterial() {
   return new ShaderMaterial({
     uniforms: {
       map: { value: null as Texture | null },
-      uOpacity: { value: 0 }, uCrop: { value: 0 }, uZoom: { value: 1 }, uBlur: { value: 0 }, uBottomDark: { value: 0 },
+      uOpacity: { value: 0 }, uCrop: { value: 0 }, uZoom: { value: 1 }, uBlur: { value: 0 }, uBottomDark: { value: 0 }, uPhotoBrightness: { value: 1 },
       uImageAspect: { value: 1 }, uViewportAspect: { value: 1 },
     },
     vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
     fragmentShader: `
-      uniform sampler2D map; uniform float uOpacity; uniform float uCrop; uniform float uZoom; uniform float uBlur;
+      uniform sampler2D map; uniform float uOpacity; uniform float uCrop; uniform float uZoom; uniform float uBlur; uniform float uPhotoBrightness;
       uniform float uBottomDark; uniform float uImageAspect; uniform float uViewportAspect; varying vec2 vUv;
       vec4 photoSample(vec2 uv) { return texture2D(map, uv); }
       void main() {
@@ -116,7 +117,7 @@ function createTransitionMaterial() {
         photo += (photoSample(uv + blurStep) + photoSample(uv - blurStep)
           + photoSample(uv + vec2(blurStep.x, -blurStep.y)) + photoSample(uv + vec2(-blurStep.x, blurStep.y))) * 0.06;
         float lowerFade = 1.0 - smoothstep(0.12, 0.8, vUv.y);
-        photo.rgb *= 1.0 - uBottomDark * lowerFade;
+        photo.rgb *= uPhotoBrightness * (1.0 - uBottomDark * lowerFade);
         gl_FragColor = vec4(photo.rgb, photo.a * uOpacity);
         #include <colorspace_fragment>
       }`,
@@ -181,9 +182,10 @@ export function PlanetariumTransitionOverlay({ state, runtime }: { state: FilmSt
     const expand = smooth(1.5, GALLERY.exit, progress)
     const photoFade = getPlanetariumPhotoFade(progress, config.scenes.galaxy)
     const opacity = isGalleryExit ? smooth(0.02, 0.7, progress) : 1 - photoFade
+    const photoFadeStartTime = photoFadeStart(config.scenes.galaxy)
     const environmentOpacity = isGalleryExit
       ? smooth(0.05, GALLERY.exit, progress)
-      : 1 - smooth(GALLERY.exit, GALLERY.exit + 1.4, progress)
+      : 1 - photoFade
     const frameAspect = (startWidth + (fullWidth - startWidth) * expand) / (startHeight + (fullHeight - startHeight) * expand)
     const crop = 1
     const lowerDark = smooth(1.1, GALLERY.exit, progress) * (1 - photoFade)
@@ -191,7 +193,8 @@ export function PlanetariumTransitionOverlay({ state, runtime }: { state: FilmSt
     uniforms.uCrop!.value = crop
     uniforms.uZoom!.value = getPlanetariumPhotoZoom(progress)
     uniforms.uBlur!.value = smooth(1.4, photoFadeStart(config.scenes.galaxy), progress)
-    uniforms.uBottomDark!.value = lowerDark * 0.72
+    uniforms.uBottomDark!.value = lowerDark * 0.35
+    uniforms.uPhotoBrightness!.value = 1 - 0.5 * smooth(0.15, photoFadeStartTime, progress)
     uniforms.uImageAspect!.value = imageAspect
     uniforms.uViewportAspect!.value = frameAspect
 

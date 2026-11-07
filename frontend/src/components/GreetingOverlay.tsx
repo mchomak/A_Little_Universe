@@ -7,6 +7,7 @@ import { createPrologueOverlayTimeline } from './PrologueOverlay'
 import { ART_FONT_CATALOG } from '../systems/scene-config/fontCatalog'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { createCreditsCrawlTween } from './creditsCrawl'
+import { GREETING_LETTER } from '../scenes/greeting/content'
 
 interface Props { state: FilmState; dispatch: Dispatch<FilmAction>; runtime: FilmRuntime; reducedMotion: boolean }
 
@@ -158,6 +159,11 @@ export function GreetingOverlay({ state, dispatch, runtime, reducedMotion }: Pro
       <p ref={second} data-greeting-line="second" aria-label="Пусть в твоей жизни всегда будет место для маленького чуда." style={lineStyle('42%', 'clamp(22px, 3.4vw, 43px)')}>Пусть в твоей жизни всегда будет место для маленького чуда.</p>
     </div>}
 
+    <div className="credits-window" aria-hidden={!crawlStarted}>
+      <div ref={crawl} className="credits-crawl">
+        {GREETING_LETTER.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+      </div>
+    </div>
     {crawlStarted && <div className="greeting-controls"><button type="button" data-testid="credits-pause" aria-pressed={crawlPaused} onClick={toggleCrawl}>{crawlPaused ? 'Продолжить письмо' : 'Пауза письма'}</button></div>}
   </section>
 }

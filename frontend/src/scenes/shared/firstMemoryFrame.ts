@@ -1,7 +1,7 @@
 import { ramp, smooth } from './progress'
 import type { CameraPose } from './galleryMotion'
 
-/** World position shared by the Scene 04 photo and its held Scene 05 entry pose. */
+/** Historical origin used by the legacy IdentityScene photo card. */
 export const FIRST_MEMORY_POSITION = [0, .08, 0] as const
 
 /** One authored pose at both sides of 04.7 → 05.1, including direct DEV entry. */

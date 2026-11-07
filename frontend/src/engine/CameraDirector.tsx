@@ -20,7 +20,6 @@ import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { getIdentityCameraMoveTarget, getIdentityCameraPullbackPose, IDENTITY_CAMERA_PULLBACK_DISTANCE,
   IDENTITY_CAMERA_PULLBACK_SECONDS } from './identityCamera'
 import { updateGalleryCameraPose } from './galleryCameraPose'
-import { getPlanetariumTransitionEnd } from '../scenes/gallery/planetariumTransition'
 
 /** Camera settings belong here, never inside an artistic scene module. */
 export function CameraDirector({ state, dispatch, runtime, reducedMotion }: SceneProps) {
@@ -65,7 +64,9 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const previousScene = hasBuiltScene.current ? lastBuiltScene.current : null
     if (scene === 'gallery') {
       if (galleryRevision.current !== revision) {
-        if (previousScene === 'identity' && !reducedMotion) {
+        if (!reducedMotion) {
+          // Match the first card's handoff frame; GalleryScene then carries it
+          // smoothly from the Scene 04 photo plane into the gallery layout.
           const identityTarget = getIdentityCameraMoveTarget(flowerCloseup, identitySettings)
           const identityEnd = getIdentityCameraPullbackPose(identityTarget, IDENTITY_CAMERA_PULLBACK_DISTANCE)
           const cameraFit = aspect < 1 ? Math.min(2.5, 1 / Math.max(0.3, aspect)) : 1
@@ -77,8 +78,8 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
           }
           Object.assign(p, identityEnd)
         } else {
-          galleryEntryPose.current = null
-          Object.assign(p, firstMemoryCamera(34, reducedMotion))
+          galleryEntryPose.current = firstMemoryCamera(34, reducedMotion)
+          Object.assign(p, galleryEntryPose.current)
         }
         galleryFocusDistance.current = 4.8
         galleryFocusCenter.current = [0, 0]
@@ -138,12 +139,11 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       const finish = galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
       const target = interpolateCameraPose(p, finish, 0.91)
       const ease = galaxySettings.cameraEase === 'sine' ? 'sine.inOut' : galaxySettings.cameraEase === 'power2' ? 'power2.out' : 'power3.out'
-      const duration = planetariumTransition
-        ? Math.min(galaxySettings.cameraDuration, getPlanetariumTransitionEnd(galaxySettings))
-        : galaxySettings.cameraDuration
+      const duration = galaxySettings.cameraDuration
       const slowdown = Math.min(galaxySettings.cameraSlowdown, duration * 0.6)
-      timeline.to(p, { ...target, duration: duration - slowdown, ease })
-      if (slowdown > 0) timeline.to(p, { ...finish, duration: slowdown, ease: 'sine.out' })
+      const start = planetariumTransition ? GALLERY.exit : 0
+      timeline.to(p, { ...target, duration: duration - slowdown, ease }, start)
+      if (slowdown > 0) timeline.to(p, { ...finish, duration: slowdown, ease: 'sine.out' }, start + duration - slowdown)
     }
     return timeline
   }, [aspect, bloomSettings, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, planetariumTransition, reducedMotion, render, revision, scene])

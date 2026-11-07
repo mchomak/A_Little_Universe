@@ -33,7 +33,7 @@ export const GALLERY_MEMORIES: GalleryMemory[] = [
     return { ...memory, order, side }
   }),
 ]
-export const GALLERY = { spacing: 5.4, width: 7, firstZ: -4.5, startZ: 6.15, travel: 6.15 + 4.5 + (GALLERY_MEMORIES.length - 1) * 5.4 + 4, intro: 4.4, exit: 3.2, sensitivity: .045 } as const
+export const GALLERY = { spacing: 5.4, width: 7, firstZ: -4.5, startZ: 6.15, travel: 6.15 + 4.5 + (GALLERY_MEMORIES.length - 1) * 5.4 + 4, intro: 4.4, exit: 5, sensitivity: .045 } as const
 export const GALLERY_B_MIN_PHOTO_X = 0.5
 export const GALLERY_PHOTO_FACING_NEAR_DISTANCE = 0
 export const GALLERY_PHOTO_FACING_FAR_DISTANCE = GALLERY.spacing * 4
