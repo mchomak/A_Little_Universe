@@ -88,6 +88,36 @@ describe('lily particle preparation inputs', () => {
     expect(manager.getForKey(setup.key)?.geometry).toBe(expected)
   })
 
+  it('keeps startup-prepared geometry ready when StrictMode cleanup cancels the mounted request', async () => {
+    const source: LilySurfaceSource = {
+      center: [0, 0, 0], radius: 1, minY: -1, maxY: 1,
+      sampleSurface: () => ({ position: [0, 0, 0], part: 0 }),
+      sample: () => [0, 0, 0],
+    }
+    const captureSource = vi.fn(async () => ({ source, bloomClipDuration: 16 }))
+    const createWorker = vi.fn(() => ({ promise: Promise.resolve({ ok: true, attributes: {} }), cancel: vi.fn() }))
+    const manager = new LilyParticlePreparationManager({
+      loadPortrait: async () => ({ width: 1, height: 1, points: [] }),
+      captureSource,
+      createWorker,
+    })
+    const input = {
+      config: { ...DEFAULT_SCENE_COMPOSER_CONFIG, scenes: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes,
+        identity: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity, particleCount: 2 } } },
+      width: 1280, height: 636, reducedMotion: false,
+    }
+
+    const startupRecord = await manager.prepare(input)
+    await manager.prepare(input)
+    manager.cancel()
+    const mountedRecord = await manager.prepare(input)
+
+    expect(manager.getSnapshot()).toMatchObject({ status: 'ready' })
+    expect(mountedRecord).toBe(startupRecord)
+    expect(captureSource).toHaveBeenCalledTimes(1)
+    expect(createWorker).toHaveBeenCalledTimes(1)
+  })
+
   it('ignores a cancelled worker that resolves after its replacement is ready', async () => {
     const source: LilySurfaceSource = {
       center: [0, 0, 0], radius: 1, minY: -1, maxY: 1,

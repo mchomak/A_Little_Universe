@@ -268,6 +268,9 @@ export class LilyParticlePreparationManager {
   }
 
   cancel() {
+    // StrictMode replays mounted effects after Bootstrap has already prepared
+    // the geometry; keep completed work reusable across that cleanup cycle.
+    if (this.active?.record.status === 'ready') return
     this.cancelActive(true)
   }
 
