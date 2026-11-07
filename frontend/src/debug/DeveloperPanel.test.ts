@@ -8,6 +8,49 @@ import DeveloperPanel, { readSceneDisclosureOpen, rememberSceneDisclosureOpen } 
 import { reviewFilmModeLabel, reviewPriorityLabel, reviewSceneLabel, reviewStatusLabel } from './useReviewNotes'
 import SceneTimeline from './SceneTimeline'
 import type { FilmRuntime } from '../engine/runtime'
+import type { MusicDirector } from '../systems/audio/MusicDirector'
+
+it('includes the compact Russian music section in the DEV panel', () => {
+  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: initialFilmState,
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+  }))
+
+  expect(markup).toContain('<summary>Музыка</summary>')
+})
+
+it('keeps music controls separate from Composer and renders the director snapshot', () => {
+  const director = {
+    getSnapshot: () => ({
+      state: 'gallery', currentTrack: { title: 'Glass', artist: 'Hania Rani' }, nextTrack: null,
+      currentTime: 194.6, duration: 242.4, enabled: true, paused: false, error: null,
+    }),
+    subscribe: () => () => undefined,
+    setSettings: () => undefined,
+    previewNext: () => true,
+  } as unknown as MusicDirector
+  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: initialFilmState,
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    musicDirector: director,
+  }))
+
+  expect(markup).toMatch(/id="music-volume"[^>]*min="0" max="1" step="0\.01" value="1"/)
+  expect(markup).toMatch(/id="music-fadeScale"[^>]*min="0\.25" max="3" step="0\.05" value="1"/)
+  expect(markup).toMatch(/id="music-introStartOffset"[^>]*value="68"/)
+  expect(markup).toMatch(/id="music-outroStartOffset"[^>]*value="0"/)
+  expect(markup).toMatch(/id="music-introGain"[^>]*value="1"/)
+  expect(markup).toMatch(/id="music-galleryGain"[^>]*value="1"/)
+  expect(markup).toMatch(/id="music-outroGain"[^>]*value="1"/)
+  expect(markup).toContain('<dd>Glass — Hania Rani</dd>')
+  expect(markup).toContain('<dd>3:14 / 4:02</dd>')
+  expect(markup).toContain('data-testid="music-preview-next"')
+  expect(markup).not.toContain('composer-music')
+})
 
 it('shows bounded ash-motion controls and does not expose the removed return setting', () => {
   const markup = renderToStaticMarkup(createElement(DeveloperPanel, {

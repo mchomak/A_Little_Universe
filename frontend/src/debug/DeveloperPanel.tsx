@@ -1,7 +1,9 @@
-﻿import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type Dispatch } from 'react'
+﻿import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type Dispatch } from 'react'
 import type { FilmAction, FilmState } from '../engine/film'
 import type { FilmRuntime } from '../engine/runtime'
 import type { DesktopRecordingSession, DesktopRecordingSnapshot, DesktopSource } from '../systems/media/DesktopRecordingSession'
+import { MusicDirector, type MusicDirectorSnapshot } from '../systems/audio/MusicDirector'
+import { getMusicSettings, subscribeMusicSettings, type MusicSettings } from '../systems/audio/musicSettings'
 import { getSceneDuration, type SceneId } from '../engine/filmConfig'
 import {
   DEFAULT_SCENE_COMPOSER_CONFIG,
@@ -730,7 +732,69 @@ function SelectConfigControl({ control, value, onChange, onReset }: {
   </div>
 }
 
-export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion, onPreload, route = 'film', desktopRecording }: {
+const EMPTY_MUSIC_SNAPSHOT: MusicDirectorSnapshot = {
+  state: 'silent', currentTrack: null, nextTrack: null, currentTime: 0,
+  duration: null, enabled: true, paused: false, error: null,
+}
+const MUSIC_STATE_LABELS: Record<MusicDirectorSnapshot['state'], string> = {
+  silent: 'Тишина', intro: 'Вступление', gallery: 'Галерея', outro: 'Финал', ended: 'Завершено',
+}
+
+function formatMusicTime(seconds: number | null) {
+  if (seconds === null || !Number.isFinite(seconds) || seconds < 0) return '—'
+  const wholeSeconds = Math.floor(seconds)
+  return `${Math.floor(wholeSeconds / 60)}:${String(wholeSeconds % 60).padStart(2, '0')}`
+}
+
+function MusicControls({ director }: { director: MusicDirector | undefined }) {
+  const [settings, setSettings] = useState<MusicSettings>(() => getMusicSettings())
+  const subscribe = useCallback((listener: () => void) => director
+    ? director.subscribe(() => listener())
+    : () => undefined, [director])
+  const getSnapshot = useCallback(() => director?.getSnapshot() ?? EMPTY_MUSIC_SNAPSHOT, [director])
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+
+  useEffect(() => subscribeMusicSettings(setSettings), [])
+
+  const change = (key: keyof MusicSettings, value: number | boolean) => director?.setSettings({ [key]: value })
+  const range = (key: Exclude<keyof MusicSettings, 'enabled'>, label: string, min: number, max: number, step: number, unit: string, scale = 1) => {
+    const id = `music-${key}`
+    const value = settings[key]
+    const scaled = value * scale
+    const display = Number.isInteger(scaled) ? String(scaled) : scaled.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+    return <div className="composer-control" key={key}>
+      <label htmlFor={id}>{label} · {display} {unit}</label>
+      <input id={id} data-testid={id} type="range" min={min} max={max} step={step} value={value} disabled={!director} onChange={(event) => change(key, Number(event.target.value))} />
+    </div>
+  }
+
+  const track = snapshot.currentTrack
+  const position = `${formatMusicTime(snapshot.currentTime)} / ${formatMusicTime(snapshot.duration)}`
+  return <details className="inspector-section">
+    <summary>Музыка</summary>
+    <button type="button" data-testid="music-enabled-toggle" aria-pressed={settings.enabled} disabled={!director} onClick={() => change('enabled', !settings.enabled)}>
+      {settings.enabled ? 'Музыка включена' : 'Музыка выключена'}
+    </button>
+    {range('volume', 'Общая громкость', 0, 1, 0.01, '%', 100)}
+    {range('fadeScale', 'Длительность перехода', 0.25, 3, 0.05, '×')}
+    {range('introStartOffset', 'Смещение Intro', 0, 600, 1, 'с')}
+    {range('outroStartOffset', 'Смещение Outro', 0, 600, 1, 'с')}
+    {range('introGain', 'Громкость Intro', 0, 1, 0.01, '%', 100)}
+    {range('galleryGain', 'Громкость галереи', 0, 1, 0.01, '%', 100)}
+    {range('outroGain', 'Громкость финала', 0, 1, 0.01, '%', 100)}
+    <dl>
+      <dt>Состояние</dt><dd>{MUSIC_STATE_LABELS[snapshot.state]}{snapshot.paused ? ' · пауза' : ''}</dd>
+      <dt>Текущий трек</dt><dd>{track ? `${track.title} — ${track.artist}` : 'Нет трека'}</dd>
+      <dt>Позиция</dt><dd>{position}</dd>
+      {snapshot.error && <><dt>Ошибка</dt><dd>{snapshot.error}</dd></>}
+    </dl>
+    <button type="button" data-testid="music-preview-next" disabled={!director || !settings.enabled || snapshot.state !== 'gallery'} onClick={() => director?.previewNext()}>
+      Пробное переключение
+    </button>
+  </details>
+}
+
+export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion, onPreload, route = 'film', desktopRecording, musicDirector }: {
   state: FilmState
   dispatch: Dispatch<FilmAction>
   runtime?: FilmRuntime
@@ -738,6 +802,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   onPreload(): void
   route?: string
   desktopRecording?: DesktopRecordingSession
+  musicDirector?: MusicDirector
 }) {
   const active: InspectorScene = route === 'loading' ? 'preload' : state.scene
   const [pinned, setPinned] = useState<InspectorScene | null>(null)
@@ -996,6 +1061,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
       <p className="inspector-follow">{pinned === null ? 'Следует за активной сценой' : 'Панель закреплена'} · {title}</p>
       {fontLoading && <p role="status">Загружаем локальный шрифт…</p>}
       {notice && <p role="status" aria-live="polite">{notice}</p>}
+      <MusicControls director={musicDirector} />
       <details className="inspector-section">
         <summary>Общие настройки</summary>
         {historyButtons('global')}

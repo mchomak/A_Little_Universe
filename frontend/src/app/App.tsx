@@ -11,6 +11,7 @@ import { RecordingControls } from '../components/RecordingControls'
 import { RecoveryPanel } from '../components/RecoveryPanel'
 import { MediaSession } from '../systems/media/MediaSession'
 import { AudioDirector } from '../systems/audio/AudioDirector'
+import { MusicDirector } from '../systems/audio/MusicDirector'
 import { useAudioDirector } from '../systems/audio/useAudioDirector'
 import { AssetManager, type PreparationResult } from '../systems/assets/AssetManager'
 import { Preloader } from '../bootstrap/Preloader'
@@ -26,11 +27,17 @@ import { LILY_MODEL_RUNTIME_ASSET, preloadLilyModel } from '../assets/lily/lilyA
 import { isDeveloperMode } from '../debug/developerMode'
 import { DesktopRecordingSession } from '../systems/media/DesktopRecordingSession'
 import { DesktopRecordingControls } from '../components/DesktopRecordingControls'
+import { createFilmMusicBridge } from './filmMusicBridge'
 
 // Application-lifetime ownership survives scene changes and StrictMode effect replay.
 const media = new MediaSession()
 const desktopRecording = new DesktopRecordingSession()
 const audio = new AudioDirector()
+const music = new MusicDirector({
+  createMusicChannel: (element) => audio.createMusicChannel(element),
+  setMusicVolume: (value) => audio.setMusicVolume(value),
+})
+const musicFilm = createFilmMusicBridge(music)
 let restore: Promise<void> | undefined
 let disposal: ReturnType<typeof setTimeout> | undefined
 type AppRoute = PreparationStep | 'film' | 'loading'
@@ -57,6 +64,11 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   const particlePreparation = useSyncExternalStore(lilyParticlePreparation.subscribe, lilyParticlePreparation.getSnapshot, lilyParticlePreparation.getSnapshot)
   useEffect(() => { void desktopRecording.setFilmActive(route === 'film').catch(() => undefined) }, [route])
   useAudioDirector(audio, state, runtime)
+  useEffect(() => {
+    musicFilm.syncFilmState(state)
+    // Film clock updates do not affect music; reconcile only lifecycle changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.scene, state.mode, state.revision, state.paused, state.reading, state.returnToEnding])
   const getParticlePreparationInput = useCallback(() => ({
     config: getConfig(),
     ...getLilyFilmSurfaceDimensions(),
@@ -92,7 +104,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     return () => {
       lifecycleOperation.current++
       // StrictMode remount cancels this timer before any live service is disposed.
-      disposal = setTimeout(() => { void media.dispose(); audio.dispose() }, 0)
+      disposal = setTimeout(() => { void media.dispose(); musicFilm.dispose(); music.dispose(); audio.dispose() }, 0)
     }
   }, [])
   useEffect(() => {
@@ -113,8 +125,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     setRoute(withRecording ? 'checking' : 'ready')
     const markChecked = () => { if (request === operation.current) setChecked(true) }
     const unlockAudio = () => {
-      try { return audio.unlock().catch(() => false) }
-      catch { return Promise.resolve(false) }
+      return musicFilm.startAfterUnlock(() => audio.unlock(), state)
     }
     void startPreparedFilm({
       startGift: () => {
@@ -138,12 +149,12 @@ export function App({ preparation }: { preparation: PreparationResult }) {
             }),
             start: async () => { await desktopRecording.start(); return true },
           }
-          return openGift({ audio, media: desktopMedia, onStart: markChecked })
+          return openGift({ audio: { unlock: unlockAudio }, media: desktopMedia, onStart: markChecked })
         }
 
         media.setOptions({ gaze: false, recording: true, upload: false })
         return openGift({
-          audio,
+          audio: { unlock: unlockAudio },
           media: { getSnapshot: media.getSnapshot, prepare: () => media.prepare(), start: () => media.start() },
           onStart: markChecked,
         })
@@ -236,6 +247,6 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     {!desktopRecording.available && <RecoveryPanel session={media} />}
     {state.reading && route === 'film' && <ReadingPanel dispatch={dispatch} />}
     {developerMode && <button className="debug-toggle" type="button" aria-expanded={debug} aria-controls="developer-panel" onClick={() => setDebug((value) => !value)}>DEV</button>}
-    {developerMode && debug && <Suspense fallback={<p className="debug-loading">Загрузка Developer Mode…</p>}><DeveloperPanel state={state} dispatch={devDispatch} runtime={runtime} route={route} reducedMotion={reducedMotion} onPreload={() => devPrepare('loading')} desktopRecording={desktopRecording} /><SceneTimeline state={state} dispatch={devDispatch} runtime={runtime} route={route} onPreload={() => devPrepare('loading')} /></Suspense>}
+    {developerMode && debug && <Suspense fallback={<p className="debug-loading">Загрузка Developer Mode…</p>}><DeveloperPanel state={state} dispatch={devDispatch} runtime={runtime} route={route} reducedMotion={reducedMotion} onPreload={() => devPrepare('loading')} desktopRecording={desktopRecording} musicDirector={music} /><SceneTimeline state={state} dispatch={devDispatch} runtime={runtime} route={route} onPreload={() => devPrepare('loading')} /></Suspense>}
   </main>
 }
