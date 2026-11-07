@@ -1,8 +1,14 @@
 export type AudioCue = 'prologue-intro' | 'prologue-first' | 'prologue-second' | 'prologue-dissolve' | 'prologue-touch' | 'growth'
 
+export type MusicChannel = { gain: GainNode; dispose(): void }
+
 export class AudioDirector {
   private context: AudioContext | null = null
   private gain: GainNode | null = null
+  private musicMaster: GainNode | null = null
+  private musicVolume = 1
+  private musicSources = new Map<HTMLMediaElement, MediaElementAudioSourceNode>()
+  private musicChannels = new Map<HTMLMediaElement, MusicChannel>()
   private buffers = new Map<AudioCue, AudioBuffer>()
   private sources = new Set<AudioBufferSourceNode>()
   private speed = 1
@@ -45,6 +51,69 @@ export class AudioDirector {
 
   setBuffer(cue: AudioCue, buffer: AudioBuffer): void {
     if (!this.disposed) this.buffers.set(cue, buffer)
+  }
+
+  /** The music master stays separate from the cue bus, but shares its AudioContext. */
+  setMusicVolume(value: number): void {
+    if (!Number.isFinite(value) || value < 0 || value > 1) return
+    this.musicVolume = value
+    if (this.musicMaster) this.musicMaster.gain.value = value
+  }
+
+  /**
+   * Route an HTML media element through its own channel and the shared music master.
+   * The context is created only by unlock(), so callers retry after the start gesture.
+   */
+  createMusicChannel(element: HTMLMediaElement): MusicChannel | null {
+    if (this.disposed || !this.unlocked || !this.context) return null
+    const existing = this.musicChannels.get(element)
+    if (existing) return existing
+
+    let source = this.musicSources.get(element)
+    try {
+      if (!source) {
+        source = this.context.createMediaElementSource(element)
+        this.musicSources.set(element, source)
+      }
+      if (!this.musicMaster) {
+        this.musicMaster = this.context.createGain()
+        this.musicMaster.gain.value = this.musicVolume
+        this.musicMaster.connect(this.context.destination)
+      }
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : 'Музыкальный канал недоступен'
+      return null
+    }
+
+    const channelGain = this.context.createGain()
+    channelGain.gain.value = 1
+    let sourceConnected = false
+    try {
+      source.connect(channelGain)
+      sourceConnected = true
+      channelGain.connect(this.musicMaster)
+    } catch (error) {
+      if (sourceConnected) {
+        try { source.disconnect(channelGain) } catch (disconnectError) { this.error = String(disconnectError) }
+      }
+      channelGain.disconnect()
+      this.error = error instanceof Error ? error.message : 'Музыкальный канал недоступен'
+      return null
+    }
+
+    let disposed = false
+    const channel: MusicChannel = {
+      gain: channelGain,
+      dispose: () => {
+        if (disposed) return
+        disposed = true
+        source.disconnect(channelGain)
+        channelGain.disconnect()
+        if (this.musicChannels.get(element) === channel) this.musicChannels.delete(element)
+      },
+    }
+    this.musicChannels.set(element, channel)
+    return channel
   }
 
   /** No registered asset means genuine silence and a false result. No synthetic music. */
@@ -105,11 +174,17 @@ export class AudioDirector {
     this.unlocked = false
     this.stop()
     this.buffers.clear()
+    for (const channel of this.musicChannels.values()) channel.dispose()
+    this.musicChannels.clear()
+    for (const source of this.musicSources.values()) source.disconnect()
+    this.musicSources.clear()
     this.gain?.disconnect()
+    this.musicMaster?.disconnect()
     if (this.context && this.context.state !== 'closed') {
       try { await this.context.close() } catch (error) { this.error = String(error) }
     }
     this.context = null
     this.gain = null
+    this.musicMaster = null
   }
 }

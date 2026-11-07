@@ -77,3 +77,86 @@ it('resumes correctly when pause is still pending and never reopens a disposed c
   await new Promise((resolve) => setTimeout(resolve, 0))
   expect(context.resume).toHaveBeenCalledTimes(2)
 })
+
+it('routes music through a separate adjustable master on the unlocked shared context', async () => {
+  const sfxSource = { buffer: null, playbackRate: { value: 1 }, connect: vi.fn(), disconnect: vi.fn(), start: vi.fn(), stop: vi.fn(), onended: null }
+  const makeGain = () => ({ gain: { value: 1 }, connect: vi.fn(), disconnect: vi.fn() })
+  const sfxGain = makeGain()
+  const musicMaster = makeGain()
+  const firstChannelGain = makeGain()
+  const secondChannelGain = makeGain()
+  const replacementChannelGain = makeGain()
+  const gains = [sfxGain, musicMaster, firstChannelGain, secondChannelGain, replacementChannelGain]
+  const mediaSources = new Map<HTMLMediaElement, { connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }>()
+  const firstElement = {} as HTMLMediaElement
+  const secondElement = {} as HTMLMediaElement
+  const context = {
+    state: 'suspended',
+    resume: vi.fn(async () => { context.state = 'running' }),
+    suspend: vi.fn(async () => { context.state = 'suspended' }),
+    close: vi.fn(async () => { context.state = 'closed' }),
+    createGain: vi.fn(() => gains[context.createGain.mock.calls.length - 1]),
+    createBufferSource: vi.fn(() => sfxSource),
+    createMediaElementSource: vi.fn((element: HTMLMediaElement) => {
+      const source = { connect: vi.fn(), disconnect: vi.fn() }
+      mediaSources.set(element, source)
+      return source
+    }),
+    destination: {},
+  }
+  const createContext = vi.fn(() => context as unknown as AudioContext)
+  const audio = new AudioDirector(createContext)
+  audio.setBuffer('prologue-intro', {} as AudioBuffer)
+
+  expect(audio.createMusicChannel(firstElement)).toBeNull()
+  expect(context.createMediaElementSource).not.toHaveBeenCalled()
+  expect(await audio.unlock()).toBe(true)
+  expect(audio.cue('prologue-intro')).toBe(true)
+  audio.setMusicVolume(0.4)
+  const firstChannel = audio.createMusicChannel(firstElement)
+  const repeatedFirstChannel = audio.createMusicChannel(firstElement)
+  const secondChannel = audio.createMusicChannel(secondElement)
+
+  expect(firstChannel).not.toBeNull()
+  expect(repeatedFirstChannel).toBe(firstChannel)
+  expect(secondChannel).not.toBeNull()
+  expect(createContext).toHaveBeenCalledOnce()
+  expect(context.createGain).toHaveBeenCalledTimes(4)
+  expect(context.createMediaElementSource).toHaveBeenCalledTimes(2)
+  expect(sfxSource.connect).toHaveBeenCalledWith(sfxGain)
+  expect(mediaSources.get(firstElement)!.connect).toHaveBeenCalledWith(firstChannel!.gain)
+  expect(mediaSources.get(secondElement)!.connect).toHaveBeenCalledWith(secondChannel!.gain)
+  expect(firstChannel!.gain).toBe(firstChannelGain)
+  expect(secondChannel!.gain).toBe(secondChannelGain)
+  expect(firstChannelGain.connect).toHaveBeenCalledWith(musicMaster)
+  expect(secondChannelGain.connect).toHaveBeenCalledWith(musicMaster)
+  expect(sfxGain.connect).toHaveBeenCalledWith(context.destination)
+  expect(musicMaster.connect).toHaveBeenCalledWith(context.destination)
+  expect(sfxGain.gain.value).toBe(0.65)
+  expect(musicMaster.gain.value).toBe(0.4)
+
+  audio.stop()
+  expect(sfxSource.stop).toHaveBeenCalledOnce()
+  expect(mediaSources.get(firstElement)!.disconnect).not.toHaveBeenCalled()
+  expect(mediaSources.get(secondElement)!.disconnect).not.toHaveBeenCalled()
+  firstChannel!.dispose()
+  firstChannel!.dispose()
+  expect(mediaSources.get(firstElement)!.disconnect).toHaveBeenCalledOnce()
+  expect(mediaSources.get(firstElement)!.disconnect).toHaveBeenCalledWith(firstChannelGain)
+  expect(mediaSources.get(secondElement)!.disconnect).not.toHaveBeenCalled()
+  expect(firstChannelGain.disconnect).toHaveBeenCalledOnce()
+  expect(secondChannelGain.disconnect).not.toHaveBeenCalled()
+
+  const replacementChannel = audio.createMusicChannel(firstElement)
+  expect(replacementChannel).not.toBeNull()
+  expect(replacementChannel).not.toBe(firstChannel)
+  expect(context.createMediaElementSource).toHaveBeenCalledTimes(2)
+  expect(mediaSources.get(firstElement)!.connect).toHaveBeenCalledWith(replacementChannel!.gain)
+  expect(replacementChannel!.gain).toBe(replacementChannelGain)
+
+  await audio.dispose()
+  expect(secondChannelGain.disconnect).toHaveBeenCalledOnce()
+  expect(replacementChannelGain.disconnect).toHaveBeenCalledOnce()
+  expect(musicMaster.disconnect).toHaveBeenCalledOnce()
+  expect(context.close).toHaveBeenCalledOnce()
+})
