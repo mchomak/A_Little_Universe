@@ -7,7 +7,9 @@
     "node": "^22.12.0 || >=24.0.0"
   },
   "scripts": {
+    "predev": "node scripts/sync-music-assets.mjs",
     "dev": "vite --host 127.0.0.1",
+    "prebuild": "node scripts/sync-music-assets.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",

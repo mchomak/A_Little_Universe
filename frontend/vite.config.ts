@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { reviewNotesPlugin } from './dev-review-store'
 import { scenePresetStorePlugin } from './dev-scene-preset-store'
+import { createMusicOfflineManifestEntries } from './scripts/sync-music-assets.mjs'
 import { defineConfig } from 'vitest/config'
 import { createHash } from 'node:crypto'
 import type { Plugin } from 'vite'
@@ -44,6 +45,7 @@ function irisLabAssets(): Plugin {
 function offlineBuild(): Plugin {
   let base = '/'
   let root = process.cwd()
+  let publicDir = resolve(process.cwd(), 'public')
   return {
     name: 'little-universe-offline',
     apply: 'build',
@@ -51,6 +53,7 @@ function offlineBuild(): Plugin {
     configResolved(config) {
       base = config.base
       root = config.root
+      publicDir = config.publicDir
       if (!base.startsWith('/') || base.startsWith('//')) throw new Error('Offline build requires a same-origin absolute Vite base path')
     },
     generateBundle: {
@@ -76,7 +79,11 @@ function offlineBuild(): Plugin {
         const seedIndex = Buffer.from(JSON.stringify(seedPresets))
         this.emitFile({ type: 'asset', fileName: 'scene-presets/index.json', source: seedIndex })
         bundledSeeds.push({ fileName: 'scene-presets/index.json', source: seedIndex })
-        const runtimeAssets = [...outputs, ...bundledSeeds].map((output) => {
+        const musicAssets = createMusicOfflineManifestEntries(resolve(publicDir, 'music'), base)
+        const musicOutputFiles = new Set(musicAssets.map((asset) => asset.url.slice(base.length)))
+        const runtimeAssets = [...outputs, ...bundledSeeds]
+          .filter((output) => !musicOutputFiles.has(output.fileName))
+          .map((output) => {
           const bytes = Buffer.from(output.source)
           const extension = output.fileName.split('.').at(-1)?.toLowerCase()
           const kind = ['png', 'jpg', 'jpeg', 'webp', 'avif', 'gif'].includes(extension ?? '') ? 'image'
@@ -87,7 +94,8 @@ function offlineBuild(): Plugin {
           return { url: `${base}${output.fileName}`, kind, required: !isOptionalOpeningBackground, bytes: bytes.length,
             sha256: createHash('sha256').update(bytes).digest('hex'), ...(contentType ? { contentType } : {}),
             ...(isOptionalOpeningBackground ? { cacheOnInstall: true } : {}) }
-        })
+          })
+          .concat(musicAssets)
         const assets = runtimeAssets.filter((asset) => asset.required).sort((a, b) => a.url.localeCompare(b.url))
         const optionalAssets = [...runtimeAssets.filter((asset) => !asset.required),
           { url: `${base}scene-composer.json`, kind: 'file', required: false }].sort((a, b) => a.url.localeCompare(b.url))
@@ -168,7 +176,7 @@ export default defineConfig({
   plugins: [react(), reviewNotesPlugin(), scenePresetStorePlugin(), irisLabAssets(), offlineBuild()],
   server: { port: 5173, strictPort: true },
   preview: { port: 4173, strictPort: true },
-  test: { environment: 'node', include: ['src/**/*.test.ts'] },
+  test: { environment: 'node', include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'] },
 })
 
 

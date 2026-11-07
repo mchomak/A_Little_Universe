@@ -63,3 +63,8 @@ Thumbs.db
 
 !.autopilot/2026-11-06-planetarium-gallery-galaxy-reveal/
 !.autopilot/2026-11-06-planetarium-gallery-galaxy-reveal/**
+
+# Local soundtrack sources and generated public copies
+/music/
+/musics/
+/frontend/public/music/
