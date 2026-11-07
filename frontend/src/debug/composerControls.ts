@@ -10,6 +10,7 @@ import {
   type ConfigResetScope,
   type ScenePresetId,
 } from '../systems/scene-config/config'
+import { loadArtFont } from '../systems/scene-config/fontCatalog'
 
 export type ComposerFieldPath =
   | `global.${keyof SceneComposerConfig['global'] & string}`
@@ -66,12 +67,30 @@ export async function importComposerJson(source: string): Promise<ComposerImport
   for (const section of ['openingBackground', 'preload', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy']) {
     if (section in scenes && !isRecord(scenes[section])) return { ok: false, reason: 'document' }
   }
-  const prologue = scenes.prologue as Record<string, unknown> | undefined
-  const config = await updateConfig(createCloudCompatibleImportPatch(document, getConfig().scenes.gallery.cloudLayers))
-  if (
-    (prologue && 'fontFamily' in prologue && config.scenes.prologue.fontFamily !== normalizeConfigFont(prologue.fontFamily))
-  ) return { ok: false, reason: 'font' }
+
+  const current = getConfig()
+  const patch = createCloudCompatibleImportPatch(document, current.scenes.gallery.cloudLayers)
+  const candidate = normalizeConfig(mergeConfigValues(current, patch))
+  if (candidate.scenes.prologue.fontFamily !== current.scenes.prologue.fontFamily) {
+    try {
+      if (!await loadArtFont(candidate.scenes.prologue.fontFamily)) return { ok: false, reason: 'font' }
+    } catch {
+      return { ok: false, reason: 'font' }
+    }
+  }
+
+  const config = await updateConfig(patch)
   return { ok: true, config }
+}
+
+function mergeConfigValues(base: unknown, patch: unknown): unknown {
+  if (!isRecord(base) || !isRecord(patch)) return patch
+
+  const merged: Record<string, unknown> = { ...base }
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined) merged[key] = mergeConfigValues(merged[key], value)
+  }
+  return merged
 }
 
 function createCloudCompatibleImportPatch(
@@ -170,10 +189,6 @@ export function resetComposerScope(scope: ConfigResetScope) {
     const prologueFailed = (scope === 'all' || scope === 'prologue') && config.scenes.prologue.fontFamily !== DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue.fontFamily
     return prologueFailed ? { ok: false, reason: 'font', config } : { ok: true, config }
   })
-}
-
-function normalizeConfigFont(value: unknown) {
-  return normalizeConfig({ schemaVersion: 1, scenes: { prologue: { fontFamily: value } } }).scenes.prologue.fontFamily
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

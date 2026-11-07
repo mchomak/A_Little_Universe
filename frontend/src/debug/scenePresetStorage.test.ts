@@ -33,8 +33,28 @@ describe('packaged scene preset storage', () => {
 
     await expect(store.list('growth')).resolves.toHaveLength(1)
     await expect(store.read('growth', preset.id)).resolves.toMatchObject({ name: 'Рост 2' })
-    await expect(store.save({ ...preset, scope: 'gallery' })).rejects.toThrow()
+    await expect(store.save({ ...preset, scope: 'gallery' }, 'growth')).rejects.toThrow()
     await expect(store.read('gallery', preset.id)).rejects.toThrow(/не найден/)
+  })
+
+  it('rejects invalid known scene values before writing storage', async () => {
+    const backing = memoryStorage()
+    const store = createScenePresetStorage(backing)
+    const preset = captureScenePreset(DEFAULT_SCENE_COMPOSER_CONFIG, 'growth', 'Рост')
+    const invalidPreset = { ...preset, scene: { ...preset.scene, formationDuration: 4 } }
+
+    await expect(store.save(invalidPreset)).rejects.toThrow()
+    expect(backing.values.size).toBe(0)
+  })
+
+  it('does not return stored presets with invalid known scene values', async () => {
+    const backing = memoryStorage()
+    const store = createScenePresetStorage(backing)
+    const preset = captureScenePreset(DEFAULT_SCENE_COMPOSER_CONFIG, 'growth', 'Рост')
+    const invalidPreset = { ...preset, scene: { ...preset.scene, formationDuration: 4 } }
+    backing.setItem('a-little-universe.scene-presets.v1.growth', JSON.stringify([invalidPreset]))
+
+    await expect(store.list('growth')).resolves.toEqual([])
   })
 
   it('shows packaged presets on first run and lets user values replace a seed by id', async () => {

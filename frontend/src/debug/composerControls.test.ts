@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import * as sceneConfig from '../systems/scene-config/config'
 import { resetConfig, getConfig, DEFAULT_SCENE_COMPOSER_CONFIG } from '../systems/scene-config/config'
 import { applyComposerPreset, exportComposerJson, importComposerJson, resetComposerField, resetComposerScope, setComposerField } from './composerControls'
 
@@ -12,6 +13,73 @@ afterEach(async () => {
 })
 
 describe('Scene Composer controls', () => {
+  it('does not call the store when an imported font cannot be prepared', async () => {
+    await setComposerField('global.quality', 'low')
+    const before = getConfig()
+    fontLoader.load.mockResolvedValue(false)
+    const updateConfig = vi.spyOn(sceneConfig, 'updateConfig')
+
+    try {
+      const result = await importComposerJson(JSON.stringify({
+        schemaVersion: 26,
+        global: { quality: 'standard' },
+        scenes: { prologue: { fontFamily: 'caveat', fontSize: 72 } },
+      }))
+
+      expect(result).toEqual({ ok: false, reason: 'font' })
+      expect(updateConfig).not.toHaveBeenCalled()
+      expect(getConfig()).toBe(before)
+      expect(getConfig().global.quality).toBe('low')
+    } finally {
+      updateConfig.mockRestore()
+    }
+  })
+
+  it('normalizes a full Composer import before one store update and preserves omitted settings', async () => {
+    await setComposerField('scenes.gallery.moonSize', 1.4)
+    const updateConfig = vi.spyOn(sceneConfig, 'updateConfig')
+    const updates: ReturnType<typeof getConfig>[] = []
+    const unsubscribe = sceneConfig.subscribeConfig((config) => updates.push(config))
+
+    try {
+      const result = await importComposerJson(JSON.stringify({
+        schemaVersion: 26,
+        global: { quality: 'low', extraGlobalField: true },
+        scenes: { prologue: { fontSize: 72 } },
+        extraRootField: 'ignored',
+      }))
+
+      expect(result.ok).toBe(true)
+      expect(updateConfig).toHaveBeenCalledTimes(1)
+      expect(updates).toHaveLength(1)
+      expect(getConfig().schemaVersion).toBe(26)
+      expect(getConfig().global).toMatchObject({ quality: 'low', dprMin: 1, dprMax: 1.5 })
+      expect(getConfig().scenes.prologue.fontSize).toBe(72)
+      expect(getConfig().scenes.gallery.moonSize).toBe(1.4)
+    } finally {
+      unsubscribe()
+      updateConfig.mockRestore()
+    }
+  })
+
+  it('rejects malformed and future Composer JSON without updating the store', async () => {
+    const before = getConfig()
+    const updateConfig = vi.spyOn(sceneConfig, 'updateConfig')
+    const updates: ReturnType<typeof getConfig>[] = []
+    const unsubscribe = sceneConfig.subscribeConfig((config) => updates.push(config))
+
+    try {
+      expect(await importComposerJson('{ invalid json')).toEqual({ ok: false, reason: 'json' })
+      expect(await importComposerJson('{"schemaVersion":27,"scenes":{}}')).toEqual({ ok: false, reason: 'version' })
+      expect(updateConfig).not.toHaveBeenCalled()
+      expect(updates).toHaveLength(0)
+      expect(getConfig()).toBe(before)
+    } finally {
+      unsubscribe()
+      updateConfig.mockRestore()
+    }
+  })
+
   it('round-trips Lily growth pulse and particle controls alongside schema v19 settings', async () => {
     const result = await importComposerJson(JSON.stringify({ schemaVersion: 19, scenes: {
       openingBackground: { zoom: 1.6, offsetX: -0.2, offsetY: 0.15 },

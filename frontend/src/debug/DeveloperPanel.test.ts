@@ -4,7 +4,10 @@ import { expect, it } from 'vitest'
 import { initialFilmState } from '../engine/film'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, updateConfig } from '../systems/scene-config/config'
 import { resetLilyMaterialExperiment } from '../scenes/lily/materialPolishState'
-import DeveloperPanel from './DeveloperPanel'
+import DeveloperPanel, { readSceneDisclosureOpen, rememberSceneDisclosureOpen } from './DeveloperPanel'
+import { reviewFilmModeLabel, reviewPriorityLabel, reviewSceneLabel, reviewStatusLabel } from './useReviewNotes'
+import SceneTimeline from './SceneTimeline'
+import type { FilmRuntime } from '../engine/runtime'
 
 it('shows bounded ash-motion controls and does not expose the removed return setting', () => {
   const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
@@ -31,7 +34,7 @@ it('shows bounded ash-motion controls and does not expose the removed return set
   expect(markup).not.toContain('Настройки заново')
 })
 
-it('shows shared opening background crop controls through Scene 04 and hides them in the gallery', () => {
+it('shows shared opening background crop controls in general settings for every scene', () => {
   const openingMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
     state: { ...initialFilmState, scene: 'identity' },
     dispatch: () => undefined,
@@ -44,6 +47,7 @@ it('shows shared opening background crop controls through Scene 04 and hides the
   expect(openingMarkup).toMatch(/id="composer-scenes-openingBackground-offsetX"[^>]*type="range"[^>]*min="-1" max="1" step="0.01" value="0"/)
   expect(openingMarkup).toMatch(/id="composer-scenes-openingBackground-offsetY"[^>]*type="range"[^>]*min="-1" max="1" step="0.01" value="0"/)
   expect(openingMarkup).toContain('Сбросить кадрирование фона')
+  expect(openingMarkup.indexOf('00–04 · Кадрирование фона')).toBeLessThan(openingMarkup.indexOf('class="inspector-scene"'))
 
   const galleryMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
     state: { ...initialFilmState, scene: 'gallery' },
@@ -52,7 +56,7 @@ it('shows shared opening background crop controls through Scene 04 and hides the
     onPreload: () => undefined,
     route: 'film',
   }))
-  expect(galleryMarkup).not.toContain('composer-scenes-openingBackground-zoom')
+  expect(galleryMarkup).toContain('composer-scenes-openingBackground-zoom')
 })
 
 it('shows only the active scene controls and keeps playback in the timeline', () => {
@@ -120,16 +124,17 @@ it('shows only the active scene controls and keeps playback in the timeline', ()
   expect(markup).toMatch(/id="composer-scenes-growth-formationDuration"[^>]*min="2\.5" max="3\.5" step="0\.1" value="3\.2"/)
   expect(markup).toMatch(/id="composer-scenes-growth-attractionStrength"[^>]*min="2" max="24" step="0\.5" value="11\.5"/)
   expect(markup).toMatch(/id="composer-scenes-growth-vfxCoreIntensity"[^>]*min="0" max="1\.5" step="0\.05" value="0\.65"/)
-  expect(markup).toContain('<summary>Lily Growth Pulse</summary>')
+  expect(markup).toContain('<summary>Пульсация роста лилии</summary>')
   expect(markup).toMatch(/id="composer-scenes-growth-vfxPulseEnabled"[^>]*type="checkbox"[^>]*checked=""/)
   expect(markup).toMatch(/id="composer-scenes-growth-vfxPulseBrightness"[^>]*min="0" max="2\.5" step="0\.05" value="1\.45"/)
+  expect(markup).not.toContain('composer-scenes-bloom-flowerBloomDuration')
   expect(markup).toContain('id="composer-scenes-growth-vfxPulseWidth"')
   expect(markup).toContain('id="composer-scenes-growth-vfxPulseSpeed"')
   expect(markup).toContain('id="composer-scenes-growth-vfxPulseTrailFade"')
   expect(markup).toContain('id="composer-scenes-growth-vfxPulseColor"')
   expect(markup).toContain('id="composer-scenes-growth-vfxPulseLeafBoost"')
   expect(markup).toContain('id="composer-scenes-growth-vfxPulseBudBoost"')
-  expect(markup).toContain('<summary>Lily Growth Particles</summary>')
+  expect(markup).toContain('<summary>Частицы роста лилии</summary>')
   expect(markup).toMatch(/id="composer-scenes-growth-vfxParticleCount"[^>]*min="0" max="528" step="8" value="440"/)
   expect(markup).toContain('id="composer-scenes-growth-vfxParticleSize"')
   expect(markup).toMatch(/id="composer-scenes-growth-vfxParticleSizeVariation"[^>]*value="0\.65"/)
@@ -139,15 +144,15 @@ it('shows only the active scene controls and keeps playback in the timeline', ()
   expect(markup).toMatch(/id="composer-scenes-growth-vfxParticleLifetime"[^>]*value="2\.3"/)
   expect(markup).toMatch(/id="composer-scenes-growth-vfxParticleSpread"[^>]*value="0\.65"/)
   expect(markup).toContain('id="composer-scenes-growth-vfxParticleTint"')
-  expect(markup).toContain('<summary>Lily Bud Glow</summary>')
+  expect(markup).toContain('<summary>Свечение бутона лилии</summary>')
   expect(markup).toMatch(/id="composer-scenes-growth-lilyBudGlow-enabled"[^>]*type="checkbox"[^>]*checked=""/)
   expect(markup).toMatch(/id="composer-scenes-growth-lilyBudGlow-intensity"[^>]*min="0" max="2" step="0\.05" value="0\.48"/)
   expect(markup).toContain('id="composer-scenes-growth-lilyBudGlow-color"')
-  expect(markup).toContain('<summary>Lily Leaf Material</summary>')
+  expect(markup).toContain('<summary>Материал листьев лилии</summary>')
   expect(markup).toContain('id="composer-scenes-growth-lilyLeafMaterial-translucencyStrength"')
   expect(markup).toContain('id="composer-scenes-growth-lilyLeafMaterial-edgeLightIntensity"')
   expect(markup).toContain('id="composer-scenes-growth-lilyLeafMaterial-colorVariation"')
-  expect(markup).toContain('<summary>Lily Growth Vortex</summary>')
+  expect(markup).toContain('<summary>Вихрь при росте лилии</summary>')
   expect(markup).toMatch(/id="composer-scenes-growth-growthVortex-enabled"[^>]*type="checkbox"[^>]*checked=""/)
   expect(markup).toMatch(/id="composer-scenes-growth-growthVortex-particleCount"[^>]*min="0" max="1600" step="10" value="360"/)
   expect(markup).toContain('id="composer-scenes-growth-growthVortex-rotationSpeed"')
@@ -162,7 +167,23 @@ it('shows only the active scene controls and keeps playback in the timeline', ()
   }
   expect(markup).not.toContain('composer-scenes-prologue-windStrength')
   expect(markup).not.toContain('dev-seek')
-  expect(markup).toContain('Auto')
+  expect(markup).toContain('Автоматически')
+})
+
+it('keeps typography controls in the Russian prologue group', () => {
+  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'prologue' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    route: 'film',
+  }))
+
+  expect(markup).toContain('<summary>Типографика</summary>')
+  expect(markup).toContain('id="composer-scenes-prologue-fontFamily"')
+  expect(markup).toContain('id="composer-scenes-prologue-copyVariant"')
+  expect(markup).toContain('>Грейт Вайбс</option>')
+  expect(markup).not.toContain('>Great Vibes</option>')
 })
 
 it('exposes the Lily bloom pollen controls in Scene 03', () => {
@@ -174,14 +195,15 @@ it('exposes the Lily bloom pollen controls in Scene 03', () => {
     route: 'film',
   }))
 
-  expect(markup).toContain('<summary>Lily Bloom Pollen</summary>')
+  expect(markup).toContain('<summary>Пыльца при раскрытии лилии</summary>')
   expect(markup).toMatch(/id="composer-scenes-bloom-lilyBloomPollen-enabled"[^>]*type="checkbox"[^>]*checked=""/)
   expect(markup).toMatch(/id="composer-scenes-bloom-lilyBloomPollen-particleCount"[^>]*min="0" max="600" step="4" value="48"/)
   expect(markup).toContain('id="composer-scenes-bloom-lilyBloomPollen-glowIntensity"')
   expect(markup).toContain('id="composer-scenes-bloom-lilyBloomPollen-riseSpeed"')
   expect(markup).toContain('id="composer-scenes-bloom-lilyBloomPollen-innerCupGlow"')
-  expect(markup).toMatch(/id="composer-scenes-growth-cloudLayers-far-count"[^>]*min="0" max="4" step="1"/)
-  expect(markup).toMatch(/id="composer-scenes-growth-cloudLayers-sides-offsetX"[^>]*min="-12" max="12" step="0\.25"/)
+  expect(markup.match(/ id="composer-scenes-bloom-flowerBloomDuration"/g)).toHaveLength(1)
+  expect(markup).not.toContain('composer-scenes-growth-cloudLayers-far-count')
+  expect(markup).not.toContain('composer-scenes-growth-cloudLayers-sides-offsetX')
 })
 
 it('exposes the Original/Enhanced A/B switch only while DEV scene 03 is active', () => {
@@ -194,8 +216,8 @@ it('exposes the Original/Enhanced A/B switch only while DEV scene 03 is active',
     route: 'film',
   }))
   expect(bloomMarkup).toContain('Материалы лилии · A/B')
-  expect(bloomMarkup).toMatch(/aria-pressed="true">Original<\/button>/)
-  expect(bloomMarkup).toMatch(/aria-pressed="false">Enhanced<\/button>/)
+  expect(bloomMarkup).toMatch(/aria-pressed="true">Исходный<\/button>/)
+  expect(bloomMarkup).toMatch(/aria-pressed="false">Улучшенный<\/button>/)
 
   const growthMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
     state: { ...initialFilmState, scene: 'growth' },
@@ -251,10 +273,12 @@ it('exposes the imported galaxy seed and optional black center in Scene 07 Inspe
     onPreload: () => undefined,
   }))
 
-  expect(markup).toContain('Seed генерации')
+  expect(markup).toContain('Ключ генерации')
   expect(markup).toMatch(/id="composer-scenes-galaxy-seed"[^>]*type="text"[^>]*value="andromeda"/)
   expect(markup).toContain('Чёрный центр')
-  expect(markup).toContain('Spore (R/B/Y/V)')
+  expect(markup).toContain('value="spore"')
+  expect(markup).toContain('Споры · красный, синий, жёлтый и фиолетовый')
+  expect(markup).not.toContain('Spore (R/B/Y/V)')
   expect(markup).not.toContain('scenes-galaxy-scatter')
   expect(markup).toContain('Сжатие разброса')
   expect(markup).toMatch(/id="composer-scenes-galaxy-rotationSpeed"[^>]*min="0" max="0\.1"[^>]*value="0\.045"/)
@@ -305,11 +329,11 @@ it('exposes the gallery layout and displays previously saved short collage timin
   expect(markup).toMatch(/id="composer-scenes-gallery-collageRevealDuration"[^>]*min="0.25" max="6" step="0.01" value="0.68"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-collagePhotoScale"[^>]*min="0.5" max="1" step="0.01" value="0.9"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-collagePhotoGap"[^>]*min="0.1" max="1.5" step="0.01" value="0.3"/)
-  expect(markup).toContain('Far Clouds · дальний слой')
-  expect(markup).toContain('Mid Clouds · боковые массы')
-  expect(markup).toContain('Near Low Clouds · за фотографиями')
-  expect(markup).toContain('Waterline Clouds · дымка над водой')
-  expect(markup).toContain('Moon Clouds · облака у Луны')
+  expect(markup).toContain('Дальние облака · дальний слой')
+  expect(markup).toContain('Средние облака · боковые массы')
+  expect(markup).toContain('Ближние низкие облака · за фотографиями')
+  expect(markup).toContain('Облака над водой · лёгкая дымка')
+  expect(markup).toContain('Облака у Луны')
   expect(markup).toContain('Мягкость края')
   expect(markup).toContain('Скорость дрейфа')
   expect(markup).toContain('Высота дымки')
@@ -317,7 +341,7 @@ it('exposes the gallery layout and displays previously saved short collage timin
   expect(markup).toContain('Общий лунный свет')
   expect(markup).toContain('Интенсивность ореола Луны')
   expect(markup).toContain('Цвет лунного света')
-  expect(markup).toContain('Интенсивность god rays')
+  expect(markup).toContain('Интенсивность объёмных лучей Луны')
   expect(markup).toMatch(/id="composer-scenes-gallery-moonPositionY"[^>]*min="4" max="24" step="0.1" value="24"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-moonTargetY"[^>]*min="-12" max="14" step="0.05" value="5.2"/)
   expect(markup).toMatch(/id="composer-scenes-gallery-moonTargetZ"[^>]*min="-180" max="40" step="1" value="-34"/)
@@ -414,6 +438,98 @@ it('shows the B profile values when the between-columns layout is active', async
   } finally {
     await updateConfig(DEFAULT_SCENE_COMPOSER_CONFIG)
   }
+})
+
+it('keeps shared controls in their own section and shows shared growth clouds once', () => {
+  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'growth' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    route: 'film',
+  }))
+
+  const generalSettingsIndex = markup.indexOf('<summary>Общие настройки</summary>')
+  const sceneSettingsIndex = markup.indexOf('class="inspector-scene"')
+  expect(generalSettingsIndex).toBeGreaterThan(-1)
+  expect(sceneSettingsIndex).toBeGreaterThan(generalSettingsIndex)
+  expect(markup.indexOf('composer-scenes-openingBackground-zoom')).toBeGreaterThan(generalSettingsIndex)
+  expect(markup.indexOf('composer-scenes-openingBackground-zoom')).toBeLessThan(sceneSettingsIndex)
+  expect(markup.match(/Облака вокруг острова · общая настройка сцен 02–03/g)).toHaveLength(1)
+  expect(markup).toContain('id="composer-scenes-growth-islandRadius"')
+})
+
+it('remembers disclosure state independently for each scene', () => {
+  const memory: Record<string, boolean> = {}
+  const groupPath = 'Семечко/Движение и притяжение'
+  rememberSceneDisclosureOpen(memory, 'growth', groupPath, false)
+  rememberSceneDisclosureOpen(memory, 'bloom', groupPath, true)
+
+  expect(readSceneDisclosureOpen(memory, 'growth', groupPath, true)).toBe(false)
+  expect(readSceneDisclosureOpen(memory, 'bloom', groupPath, false)).toBe(true)
+  expect(readSceneDisclosureOpen(memory, 'identity', groupPath, false)).toBe(false)
+})
+
+it('localizes control labels without renaming their configuration key', () => {
+  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'growth' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    route: 'film',
+  }))
+
+  expect(markup).toContain('Количество частиц')
+  expect(markup).toMatch(/id="composer-scenes-growth-vfxParticleCount"[^>]*data-testid="composer-scenes-growth-vfxParticleCount"/)
+})
+
+it('localizes review status and priority labels while keeping their stored values', () => {
+  const status = 'in_progress'
+  const priority = 'high'
+
+  expect(reviewStatusLabel(status)).toBe('В работе')
+  expect(reviewPriorityLabel(priority)).toBe('Высокий')
+  expect((['open', 'in_progress', 'ready_for_review', 'done'] as const).map(reviewStatusLabel)).toEqual(['Открыта', 'В работе', 'Готова к проверке', 'Готово'])
+  expect((['low', 'medium', 'high'] as const).map(reviewPriorityLabel)).toEqual(['Низкий', 'Средний', 'Высокий'])
+  expect(reviewSceneLabel('cosmos')).toBe('07 · Галактика')
+  expect(reviewFilmModeLabel('playing')).toBe('Воспроизведение')
+  expect(status).toBe('in_progress')
+  expect(priority).toBe('high')
+})
+
+it('uses Russian editor and preset labels without changing preset IDs', () => {
+  const markup = renderToStaticMarkup(createElement(DeveloperPanel, {
+    state: { ...initialFilmState, scene: 'prologue' },
+    dispatch: () => undefined,
+    reducedMotion: false,
+    onPreload: () => undefined,
+    route: 'film',
+  }))
+
+  expect(markup).toContain('<h2 id="developer-title">Редактор сцены</h2>')
+  expect(markup).toContain('>Автоматически</button>')
+  expect(markup).toContain('value="moonlit-letter" selected="">Письмо при лунном свете</option>')
+  expect(markup).toContain('value="stardust">Звёздная пыль</option>')
+  expect(markup).toContain('value="vasilisa-cinematic">Кинематографичная Василиса</option>')
+  expect(markup).not.toContain('Moonlit Letter')
+  expect(markup).not.toContain('Stardust')
+  expect(markup).not.toContain('Vasilisa Cinematic')
+})
+
+it('localizes timeline labels while keeping navigation actions available', () => {
+  const runtime = { time: 0, subscribeFrame: () => () => undefined } as unknown as FilmRuntime
+  const markup = renderToStaticMarkup(createElement(SceneTimeline, {
+    state: { ...initialFilmState, scene: 'growth', mode: 'playing' },
+    dispatch: () => undefined,
+    runtime,
+    route: 'film',
+    onPreload: () => undefined,
+  }))
+
+  expect(markup).toContain('aria-label="Временная шкала сцен"')
+  expect(markup).toContain('Цикл кадра (L)')
+  expect(markup).not.toContain('Scene Editor Timeline')
+  expect(markup).not.toContain('Loop')
 })
 
 it('exposes ten bounded collage controls in one collapsed DEV section', () => {

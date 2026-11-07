@@ -120,9 +120,9 @@ export default function SceneTimeline({ state, dispatch, runtime, route, onPrelo
     timer.current = setTimeout(() => setOpen(true), 170)
   }
   const leave = () => { if (timer.current) clearTimeout(timer.current); timer.current = null; setOpen(false) }
-  return <section className={`scene-timeline${open ? ' is-open' : ''}`} aria-label="Scene Editor Timeline" onPointerEnter={enter} onPointerLeave={event => { if (event.pointerType === 'mouse') leave() }}>
+  return <section className={`scene-timeline${open ? ' is-open' : ''}`} aria-label="Временная шкала сцен" onPointerEnter={enter} onPointerLeave={event => { if (event.pointerType === 'mouse') leave() }}>
     <button type="button" className="timeline-summary" aria-expanded={open} aria-controls="timeline-expanded" onClick={() => setOpen((value) => !value)}>
-      <span className="timeline-summary-title">{filmVisible ? `${SCENES[state.scene].label} · ${frames[index]?.label}${activeLoop ? ' · Loop' : ''}` : 'Scene Editor · Timeline'}</span>
+      <span className="timeline-summary-title">{filmVisible ? `${SCENES[state.scene].label} · ${frames[index]?.label}${activeLoop ? ' · Цикл' : ''}` : 'Шкала времени сцен'}</span>
       <span>{status}</span>
       <span>{filmVisible && duration > 0 ? `${state.elapsed.toFixed(1)} / ${duration.toFixed(1)} с` : '—'}</span>
       <span aria-hidden="true">{open ? '⌄' : '⌃'}</span>
@@ -139,13 +139,13 @@ export default function SceneTimeline({ state, dispatch, runtime, route, onPrelo
         <button type="button" onClick={review.begin} disabled={!filmVisible || review.busy}>+ Заметка</button><button type="button" onClick={review.openJournal}>Журнал</button>
         <button type="button" title="Подключите вкладку один раз за сеанс; поток используется для снимков заметок" aria-pressed={review.captureConnected} disabled={review.busy} onClick={() => { if (review.captureConnected) review.disconnectCapture(); else void review.connectCapture() }}>{review.captureConnected ? 'Скриншоты подключены' : 'Подключить вкладку'}</button>
         <button type="button" title="Скачать текущий кадр без DEV-панели; сначала подключите вкладку" disabled={!filmVisible || review.busy} onClick={() => { void review.captureCurrentFrame() }}>Скрин PNG</button>
-        <button type="button" title="Сохранить ключевые кадры всех девяти сцен в ZIP" disabled={review.busy} onClick={() => { void review.requestFrameExport() }}>Экспорт кадров</button>
-        <details className="timeline-tools"><summary>Просмотр{activeLoop ? ' · Loop' : ''}{previousSpeed !== null ? ` · ${state.speed}×` : ''}</summary><div className="timeline-tools-menu">
+        <button type="button" title="Сохранить ключевые кадры всех девяти сцен в архив ZIP" disabled={review.busy} onClick={() => { void review.requestFrameExport() }}>Экспорт кадров</button>
+        <details className="timeline-tools"><summary>Просмотр{activeLoop ? ' · Цикл' : ''}{previousSpeed !== null ? ` · ${state.speed}×` : ''}</summary><div className="timeline-tools-menu">
           <p>Скорость: {state.speed}×</p><div className="timeline-tool-row">{[0.25, 0.5, 1].map(speed => <button type="button" key={speed} aria-pressed={state.speed === speed} onClick={() => chooseSlowSpeed(speed)}>{speed}×</button>)}<button type="button" disabled={previousSpeed === null} onClick={restoreSpeed}>Вернуть</button></div>
-          <p>{activeLoop ? `Loop: ${activeLoop.label} · ${activeLoop.start.toFixed(2)}–${activeLoop.end.toFixed(2)} с` : 'Loop выключен'}</p>
-          <div className="timeline-tool-row"><button type="button" disabled={!loopAllowed || !frames[index] || frames[index].start >= duration} onClick={loopFrame}>Loop кадра (L)</button><button type="button" disabled={!activeLoop} onClick={() => setLoop(null)}>Выключить loop</button></div>
-          <div className="timeline-tool-row"><label>От, с<input type="number" min="0" max={duration} step="0.01" value={rangeStart} onChange={event => setRangeStart(event.target.value)} /></label><label>До, с<input type="number" min="0" max={duration} step="0.01" value={rangeEnd} onChange={event => setRangeEnd(event.target.value)} /></label><button type="button" disabled={!loopAllowed || !rangeStart.trim() || !rangeEnd.trim()} onClick={() => startLoop(Number(rangeStart), Number(rangeEnd), 'отрезок')}>Loop отрезка</button></div>
-          {rangeError && <p role="alert">{rangeError}</p>}<p>Loop доступен только во время воспроизведения сцены, после интерактивного входа.</p>
+          <p>{activeLoop ? `Цикл: ${activeLoop.label} · ${activeLoop.start.toFixed(2)}–${activeLoop.end.toFixed(2)} с` : 'Цикл выключен'}</p>
+          <div className="timeline-tool-row"><button type="button" disabled={!loopAllowed || !frames[index] || frames[index].start >= duration} onClick={loopFrame}>Цикл кадра (L)</button><button type="button" disabled={!activeLoop} onClick={() => setLoop(null)}>Выключить цикл</button></div>
+          <div className="timeline-tool-row"><label>От, с<input type="number" min="0" max={duration} step="0.01" value={rangeStart} onChange={event => setRangeStart(event.target.value)} /></label><label>До, с<input type="number" min="0" max={duration} step="0.01" value={rangeEnd} onChange={event => setRangeEnd(event.target.value)} /></label><button type="button" disabled={!loopAllowed || !rangeStart.trim() || !rangeEnd.trim()} onClick={() => startLoop(Number(rangeStart), Number(rangeEnd), 'отрезок')}>Цикл отрезка</button></div>
+          {rangeError && <p role="alert">{rangeError}</p>}<p>Цикл доступен только во время воспроизведения сцены, после интерактивного входа.</p>
         </div></details>
         <span className="timeline-hint">{level === 'scenes' ? 'Порядок сцен · длительность фильма не фиксирована' : !seekable ? status : 'Локальное время сцены'}</span>
       </div>

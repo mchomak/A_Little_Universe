@@ -11,10 +11,44 @@ import './reviewNotes.css'
 
 type Draft = Omit<ReviewNote, 'id' | 'createdAt' | 'status' | 'screenshotPath'>
 type Editor = { draft: Draft; image: string; existing?: ReviewNote }
+
+const REVIEW_STATUS_LABELS: Record<Status, string> = {
+  open: 'Открыта',
+  in_progress: 'В работе',
+  ready_for_review: 'Готова к проверке',
+  done: 'Готово',
+}
+const REVIEW_PRIORITY_LABELS: Record<Priority, string> = { low: 'Низкий', medium: 'Средний', high: 'Высокий' }
+const FILM_MODE_LABELS: Record<FilmState['mode'], string> = {
+  ready: 'Готово к запуску',
+  playing: 'Воспроизведение',
+  transitioning: 'Переход',
+  waiting: 'Ожидание действия',
+  exploring: 'Свободный просмотр',
+  ended: 'Завершено',
+}
+
+export function reviewStatusLabel(status: Status) { return REVIEW_STATUS_LABELS[status] }
+export function reviewPriorityLabel(priority: Priority) { return REVIEW_PRIORITY_LABELS[priority] }
+export function reviewFilmModeLabel(mode: string) { return FILM_MODE_LABELS[mode as FilmState['mode']] ?? 'Неизвестный режим' }
+export function reviewSceneLabel(sceneId: ReviewNote['sceneId']) {
+  const labels: Record<ReviewNote['sceneId'], string> = {
+    prologue: '01 · Пролог', growth: '02 · Семечко и рост', bloom: '03 · Раскрытие лилии',
+    identity: '04 · Портрет', gallery: '05 · Лунная галерея', cosmos: '07 · Галактика',
+    greeting: '08 · Поздравление', ending: '09 · Финал',
+  }
+  return labels[sceneId]
+}
+
+function reviewErrorMessage(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message : ''
+  return /[А-Яа-яЁё]/.test(message) ? message : fallback
+}
+
 async function request(method: string, data?: unknown) {
   const response = await fetch('/__dev_reviews/', { method, headers: { 'Content-Type': 'application/json' }, ...(data === undefined ? {} : { body: JSON.stringify(data) }) })
   const result: unknown = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error((result as { error?: string }).error || `Ошибка сервера (${response.status})`)
+  if (!response.ok) throw new Error(reviewErrorMessage((result as { error?: string }).error, `Ошибка сервера (${response.status})`))
   return result as { notes?: ReviewNote[]; note?: ReviewNote; warning?: string }
 }
 async function capture(stream: MediaStream, hiddenAt: number) {
@@ -126,8 +160,8 @@ export function useReviewNotes(state: FilmState, dispatch: Dispatch<FilmAction>,
   const exportAbort = useRef<AbortController | null>(null)
   const stateRef = useRef(state)
   useEffect(() => { stateRef.current = state }, [state])
-  const reload = useCallback(async () => { try { setNotes((await request('GET')).notes ?? []) } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось загрузить журнал') } }, [])
-  useEffect(() => { void request('GET').then(result => setNotes(result.notes ?? []), e => setError(e instanceof Error ? e.message : 'Не удалось загрузить журнал')) }, [])
+  const reload = useCallback(async () => { try { setNotes((await request('GET')).notes ?? []) } catch (e) { setError(reviewErrorMessage(e, 'Не удалось загрузить журнал.')) } }, [])
+  useEffect(() => { void request('GET').then(result => setNotes(result.notes ?? []), e => setError(reviewErrorMessage(e, 'Не удалось загрузить журнал.'))) }, [])
   useEffect(() => () => {
     exportAbort.current?.abort()
     const stream = captureStream.current
@@ -179,7 +213,7 @@ export function useReviewNotes(state: FilmState, dispatch: Dispatch<FilmAction>,
     } catch (e) {
       setCaptureConnected(false)
       const error = e instanceof Error ? e : new Error('Не удалось подключить захват вкладки.')
-      setError(error.name === 'NotAllowedError' || error.name === 'AbortError' ? 'Выбор источника отменён. Нажмите «Подключить вкладку» и выберите вкладку с фильмом.' : error.message)
+      setError(error.name === 'NotAllowedError' || error.name === 'AbortError' ? 'Выбор источника отменён. Нажмите «Подключить вкладку» и выберите вкладку с фильмом.' : reviewErrorMessage(error, 'Не удалось подключить захват вкладки.'))
       return false
     } finally { setBusy(false) }
   }
@@ -193,7 +227,7 @@ export function useReviewNotes(state: FilmState, dispatch: Dispatch<FilmAction>,
     const stream = currentCaptureStream()
     if (!stream) {
       setEditor({ draft, image: '' })
-      setError('Сначала подключите вкладку кнопкой «Подключить вкладку» на Timeline.')
+      setError('Сначала подключите вкладку кнопкой «Подключить вкладку» на шкале времени.')
       return
     }
     setBusy(true); setError('')
@@ -201,7 +235,7 @@ export function useReviewNotes(state: FilmState, dispatch: Dispatch<FilmAction>,
       document.documentElement.classList.add('review-capturing')
       const image = await capture(stream, performance.now())
       setEditor({ draft, image })
-    } catch (e) { setEditor({ draft, image: '' }); setError(e instanceof Error ? e.message : 'Не удалось снять кадр') }
+    } catch (e) { setEditor({ draft, image: '' }); setError(reviewErrorMessage(e, 'Не удалось снять кадр.')) }
     finally { document.documentElement.classList.remove('review-capturing'); setBusy(false) }
   }
   const begin = () => {
@@ -220,7 +254,7 @@ export function useReviewNotes(state: FilmState, dispatch: Dispatch<FilmAction>,
   const openNote = (note: ReviewNote) => {
     setJournal(false); setError('')
     if (canRestoreReview(note)) { dispatch({ type: 'dev-jump', scene: note.sceneId }); dispatch({ type: 'dev-seek', time: note.localTimeSeconds }); dispatch({ type: 'toggle-pause' }) }
-    else setError('Этот checkpoint нельзя безопасно восстановить автоматически; показана сохранённая заметка.')
+    else setError('Этот кадр нельзя безопасно восстановить автоматически; показана сохранённая заметка.')
     setEditor({ draft: note, existing: note, image: `/__dev_reviews/image?scene=${encodeURIComponent(note.sceneId)}&id=${encodeURIComponent(note.id)}` })
   }
   const save = async () => {
@@ -228,13 +262,13 @@ export function useReviewNotes(state: FilmState, dispatch: Dispatch<FilmAction>,
     if (!editor.existing && !editor.image) { setError('Сначала повторите захват вкладки.'); return }
     setBusy(true); setError('')
     try { if (editor.existing) await request('PATCH', { id: editor.existing.id, sceneId: editor.existing.sceneId, text: editor.draft.text, priority: editor.draft.priority, status: editor.existing.status }); else await request('POST', { note: editor.draft, image: editor.image }); await reload(); setEditor(null) }
-    catch (e) { setError(e instanceof Error ? e.message : 'Не удалось сохранить заметку') } finally { setBusy(false) }
+    catch (e) { setError(reviewErrorMessage(e, 'Не удалось сохранить заметку.')) } finally { setBusy(false) }
   }
-  const updateStatus = async (note: ReviewNote, status: Status) => { try { await request('PATCH', { id: note.id, sceneId: note.sceneId, text: note.text, priority: note.priority, status }); await reload() } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось обновить статус') } }
-  const remove = async (note: ReviewNote) => { if (!window.confirm('Удалить заметку?')) return; try { const result = await request('DELETE', { id: note.id, sceneId: note.sceneId }); await reload(); if (result.warning) setError(result.warning) } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось удалить заметку') } }
+  const updateStatus = async (note: ReviewNote, status: Status) => { try { await request('PATCH', { id: note.id, sceneId: note.sceneId, text: note.text, priority: note.priority, status }); await reload() } catch (e) { setError(reviewErrorMessage(e, 'Не удалось обновить статус.')) } }
+  const remove = async (note: ReviewNote) => { if (!window.confirm('Удалить заметку?')) return; try { const result = await request('DELETE', { id: note.id, sceneId: note.sceneId }); await reload(); if (result.warning) setError(reviewErrorMessage(result.warning, 'Не удалось удалить заметку.')) } catch (e) { setError(reviewErrorMessage(e, 'Не удалось удалить заметку.')) } }
   const exportNotes = async (action: 'save' | 'copy' | 'archive') => {
     const ids = notes.filter(note => selected.includes(note.id) && note.status !== 'done').map(note => note.id)
-    if (!ids.length) { setError('Выберите заметки со статусом open, in_progress или ready_for_review.'); return }
+    if (!ids.length) { setError('Выберите заметки со статусом «Открыта», «В работе» или «Готова к проверке».'); return }
     setBusy(true); setError(''); setExportInfo('')
     try {
       const response = await fetch(`/__dev_reviews/${action === 'archive' ? 'archive' : 'export'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) })
@@ -251,7 +285,7 @@ export function useReviewNotes(state: FilmState, dispatch: Dispatch<FilmAction>,
           catch { setError(`Не удалось скопировать текст. Файл сохранён: ${result.path}.`) }
         }
       }
-    } catch (e) { setError(e instanceof Error ? e.message : 'Не удалось сформировать экспорт') } finally { setBusy(false) }
+    } catch (e) { setError(reviewErrorMessage(e, 'Не удалось сформировать экспорт.')) } finally { setBusy(false) }
   }
   const requestFrameExport = async () => {
     if (busy) return
@@ -290,7 +324,7 @@ export function useReviewNotes(state: FilmState, dispatch: Dispatch<FilmAction>,
       window.setTimeout(() => URL.revokeObjectURL(url), 10000)
       setFrameExportResult(`Снимок скачан: ${filename}`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось скачать снимок кадра.')
+      setError(reviewErrorMessage(e, 'Не удалось скачать снимок кадра.'))
     } finally {
       document.documentElement.classList.remove('review-capturing', 'review-frame-capturing')
       screenshotter?.dispose()
@@ -391,7 +425,7 @@ export function useReviewNotes(state: FilmState, dispatch: Dispatch<FilmAction>,
       setFrameExportResult(`Архив подготовлен: ${shotCount} кадров. Проверьте загрузки браузера.`)
       setFrameExportProgress(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не удалось собрать кадры сцен.')
+      setError(reviewErrorMessage(e, 'Не удалось собрать кадры сцен.'))
       setFrameExportProgress(null)
     } finally {
       document.documentElement.classList.remove('review-capturing', 'review-frame-capturing')
@@ -408,15 +442,15 @@ export function useReviewNotes(state: FilmState, dispatch: Dispatch<FilmAction>,
     {frameExportResult && <aside className="frame-export-result" role="status">{frameExportResult}<button type="button" aria-label="Закрыть сообщение об экспорте" onClick={() => setFrameExportResult('')}>×</button></aside>}
     {capturePreview && <div className="review-modal"><section className="review-dialog" role="dialog" aria-modal="true" aria-labelledby="frame-export-title"><header><strong id="frame-export-title">Проверьте вкладку для снимков</strong></header><p>В системном окне выберите вкладку A Little Universe и убедитесь, что в превью виден сайт. Экспорт снимет все девять сцен и сохранит их в ZIP.</p><video ref={capturePreviewVideo} className="review-preview" aria-label="Предпросмотр выбранной вкладки" autoPlay muted playsInline /><footer><button type="button" disabled={busy || !captureConnected} onClick={() => { void exportAllFrames() }}>Начать экспорт</button><button type="button" disabled={busy} onClick={() => setCapturePreview(false)}>Отмена</button></footer></section></div>}
     {journal && <div className="review-modal"><section className="review-dialog" role="dialog" aria-modal="true" aria-label="Журнал заметок"><header><strong>Журнал заметок</strong><button onClick={() => setJournal(false)}>Закрыть</button></header>
-      <div className="review-filters"><select aria-label="Фильтр сцены" value={filterScene} onChange={e => { setFilterScene(e.target.value); setFilterFrame('all') }}><option value="all">Все сцены</option>{[...new Set(notes.map(n => n.sceneId))].map(scene => <option key={scene}>{scene}</option>)}</select><select aria-label="Фильтр кадра" value={filterFrame} onChange={e => setFilterFrame(e.target.value)}><option value="all">Все кадры</option>{frameOptions.map(frame => <option key={frame}>{frame}</option>)}</select><select aria-label="Фильтр статуса" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="all">Все статусы</option>{(['open', 'in_progress', 'ready_for_review', 'done'] as const).map(status => <option key={status}>{status}</option>)}</select></div>
-      {visible.length === 0 && <p>Заметок нет.</p>}{visible.map(note => <article className="review-entry" key={note.id}><input type="checkbox" aria-label={`Выбрать заметку ${note.frameId} ${note.text}`} disabled={note.status === 'done'} checked={note.status !== 'done' && selected.includes(note.id)} onChange={e => setSelected(e.target.checked ? [...selected, note.id] : selected.filter(id => id !== note.id))} /><button onClick={() => openNote(note)}>{note.frameId} · {note.localTimeSeconds.toFixed(2)} с — {note.text}</button><span>{note.priority}</span><select aria-label={`Статус ${note.frameId}`} value={note.status} onChange={e => { void updateStatus(note, e.target.value as Status) }}>{(['open', 'in_progress', 'ready_for_review', 'done'] as const).map(status => <option key={status}>{status}</option>)}</select><button onClick={() => { void remove(note) }}>Удалить</button></article>)}
+      <div className="review-filters"><select aria-label="Фильтр сцены" value={filterScene} onChange={e => { setFilterScene(e.target.value); setFilterFrame('all') }}><option value="all">Все сцены</option>{[...new Set(notes.map(n => n.sceneId))].map(scene => <option key={scene} value={scene}>{reviewSceneLabel(scene)}</option>)}</select><select aria-label="Фильтр кадра" value={filterFrame} onChange={e => setFilterFrame(e.target.value)}><option value="all">Все кадры</option>{frameOptions.map(frame => <option key={frame}>{frame}</option>)}</select><select aria-label="Фильтр статуса" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="all">Все статусы</option>{(['open', 'in_progress', 'ready_for_review', 'done'] as const).map(status => <option key={status} value={status}>{reviewStatusLabel(status)}</option>)}</select></div>
+      {visible.length === 0 && <p>Заметок нет.</p>}{visible.map(note => <article className="review-entry" key={note.id}><input type="checkbox" aria-label={`Выбрать заметку ${note.frameId} ${note.text}`} disabled={note.status === 'done'} checked={note.status !== 'done' && selected.includes(note.id)} onChange={e => setSelected(e.target.checked ? [...selected, note.id] : selected.filter(id => id !== note.id))} /><button onClick={() => openNote(note)}>{note.frameId} · {note.localTimeSeconds.toFixed(2)} с — {note.text}</button><span>{reviewPriorityLabel(note.priority)}</span><select aria-label={`Статус ${note.frameId}`} value={note.status} onChange={e => { void updateStatus(note, e.target.value as Status) }}>{(['open', 'in_progress', 'ready_for_review', 'done'] as const).map(status => <option key={status} value={status}>{reviewStatusLabel(status)}</option>)}</select><button onClick={() => { void remove(note) }}>Удалить</button></article>)}
       <details className="review-export"><summary>Экспорт для Codex</summary><p>Выбрано: {notes.filter(note => selected.includes(note.id) && note.status !== 'done').length}. Статусы автоматически не меняются.</p><div><button disabled={busy} onClick={() => { void exportNotes('save') }}>Сохранить Markdown</button><button disabled={busy} onClick={() => { void exportNotes('copy') }}>Скопировать Markdown</button><button disabled={busy} onClick={() => { void exportNotes('archive') }}>Скачать ZIP со снимками</button></div>{exportInfo && <p role="status">{exportInfo}</p>}</details>
     </section></div>}
-    {editor && <div className="review-modal"><section className="review-dialog" role="dialog" aria-modal="true" aria-label="Заметка"><header><strong>{editor.draft.frameId} · {editor.draft.localTimeSeconds.toFixed(2)} с · {editor.draft.capturedMode}</strong></header>
+    {editor && <div className="review-modal"><section className="review-dialog" role="dialog" aria-modal="true" aria-label="Заметка"><header><strong>{editor.draft.frameId} · {editor.draft.localTimeSeconds.toFixed(2)} с · {reviewFilmModeLabel(editor.draft.capturedMode)}</strong></header>
       <p>Выберите вкладку с фильмом в системном диалоге и проверьте превью: браузер не может проверить, какая вкладка выбрана.</p>
       {editor.image ? <img className="review-preview" src={editor.image} alt="Снимок кадра" /> : <div className="review-capture-actions">{!captureConnected ? <button disabled={busy} onClick={() => { void connectCapture() }}>Подключить вкладку</button> : <button disabled={busy} onClick={() => { void take(editor.draft) }}>Повторить снимок</button>}<small>{captureConnected ? 'Захват подключён до закрытия вкладки или перезагрузки.' : 'Выберите вкладку с фильмом в системном диалоге.'}</small></div>}
       <label>Текст правки<textarea value={editor.draft.text} maxLength={10000} onChange={e => setEditor({ ...editor, draft: { ...editor.draft, text: e.target.value } })} /></label>
-      <label>Приоритет<select value={editor.draft.priority} onChange={e => setEditor({ ...editor, draft: { ...editor.draft, priority: e.target.value as Priority } })}><option value="low">low</option><option value="medium">medium</option><option value="high">high</option></select></label>
+      <label>Приоритет<select value={editor.draft.priority} onChange={e => setEditor({ ...editor, draft: { ...editor.draft, priority: e.target.value as Priority } })}><option value="low">Низкий</option><option value="medium">Средний</option><option value="high">Высокий</option></select></label>
       {error && <p role="alert" className="review-dialog-error">{error}</p>}<footer><button disabled={busy} onClick={() => { void save() }}>Сохранить</button><button disabled={busy} onClick={() => { setEditor(null); setError('') }}>Отмена</button></footer>
     </section></div>}
   </>

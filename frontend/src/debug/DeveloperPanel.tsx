@@ -1,8 +1,8 @@
 ﻿import { useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type Dispatch } from 'react'
 import type { FilmAction, FilmState } from '../engine/film'
 import type { FilmRuntime } from '../engine/runtime'
-import type { DesktopRecordingSession, DesktopSource } from '../systems/media/DesktopRecordingSession'
-import { getSceneDuration, SCENES, type SceneId } from '../engine/filmConfig'
+import type { DesktopRecordingSession, DesktopRecordingSnapshot, DesktopSource } from '../systems/media/DesktopRecordingSession'
+import { getSceneDuration, type SceneId } from '../engine/filmConfig'
 import {
   DEFAULT_SCENE_COMPOSER_CONFIG,
   SCENE_CONFIG_PRESETS,
@@ -50,28 +50,111 @@ type NumericControl = {
 type InspectorScene = SceneId | 'preload'
 type SelectControl = { path: ComposerFieldPath; label: string; options: readonly { value: string; label: string }[] }
 
-const recordingSourceNames: Record<DesktopSource, string> = { camera: 'Camera', microphone: 'Microphone', screen: 'Screen' }
+type SceneDisclosureMemory = Record<string, boolean>
+
+const SCENE_PRESET_LABELS: Record<ScenePresetId, string> = {
+  'moonlit-letter': 'Письмо при лунном свете',
+  stardust: 'Звёздная пыль',
+  'vasilisa-cinematic': 'Кинематографичная Василиса',
+}
+const INSPECTOR_SCENE_LABELS: Record<InspectorScene, string> = {
+  preload: '00 · Загрузка',
+  prologue: '01 · Пролог',
+  growth: '02 · Семечко и рост',
+  bloom: '03 · Раскрытие',
+  identity: '04 · Портрет',
+  gallery: '05 · Лунная галерея',
+  cosmos: '07 · Галактика',
+  greeting: '08 · Поздравление',
+  ending: '09 · Финал',
+}
+const FILM_MODE_LABELS: Record<FilmState['mode'], string> = {
+  ready: 'Готово к запуску',
+  playing: 'Воспроизведение',
+  transitioning: 'Переход',
+  waiting: 'Ожидание действия',
+  exploring: 'Свободный просмотр',
+  ended: 'Завершено',
+}
+const FILM_QUALITY_LABELS: Record<string, string> = { low: 'Низкое', standard: 'Обычное', high: 'Высокое' }
+const ART_FONT_LABELS: Record<ArtFontId, string> = {
+  'great-vibes': 'Грейт Вайбс',
+  'marck-script': 'Марк Скрипт',
+  'bad-script': 'Бэд Скрипт',
+  caveat: 'Кейвэт',
+  'cormorant-garamond': 'Корморант Гарамонд',
+}
+const RECORDING_STATUS_LABELS: Record<DesktopRecordingSnapshot['status'], string> = {
+  idle: 'Не начата', starting: 'Подготовка', recording: 'Идёт запись', stopping: 'Остановка', saved: 'Сохранена', error: 'Ошибка',
+}
+const RECORDING_SOURCE_STATUS_LABELS: Record<DesktopRecordingSnapshot['sources'][DesktopSource], string> = {
+  idle: 'Не подключено', starting: 'Подключение', recording: 'Записывает', saved: 'Сохранено', error: 'Ошибка',
+}
+const FINALIZATION_STATUS_LABELS: Record<DesktopRecordingSnapshot['finalizationStatus'], string> = {
+  idle: 'Не выполнялась', pending: 'Ожидает обработки', finalizing: 'Сохранение файлов', complete: 'Завершена', partial: 'Завершена частично', error: 'Ошибка',
+}
+const RECOVERY_STATUS_LABELS: Record<DesktopRecordingSnapshot['recovery']['status'], string> = {
+  idle: 'Нет задач', waiting: 'Ожидание', paused: 'Приостановлено', recovering: 'Восстановление', error: 'Ошибка',
+}
+const FINAL_FILE_STATUS_LABELS: Record<DesktopRecordingSnapshot['finalizationFiles'][string]['status'], string> = {
+  saved: 'Сохранён', partial: 'Сохранён частично', error: 'Ошибка', skipped: 'Пропущен',
+}
+
+function displayRecordingError(error: string) {
+  return /[А-Яа-яЁё]/.test(error) ? error : 'Ошибка записи. Подробности доступны в журнале сеанса.'
+}
+
+function sceneDisclosureMemoryKey(scene: string, path: string) {
+  return `${scene}:${path}`
+}
+
+// Kept as a small exported seam for direct state-isolation tests.
+// eslint-disable-next-line react-refresh/only-export-components
+export function readSceneDisclosureOpen(memory: SceneDisclosureMemory, scene: string, path: string, fallback?: boolean) {
+  return memory[sceneDisclosureMemoryKey(scene, path)] ?? fallback
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function rememberSceneDisclosureOpen(memory: SceneDisclosureMemory, scene: string, path: string, open: boolean) {
+  memory[sceneDisclosureMemoryKey(scene, path)] = open
+}
+
+function disclosurePath(details: HTMLDetailsElement, root: HTMLDetailsElement) {
+  const path: string[] = []
+  let current: HTMLElement | null = details
+  while (current) {
+    if (current.tagName === 'DETAILS') {
+      const summary = Array.from(current.children).find(child => child.tagName === 'SUMMARY')
+      path.unshift(summary?.textContent?.replace(/\s+/g, ' ').trim() ?? '')
+    }
+    if (current === root) break
+    current = current.parentElement
+  }
+  return path.join('/')
+}
+
+const recordingSourceNames: Record<DesktopSource, string> = { camera: 'Камера', microphone: 'Микрофон', screen: 'Экран' }
 function RecordingInspector({ session }: { session: DesktopRecordingSession }) {
   const recording = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
   const duration = `${String(Math.floor(recording.durationMs / 60_000)).padStart(2, '0')}:${String(Math.floor(recording.durationMs / 1_000) % 60).padStart(2, '0')}`
-  const space = recording.freeBytes === null ? '—' : `${(recording.freeBytes / 1_073_741_824).toFixed(1)} GB`
+  const space = recording.freeBytes === null ? '—' : `${(recording.freeBytes / 1_073_741_824).toFixed(1)} ГБ`
   return <details className="inspector-section" open data-testid="recording-inspector">
-    <summary>Recording</summary>
+    <summary>Запись фильма</summary>
     <dl>
-      <div><dt>Status</dt><dd>{recording.status}</dd></div>
-      {(['camera', 'microphone', 'screen'] as const).map((source) => <div key={source}><dt>{recordingSourceNames[source]}</dt><dd>{recording.sources[source]}</dd></div>)}
-      <div><dt>Duration</dt><dd>{duration}</dd></div>
-      <div><dt>Saved segments</dt><dd>{recording.segmentCounts.camera + recording.segmentCounts.microphone + recording.segmentCounts.screen}</dd></div>
-      <div><dt>Folder</dt><dd>{recording.folder ?? '—'}</dd></div>
-      <div><dt>Free space</dt><dd>{space}</dd></div>
-      <div><dt>Finalization</dt><dd>{recording.finalizationStatus}</dd></div>
-      <div><dt>Recovery</dt><dd>{recording.recovery.status}{recording.recovery.pending ? ` · ${recording.recovery.pending} queued` : ''}{recording.recovery.error ? ` · ${recording.recovery.error}` : ''}</dd></div>
+      <div><dt>Состояние</dt><dd>{RECORDING_STATUS_LABELS[recording.status]}</dd></div>
+      {(['camera', 'microphone', 'screen'] as const).map((source) => <div key={source}><dt>{recordingSourceNames[source]}</dt><dd>{RECORDING_SOURCE_STATUS_LABELS[recording.sources[source]]}</dd></div>)}
+      <div><dt>Длительность</dt><dd>{duration}</dd></div>
+      <div><dt>Сохранено фрагментов</dt><dd>{recording.segmentCounts.camera + recording.segmentCounts.microphone + recording.segmentCounts.screen}</dd></div>
+      <div><dt>Папка</dt><dd>{recording.folder ?? '—'}</dd></div>
+      <div><dt>Свободное место</dt><dd>{space}</dd></div>
+      <div><dt>Завершение записи</dt><dd>{FINALIZATION_STATUS_LABELS[recording.finalizationStatus]}</dd></div>
+      <div><dt>Восстановление</dt><dd>{RECOVERY_STATUS_LABELS[recording.recovery.status]}{recording.recovery.pending ? ` · в очереди: ${recording.recovery.pending}` : ''}{recording.recovery.error ? ` · ${displayRecordingError(recording.recovery.error)}` : ''}</dd></div>
     </dl>
-    {Object.keys(recording.finalizationFiles).length > 0 && <div role="status"><strong>Final files</strong><ul>{Object.entries(recording.finalizationFiles).map(([name, file]) => <li key={name}>{name}: {file.status}{file.path ? ` · ${file.path}` : ''}</li>)}</ul></div>}
-    {recording.errors.length > 0 && <div role="status"><strong>Errors</strong><ul>{recording.errors.map((error, index) => <li key={`${error}:${index}`}>{error}</li>)}</ul></div>}
+    {Object.keys(recording.finalizationFiles).length > 0 && <div role="status"><strong>Итоговые файлы</strong><ul>{Object.entries(recording.finalizationFiles).map(([name, file]) => <li key={name}>{name}: {FINAL_FILE_STATUS_LABELS[file.status]}{file.path ? ` · ${file.path}` : ''}</li>)}</ul></div>}
+    {recording.errors.length > 0 && <div role="status"><strong>Ошибки</strong><ul>{recording.errors.map((error, index) => <li key={`${error}:${index}`}>{displayRecordingError(error)}</li>)}</ul></div>}
     <div className="inspector-history">
-      <button type="button" disabled={!['starting', 'recording', 'error'].includes(recording.status)} onClick={() => { void session.stop() }}>Stop &amp; Save</button>
-      <button type="button" disabled={!recording.sessionId} onClick={() => { void session.openFolder() }}>Open Recording Folder</button>
+      <button type="button" disabled={!['starting', 'recording', 'error'].includes(recording.status)} onClick={() => { void session.stop() }}>Остановить и сохранить</button>
+      <button type="button" disabled={!recording.sessionId} onClick={() => { void session.openFolder() }}>Открыть папку записи</button>
     </div>
   </details>
 }
@@ -90,7 +173,7 @@ const OPENING_BACKGROUND_CONTROLS: readonly NumericControl[] = [
 ]
 
 const PROLOGUE_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
-  { name: 'Typography', controls: [
+  { name: 'Типографика', controls: [
     { path: 'scenes.prologue.fontSize', label: 'Размер первой фразы', unit: 'px', min: 16, max: 160, step: 1 },
     { path: 'scenes.prologue.secondFontScale', label: 'Размер второй фразы', unit: '×', min: 0.6, max: 1.2, step: 0.01 },
     { path: 'scenes.prologue.lineHeight', label: 'Высота строки', unit: '×', min: 0.8, max: 2.5, step: 0.05 },
@@ -103,7 +186,7 @@ const PROLOGUE_GROUPS: readonly { name: string; controls: readonly NumericContro
     { path: 'scenes.prologue.interphraseInterval', label: 'Пауза между фразами', unit: 'с', min: 0, max: 8, step: 0.1 },
     { path: 'scenes.prologue.readableHold', label: 'Время на чтение', unit: 'с', min: 0, max: 30, step: 0.1 },
   ] },
-  { name: 'Light', controls: [
+  { name: 'Свет', controls: [
     { path: 'scenes.prologue.coreIntensity', label: 'Яркость ядра', unit: '×', min: 0.2, max: 2, step: 0.05 },
     { path: 'scenes.prologue.innerGlowRadius', label: 'Радиус внутреннего свечения', unit: 'px', min: 6, max: 40, step: 1 },
     { path: 'scenes.prologue.outerGlowRadius', label: 'Радиус рассеивания', unit: 'px', min: 40, max: 160, step: 1 },
@@ -112,13 +195,13 @@ const PROLOGUE_GROUPS: readonly { name: string; controls: readonly NumericContro
     { path: 'scenes.prologue.pulseFrequency', label: 'Частота дыхания', unit: 'Гц', min: 0, max: 1, step: 0.01 },
     { path: 'scenes.prologue.phraseResponse', label: 'Отклик на фразу', unit: '×', min: 0, max: 0.5, step: 0.01 },
   ] },
-  { name: 'Atmosphere', controls: [
+  { name: 'Атмосфера', controls: [
     { path: 'scenes.prologue.atmosphereDensity', label: 'Фоновые пылинки', unit: 'шт.', min: 0, max: 120, step: 1 },
     { path: 'scenes.prologue.hazeIntensity', label: 'Дымка', unit: '×', min: 0, max: 0.12, step: 0.005 },
     { path: 'scenes.prologue.spaceDepth', label: 'Глубина пространства', unit: '×', min: 0, max: 1, step: 0.05 },
     { path: 'scenes.prologue.driftSpeed', label: 'Дрейф фона', unit: '×', min: 0, max: 0.15, step: 0.005 },
   ] },
-  { name: 'Dissolve', controls: [
+  { name: 'Растворение', controls: [
     { path: 'scenes.prologue.particleCount', label: 'Световая пыль', unit: 'шт.', min: 300, max: 6000, step: 1 },
     { path: 'scenes.prologue.particleSizeMin', label: 'Минимальный размер', unit: 'px', min: 0.3, max: 2, step: 0.05 },
     { path: 'scenes.prologue.particleSizeMax', label: 'Максимальный размер', unit: 'px', min: 0.5, max: 4, step: 0.05 },
@@ -129,9 +212,9 @@ const PROLOGUE_GROUPS: readonly { name: string; controls: readonly NumericContro
     { path: 'scenes.prologue.fractureDuration', label: 'Длительность фронта', unit: 'с', min: 0.8, max: 4, step: 0.1 },
     { path: 'scenes.prologue.particleDuration', label: 'Длительность движения частиц', unit: 'с', min: 0.1, max: 20, step: 0.1 },
     { path: 'scenes.prologue.particleFadeDuration', label: 'Длительность затухания пыли', unit: 'с', min: 0.5, max: 4, step: 0.1 },
-    { path: 'scenes.prologue.seed', label: 'Seed частиц', unit: '', min: 0, max: 2147483647, step: 1 },
+    { path: 'scenes.prologue.seed', label: 'Начальное значение генератора частиц', unit: '', min: 0, max: 2147483647, step: 1 },
   ] },
-  { name: 'Interaction', controls: [
+  { name: 'Взаимодействие', controls: [
     { path: 'scenes.prologue.touchIntensity', label: 'Отклик касания', unit: '×', min: 0, max: 1.5, step: 0.05 },
     { path: 'scenes.prologue.touchDuration', label: 'Длительность отклика', unit: 'с', min: 0.7, max: 1, step: 0.05 },
     { path: 'scenes.prologue.waveStrength', label: 'Сила световой волны', unit: '×', min: 0, max: 0.4, step: 0.01 },
@@ -147,7 +230,7 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.growth.formationDuration', label: 'Длительность формирования', unit: 'с', min: 2.5, max: 3.5, step: 0.1 },
   ] },
   { name: 'Движение и притяжение', controls: [
-    { path: 'scenes.growth.noiseStrength', label: 'Сила noise-поля', unit: '×', min: 0, max: 2, step: 0.05 },
+    { path: 'scenes.growth.noiseStrength', label: 'Сила поля шума', unit: '×', min: 0, max: 2, step: 0.05 },
     { path: 'scenes.growth.attractionStrength', label: 'Притяжение к форме', unit: '×', min: 2, max: 24, step: 0.5 },
     { path: 'scenes.growth.attractionRampDuration', label: 'Нарастание притяжения', unit: 'с', min: 0.5, max: 3.5, step: 0.1 },
     { path: 'scenes.growth.morphDamping', label: 'Торможение формы', unit: '×', min: 2, max: 14, step: 0.2 },
@@ -214,8 +297,7 @@ const GROWTH_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.growth.moonPositionY', label: 'Положение источника · Y', unit: 'м', min: 1, max: 10, step: 0.05 },
   ] },
   { name: 'Анимация лилии', controls: [
-    { path: 'scenes.growth.flowerGrowthDuration', label: 'Длительность Growth', unit: 'с', min: 4, max: 14, step: 0.25 },
-    { path: 'scenes.bloom.flowerBloomDuration', label: 'Длительность Bloom', unit: 'с', min: 6, max: 24, step: 0.25 },
+    { path: 'scenes.growth.flowerGrowthDuration', label: 'Длительность роста лилии', unit: 'с', min: 4, max: 14, step: 0.25 },
   ] },
 ]
 
@@ -256,63 +338,63 @@ const GROWTH_CLOUD_LAYER_GROUPS: readonly { name: string; controls: readonly Num
 ]
 
 const LILY_GROWTH_PARTICLE_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.growth.vfxParticleCount', label: 'Particle Count / Density', unit: 'pcs', min: 0, max: 528, step: 8 },
-  { path: 'scenes.growth.vfxParticleSize', label: 'Particle Size', unit: 'px', min: 0.75, max: 8, step: 0.1 },
-  { path: 'scenes.growth.vfxParticleSizeVariation', label: 'Size Variation', unit: 'x', min: 0, max: 1.5, step: 0.05 },
-  { path: 'scenes.growth.vfxParticleBrightness', label: 'Brightness / Intensity', unit: 'x', min: 0, max: 2.5, step: 0.05 },
-  { path: 'scenes.growth.vfxParticleGlow', label: 'Glow Strength', unit: 'x', min: 0, max: 2, step: 0.05 },
-  { path: 'scenes.growth.vfxParticleSpeed', label: 'Particle Speed', unit: 'x', min: 0.2, max: 2, step: 0.05 },
-  { path: 'scenes.growth.vfxParticleLifetime', label: 'Lifetime', unit: 'x', min: 0.3, max: 3, step: 0.05 },
-  { path: 'scenes.growth.vfxParticleSpread', label: 'Spread / Radius', unit: 'x', min: 0, max: 1.5, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleCount', label: 'Количество частиц', unit: 'шт.', min: 0, max: 528, step: 8 },
+  { path: 'scenes.growth.vfxParticleSize', label: 'Размер частиц', unit: 'px', min: 0.75, max: 8, step: 0.1 },
+  { path: 'scenes.growth.vfxParticleSizeVariation', label: 'Разброс размера', unit: '×', min: 0, max: 1.5, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleBrightness', label: 'Яркость частиц', unit: '×', min: 0, max: 2.5, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleGlow', label: 'Сила свечения', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleSpeed', label: 'Скорость частиц', unit: '×', min: 0.2, max: 2, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleLifetime', label: 'Время жизни', unit: '×', min: 0.3, max: 3, step: 0.05 },
+  { path: 'scenes.growth.vfxParticleSpread', label: 'Разброс и радиус', unit: '×', min: 0, max: 1.5, step: 0.05 },
 ]
 
 const LILY_GROWTH_PULSE_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.growth.vfxCoreIntensity', label: 'Core Intensity', unit: 'x', min: 0, max: 1.5, step: 0.05 },
-  { path: 'scenes.growth.vfxPulseBrightness', label: 'Pulse Intensity', unit: 'x', min: 0, max: 2.5, step: 0.05 },
-  { path: 'scenes.growth.vfxPulseWidth', label: 'Pulse Width', unit: '', min: 0.025, max: 0.3, step: 0.005 },
-  { path: 'scenes.growth.vfxPulseSpeed', label: 'Pulse Speed', unit: 'x', min: 0.4, max: 2, step: 0.05 },
-  { path: 'scenes.growth.vfxPulseTrailFade', label: 'Trail Length / Fade', unit: 'x', min: 0.35, max: 3, step: 0.05 },
-  { path: 'scenes.growth.vfxPulseLeafBoost', label: 'Leaf Boost', unit: 'x', min: 0, max: 1.5, step: 0.05 },
-  { path: 'scenes.growth.vfxPulseBudBoost', label: 'Bud Boost', unit: 'x', min: 0, max: 1.5, step: 0.05 },
+  { path: 'scenes.growth.vfxCoreIntensity', label: 'Яркость ядра', unit: '×', min: 0, max: 1.5, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseBrightness', label: 'Яркость импульса', unit: '×', min: 0, max: 2.5, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseWidth', label: 'Ширина импульса', unit: '', min: 0.025, max: 0.3, step: 0.005 },
+  { path: 'scenes.growth.vfxPulseSpeed', label: 'Скорость импульса', unit: '×', min: 0.4, max: 2, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseTrailFade', label: 'Длина и затухание следа', unit: '×', min: 0.35, max: 3, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseLeafBoost', label: 'Усиление листьев', unit: '×', min: 0, max: 1.5, step: 0.05 },
+  { path: 'scenes.growth.vfxPulseBudBoost', label: 'Усиление бутона', unit: '×', min: 0, max: 1.5, step: 0.05 },
 ]
 
 const LILY_BUD_GLOW_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.growth.lilyBudGlow.intensity', label: 'Glow Intensity', unit: '×', min: 0, max: 2, step: 0.05 },
-  { path: 'scenes.growth.lilyBudGlow.rimStrength', label: 'Rim Strength', unit: '×', min: 0, max: 2, step: 0.05 },
-  { path: 'scenes.growth.lilyBudGlow.bloomBoost', label: 'Bloom Boost', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.growth.lilyBudGlow.intensity', label: 'Интенсивность свечения', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.growth.lilyBudGlow.rimStrength', label: 'Сила краевого свечения', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.growth.lilyBudGlow.bloomBoost', label: 'Усиление ореола', unit: '×', min: 0, max: 2, step: 0.05 },
 ]
 
 const LILY_LEAF_MATERIAL_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.growth.lilyLeafMaterial.translucencyStrength', label: 'Translucency Strength', unit: '×', min: 0, max: 1, step: 0.01 },
-  { path: 'scenes.growth.lilyLeafMaterial.edgeLightIntensity', label: 'Edge Light Intensity', unit: '×', min: 0, max: 1, step: 0.01 },
-  { path: 'scenes.growth.lilyLeafMaterial.colorVariation', label: 'Color Variation', unit: '×', min: 0, max: 1, step: 0.01 },
+  { path: 'scenes.growth.lilyLeafMaterial.translucencyStrength', label: 'Сила просвечивания', unit: '×', min: 0, max: 1, step: 0.01 },
+  { path: 'scenes.growth.lilyLeafMaterial.edgeLightIntensity', label: 'Интенсивность краевого света', unit: '×', min: 0, max: 1, step: 0.01 },
+  { path: 'scenes.growth.lilyLeafMaterial.colorVariation', label: 'Разброс цвета', unit: '×', min: 0, max: 1, step: 0.01 },
 ]
 
 const LILY_GROWTH_VORTEX_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.growth.growthVortex.particleCount', label: 'Particle Count', unit: 'pcs', min: 0, max: 1600, step: 10 },
-  { path: 'scenes.growth.growthVortex.particleSize', label: 'Particle Size', unit: 'px', min: 0.2, max: 8, step: 0.1 },
-  { path: 'scenes.growth.growthVortex.sizeVariation', label: 'Size Variation', unit: '×', min: 0, max: 1, step: 0.01 },
-  { path: 'scenes.growth.growthVortex.brightness', label: 'Brightness / Glow', unit: '×', min: 0, max: 3, step: 0.05 },
-  { path: 'scenes.growth.growthVortex.orbitRadius', label: 'Orbit Radius', unit: 'm', min: 0.02, max: 1.5, step: 0.01 },
-  { path: 'scenes.growth.growthVortex.rotationSpeed', label: 'Rotation Speed', unit: '×', min: 0, max: 4, step: 0.05 },
-  { path: 'scenes.growth.growthVortex.verticalSpread', label: 'Vertical Spread', unit: 'm', min: 0.02, max: 2, step: 0.01 },
-  { path: 'scenes.growth.growthVortex.spiralTightness', label: 'Spiral Tightness', unit: '×', min: 0.1, max: 6, step: 0.05 },
-  { path: 'scenes.growth.growthVortex.dissipationDuration', label: 'Dissipation Duration', unit: 's', min: 0.2, max: 12, step: 0.1 },
-  { path: 'scenes.growth.growthVortex.dissipationSpread', label: 'Dissipation Spread', unit: 'm', min: 0, max: 3, step: 0.05 },
+  { path: 'scenes.growth.growthVortex.particleCount', label: 'Количество частиц', unit: 'шт.', min: 0, max: 1600, step: 10 },
+  { path: 'scenes.growth.growthVortex.particleSize', label: 'Размер частиц', unit: 'px', min: 0.2, max: 8, step: 0.1 },
+  { path: 'scenes.growth.growthVortex.sizeVariation', label: 'Разброс размера', unit: '×', min: 0, max: 1, step: 0.01 },
+  { path: 'scenes.growth.growthVortex.brightness', label: 'Яркость и свечение', unit: '×', min: 0, max: 3, step: 0.05 },
+  { path: 'scenes.growth.growthVortex.orbitRadius', label: 'Радиус орбиты', unit: 'м', min: 0.02, max: 1.5, step: 0.01 },
+  { path: 'scenes.growth.growthVortex.rotationSpeed', label: 'Скорость вращения', unit: '×', min: 0, max: 4, step: 0.05 },
+  { path: 'scenes.growth.growthVortex.verticalSpread', label: 'Вертикальный разброс', unit: 'м', min: 0.02, max: 2, step: 0.01 },
+  { path: 'scenes.growth.growthVortex.spiralTightness', label: 'Плотность спирали', unit: '×', min: 0.1, max: 6, step: 0.05 },
+  { path: 'scenes.growth.growthVortex.dissipationDuration', label: 'Длительность рассеивания', unit: 'с', min: 0.2, max: 12, step: 0.1 },
+  { path: 'scenes.growth.growthVortex.dissipationSpread', label: 'Разброс при рассеивании', unit: 'м', min: 0, max: 3, step: 0.05 },
 ]
 
 const LILY_BLOOM_POLLEN_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.bloom.lilyBloomPollen.particleCount', label: 'Particle Count', unit: 'pcs', min: 0, max: 600, step: 4 },
-  { path: 'scenes.bloom.lilyBloomPollen.particleSize', label: 'Particle Size', unit: 'px', min: 0.2, max: 6, step: 0.1 },
-  { path: 'scenes.bloom.lilyBloomPollen.glowIntensity', label: 'Glow Intensity', unit: '×', min: 0, max: 3, step: 0.05 },
-  { path: 'scenes.bloom.lilyBloomPollen.riseSpeed', label: 'Rise Speed', unit: 'm/s', min: 0, max: 0.5, step: 0.005 },
-  { path: 'scenes.bloom.lilyBloomPollen.spreadRadius', label: 'Spread Radius', unit: 'm', min: 0.01, max: 0.8, step: 0.01 },
-  { path: 'scenes.bloom.lilyBloomPollen.lifetime', label: 'Lifetime', unit: 's', min: 0.5, max: 12, step: 0.1 },
-  { path: 'scenes.bloom.lilyBloomPollen.innerCupGlow', label: 'Inner Cup Glow', unit: '×', min: 0, max: 2, step: 0.05 },
+  { path: 'scenes.bloom.lilyBloomPollen.particleCount', label: 'Количество частиц', unit: 'шт.', min: 0, max: 600, step: 4 },
+  { path: 'scenes.bloom.lilyBloomPollen.particleSize', label: 'Размер частиц', unit: 'px', min: 0.2, max: 6, step: 0.1 },
+  { path: 'scenes.bloom.lilyBloomPollen.glowIntensity', label: 'Интенсивность свечения', unit: '×', min: 0, max: 3, step: 0.05 },
+  { path: 'scenes.bloom.lilyBloomPollen.riseSpeed', label: 'Скорость подъёма', unit: 'м/с', min: 0, max: 0.5, step: 0.005 },
+  { path: 'scenes.bloom.lilyBloomPollen.spreadRadius', label: 'Радиус разлёта', unit: 'м', min: 0.01, max: 0.8, step: 0.01 },
+  { path: 'scenes.bloom.lilyBloomPollen.lifetime', label: 'Время жизни', unit: 'с', min: 0.5, max: 12, step: 0.1 },
+  { path: 'scenes.bloom.lilyBloomPollen.innerCupGlow', label: 'Свечение центра цветка', unit: '×', min: 0, max: 2, step: 0.05 },
 ]
 
 const BLOOM_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.bloom.flowerBloomDuration', label: 'Длительность раскрытия Bloom', unit: 'с', min: 6, max: 24, step: 0.25 },
+  { path: 'scenes.bloom.flowerBloomDuration', label: 'Длительность раскрытия лилии', unit: 'с', min: 6, max: 24, step: 0.25 },
   { path: 'scenes.bloom.cameraFinalDistance', label: 'Финальная дистанция камеры', unit: '', min: 1.5, max: 5, step: 0.05 },
   { path: 'scenes.bloom.cameraFinalHeight', label: 'Высота камеры', unit: '', min: 0.5, max: 4, step: 0.05 },
   { path: 'scenes.bloom.cameraTargetX', label: 'Цель камеры · X', unit: '', min: -1, max: 1, step: 0.02 },
@@ -411,7 +493,7 @@ const GALLERY_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.moonFillIntensity', label: 'Заполняющий лунный свет', unit: '×', min: 0, max: 1.2, step: 0.025 },
   { path: 'scenes.gallery.moonHaloIntensity', label: 'Интенсивность ореола Луны', unit: '×', min: 0, max: 2, step: 0.05 },
   { path: 'scenes.gallery.moonHaloRadius', label: 'Радиус ореола Луны', unit: '×', min: 0, max: 2.5, step: 0.05 },
-  { path: 'scenes.gallery.moonGodRaysIntensity', label: 'Интенсивность god rays', unit: '×', min: 0, max: 0.8, step: 0.01 },
+  { path: 'scenes.gallery.moonGodRaysIntensity', label: 'Интенсивность объёмных лучей Луны', unit: '×', min: 0, max: 0.8, step: 0.01 },
   { path: 'scenes.gallery.moonPositionX', label: 'Положение Луны X', unit: 'м', min: -12, max: 12, step: 0.1 },
   { path: 'scenes.gallery.moonPositionY', label: 'Положение Луны Y', unit: 'м', min: 4, max: 24, step: 0.1 },
   { path: 'scenes.gallery.moonPositionZ', label: 'Положение Луны Z', unit: 'м', min: -180, max: -80, step: 1 },
@@ -437,14 +519,15 @@ const GALLERY_CAPTION_CONTROLS: readonly NumericControl[] = [
   { path: 'scenes.gallery.captionFontSize', label: 'Размер текста подписей', unit: 'px', min: 20, max: 40, step: 1 },
 ]
 
-const GALLERY_CLOUD_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
+const GALLERY_CLOUD_GROUPS: readonly { id?: string; name: string; controls: readonly NumericControl[] }[] = [
   ...([
-    { id: 'far', name: 'Far Clouds · дальний слой', maxCount: 12 },
-    { id: 'mid', name: 'Mid Clouds · боковые массы', maxCount: 20 },
-    { id: 'nearLow', name: 'Near Low Clouds · за фотографиями', maxCount: 24 },
-    { id: 'waterline', name: 'Waterline Clouds · дымка над водой', maxCount: 32 },
-    { id: 'moon', name: 'Moon Clouds · облака у Луны', maxCount: 8 },
+    { id: 'far', name: 'Дальние облака · дальний слой', maxCount: 12 },
+    { id: 'mid', name: 'Средние облака · боковые массы', maxCount: 20 },
+    { id: 'nearLow', name: 'Ближние низкие облака · за фотографиями', maxCount: 24 },
+    { id: 'waterline', name: 'Облака над водой · лёгкая дымка', maxCount: 32 },
+    { id: 'moon', name: 'Облака у Луны', maxCount: 8 },
   ] as const).map(({ id, name, maxCount }) => ({
+    id,
     name,
     controls: [
       { path: `scenes.gallery.cloudLayers.${id}.count`, label: 'Количество масс', unit: 'шт.', min: 0, max: maxCount, step: 1 },
@@ -473,19 +556,19 @@ const GALLERY_CLOUD_GROUPS: readonly { name: string; controls: readonly NumericC
 ]
 
 const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[] }[] = [
-  { name: 'Galaxy Geometry · перестройка после паузы ползунка', controls: [
+  { name: 'Геометрия галактики · перестройка после отпускания ползунка', controls: [
     { path: 'scenes.galaxy.starCount', label: 'Количество звёзд', unit: 'шт.', min: 8000, max: 90000, step: 1000 },
     { path: 'scenes.galaxy.arms', label: 'Спиральные рукава', unit: '', min: 2, max: 8, step: 1 },
     { path: 'scenes.galaxy.radius', label: 'Радиус', unit: '', min: 4, max: 14, step: 0.1 },
     { path: 'scenes.galaxy.spin', label: 'Закручивание рукавов', unit: 'рад', min: 0.2, max: 18, step: 0.05 },
-    { path: 'scenes.galaxy.armWidth', label: 'Ширина рукавов', unit: '× R', min: 0, max: 0.5, step: 0.005 },
-    { path: 'scenes.galaxy.randomness', label: 'Разброс звёзд', unit: '× R', min: 0, max: 0.3, step: 0.005 },
+    { path: 'scenes.galaxy.armWidth', label: 'Ширина рукавов', unit: '× радиуса', min: 0, max: 0.5, step: 0.005 },
+    { path: 'scenes.galaxy.randomness', label: 'Разброс звёзд', unit: '× радиуса', min: 0, max: 0.3, step: 0.005 },
     { path: 'scenes.galaxy.randomnessPower', label: 'Сжатие разброса', unit: '×', min: 0.1, max: 8, step: 0.1 },
-    { path: 'scenes.galaxy.coreSize', label: 'Размер ядра', unit: '× R', min: 0.08, max: 0.5, step: 0.005 },
+    { path: 'scenes.galaxy.coreSize', label: 'Размер ядра', unit: '× радиуса', min: 0.08, max: 0.5, step: 0.005 },
     { path: 'scenes.galaxy.coreDensity', label: 'Плотность ядра', unit: '×', min: 0, max: 0.5, step: 0.01 },
-    { path: 'scenes.galaxy.thickness', label: 'Толщина диска', unit: '× R', min: 0.005, max: 0.2, step: 0.005 },
+    { path: 'scenes.galaxy.thickness', label: 'Толщина диска', unit: '× радиуса', min: 0.005, max: 0.2, step: 0.005 },
   ] },
-  { name: 'Stars · live', controls: [
+  { name: 'Звёзды', controls: [
     { path: 'scenes.galaxy.starSize', label: 'Размер обычных звёзд', unit: '×', min: 0.25, max: 3.5, step: 0.05 },
     { path: 'scenes.galaxy.brightness', label: 'Яркость звёзд', unit: '×', min: 0.1, max: 1.5, step: 0.02 },
     { path: 'scenes.galaxy.twinkle', label: 'Интенсивность мерцания', unit: '×', min: 0, max: 1, step: 0.02 },
@@ -500,7 +583,7 @@ const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.galaxy.backgroundGasDensity', label: 'Плотность фонового газа', unit: '×', min: 0, max: 0.8, step: 0.02 },
     { path: 'scenes.galaxy.backgroundGasBrightness', label: 'Яркость фонового газа', unit: '×', min: 0, max: 1, step: 0.02 },
   ] },
-  { name: 'Nebula · live', controls: [
+  { name: 'Туманность', controls: [
     { path: 'scenes.galaxy.nebulaDensity', label: 'Плотность газа', unit: '×', min: 0, max: 1, step: 0.02 },
     { path: 'scenes.galaxy.nebulaBrightness', label: 'Яркость газа', unit: '×', min: 0, max: 1.5, step: 0.02 },
     { path: 'scenes.galaxy.nebulaSaturation', label: 'Насыщенность газа', unit: '×', min: 0, max: 1.5, step: 0.02 },
@@ -509,7 +592,7 @@ const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.galaxy.nebulaIntensity', label: 'Интенсивность газовых рукавов', unit: '×', min: 0, max: 2, step: 0.05 },
     { path: 'scenes.galaxy.nebulaSpeed', label: 'Скорость газа', unit: '×', min: 0, max: 0.1, step: 0.002 },
   ] },
-  { name: 'Reveal Fog · live', controls: [
+  { name: 'Туман перед галактикой', controls: [
     { path: 'scenes.galaxy.fogDensity', label: 'Плотность переднего тумана', unit: '×', min: 0, max: 1, step: 0.02 },
     { path: 'scenes.galaxy.fogLayers', label: 'Слои тумана', unit: '', min: 1, max: 8, step: 1 },
     { path: 'scenes.galaxy.fogDepth', label: 'Глубина слоёв', unit: '', min: 4, max: 30, step: 0.5 },
@@ -519,7 +602,7 @@ const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.galaxy.fogTurbulence', label: 'Турбулентность', unit: '×', min: 0, max: 1, step: 0.02 },
     { path: 'scenes.galaxy.fogAfterOpacity', label: 'Остаточная дымка', unit: '%', min: 0, max: 20, step: 0.5, displayScale: 100 },
   ] },
-  { name: 'Motion · live', controls: [
+  { name: 'Движение', controls: [
     { path: 'scenes.galaxy.rotationSpeed', label: 'Скорость вращения', unit: '×', min: 0, max: 0.1, step: 0.0005 },
     { path: 'scenes.galaxy.motionSpeed', label: 'Общая скорость движения', unit: '×', min: 0, max: 2, step: 0.05 },
     { path: 'scenes.galaxy.revealMotion', label: 'Движение при раскрытии', unit: '×', min: 0, max: 3, step: 0.05 },
@@ -530,11 +613,11 @@ const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[
     { path: 'scenes.galaxy.pauseDuration', label: 'Пауза до затемнения', unit: 'с', min: 0, max: 12, step: 0.1 },
     { path: 'scenes.galaxy.backgroundTransition', label: 'Переход в фон', unit: 'с', min: 2, max: 18, step: 0.1 },
   ] },
-  { name: 'Camera · CameraDirector', controls: [
+  { name: 'Камера · автоматическое управление', controls: [
     { path: 'scenes.galaxy.cameraStartDistance', label: 'Начальная дистанция', unit: '', min: 3, max: 12, step: 0.1 },
     { path: 'scenes.galaxy.cameraEndDistance', label: 'Финальная дистанция', unit: '', min: 9, max: 28, step: 0.1 },
-    { path: 'scenes.galaxy.cameraStartAngle', label: 'Начальный угол', unit: 'rad', min: -0.3, max: 0.8, step: 0.01 },
-    { path: 'scenes.galaxy.cameraEndAngle', label: 'Финальный угол', unit: 'rad', min: 0.1, max: 0.95, step: 0.01 },
+    { path: 'scenes.galaxy.cameraStartAngle', label: 'Начальный угол', unit: 'рад', min: -0.3, max: 0.8, step: 0.01 },
+    { path: 'scenes.galaxy.cameraEndAngle', label: 'Финальный угол', unit: 'рад', min: 0.1, max: 0.95, step: 0.01 },
     { path: 'scenes.galaxy.cameraFocusX', label: 'Смещение фокуса X', unit: '', min: -3, max: 3, step: 0.05 },
     { path: 'scenes.galaxy.cameraFocusY', label: 'Смещение фокуса Y', unit: '', min: -3, max: 3, step: 0.05 },
     { path: 'scenes.galaxy.cameraDuration', label: 'Длительность отдаления', unit: 'с', min: 5, max: 18, step: 0.1 },
@@ -544,14 +627,14 @@ const GALAXY_GROUPS: readonly { name: string; controls: readonly NumericControl[
 ]
 
 const GALAXY_SELECTS: readonly SelectControl[] = [
-  { path: 'scenes.galaxy.quality', label: 'Качество галактики', options: [{ value: 'low', label: 'Low' }, { value: 'standard', label: 'Standard' }, { value: 'high', label: 'High' }] },
+  { path: 'scenes.galaxy.quality', label: 'Качество галактики', options: [{ value: 'low', label: 'Низкое' }, { value: 'standard', label: 'Обычное' }, { value: 'high', label: 'Высокое' }] },
   { path: 'scenes.galaxy.distribution', label: 'Форма распределения', options: [{ value: 'balanced', label: 'Сбалансированное' }, { value: 'core', label: 'Плотное ядро' }, { value: 'arms', label: 'Выраженные рукава' }] },
   { path: 'scenes.galaxy.palette', label: 'Палитра', options: [
-    { value: 'vasilisa', label: 'Vasilisa Cinematic' }, { value: 'spore', label: 'Spore (R/B/Y/V)' },
-    { value: 'ember', label: 'Ember' }, { value: 'emerald', label: 'Emerald' },
-    { value: 'ice', label: 'Ice' }, { value: 'rose', label: 'Rose' }, { value: 'custom', label: 'Custom' },
+    { value: 'vasilisa', label: 'Василиса · кинематографичная' }, { value: 'spore', label: 'Споры · красный, синий, жёлтый и фиолетовый' },
+    { value: 'ember', label: 'Жар' }, { value: 'emerald', label: 'Изумруд' },
+    { value: 'ice', label: 'Лёд' }, { value: 'rose', label: 'Роза' }, { value: 'custom', label: 'Своя палитра' },
   ] },
-  { path: 'scenes.galaxy.cameraEase', label: 'Easing камеры', options: [{ value: 'sine', label: 'Sine' }, { value: 'power2', label: 'Power 2' }, { value: 'power3', label: 'Power 3' }] },
+  { path: 'scenes.galaxy.cameraEase', label: 'Сглаживание движения камеры', options: [{ value: 'sine', label: 'Синусоидальное' }, { value: 'power2', label: 'Степенное · 2' }, { value: 'power3', label: 'Степенное · 3' }] },
 ]
 
 function useApproximateRafFps() {
@@ -598,7 +681,7 @@ function RangeControl({ control, value, onChange, onReset, changed }: {
   const id = `composer-${control.path.replaceAll('.', '-')}`
   return (
     <div className="composer-control">
-      <div className="inspector-control-heading"><label htmlFor={id}>{control.label} · {formatted(value)} {control.unit}</label>{changed && <button type="button" className="inspector-reset" aria-label={`Reset ${control.label}`} title="Reset" onClick={onReset}>↺</button>}</div>
+      <div className="inspector-control-heading"><label htmlFor={id}>{control.label} · {formatted(value)} {control.unit}</label>{changed && <button type="button" className="inspector-reset" aria-label={`Сбросить ${control.label}`} title="Сбросить" onClick={onReset}>↺</button>}</div>
       <input id={id} data-testid={id} type="range" min={control.min} max={control.max} step={control.step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
     </div>
   )
@@ -628,7 +711,7 @@ function FontControl({ path, label, value, onChange, onReset }: {
     <div className="composer-control">
       <div className="inspector-control-heading"><label htmlFor={id}>{label}</label>{value !== defaultAtPath(path) && <button type="button" className="inspector-reset" aria-label={`Сбросить ${label}`} title="Сбросить" onClick={() => onReset(path)}>↺</button>}</div>
       <select id={id} data-testid={id} value={value} onChange={(event) => onChange(path, event.target.value as ArtFontId)}>
-        {ART_FONT_CATALOG.map((font) => <option key={font.id} value={font.id}>{font.label}</option>)}
+        {ART_FONT_CATALOG.map((font) => <option key={font.id} value={font.id}>{ART_FONT_LABELS[font.id]}</option>)}
       </select>
     </div>
   )
@@ -659,6 +742,8 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const active: InspectorScene = route === 'loading' ? 'preload' : state.scene
   const [pinned, setPinned] = useState<InspectorScene | null>(null)
   const selected = pinned ?? active
+  const disclosureMemory = useRef<SceneDisclosureMemory>({})
+  const sceneDisclosureRef = useRef<HTMLDetailsElement>(null)
   const [selectedPreset, setSelectedPreset] = useState<ScenePresetId>(() => getConfig().preset)
   const [notice, setNotice] = useState('')
   const [fontLoading, setFontLoading] = useState(false)
@@ -671,6 +756,24 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const compareBusy = useRef(false)
   const [comparing, setComparing] = useState(false)
   const [snapshots, setSnapshots] = useState<Partial<Record<InspectorScope, { A?: object; B?: object; active?: 'A' | 'B'; point?: ComparisonPoint }>>>({})
+  useEffect(() => {
+    const root = sceneDisclosureRef.current
+    if (!root) return
+    const restore = (details: HTMLDetailsElement) => {
+      const open = readSceneDisclosureOpen(disclosureMemory.current, selected, disclosurePath(details, root))
+      if (open !== undefined) details.open = open
+    }
+    restore(root)
+    root.querySelectorAll('details').forEach(restore)
+    const remember = (event: Event) => {
+      const target = event.target as HTMLElement | null
+      if (!target || target.tagName !== 'DETAILS') return
+      const details = target as HTMLDetailsElement
+      rememberSceneDisclosureOpen(disclosureMemory.current, selected, disclosurePath(details, root), details.open)
+    }
+    root.addEventListener('toggle', remember, true)
+    return () => root.removeEventListener('toggle', remember, true)
+  }, [selected])
   const section = (value: SceneComposerConfig, scope: InspectorScope): object => scope === 'global' ? value.global : value.scenes[scope]
   const recordChange = (scope: InspectorScope, before: SceneComposerConfig, after: SceneComposerConfig) => {
     history.record(scope, section(before, scope), section(after, scope))
@@ -764,7 +867,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
     setHistoryRevision(value => value + 1)
     setSnapshots({})
     setSelectedPreset(next.preset)
-    setNotice(`Применён пресет «${SCENE_CONFIG_PRESETS[next.preset].label}». История и A/B очищены.`)
+    setNotice(`Применён пресет «${SCENE_PRESET_LABELS[next.preset]}». История и A/B очищены.`)
   }
 
   const downloadConfig = () => {
@@ -806,7 +909,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
 
   const rangeWithMax = (control: NumericControl, max: number) => <ConfigRange key={control.path} control={max === control.max ? control : { ...control, max }} config={config} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
   const range = (control: NumericControl) => rangeWithMax(control, control.max)
-  const growthCloudLayerControls = () => <details><summary>Облака вокруг острова · сцены 02–03</summary>
+  const growthCloudLayerControls = () => <details><summary>Облака вокруг острова · общая настройка сцен 02–03</summary>
     {GROWTH_CLOUD_LAYER_GROUPS.map(group => <details key={group.name}><summary>{group.name}</summary>{group.controls.map(range)}</details>)}
   </details>
   const color = (path: ComposerFieldPath, label: string) => {
@@ -826,11 +929,9 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
     </div>
   }
   const font = (scene: 'prologue', label: string) => <FontControl path={`scenes.${scene}.fontFamily`} label={label} value={config.scenes[scene].fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
-  const title = selected === 'preload' ? '00 · Загрузка' : SCENES[selected].label
+  const title = INSPECTOR_SCENE_LABELS[selected]
   const hasSceneControls = selected === 'preload' || selected === 'prologue'
     || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'gallery' || selected === 'cosmos'
-  const hasOpeningBackgroundControls = selected === 'preload' || selected === 'prologue'
-    || selected === 'growth' || selected === 'bloom' || selected === 'identity'
   const currentScope: InspectorScope | undefined = selected === 'cosmos' ? 'galaxy'
     : selected === 'preload' || selected === 'prologue' || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'gallery'
       ? selected : undefined
@@ -890,33 +991,33 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
 
   return (
     <aside id="developer-panel" className="developer-panel" aria-labelledby="developer-title">
-      <div className="inspector-heading"><h2 id="developer-title">Scene Inspector</h2><button type="button" aria-pressed={pinned !== null} onClick={() => setPinned(pinned === null ? active : null)}>{pinned === null ? 'Auto' : 'Pin'}</button></div>
+      <div className="inspector-heading"><h2 id="developer-title">Редактор сцены</h2><button type="button" aria-pressed={pinned !== null} onClick={() => setPinned(pinned === null ? active : null)}>{pinned === null ? 'Автоматически' : 'Закрепить'}</button></div>
       {desktopRecording?.available && <RecordingInspector session={desktopRecording} />}
       <p className="inspector-follow">{pinned === null ? 'Следует за активной сценой' : 'Панель закреплена'} · {title}</p>
       {fontLoading && <p role="status">Загружаем локальный шрифт…</p>}
       {notice && <p role="status" aria-live="polite">{notice}</p>}
       <details className="inspector-section">
-        <summary>Global · общие параметры</summary>
+        <summary>Общие настройки</summary>
         {historyButtons('global')}
         <div className="inspector-control-heading"><label htmlFor="inspector-quality">Профиль качества</label>{config.global.quality !== defaultAtPath('global.quality') && <button type="button" className="inspector-reset" aria-label="Сбросить качество" onClick={() => { void resetField('global.quality') }}>↺</button>}</div>
         <select id="inspector-quality" value={config.global.quality} onChange={(event) => { void changeField('global.quality', event.target.value) }}><option value="standard">Обычное</option><option value="low">Низкое</option></select>
         {range({ path: 'global.playbackSpeed', label: 'Скорость фильма', unit: '×', min: 0.25, max: 4, step: 0.25 })}
         {range({ path: 'global.dprMin', label: 'Минимум DPR', unit: '×', min: 0.5, max: 1.5, step: 0.05 })}
         {range({ path: 'global.dprMax', label: 'Максимум DPR', unit: '×', min: 1, max: 2, step: 0.05 })}
-        <details><summary>Пресеты и конфигурация</summary>
-          <label htmlFor="composer-preset">Художественный пресет</label><select id="composer-preset" data-testid="composer-preset" value={selectedPreset} onChange={(event) => setSelectedPreset(event.target.value as ScenePresetId)}>{Object.entries(SCENE_CONFIG_PRESETS).map(([id, preset]) => <option key={id} value={id}>{preset.label}</option>)}</select>
-          <button type="button" onClick={() => { void applyPreset() }}>Применить пресет</button>
-          <div className="composer-files"><button type="button" onClick={downloadConfig}>Экспорт JSON</button><label>Импорт JSON<input data-testid="composer-import" type="file" accept="application/json,.json" onChange={(event) => { void handleImport(event) }} /></label></div>
-        </details>
-        <button type="button" onClick={() => { void resetScope('global') }}>Сбросить Global</button>
-      </details>
-      <section aria-labelledby="inspector-scene-title" className="inspector-scene">
-        <h3 id="inspector-scene-title">{title}</h3>
-        {hasOpeningBackgroundControls && <details open><summary>00–04 · Кадрирование фона</summary>
+        <details><summary>00–04 · Кадрирование фона</summary>
           {historyButtons('openingBackground')}
           {OPENING_BACKGROUND_CONTROLS.map(range)}
           <button type="button" onClick={() => { void resetScope('openingBackground') }}>Сбросить кадрирование фона</button>
-        </details>}
+        </details>
+        <details><summary>Пресеты и конфигурация</summary>
+          <label htmlFor="composer-preset">Художественный пресет</label><select id="composer-preset" data-testid="composer-preset" value={selectedPreset} onChange={(event) => setSelectedPreset(event.target.value as ScenePresetId)}>{Object.keys(SCENE_CONFIG_PRESETS).map(id => { const presetId = id as ScenePresetId; return <option key={presetId} value={presetId}>{SCENE_PRESET_LABELS[presetId]}</option> })}</select>
+          <button type="button" onClick={() => { void applyPreset() }}>Применить пресет</button>
+          <div className="composer-files"><button type="button" onClick={downloadConfig}>Экспорт JSON</button><label>Импорт JSON<input data-testid="composer-import" type="file" accept="application/json,.json" onChange={(event) => { void handleImport(event) }} /></label></div>
+        </details>
+        <button type="button" onClick={() => { void resetScope('global') }}>Сбросить общие настройки</button>
+      </details>
+      <details ref={sceneDisclosureRef} aria-labelledby="inspector-scene-title" className="inspector-scene" open>
+        <summary><h3 id="inspector-scene-title">{title}</h3></summary>
         {currentScope && <details className="inspector-compare"><summary>{currentScope === 'gallery' ? 'История параметров' : 'История и сравнение A/B'}</summary>
           {historyButtons(currentScope)}
           {currentScope !== 'gallery' && <>
@@ -930,9 +1031,9 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           </>}
         </details>}
         {selected === 'preload' && <details open><summary>Свечение и движение</summary>{PRELOAD_CONTROLS.map(range)}</details>}
-        {selected === 'prologue' && PROLOGUE_GROUPS.map(group => <details key={group.name} open={group.name === 'Typography'}>
+        {selected === 'prologue' && PROLOGUE_GROUPS.map(group => <details key={group.name} open={group.name === 'Типографика'}>
           <summary>{group.name}</summary>
-          {group.name === 'Typography' && <>
+          {group.name === 'Типографика' && <>
             {font('prologue', 'Шрифт рукописного текста')}
             <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-prologue-copyVariant">Вторая фраза</label>{config.scenes.prologue.copyVariant !== 'awakening' && <button type="button" className="inspector-reset" aria-label="Сбросить вторую фразу" onClick={() => { void resetField('scenes.prologue.copyVariant') }}>↺</button>}</div>
               <select id="composer-scenes-prologue-copyVariant" value={config.scenes.prologue.copyVariant} onChange={event => { void changeField('scenes.prologue.copyVariant', event.target.value) }}><option value="awakening">Начать с одной маленькой искры</option><option value="legacy">Прежняя формулировка</option></select>
@@ -947,25 +1048,25 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             </div>
             {GROWTH_GROUPS.map(group => <details key={group.name} open={group.name === 'Частицы и формирование'}><summary>{group.name}</summary>{group.controls.map(range)}{group.color && color(group.color.path, group.color.label)}</details>)}
           </details>
-          <details open><summary>Lily Growth Particles</summary>
+          <details open><summary>Частицы роста лилии</summary>
             {LILY_GROWTH_PARTICLE_CONTROLS.map(range)}
-            {color('scenes.growth.vfxParticleTint', 'Color / Tint')}
+            {color('scenes.growth.vfxParticleTint', 'Цвет частиц')}
           </details>
-          <details open><summary>Lily Growth Pulse</summary>
-            <label className="composer-control"><input id="composer-scenes-growth-vfxPulseEnabled" type="checkbox" checked={config.scenes.growth.vfxPulseEnabled} onChange={event => { void changeField('scenes.growth.vfxPulseEnabled', event.target.checked) }} /> Enable Pulse</label>
+          <details open><summary>Пульсация роста лилии</summary>
+            <label className="composer-control"><input id="composer-scenes-growth-vfxPulseEnabled" type="checkbox" checked={config.scenes.growth.vfxPulseEnabled} onChange={event => { void changeField('scenes.growth.vfxPulseEnabled', event.target.checked) }} /> Включить пульсацию</label>
             {LILY_GROWTH_PULSE_CONTROLS.map(range)}
-            {color('scenes.growth.vfxPulseColor', 'Pulse Color / Tint')}
+            {color('scenes.growth.vfxPulseColor', 'Цвет пульсации')}
           </details>
-          <details><summary>Lily Bud Glow</summary>
-            <label className="composer-control"><input id="composer-scenes-growth-lilyBudGlow-enabled" type="checkbox" checked={config.scenes.growth.lilyBudGlow.enabled} onChange={event => { void changeField('scenes.growth.lilyBudGlow.enabled', event.target.checked) }} /> Enable</label>
+          <details><summary>Свечение бутона лилии</summary>
+            <label className="composer-control"><input id="composer-scenes-growth-lilyBudGlow-enabled" type="checkbox" checked={config.scenes.growth.lilyBudGlow.enabled} onChange={event => { void changeField('scenes.growth.lilyBudGlow.enabled', event.target.checked) }} /> Включить свечение</label>
             {LILY_BUD_GLOW_CONTROLS.map(range)}
-            {color('scenes.growth.lilyBudGlow.color', 'Glow Color')}
+            {color('scenes.growth.lilyBudGlow.color', 'Цвет свечения')}
           </details>
-          <details><summary>Lily Leaf Material</summary>{LILY_LEAF_MATERIAL_CONTROLS.map(range)}</details>
-          <details><summary>Lily Growth Vortex</summary>
-            <label className="composer-control"><input id="composer-scenes-growth-growthVortex-enabled" type="checkbox" checked={config.scenes.growth.growthVortex.enabled} onChange={event => { void changeField('scenes.growth.growthVortex.enabled', event.target.checked) }} /> Enable</label>
+          <details><summary>Материал листьев лилии</summary>{LILY_LEAF_MATERIAL_CONTROLS.map(range)}</details>
+          <details><summary>Вихрь при росте лилии</summary>
+            <label className="composer-control"><input id="composer-scenes-growth-growthVortex-enabled" type="checkbox" checked={config.scenes.growth.growthVortex.enabled} onChange={event => { void changeField('scenes.growth.growthVortex.enabled', event.target.checked) }} /> Включить вихрь</label>
             {LILY_GROWTH_VORTEX_CONTROLS.map(range)}
-            {color('scenes.growth.growthVortex.color', 'Particle Color')}
+            {color('scenes.growth.growthVortex.color', 'Цвет частиц')}
           </details>
           {growthCloudLayerControls()}
           <p>Обе длительности анимации цветка настраиваются здесь и в сцене раскрытия.</p>
@@ -976,22 +1077,21 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           </details>
         </>}
         {selected === 'bloom' && <details open><summary>Анимация раскрытия</summary>
-          <details open><summary>Камера · CameraDirector</summary>{BLOOM_CONTROLS.map(range)}</details>
+          <details open><summary>Камера · плавное приближение</summary>{BLOOM_CONTROLS.map(range)}</details>
           <p>Раскрытие начинается автоматически после короткой паузы роста. Камера плавно приближается к цветку.</p>
         </details>}
-        {selected === 'bloom' && growthCloudLayerControls()}
         {import.meta.env.DEV && route === 'film' && active === 'bloom' && selected === 'bloom' && <details open>
           <summary>Материалы лилии · A/B</summary>
           <div role="group" aria-label="Сравнение материалов лилии" className="inspector-history">
-            <button type="button" aria-pressed={lilyMaterialExperiment.mode === 'original'} onClick={() => setLilyMaterialMode('original')}>Original</button>
-            <button type="button" aria-pressed={lilyMaterialExperiment.mode === 'enhanced'} onClick={() => setLilyMaterialMode('enhanced')}>Enhanced</button>
+            <button type="button" aria-pressed={lilyMaterialExperiment.mode === 'original'} onClick={() => setLilyMaterialMode('original')}>Исходный</button>
+            <button type="button" aria-pressed={lilyMaterialExperiment.mode === 'enhanced'} onClick={() => setLilyMaterialMode('enhanced')}>Улучшенный</button>
           </div>
           <p>Сравнивайте в том же кадре и при том же освещении; переключение не перезапускает анимацию.</p>
           {lilyMaterialExperiment.mode === 'enhanced' && lilyMaterialExperiment.status === 'loading' && <p role="status">Загружаются текстуры…</p>}
           {lilyMaterialExperiment.mode === 'enhanced' && lilyMaterialExperiment.status === 'error' && <p role="status">Не удалось загрузить текстуры; продолжает отображаться исходный материал.</p>}
         </details>}
-        {selected === 'bloom' && <details><summary>Lily Bloom Pollen</summary>
-          <label className="composer-control"><input id="composer-scenes-bloom-lilyBloomPollen-enabled" type="checkbox" checked={config.scenes.bloom.lilyBloomPollen.enabled} onChange={event => { void changeField('scenes.bloom.lilyBloomPollen.enabled', event.target.checked) }} /> Enable</label>
+        {selected === 'bloom' && <details><summary>Пыльца при раскрытии лилии</summary>
+          <label className="composer-control"><input id="composer-scenes-bloom-lilyBloomPollen-enabled" type="checkbox" checked={config.scenes.bloom.lilyBloomPollen.enabled} onChange={event => { void changeField('scenes.bloom.lilyBloomPollen.enabled', event.target.checked) }} /> Включить пыльцу</label>
           {LILY_BLOOM_POLLEN_CONTROLS.map(range)}
         </details>}
         {selected === 'identity' && <>
@@ -1002,7 +1102,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             <p>Наклон взгляда задаётся высотой камеры, дистанцией и точкой фокуса. Параметры кадра общие с концом сцены 03, поэтому первый кадр сцены 04 остаётся непрерывным.</p>
           </details>
         </>}
-        {selected === 'gallery' && <details open><summary>Scene 05 — Лунная галерея</summary>
+        {selected === 'gallery' && <details open><summary>05 · Лунная галерея</summary>
           {color('scenes.gallery.moonLightColor', 'Цвет лунного света')}
           <details><summary>Частицы дополнительных фото</summary>{GALLERY_COLLAGE_CONTROLS.map(range)}</details>
           <details open><summary>Подписи под фото</summary>{GALLERY_CAPTION_CONTROLS.map(range)}</details>
@@ -1031,20 +1131,20 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             {GALLERY_ARCH_CONTROLS.map(range)}
             <p>−82 м — исходный зазор за последней парой колонн. Отклонение от −82 м сдвигает арку относительно пары; при изменении длины галереи арка следует за колоннами.</p>
           </details>
-          {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.name.startsWith('Near Low') || group.name.startsWith('Waterline') || group.name.startsWith('Moon Clouds')}><summary>{group.name}</summary>
+          {GALLERY_CLOUD_GROUPS.map(group => <details key={group.name} open={group.id === 'nearLow' || group.id === 'waterline' || group.id === 'moon'}><summary>{group.name}</summary>
             {group.controls.map(range)}
-            {group.name.startsWith('Waterline') && <p>Счётчик управляет только этой группой; количество других облаков на него не влияет.</p>}
+            {group.id === 'waterline' && <p>Счётчик управляет только этой группой; количество других облаков на него не влияет.</p>}
           </details>)}
           {GALLERY_CONTROLS.map(range)}
         </details>}
         {selected === 'cosmos' && <>
-          <details open><summary>Scene 07 — Galaxy</summary>
+          <details open><summary>07 · Галактика</summary>
             {GALAXY_SELECTS.map((control) => <SelectConfigControl key={control.path} control={control} value={valueAtPath(config, control.path) as string} onChange={(path, value) => { void (path === 'scenes.galaxy.palette' ? changeGalaxyPalette(value as GalaxyPalette) : changeField(path, value)) }} onReset={(path) => { void resetField(path) }} />)}
-            <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-galaxy-seed">Seed генерации</label>{config.scenes.galaxy.seed !== defaultAtPath('scenes.galaxy.seed') && <button type="button" className="inspector-reset" aria-label="Сбросить seed генерации" onClick={() => { void resetField('scenes.galaxy.seed') }}>↺</button>}</div><input id="composer-scenes-galaxy-seed" data-testid="composer-scenes-galaxy-seed" type="text" maxLength={64} value={config.scenes.galaxy.seed} onChange={(event) => { void changeField('scenes.galaxy.seed', event.target.value) }} /></div>
+            <div className="composer-control"><div className="inspector-control-heading"><label htmlFor="composer-scenes-galaxy-seed">Ключ генерации</label>{config.scenes.galaxy.seed !== defaultAtPath('scenes.galaxy.seed') && <button type="button" className="inspector-reset" aria-label="Сбросить ключ генерации" onClick={() => { void resetField('scenes.galaxy.seed') }}>↺</button>}</div><input id="composer-scenes-galaxy-seed" data-testid="composer-scenes-galaxy-seed" type="text" maxLength={64} value={config.scenes.galaxy.seed} onChange={(event) => { void changeField('scenes.galaxy.seed', event.target.value) }} /></div>
             <label className="composer-control"><input type="checkbox" checked={config.scenes.galaxy.nebulaEnabled} onChange={(event) => { void changeField('scenes.galaxy.nebulaEnabled', event.target.checked) }} /> Газовая туманность</label>
             <label className="composer-control"><input type="checkbox" checked={config.scenes.galaxy.blackHoleEnabled} onChange={(event) => { void changeField('scenes.galaxy.blackHoleEnabled', event.target.checked) }} /> Чёрный центр</label>
-            {GALAXY_GROUPS.map((group) => <details key={group.name} open={group.name.startsWith('Galaxy Geometry')}><summary>{group.name}</summary>{group.controls.map(range)}</details>)}
-            <details><summary>Colors & Light · live</summary>
+            {GALAXY_GROUPS.map((group) => <details key={group.name} open={group === GALAXY_GROUPS[0]}><summary>{group.name}</summary>{group.controls.map(range)}</details>)}
+            <details><summary>Цвет и освещение · параметры сцены</summary>
               {color('scenes.galaxy.coreColor', 'Цвет ядра')}
               {color('scenes.galaxy.innerColor', 'Цвет внутреннего диска')}
               {color('scenes.galaxy.armColor', 'Цвет спиральных рукавов')}
@@ -1054,7 +1154,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
               {range({ path: 'scenes.galaxy.exposure', label: 'Экспозиция', unit: '×', min: 0.3, max: 1.8, step: 0.05 })}
               {range({ path: 'scenes.galaxy.coreGlow', label: 'Свечение ядра', unit: '×', min: 0, max: 2, step: 0.05 })}
             </details>
-            <button type="button" onClick={() => { void resetScope('galaxy') }}>Сбросить Galaxy</button>
+            <button type="button" onClick={() => { void resetScope('galaxy') }}>Сбросить настройки галактики</button>
           </details>
         </>}
         {currentScope && <ScenePresetControls scope={currentScope as ScenePresetScope} capture={(name) => captureScenePreset(getConfig(), currentScope as ScenePresetScope, name)} onApply={async (preset) => {
@@ -1066,10 +1166,10 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           setHistoryRevision(value => value + 1)
         }} />}
         {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
-      </section>
+      </details>
       <details className="inspector-section"><summary>Диагностика</summary>
         <div className="dev-actions"><button type="button" data-testid="dev-preload" onClick={onPreload}>Проверить загрузку</button></div>
-        <dl><dt>Сцена / режим</dt><dd>{state.scene} / {state.mode}</dd><dt>Пауза / чтение</dt><dd>{String(state.paused)} / {String(state.reading)}</dd><dt>Revision / карточка</dt><dd>{state.revision} / {state.galleryIndex + 1}</dd><dt>Качество / движение</dt><dd>{state.quality} / {reducedMotion ? 'reduced' : 'normal'}</dd><dt>Примерный rAF FPS</dt><dd>{fps ?? 'измеряется…'}</dd></dl><p>rAF FPS — частота кадров браузера, не WebGL.</p>
+        <dl><dt>Сцена / режим</dt><dd>{INSPECTOR_SCENE_LABELS[state.scene]} / {FILM_MODE_LABELS[state.mode]}</dd><dt>Пауза / чтение</dt><dd>{state.paused ? 'Да' : 'Нет'} / {state.reading ? 'Да' : 'Нет'}</dd><dt>Версия / карточка</dt><dd>{state.revision} / {state.galleryIndex + 1}</dd><dt>Качество / движение</dt><dd>{FILM_QUALITY_LABELS[state.quality] ?? 'Обычное'} / {reducedMotion ? 'Сниженное движение' : 'Обычное движение'}</dd><dt>Частота кадров (FPS)</dt><dd>{fps ?? 'измеряется…'}</dd></dl><p>Частота кадров измеряется браузером, а не WebGL.</p>
       </details>
     </aside>
   )

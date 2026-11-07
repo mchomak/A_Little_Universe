@@ -1,3 +1,4 @@
+import { normalizeConfig } from '../systems/scene-config/config'
 import { parseScenePreset, type ScenePresetScope, type ScenePresetV1 } from './scenePresetModel'
 
 export interface ScenePresetSummary { id: string; name: string; scope: ScenePresetScope; savedAt: string }
@@ -16,7 +17,7 @@ export function createScenePresetStorage(storage: KeyValueStorage, loadSeeds: Lo
     const values: unknown = JSON.parse(serialized)
     if (!Array.isArray(values)) throw new Error('Некорректный список пресетов.')
     return values.flatMap((value: unknown) => {
-      try { return [parseScenePreset(value, scope)] } catch { return [] }
+      try { return [parseScenePreset(value, scope, normalizeConfig)] } catch { return [] }
     })
   }
 
@@ -24,7 +25,7 @@ export function createScenePresetStorage(storage: KeyValueStorage, loadSeeds: Lo
     const [seeds, saved] = await Promise.all([loadSeeds(scope), Promise.resolve(readScope(scope))])
     const byId = new Map<string, ScenePresetV1>()
     for (const value of seeds) {
-      try { const preset = parseScenePreset(value, scope); byId.set(preset.id, preset) } catch { /* Ignore invalid packaged seeds. */ }
+      try { const preset = parseScenePreset(value, scope, normalizeConfig); byId.set(preset.id, preset) } catch { /* Ignore invalid packaged seeds. */ }
     }
     for (const preset of saved) byId.set(preset.id, preset)
     return [...byId.values()]
@@ -40,9 +41,8 @@ export function createScenePresetStorage(storage: KeyValueStorage, loadSeeds: Lo
     return preset
   }
 
-  const save = async (value: ScenePresetV1): Promise<ScenePresetV1> => {
-    const parsed = parseScenePreset(value)
-    const preset = parseScenePreset(parsed, parsed.scope)
+  const save = async (value: ScenePresetV1, expectedScope?: ScenePresetScope): Promise<ScenePresetV1> => {
+    const preset = parseScenePreset(value, expectedScope ?? value.scope, normalizeConfig)
     if (preset.name.trim().length > 80 || [...preset.name].some((character) => character.charCodeAt(0) < 32)) {
       throw new Error('Название пресета должно содержать до 80 символов.')
     }

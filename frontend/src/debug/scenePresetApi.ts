@@ -1,4 +1,5 @@
-import { parseScenePreset, type ScenePresetScope, type ScenePresetV1 } from './scenePresetModel'
+import { normalizeConfig } from '../systems/scene-config/config'
+import { parseScenePreset, ScenePresetValidationError, type ScenePresetScope, type ScenePresetV1 } from './scenePresetModel'
 import { createScenePresetStorage } from './scenePresetStorage'
 
 export interface ScenePresetSummary { id: string; name: string; scope: ScenePresetScope; savedAt: string }
@@ -6,6 +7,39 @@ export class ScenePresetApiError extends Error { constructor(message: string, re
 const endpoint = '/__scene-presets'
 export function usesPackagedPresetStorage(protocol: string, hostname: string) {
   return protocol === 'app:' && hostname === 'bundle'
+}
+
+export function exportScenePresetJson(value: ScenePresetV1, expectedScope: ScenePresetScope = value.scope): string {
+  try {
+    return `${JSON.stringify(parseScenePreset(value, expectedScope, normalizeConfig), null, 2)}\n`
+  } catch {
+    throw new ScenePresetApiError('Не удалось экспортировать выбранный пресет.')
+  }
+}
+
+export function importScenePresetJson(json: string, expectedScope: ScenePresetScope): ScenePresetV1 {
+  let value: unknown
+  try {
+    value = JSON.parse(json)
+  } catch {
+    throw new ScenePresetApiError('Файл пресета содержит повреждённый JSON.')
+  }
+
+  try {
+    return parseScenePreset(value, expectedScope, normalizeConfig)
+  } catch (error) {
+    if (error instanceof ScenePresetValidationError) {
+      const message = error.code === 'scope-mismatch'
+        ? 'Этот пресет предназначен для другой сцены.'
+        : error.code === 'scene'
+          ? 'Параметры пресета имеют неверный тип или выходят за допустимый диапазон.'
+          : error.code === 'config-schema-version'
+            ? 'Версия настроек в файле пресета не поддерживается.'
+            : 'Файл пресета повреждён или имеет неверный формат.'
+      throw new ScenePresetApiError(message)
+    }
+    throw new ScenePresetApiError('Файл пресета повреждён или имеет неверный формат.')
+  }
 }
 let desktopStore: ReturnType<typeof createScenePresetStorage> | undefined
 let seedPresets: Promise<unknown[]> | undefined
@@ -46,11 +80,22 @@ export async function listScenePresets(scope: ScenePresetScope): Promise<ScenePr
 }
 export async function readScenePreset(scope: ScenePresetScope, id: string): Promise<ScenePresetV1> {
   if (usesPackagedPresetStorage(window.location.protocol, window.location.hostname)) return packagedStore().read(scope, id)
-  try { return parseScenePreset(await request(`/${encodeURIComponent(id)}?scope=${encodeURIComponent(scope)}`), scope) }
+  try { return parseScenePreset(await request(`/${encodeURIComponent(id)}?scope=${encodeURIComponent(scope)}`), scope, normalizeConfig) }
   catch (error) { if (error instanceof ScenePresetApiError) throw error; throw new ScenePresetApiError('Пресет не подходит для выбранной сцены.') }
 }
-export async function saveScenePreset(preset: ScenePresetV1): Promise<ScenePresetV1> {
-  if (usesPackagedPresetStorage(window.location.protocol, window.location.hostname)) return packagedStore().save(preset)
-  try { return parseScenePreset(await request('', { method: 'PUT', body: JSON.stringify(preset) }), preset.scope) }
+export async function saveScenePreset(
+  preset: ScenePresetV1,
+  expectedScope: ScenePresetScope = preset.scope,
+): Promise<ScenePresetV1> {
+  let validated: ScenePresetV1
+  try { validated = parseScenePreset(preset, expectedScope, normalizeConfig) }
+  catch (error) {
+    const message = error instanceof ScenePresetValidationError && error.code === 'scope-mismatch'
+      ? 'Этот пресет предназначен для другой сцены.'
+      : 'Параметры пресета имеют неверный тип или выходят за допустимый диапазон.'
+    throw new ScenePresetApiError(message)
+  }
+  if (usesPackagedPresetStorage(window.location.protocol, window.location.hostname)) return packagedStore().save(validated, expectedScope)
+  try { return parseScenePreset(await request('', { method: 'PUT', body: JSON.stringify(validated) }), expectedScope, normalizeConfig) }
   catch (error) { if (error instanceof ScenePresetApiError) throw error; throw new ScenePresetApiError('Не удалось сохранить пресет.') }
 }

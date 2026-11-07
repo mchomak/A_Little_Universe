@@ -17,71 +17,42 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 <!-- autopilot:start -->
 # A Little Universe for You
 
-Локальный интерактивный 3D-фильм на React, TypeScript, Vite и Three.js.
+Локальный интерактивный 3D-фильм на React, TypeScript, Vite, Three.js, React Three Fiber и GSAP. Подробные художественные требования — в storyboard v3.0 и approved keyframes; текущие состояния и сетап — в README.md.
 
-## Фон и кадрирование
+## Scene Composer и DEV Scene Editor
 
-`images/phone_1.png` — DOM/CSS-фон загрузки 00 и сцен 01–04; при входе в галерею 05 он скрывается. Начальный кадр увеличен, во время падения семени видимая область плавно движется вниз и сохраняет положение в сценах 03–04. `cover` заполняет экран без пустых краёв. DEV Scene Editor в development или в локальном production preview (`http://127.0.0.1:4173/?debug`) меняет общий профиль `scenes.openingBackground.{zoom, offsetX, offsetY}`; в секции «00–04 · Кадрирование фона» доступны живой предпросмотр и сброс. Масштаб: 1–3, смещения: −1…1, по умолчанию: 1/0/0.
+`frontend/src/systems/scene-config/config.ts` — источник defaults, нормализации и store `SceneComposerConfig` v26; он принимает схемы 1–26 и экспортирует v26. Store владеет только конфигурацией: сцены, runtime, камера и film clock остаются в своих существующих модулях. Справка и допустимые диапазоны: `frontend/src/systems/scene-config/README.md`.
 
-Схема Scene Composer v24 принимает JSON v1–v24; старые файлы сцен 02 и 05 мигрируются с сохранением известных настроек, а Lily appearance/pollen остаются совместимы со всеми предыдущими версиями. Экспортируется версия 24.
+Полный JSON импорт проходит через `frontend/src/debug/composerControls.ts` и UI `DeveloperPanel.tsx`: проверить JSON, версию/форму, собрать legacy cloud migration patch, нормализовать кандидат и загрузить изменённый шрифт; только после успешных проверок выполняется один `updateConfig`. Не менять порядок на частичные store updates. UI-контролы и подписи редактируются отдельно от serialized keys/defaults.
 
-## Пресеты Scene Editor
+Пресет — отдельный envelope `formatVersion: 1` с `configSchemaVersion`, `scope` и только `scene`; допустимые scopes: `preload`, `prologue`, `growth`, `bloom`, `identity`, `gallery`, `galaxy` (cosmos использует `galaxy`). Модель в `frontend/src/debug/scenePresetModel.ts` захватывает/патчит только `scenes.<scope>`; новые снимки не содержат общего `openingBackground`. Устаревшее поле `openingBackground` можно разобрать для совместимости, но импорт сцены его не применяет. `parseScenePreset` сверяет scope, известную версию и, если передан `normalizeConfig`, известные значения и диапазоны; недостающие поля остаются текущими при merge и последующей нормализации. JSON пресета не является полным Composer JSON.
 
-В локальной DEV-панели выберите сцену, введите имя и нажмите «Сохранить». Чтобы повторно использовать настройки, выберите пресет по имени в списке; применение доступно через undo/redo. Повторное сохранение под тем же именем попросит подтверждение замены. JSON пресетов хранятся в `frontend/scene-presets/<scope>/<id>.json`; для 00–04 снимок также содержит общий фон. `cosmos` использует scope `galaxy`.
+Границы кода: `scenePresetModel.ts` — формат, проверка и scoped patch; `scenePresetStorage.ts` — локальное хранилище и seeds; `scenePresetApi.ts` — валидация/transport; `ScenePresetControls.tsx` — DEV UI. Выбранный UI scope передаётся отдельно при save/import. Выбор пресета применяет его через текущий store/undo history; сохранение совпадающего имени просит заменить существующий пресет. Импорт/экспорт JSON работает только с текущей сценой. DEV-панель: `frontend/src/debug/DeveloperPanel.tsx`; growth/cloud controls общие для сцен 02–03 и показываются один раз в секции роста. Greeting не имеет config/preset scope. Качество, скорость, DPR и crop фона остаются в «Общих настройках».
 
-## Подготовка частиц сцены 04
+В Vite dev и preview пресеты идут через локальный `__scene-presets` API; файлы — `frontend/scene-presets/<scope>/<id>.json`. Packaged Electron (`app://bundle`) использует `localStorage` с ключами по scope `a-little-universe.scene-presets.v1.<scope>` и встроенные seeds из `scene-presets/index.json`. Seed-файлы — входные данные фильма. Тесты пресетов используют временное/in-memory storage и не пишут в настоящие seed-файлы.
 
-Предварительная подготовка запускается на экране 00.1 и перезапускается при изменении влияющих на неё настроек или размеров film surface; начало фильма ждёт геометрию для текущего ключа. `LilyParticlePreparationManager` хранит захваченную поверхность отдельно от геометрии worker: поверхность повторно используется при актуальной сигнатуре позы, геометрия — только при точном совпадении ключа конфигурации, размеров, `reducedMotion` и источника. DEV-баннер показывает только подготовку и ошибку; при состояниях idle и ready он скрыт.
+## Сцены и важные точки интеграции
 
-Пределы `scenes.identity`: `particleCount` 1 000–100 000; `portraitStartProgress` 0–100%; `portraitDuration` 2–16 с, расчёт ограничивает её остатком времени сцены, но не ниже 2 с; `portraitFraction` 0–45%; min/max turns 0–4 (max повышается до min при обратном порядке); `portraitSteering` 0–2, `portraitBraking` 0,25–2, `portraitSettledBrightness` 1–2.
+- `images/phone_1.png` — DOM/CSS-фон загрузки 00 и сцен 01–04; он скрывается в галерее 05. Общий профиль `scenes.openingBackground.{zoom,offsetX,offsetY}`: zoom 1–3, offsets −1…1, default 1/0/0. Локальный preview DEV-панели: `http://127.0.0.1:4173/?debug`.
+- Подготовка частиц сцены 04 начинается на экране 00.1 и учитывает текущие конфигурацию/размеры film surface. Менеджер `LilyParticlePreparationManager` разделяет повторно используемую поверхность и геометрию worker; геометрия кэшируется только при совпадении полного ключа. Старт фильма ждёт актуальную геометрию.
+- Портрет использует оригинал `frontend/src/assets/start_img.jpg`. Для UV/камерного совпадения использовать `frontend/src/scenes/lily/portraitIntegration.ts` (`createLilyPortraitCameraBasisAtTime`, `placeLilyPortraitTargets`) в `LilyDissolveParticles`/`SceneDirector`; проявление привязано к фактической посадке последней частицы.
+- `AnimatedLily` — один GLB для сцен 02–04. VFX-настройки — `scenes.growth.{lilyBudGlow,lilyLeafMaterial,growthVortex}` и `scenes.bloom.lilyBloomPollen`; их runtime анимируется по film time.
+- Галерея 05 использует общие `FilmCanvas`, камеру и `galleryMotion.time`; камера карточек/фото берётся из `frontend/src/engine/galleryCameraPose.ts`. Reveal дополнительных фото: `frontend/src/scenes/shared/progressivePhotoReveal.ts` и `frontend/src/scenes/gallery/collage.ts`; reveal только для фокусной памяти, слот ждёт текстуру. События — `frontend/src/scenes/gallery/catalog.ts`, подписи — `frontend/src/data/galleryCaptions.json`, фото — `images/<event ID>/`. Учитывать reduced motion, повторную смену фокуса и освобождение GPU-ресурсов.
+- Переход из последней карточки `2026_10_Planetarium` в Galaxy использует live texture `1.jpg` и `PlanetariumTransitionOverlay` внутри `SceneDirector` с общей камерой/канвой. Транзитный флаг устанавливается только `galleryExit()` в explore у конца галереи при interaction `walk`; DEV-jump в cosmos оставляет обычный маршрут. Сохранять один renderer/camera и существующие слои Galaxy.
 
-## Портретная фотография сцены 04
-
-Используется существующий отслеживаемый оригинал `frontend/src/assets/start_img.jpg`. Плоскость фото и частицы должны совпадать по UV и камере через `portraitIntegration.ts` (`createLilyPortraitCameraBasisAtTime`, `placeLilyPortraitTargets`); точки интеграции — `LilyDissolveParticles` и `SceneDirector` в общей WebGL-канве. Проявление рассчитывается от фактической посадки последней портретной частицы, начинается от лица после отдельной паузы и завершается точным совпадением с оригиналом. `identityRestoration.ts` — исторический ориентир; фиксированный тайминг и ранние фронты старого алгоритма не подходят.
-
-## Рост и раскрытие лилии
-
-`AnimatedLily` остаётся одним экземпляром GLB для сцен 02–04; appearance uniforms совмещаются с dissolve shader. Рост, bloom, вихрь и пыльца обновляются по film time, с posed anchors цветка и тычинок. Настройки `scenes.growth.{lilyBudGlow,lilyLeafMaterial,growthVortex}` и `scenes.bloom.lilyBloomPollen` доступны в DEV Scene Editor и сохраняются в отдельном локальном черновике без сброса остальных полей.
-
-## Команды (PowerShell 5, из корня проекта)
+## Команды из корня проекта (PowerShell 5)
 
 | Действие | Команда |
 |---|---|
-| Первый запуск нового checkout | `Set-Location .\frontend; npm ci` |
-| Запуск (http://127.0.0.1:5173) | `Set-Location .\frontend; npm run dev` |
-| TypeScript-проверка | `Set-Location .\frontend; npm run typecheck` |
-| Production build | `Set-Location .\frontend; npm run build` |
-| Проверка в отдельном терминале | `Set-Location .\frontend; npm run check` |
+| Новый checkout | `Set-Location .\frontend; npm ci` |
+| Dev server | `Set-Location .\frontend; npm run dev` → `http://127.0.0.1:5173` |
+| Production preview | `Set-Location .\frontend; npm run build; npm run preview` → `http://127.0.0.1:4173` |
+| TypeScript | `Set-Location .\frontend; npm run typecheck` |
+| Целевые Vitest | `Set-Location .\frontend; npm run test -- <path>` (`test` запускает `vitest run`) |
+| Desktop tests | `Set-Location .\frontend; npm run test:desktop` |
+| Полная проверка | `Set-Location .\frontend; npm run check` |
 
-`npm run check` выполняет lint, Vitest, typecheck и production build.
-В текущем worktree `npm ci`, `npm run typecheck` и `npm run build` завершились успешно; build вывел существующие предупреждения Vite о расширении и крупных чанках. Dev-сервер проверен командой `npm run dev -- --host 127.0.0.1 --port 5173` и сообщил о готовности на `http://127.0.0.1:5173/`.
-
-
-## Scene 05: gallery of memories
-
-`GalleryScene`, `MoonlitWorld` and `WetFloor` share the persistent WebGL canvas and use `galleryMotion.time`; camera pose for rendering and photo selection comes from `frontend/src/engine/galleryCameraPose.ts`. Event order is defined by `GALLERY_EVENT_ORDER` in `frontend/src/scenes/gallery/catalog.ts`; data comes from `images/<event ID>/`, with captions in `frontend/src/data/galleryCaptions.json`. Empty folders are omitted unless they contain `.gallery-placeholder`; each memory can show up to four images. Gallery configuration is stored in `scenes.gallery`, with independent layouts A and B and the B layout selected by default. Gallery data and collages do not own film timing or lighting.
-## Как здесь работает Autopilot
-
-Сборки фиксируются в `.autopilot/`; прогресс — в `.autopilot/dashboard.html`. Требование из manifest снимается только пользователем. Продолжение прогона: «продолжи автопилот».
-
-## Подводные камни
-
-В Windows `.autopilot/sync.py` не запускает dashboard-сервер: он вызывает POSIX `ps`. `python .autopilot/sync.py --no-serve` обновляет снимок страницы без сервера.
-
-## Scene 05 photo particle reveal
-
-`GalleryScene` reveals additional photos only for the focused memory. Particles assemble on the seconds-based `galleryMotion.time` timeline before the original photo becomes visible. A slot waits for its texture before starting, and repeated focus changes, reduced motion, and GPU cleanup must remain safe. Shared reveal timing lives in `frontend/src/scenes/shared/progressivePhotoReveal.ts`; deterministic particle geometry and slot timing live in `frontend/src/scenes/gallery/collage.ts`.
-
-Gallery collage settings live under `scenes.gallery` in Scene Composer schema v24. Per-memory opt-out uses stable event IDs in `frontend/src/scenes/gallery/galleryCollageConfig.ts`. The DEV controls cover count, size, noise, depth, glow, assembly duration, photo reveal duration, stagger, collage scale, and spacing. Keep all particles limited to the focused memory and the shared WebGL renderer.
-
-## Переход Planetarium → Galaxy
-
-Последнее событие каталога — `2026_10_Planetarium`; его главный кадр `1.jpg` используется как live texture. `GalleryScene` захватывает экранные границы карточки через общую камеру. `galleryExit()` разрешён только в фазе explore, у конца галереи и при interaction `walk`; после завершения `GALLERY.exit` reducer входит в `cosmos` с `elapsed: GALLERY.exit` и флагом `planetariumTransition`. Обычный DEV-jump в `cosmos` сбрасывает этот флаг и сохраняет стандартный маршрут.
-
-`PlanetariumTransitionOverlay` в `SceneDirector` использует ту же `FilmCanvas` и камеру: расширяет фото от границ карточки до экрана, постоянно держит cover crop и обновляет viewport aspect по расширяющемуся кадру; фото гаснет после появления звёзд. `GalaxyExperience` активируется уже на выходе галереи, использует `galleryMotion.exit`, а после перехода — `runtime.time`; только для Planetarium route reveal считается на `time + scenes.galaxy.galaxyRevealAt`, тогда как движение и фаза Galaxy остаются на исходном `time`. Текстура удерживается на время overlay и освобождается при его деактивации. Сохранять одну камеру, renderer и существующие слои Galaxy.
-## Начальный запуск и подготовка портрета
-
-Загрузчик ждёт расчёт частиц сцены 04 для актуальной конфигурации и размеров. После загрузки единственное действие запускает локальную запись по согласию пользователя; пролог начинается после проверки источников. При сбое записи доступны повтор или явное продолжение без записи; сбой подготовки частиц требует повторной подготовки.
+Все команды ниже запускаются из корня проекта. Для изменений используйте `npm run test -- <path>`; доступные проверки: `npm run check`, `npm run test:desktop` и `npm run build` (последняя также выполняет typecheck). Сейчас `npm run check` останавливается на 17 lint errors и 3 warnings в несвязанных `frontend/src/scenes/GalleryScene.tsx`, `frontend/src/scenes/gallery/MoonlitWorld.tsx` и `frontend/src/scenes/gallery/planetariumTransition.tsx`.
 <!-- autopilot:end -->
 
 

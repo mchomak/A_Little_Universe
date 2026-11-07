@@ -1,53 +1,369 @@
 window.STATE =
 {
-  "slug": "scene-04-05-gallery-reveal",
-  "dir": "2026-11-06-scene-04-05-gallery-reveal--wip",
-  "title": "Плавный переход сцены 04→05",
+  "slug": "final-dev-panel-audit",
+  "dir": "2026-11-07-final-dev-panel-audit",
+  "title": "Финальный аудит DEV-панели",
   "mode": "full",
   "depth": "normal",
   "polish": null,
   "tier": "T2",
-  "briefFile": "2026-11-06-brief.md",
+  "briefFile": "2026-11-07-brief.md",
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
-  "startedAt": "2026-11-06T08:05:53+03:00",
-  "updatedAt": "2026-11-06T09:59:24+03:00",
-  "finishedAt": "2026-11-06T09:59:24+03:00",
+  "startedAt": "2026-11-07T19:14:37+03:00",
+  "updatedAt": "2026-11-07T19:27:21.236+00:00",
+  "finishedAt": "2026-11-07T19:27:21.236+00:00",
   "stages": [
-    { "id": "preflight", "status": "done", "startedAt": "2026-11-06T08:05:53+03:00", "finishedAt": "2026-11-06T08:09:16+03:00" },
-    { "id": "manifest", "status": "done", "startedAt": "2026-11-06T08:09:16+03:00", "finishedAt": "2026-11-06T08:18:36+03:00" },
-    { "id": "briefing", "status": "skipped", "startedAt": "2026-11-06T08:18:36+03:00", "finishedAt": "2026-11-06T08:18:36+03:00", "note": "Полный автомат: вопросы не требуются; порядок и ограничения зафиксированы в самобрифинге." },
-    { "id": "spec", "status": "done", "startedAt": "2026-11-06T08:18:36+03:00", "finishedAt": "2026-11-06T08:50:00+03:00" },
-    { "id": "plan", "status": "done", "startedAt": "2026-11-06T08:34:58+03:00", "finishedAt": "2026-11-06T08:52:40+03:00", "note": "5 тасков, ярус T2, 3 волны" },
-    { "id": "build", "status": "done", "startedAt": "2026-11-06T08:52:40+03:00", "finishedAt": "2026-11-06T09:59:24+03:00", "note": "843 tests pass; npx vite build passes; npm run build typecheck blocked by unrelated dirty GreetingOverlay.tsx:9" },
-    { "id": "review", "status": "done", "startedAt": "2026-11-06T09:10:17+03:00", "finishedAt": "2026-11-06T09:59:24+03:00", "note": "T04 and T05 manifest/spec and craft reviews clean" },
-    { "id": "final", "status": "done", "startedAt": "2026-11-06T09:59:24+03:00", "finishedAt": "2026-11-06T09:59:24+03:00", "note": "Pushed main; local preview http://127.0.0.1:5189/" }
+    {
+      "id": "preflight",
+      "status": "done",
+      "startedAt": "2026-11-07T19:14:37+03:00",
+      "finishedAt": "2026-11-07T19:18:32+03:00"
+    },
+    {
+      "id": "manifest",
+      "status": "done",
+      "startedAt": "2026-11-07T19:18:32+03:00",
+      "finishedAt": "2026-11-07T19:18:32+03:00"
+    },
+    {
+      "id": "briefing",
+      "status": "skipped",
+      "startedAt": "2026-11-07T19:18:32+03:00",
+      "finishedAt": "2026-11-07T19:18:32+03:00",
+      "note": "Full: самобрифинг; все требования явны, решений о фактах пользователя не требуется."
+    },
+    {
+      "id": "spec",
+      "status": "done",
+      "startedAt": "2026-11-07T19:18:32+03:00",
+      "finishedAt": "2026-11-07T19:36:18+03:00"
+    },
+    {
+      "id": "plan",
+      "status": "done",
+      "startedAt": "2026-11-07T19:36:18+03:00",
+      "finishedAt": "2026-11-07T19:53:45+03:00",
+      "note": "План T2: четыре таска в двух волнах; владение и интерфейсы зафиксированы."
+    },
+    {
+      "id": "build",
+      "status": "done",
+      "startedAt": "2026-11-07T19:53:45+03:00",
+      "finishedAt": "2026-11-07T22:22:47+03:00"
+    },
+    {
+      "id": "review",
+      "status": "done",
+      "startedAt": "2026-11-07T20:16:02+03:00",
+      "finishedAt": "2026-11-07T22:22:47+03:00"
+    },
+    {
+      "id": "final",
+      "status": "done",
+      "finishedAt": "2026-11-07T19:27:21.236+00:00",
+      "startedAt": "2026-11-07T21:22:08+03:00",
+      "note": "Слепая приёмка частичная; ограничения и координаторские проверки записаны в blind."
+    }
   ],
   "requirements": {
-    "total": 22, "done": 21, "inTicket": 0, "inSpec": 0,
-    "placeholder": 0, "deferred": 1, "dropped": 0
+    "total": 49,
+    "done": 48,
+    "inTicket": 0,
+    "inSpec": 0,
+    "placeholder": 0,
+    "deferred": 1,
+    "dropped": 0
   },
   "tickets": [
-    { "id": "01", "title": "Временная модель входа в галерею", "requirements": ["R09", "R10", "R12", "R13", "R14", "R16", "R18"], "blockedBy": [], "wave": 1, "zone": ["frontend/src/scenes/gallery/controller.ts", "frontend/src/scenes/gallery/entryReveal.ts", "frontend/src/engine/galleryCameraPose.ts"], "status": "done", "startedAt": "2026-11-06T08:54:12+03:00", "finishedAt": "2026-11-06T09:17:45+03:00", "retries": 0, "repairs": 0, "handoffs": 0, "files": ["frontend/src/scenes/gallery/entryReveal.ts", "frontend/src/scenes/gallery/entryReveal.test.ts", "frontend/src/scenes/gallery/controller.ts", "frontend/src/scenes/gallery/controller.test.ts", "frontend/src/engine/galleryCameraPose.ts", "frontend/src/engine/galleryCameraPose.test.ts"], "tests": { "passed": 142, "failed": 0, "files": 142 }, "commit": "3cd7e65" },
-    { "id": "02", "title": "Первой проявляется вода", "requirements": ["R13", "R14", "R15"], "blockedBy": ["01"], "wave": 2, "zone": ["frontend/src/scenes/gallery/WetFloor.tsx", "frontend/src/scenes/gallery/waterMaterial.ts"], "status": "done", "startedAt": "2026-11-06T09:18:50+03:00", "finishedAt": "2026-11-06T09:28:09+03:00", "retries": 0, "repairs": 0, "handoffs": 0, "files": ["frontend/src/scenes/gallery/WetFloor.tsx", "frontend/src/scenes/gallery/waterMaterial.ts", "frontend/src/scenes/gallery/waterMaterial.test.ts"], "tests": { "passed": 841, "failed": 0, "files": 142 }, "commit": "aa8a686", "concerns": [] },
-    { "id": "03", "title": "Облака, ночь и лунный свет", "requirements": ["R13", "R14", "R15"], "blockedBy": ["01"], "wave": 2, "zone": ["frontend/src/scenes/gallery/MoonlitWorld.tsx", "frontend/src/scenes/gallery/cloudMaterial.ts"], "status": "done", "startedAt": "2026-11-06T09:18:50+03:00", "finishedAt": "2026-11-06T09:36:37+03:00", "retries": 0, "repairs": 0, "handoffs": 0, "files": ["frontend/src/scenes/gallery/MoonlitWorld.tsx", "frontend/src/scenes/gallery/cloudMaterial.ts", "frontend/src/scenes/gallery/cloudMaterial.test.ts"], "tests": { "passed": 10, "failed": 0, "files": 1 }, "commit": "8e62998", "concerns": ["typecheck failed at unrelated dirty GreetingOverlay.tsx:9 (TS6133), recheck after owning session resolves"] },
-    { "id": "04", "title": "Фотографии и колонны от ближних к дальним", "requirements": ["R14", "R15", "R16", "R17"], "blockedBy": ["01"], "wave": 2, "zone": ["frontend/src/scenes/GalleryScene.tsx", "frontend/src/scenes/gallery/GalleryColumn.tsx", "frontend/src/scenes/gallery/visibility.ts"], "status": "done", "finishedAt": "2026-11-06T09:51:19+03:00", "startedAt": "2026-11-06T09:18:50+03:00", "retries": 0, "repairs": 0, "handoffs": 0, "files": ["frontend/src/scenes/GalleryScene.tsx", "frontend/src/scenes/gallery/GalleryColumn.tsx", "frontend/src/scenes/gallery/visibility.ts", "frontend/src/scenes/gallery/visibility.test.ts", "frontend/src/scenes/gallery/entryReveal.test.ts"], "tests": { "passed": 843, "failed": 0, "files": 142 }, "commit": "53e737a" },
-    { "id": "05", "title": "Арка завершает раскрытие", "requirements": ["R09", "R14", "R15", "R18", "R19", "R20", "R21", "R22"], "blockedBy": ["02", "03", "04"], "wave": 3, "zone": ["frontend/src/scenes/gallery/GalleryArch.tsx", "frontend/src/scenes/gallery/visibility.ts"], "status": "done", "startedAt": "2026-11-06T09:54:17+03:00", "retries": 0, "repairs": 0, "handoffs": 0, "finishedAt": "2026-11-06T09:59:24+03:00", "files": ["frontend/src/scenes/gallery/GalleryArch.tsx", "frontend/src/scenes/gallery/visibility.ts", "frontend/src/scenes/gallery/visibility.test.ts", "frontend/src/scenes/GalleryScene.tsx"], "tests": { "passed": 843, "failed": 0, "files": 142 }, "commit": "65edbd3", "concerns": ["npm run build typecheck blocked by unrelated dirty GreetingOverlay.tsx:9; npx vite build passed"] }
+    {
+      "id": "01",
+      "title": "Изоляция модели пресетов сцен",
+      "requirements": [
+        "R15",
+        "R16",
+        "R18",
+        "R19",
+        "R20",
+        "R21",
+        "R22",
+        "R23",
+        "R24",
+        "R25",
+        "R26",
+        "R27",
+        "R28",
+        "R29",
+        "R30",
+        "R31",
+        "R32",
+        "R33",
+        "R34",
+        "R39",
+        "R40",
+        "R41",
+        "R42",
+        "R43",
+        "R44"
+      ],
+      "blockedBy": [],
+      "wave": 1,
+      "zone": [
+        "frontend/src/debug/scenePresetModel.ts",
+        "frontend/src/debug/scenePresetModel.test.ts"
+      ],
+      "status": "done",
+      "retries": 1,
+      "repairs": 0,
+      "handoffs": 0,
+      "startedAt": "2026-11-07T20:16:02+03:00",
+      "finishedAt": "2026-11-07T20:29:49+03:00",
+      "files": [
+        "frontend/src/debug/scenePresetModel.ts",
+        "frontend/src/debug/scenePresetModel.test.ts"
+      ],
+      "tests": {
+        "passed": 23,
+        "failed": 0,
+        "files": 1
+      },
+      "commit": null,
+      "concerns": []
+    },
+    {
+      "id": "02",
+      "title": "Контролы JSON-пресетов по сценам",
+      "requirements": [
+        "R12",
+        "R16",
+        "R17",
+        "R18",
+        "R19",
+        "R20",
+        "R21",
+        "R22",
+        "R23",
+        "R24",
+        "R25",
+        "R26",
+        "R27",
+        "R28",
+        "R29",
+        "R30",
+        "R39",
+        "R40",
+        "R41",
+        "R42",
+        "R43"
+      ],
+      "blockedBy": [
+        "01"
+      ],
+      "wave": 2,
+      "zone": [
+        "frontend/src/debug/ScenePresetControls.tsx"
+      ],
+      "status": "done",
+      "retries": 0,
+      "repairs": 0,
+      "handoffs": 0,
+      "startedAt": "2026-11-07T20:30:17+03:00",
+      "files": [
+        "frontend/src/debug/ScenePresetControls.tsx",
+        "frontend/src/debug/scenePresetApi.ts",
+        "frontend/src/debug/scenePresetApi.test.ts",
+        "frontend/src/debug/scenePresetStorage.ts",
+        "frontend/src/debug/scenePresetStorage.test.ts"
+      ],
+      "tests": {
+        "passed": 16,
+        "failed": 0,
+        "files": 4
+      },
+      "concerns": [
+        "T02: component-level tests do not exercise file-picker/export-button/onApply wiring; API tests pass and browser round-trip across seven scopes was manually verified."
+      ],
+      "finishedAt": "2026-11-07T22:22:47+03:00"
+    },
+    {
+      "id": "03",
+      "title": "Структура и русский язык DEV-панели",
+      "requirements": [
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "R05",
+        "R06",
+        "R07",
+        "R08",
+        "R09",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18",
+        "R19",
+        "R35",
+        "R36",
+        "R37",
+        "R38",
+        "R39",
+        "R40",
+        "R41",
+        "R42",
+        "R43",
+        "R45",
+        "R46",
+        "R47",
+        "R48"
+      ],
+      "blockedBy": [
+        "01"
+      ],
+      "wave": 2,
+      "zone": [
+        "frontend/src/debug/DeveloperPanel.tsx",
+        "frontend/src/debug/DeveloperPanel.test.ts",
+        "frontend/src/debug/SceneTimeline.tsx",
+        "frontend/src/debug/useReviewNotes.tsx"
+      ],
+      "status": "done",
+      "retries": 1,
+      "repairs": 0,
+      "handoffs": 0,
+      "startedAt": "2026-11-07T21:22:08+03:00",
+      "concerns": [
+        "T03: a string server error payload can fall back to a generic Russian message, so its specific detail may be lost; localized fallback remains visible.",
+        "T03: disclosure tests cover state helpers rather than the component click path; browser verification confirmed collapse/reopen and restoration after a scene switch."
+      ],
+      "finishedAt": "2026-11-07T22:22:47+03:00",
+      "files": [
+        "frontend/src/debug/DeveloperPanel.tsx",
+        "frontend/src/debug/DeveloperPanel.test.ts",
+        "frontend/src/debug/SceneTimeline.tsx",
+        "frontend/src/debug/useReviewNotes.tsx"
+      ],
+      "tests": {
+        "passed": 18,
+        "failed": 0,
+        "files": 1
+      }
+    },
+    {
+      "id": "04",
+      "title": "Атомарный импорт полной конфигурации",
+      "requirements": [
+        "R31",
+        "R32",
+        "R33",
+        "R34",
+        "R39",
+        "R40",
+        "R41",
+        "R42",
+        "R43"
+      ],
+      "blockedBy": [],
+      "wave": 1,
+      "zone": [
+        "frontend/src/debug/composerControls.ts",
+        "frontend/src/debug/composerControls.test.ts"
+      ],
+      "status": "done",
+      "retries": 0,
+      "repairs": 0,
+      "handoffs": 0,
+      "startedAt": "2026-11-07T19:53:45+03:00",
+      "finishedAt": "2026-11-07T20:04:03+03:00",
+      "files": [
+        "frontend/src/debug/composerControls.ts",
+        "frontend/src/debug/composerControls.test.ts"
+      ],
+      "tests": {
+        "passed": 32,
+        "failed": 0,
+        "files": 1
+      },
+      "concerns": [],
+      "commit": null
+    }
   ],
   "singlePass": null,
-  "tests": { "passed": 843, "failed": 0, "files": 142 },
-  "debt": { "placeholders": [], "assumptions": [], "emptyEnv": [] },
+  "tests": {
+    "targeted": {
+      "passed": 89,
+      "failed": 0,
+      "files": 5
+    },
+    "modelAndAtomicReview": {
+      "passed": 55,
+      "failed": 0,
+      "files": 2
+    },
+    "desktop": {
+      "passed": 10,
+      "failed": 0
+    },
+    "fullVitest": {
+      "passed": 877,
+      "failed": 2,
+      "filesPassed": 140,
+      "filesFailed": 2,
+      "isolatedIrisRerunPassed": true
+    },
+    "changedFileEslint": "passed",
+    "check": "failed at lint: 17 errors and 3 warnings in unrelated scene files",
+    "build": "passed; Vite config-loader and large-chunk warnings",
+    "diffCheck": "passed",
+    "browser": "7 existing preset scopes round-tripped in isolated in-memory contexts; production preview without DEV loaded successfully"
+  },
+  "debt": {
+    "placeholders": [],
+    "assumptions": [],
+    "emptyEnv": []
+  },
   "additions": [],
   "coverage": {
     "result": "passed",
-    "findings": 12,
+    "findings": 4,
     "actions": [
-      "Первый слепой проход выявил несогласованность порядка и отсутствующие acceptance для поведения памятки и публикации; уточнено до реализации.",
-      "Последующие слепые сверки выявили неоднозначность пар колонн, лишний полный project check и отсутствие явного сохранения штатных alpha-модификаторов; всё приведено в соответствие с брифом и фактическим поведением.",
-      "Финальные крайние случаи: арка должна ждать фото без опоры; критерий и тест это явно проверяют."
+      "R49: greeting has no configuration fields or preset scope; adding animation parameters would change the artistic result, so the greeting preset is explicitly deferred.",
+      "D01: use an injected browser normalizer so the Node-loaded preset model avoids CSS/font asset imports.",
+      "D02: carry the selected UI scope separately from the JSON envelope for save/import.",
+      "D03: include visible Review Notes labels in localization while preserving enum/API values."
     ]
   },
-  "concerns": ["npm run build typecheck blocked by unrelated dirty GreetingOverlay.tsx:9 (TS6133); npx vite build and full unit suite pass"],
-  "reviewers": { "manifestSpec": "/root/spec_coverage_audit", "craft": "/root/ticket01_craft_review" },
-  "blind": null
+  "concerns": [
+    "T02: component-level tests do not exercise file-picker/export-button/onApply wiring; API tests pass and browser round-trip across seven scopes was manually verified.",
+    "T03: a string server error payload can fall back to a generic Russian message, so its specific detail may be lost; localized fallback remains visible.",
+    "T03: disclosure tests cover state helpers rather than the component click path; browser verification confirmed collapse/reopen and restoration after a scene switch."
+  ],
+  "reviewers": {
+    "manifestSpec": "/root/manifest_spec_reviewer",
+    "craft": "/root/craft_reviewer"
+  },
+  "blind": {
+    "verdict": "partial",
+    "findings": [
+      "The independent browser checker verified the ready screen, Russian 02/04 sections, disclosure, 02/04 save/apply and the 02 v1/schema-v26 JSON round-trip.",
+      "The checker did not complete all scene panels, all error/confirmation branches, legacy/malformed import cases, persistent reload, or cross-scene import because its scene selector stopped responding.",
+      "The checker could not judge rendered scenes or production defaults because WebGL2/hardware acceleration was unavailable in its browser."
+    ],
+    "coordinatorEvidence": [
+      "Separate manual browser run completed UI save/export/change/import round-trip for preload, prologue, growth, bloom, identity, gallery and galaxy using isolated in-memory API state; shared values remained unchanged.",
+      "Browser disclosure check opened the growth group, switched to bloom where it was absent, and returned to growth with the group still open.",
+      "Production preview with debug showed Russian controls; production preview without debug exposed no DEV panel and loaded the ready screen.",
+      "Automated tests cover scene-A versus scene-B isolation, nested deep merge, compatibility/validation and atomic import."
+    ],
+    "manualConfirmation": "MacBook/Electron visual rendering and packaged localStorage behavior were not exercised in this Windows environment.",
+    "commands": [
+      "From frontend: npm run dev -- --port 5175 --strictPort — Vite 8.3.5 ready at http://127.0.0.1:5175/",
+      "From project root: git status --short --branch — main...origin/main with existing worktree changes. No test/build command run by the blind checker."
+    ]
+  }
 }
