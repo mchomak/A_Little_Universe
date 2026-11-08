@@ -23,14 +23,15 @@ interface Props {
   onWithoutMedia(): void
   onStart(): void
   desktopRecording?: boolean
+  showMediaStatus?: boolean
 }
 
-export function PreparationScreen({ step, session, preparation, checked, starting, startError, onPrepare, onWithoutMedia, onStart, desktopRecording = false }: Props) {
+export function PreparationScreen({ step, session, preparation, checked, starting, startError, onPrepare, onWithoutMedia, onStart, desktopRecording = false, showMediaStatus = true }: Props) {
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
   const heading = useRef<HTMLHeadingElement>(null)
   const checking = step === 'checking'
   const displayStep = checking ? 'checking' : 'ready'
-  const mediaFailed = Boolean(snapshot.error) || snapshot.cameraStatus === 'error' || snapshot.recordingStatus === 'error'
+  const mediaFailed = showMediaStatus && (Boolean(snapshot.error) || snapshot.cameraStatus === 'error' || snapshot.recordingStatus === 'error')
   const mediaFailureMessage = snapshot.error ?? [
     snapshot.cameraStatus === 'error' ? 'Камера недоступна.' : '',
     snapshot.recordingStatus === 'error' ? 'Локальная запись недоступна.' : '',

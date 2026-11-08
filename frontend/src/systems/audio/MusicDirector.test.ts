@@ -1,6 +1,7 @@
 import { expect, it, vi } from 'vitest'
 import { initialFilmState, type FilmState } from '../../engine/film'
 import { MusicDirector } from './MusicDirector'
+import { MUSIC_CONFIG } from './musicCatalog'
 
 class FakeMediaElement extends EventTarget {
   src = ''
@@ -74,7 +75,7 @@ it('starts Intro at its configured offset and preserves the same playback throug
   expect(media).toHaveLength(2)
   expect(media[0]).toMatchObject({ src: '/music/intro-in-the-pool.mp3', currentTime: 68, loop: false })
   expect(media[0]!.play).toHaveBeenCalledOnce()
-  expect(media[1]!.src).toBe('/music/gallery-glass.mp3')
+  expect(media[1]!.src).toBe(MUSIC_CONFIG.gallery[0]!.url)
   director.dispose()
 })
 
@@ -173,42 +174,48 @@ it('preserves disabled pause state when resume is requested and resumes once whe
   director.dispose()
 })
 
-it('crossfades Intro into Glass with the eight-second equal-power profile and prepares Nuvole after the fade', () => {
+it('fades out Intro, waits one second, then fades Gallery in before preparing the next track', () => {
   const { director, media, gains, scheduler, scheduled } = directorHarness()
   director.syncFilmState(playingFilmState())
   director.syncFilmState({ ...playingFilmState('gallery'), mode: 'exploring', revision: 2 })
 
-  expect(director.getSnapshot()).toMatchObject({ state: 'gallery', currentTrack: { id: 'gallery-glass' } })
-  expect(director.getSnapshot().nextTrack?.id).toBe('gallery-nuvole-bianche')
-  expect(media[1]!.play).toHaveBeenCalledOnce()
+  expect(director.getSnapshot()).toMatchObject({ state: 'gallery', currentTrack: { id: MUSIC_CONFIG.gallery[0]!.id } })
+  expect(director.getSnapshot().nextTrack?.id).toBe(MUSIC_CONFIG.gallery[1]!.id)
+  expect(media[1]!.play).not.toHaveBeenCalled()
   expect(scheduler.setTimeout).toHaveBeenCalledWith(expect.any(Function), 8000)
   expect(gains[0]!.gain.setValueCurveAtTime).toHaveBeenCalledOnce()
-  expect(gains[1]!.gain.setValueCurveAtTime).toHaveBeenCalledOnce()
-  const curveSpy = gains[1]!.gain.setValueCurveAtTime as unknown as ReturnType<typeof vi.fn>
-  const incomingCurve = curveSpy.mock.calls[0]![0] as Float32Array
+  expect(gains[1]!.gain.setValueCurveAtTime).not.toHaveBeenCalled()
   const outgoingCurveSpy = gains[0]!.gain.setValueCurveAtTime as unknown as ReturnType<typeof vi.fn>
   const outgoingCurve = outgoingCurveSpy.mock.calls[0]![0] as Float32Array
+  expect(outgoingCurve[32]).toBeCloseTo(0.794 * Math.cos(Math.PI / 4))
+  scheduled.shift()!.callback()
+  expect(scheduler.setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 1000)
+  expect(media[0]!.paused).toBe(true)
+  expect(media[1]!.play).not.toHaveBeenCalled()
+  scheduled.shift()!.callback()
+  expect(media[1]!.play).toHaveBeenCalledOnce()
+  const incomingCurveSpy = gains[1]!.gain.setValueCurveAtTime as unknown as ReturnType<typeof vi.fn>
+  const incomingCurve = incomingCurveSpy.mock.calls[0]![0] as Float32Array
   expect(incomingCurve[0]).toBe(0)
   expect(incomingCurve.at(-1)).toBeCloseTo(1)
   expect(incomingCurve[32]).toBeCloseTo(Math.sin(Math.PI / 4))
-  expect(outgoingCurve[32]).toBeCloseTo(0.794 * Math.cos(Math.PI / 4))
-  scheduled[0]!.callback()
-  expect(director.getSnapshot().nextTrack?.id).toBe('gallery-nuvole-bianche')
-  expect(media[0]!.src).toBe('/music/gallery-nuvole-bianche.mp3')
+  scheduled.shift()!.callback()
+  expect(director.getSnapshot().nextTrack?.id).toBe(MUSIC_CONFIG.gallery[1]!.id)
+  expect(media[0]!.src).toBe(MUSIC_CONFIG.gallery[1]!.url)
   director.dispose()
 })
 
-it('publishes media time updates while a crossfade is active', () => {
+it('publishes media time updates during a sequential track transition', () => {
   const { director, media } = directorHarness()
   const listener = vi.fn()
   director.subscribe(listener)
   director.syncFilmState(playingFilmState())
   director.syncFilmState({ ...playingFilmState('gallery'), mode: 'exploring', revision: 2 })
-  const glass = media.find((candidate) => candidate.src === '/music/gallery-glass.mp3')!
+  const glass = media.find((candidate) => candidate.src === MUSIC_CONFIG.gallery[0]!.url)!
   glass.currentTime = 12.5
   glass.dispatchEvent(new Event('timeupdate'))
 
-  expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({ currentTrack: expect.objectContaining({ id: 'gallery-glass' }), currentTime: 12.5 }))
+  expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({ currentTrack: expect.objectContaining({ id: MUSIC_CONFIG.gallery[0]!.id }), currentTime: 12.5 }))
   director.dispose()
 })
 
@@ -216,19 +223,16 @@ it('plays the gallery tracks in order, loops after La femme d’argent, and igno
   const { director, media, scheduler, scheduled } = directorHarness()
   const state: FilmState = { ...initialFilmState, scene: 'gallery', mode: 'exploring', revision: 3 }
   director.syncFilmState(state)
-  expect(director.getSnapshot().currentTrack?.id).toBe('gallery-glass')
+  expect(director.getSnapshot().currentTrack?.id).toBe(MUSIC_CONFIG.gallery[0]!.id)
   const playCounts = media.map((element) => element.play.mock.calls.length)
   director.syncFilmState({ ...state, galleryIndex: 9, revision: 4 })
-  expect(director.getSnapshot().currentTrack?.id).toBe('gallery-glass')
+  expect(director.getSnapshot().currentTrack?.id).toBe(MUSIC_CONFIG.gallery[0]!.id)
   expect(media.map((element) => element.play.mock.calls.length)).toEqual(playCounts)
 
-  const transitions = [
-    ['gallery-nuvole-bianche', 7000],
-    ['gallery-tres-notas', 7000],
-    ['gallery-je-te-laisserai-des-mots', 7000],
-    ['gallery-la-femme-dargent', 7000],
-    ['gallery-glass', 8000],
-  ] as const
+  const transitions = MUSIC_CONFIG.gallery.map((_, index) => [
+    MUSIC_CONFIG.gallery[(index + 1) % MUSIC_CONFIG.gallery.length]!.id,
+    index === MUSIC_CONFIG.gallery.length - 1 ? 8000 : 7000,
+  ] as const)
   for (const [nextId, fadeDuration] of transitions) {
     const current = director.getSnapshot().currentTrack!
     const element = media.find((candidate) => candidate.src === current.url)!
@@ -237,10 +241,16 @@ it('plays the gallery tracks in order, loops after La femme d’argent, and igno
     expect(director.getSnapshot().currentTrack?.id).toBe(nextId)
     expect(scheduler.setTimeout.mock.calls.at(-1)?.[1]).toBe(fadeDuration)
     scheduled.shift()!.callback()
+    expect(scheduler.setTimeout.mock.calls.at(-1)?.[1]).toBe(1000)
+    scheduled.shift()!.callback()
+    const incoming = director.getSnapshot().currentTrack!
+    expect(media.find((candidate) => candidate.src === incoming.url)!.play).toHaveBeenCalled()
+    expect(scheduler.setTimeout.mock.calls.at(-1)?.[1]).toBe(fadeDuration)
+    scheduled.shift()!.callback()
     expect(director.getSnapshot().currentTrack?.id).toBe(nextId)
   }
   expect(media).toHaveLength(2)
-  expect(director.getSnapshot().nextTrack?.id).toBe('gallery-nuvole-bianche')
+  expect(director.getSnapshot().nextTrack?.id).toBe(MUSIC_CONFIG.gallery[1]!.id)
   director.dispose()
 })
 
@@ -252,8 +262,12 @@ it('starts Outro on gallery exit, preserves it across final scenes, and never re
   expect(director.getSnapshot()).toMatchObject({ state: 'outro', currentTrack: { id: 'final-m83-outro' } })
   expect(scheduler.setTimeout.mock.calls.at(-1)?.[1]).toBe(10000)
   scheduled.shift()!.callback()
+  expect(scheduler.setTimeout.mock.calls.at(-1)?.[1]).toBe(1000)
+  scheduled.shift()!.callback()
   const outroElement = media.find((candidate) => candidate.src === '/music/final-m83-outro.mp3')!
   expect(outroElement.currentTime).toBe(0)
+  expect(outroElement.play).toHaveBeenCalledOnce()
+  scheduled.shift()!.callback()
   const playCount = outroElement.play.mock.calls.length
   director.syncFilmState({ ...initialFilmState, scene: 'cosmos', mode: 'exploring', revision: 2 })
   director.syncFilmState({ ...initialFilmState, scene: 'greeting', mode: 'playing', revision: 3 })
@@ -275,7 +289,7 @@ it('does not launch Outro again when returning from an ending gallery', () => {
   director.syncFilmState({ ...initialFilmState, scene: 'gallery', mode: 'exploring', returnToEnding: true, revision: 2 })
   director.handleGalleryExit(true)
   director.syncFilmState({ ...initialFilmState, scene: 'ending', mode: 'ended', revision: 3 })
-  expect(director.getSnapshot()).toMatchObject({ state: 'gallery', currentTrack: { id: 'gallery-glass' } })
+  expect(director.getSnapshot()).toMatchObject({ state: 'gallery', currentTrack: { id: MUSIC_CONFIG.gallery[0]!.id } })
   expect(firstOutro.play).toHaveBeenCalledTimes(playCount)
   director.dispose()
 })
@@ -283,14 +297,14 @@ it('does not launch Outro again when returning from an ending gallery', () => {
 it('cancels the existing fade before a manual next-track preview', () => {
   const { director, media, gains, scheduler, scheduled } = directorHarness()
   director.syncFilmState({ ...initialFilmState, scene: 'gallery', mode: 'exploring', revision: 1 })
-  const glass = media.find((candidate) => candidate.src === '/music/gallery-glass.mp3')!
+  const glass = media.find((candidate) => candidate.src === MUSIC_CONFIG.gallery[0]!.url)!
   glass.currentTime = glass.duration - 1
   glass.dispatchEvent(new Event('timeupdate'))
-  expect(director.getSnapshot().currentTrack?.id).toBe('gallery-nuvole-bianche')
+  expect(director.getSnapshot().currentTrack?.id).toBe(MUSIC_CONFIG.gallery[1]!.id)
   expect(scheduled).toHaveLength(1)
 
   expect(director.previewNext()).toBe(true)
-  expect(director.getSnapshot().currentTrack?.id).toBe('gallery-tres-notas')
+  expect(director.getSnapshot().currentTrack?.id).toBe(MUSIC_CONFIG.gallery[2]!.id)
   expect(scheduler.clearTimeout).toHaveBeenCalledOnce()
   expect(scheduled).toHaveLength(1)
   expect(scheduler.setTimeout).toHaveBeenCalledTimes(2)
@@ -302,15 +316,15 @@ it('cancels the existing fade before a manual next-track preview', () => {
 it('skips a gallery track that reports a media error and keeps the diagnostic in its snapshot', () => {
   const { director, media } = directorHarness()
   director.syncFilmState({ ...initialFilmState, scene: 'gallery', mode: 'exploring', revision: 1 })
-  const glass = media.find((candidate) => candidate.src === '/music/gallery-glass.mp3')!
+  const glass = media.find((candidate) => candidate.src === MUSIC_CONFIG.gallery[0]!.url)!
   glass.error = { code: 2, message: '404 Not Found' } as MediaError
   glass.dispatchEvent(new Event('error'))
 
   expect(director.getSnapshot()).toMatchObject({
-    state: 'gallery', currentTrack: { id: 'gallery-nuvole-bianche' },
+    state: 'gallery', currentTrack: { id: MUSIC_CONFIG.gallery[1]!.id },
     error: expect.stringContaining('404 Not Found'),
   })
-  expect(media.some((candidate) => candidate.src === '/music/gallery-tres-notas.mp3')).toBe(true)
+  expect(media.some((candidate) => candidate.src === MUSIC_CONFIG.gallery[1]!.url)).toBe(true)
   director.dispose()
 })
 
@@ -346,7 +360,7 @@ it('ignores an asynchronous play rejection from an Intro slot after the slot is 
   await Promise.resolve()
 
   expect(director.getSnapshot()).toMatchObject({
-    state: 'gallery', currentTrack: { id: 'gallery-glass' }, nextTrack: { id: 'gallery-nuvole-bianche' }, error: null,
+    state: 'gallery', currentTrack: { id: MUSIC_CONFIG.gallery[0]!.id }, nextTrack: { id: MUSIC_CONFIG.gallery[1]!.id }, error: null,
   })
   director.dispose()
 })
@@ -366,14 +380,14 @@ it('keeps a current crossfade when the outgoing slot reports a late playback rej
   await Promise.resolve()
   await Promise.resolve()
   expect(scheduled).toHaveLength(1)
-  expect(director.getSnapshot()).toMatchObject({ state: 'gallery', currentTrack: { id: 'gallery-glass' } })
+  expect(director.getSnapshot()).toMatchObject({ state: 'gallery', currentTrack: { id: MUSIC_CONFIG.gallery[0]!.id } })
   director.dispose()
 })
 
 it('disposes both media channels and clears a pending crossfade timer', () => {
   const { director, media, channels, scheduler } = directorHarness()
   director.syncFilmState({ ...initialFilmState, scene: 'gallery', mode: 'exploring', revision: 1 })
-  const glass = media.find((candidate) => candidate.src === '/music/gallery-glass.mp3')!
+  const glass = media.find((candidate) => candidate.src === MUSIC_CONFIG.gallery[0]!.url)!
   glass.currentTime = glass.duration - 1
   glass.dispatchEvent(new Event('timeupdate'))
   expect(scheduler.setTimeout).toHaveBeenCalledOnce()

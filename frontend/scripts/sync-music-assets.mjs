@@ -4,37 +4,30 @@ import { resolve, join, dirname } from 'node:path'
 import { argv, stderr } from 'node:process'
 import { fileURLToPath, URL } from 'node:url'
 
+const galleryPlaylist = JSON.parse(readFileSync(new URL('../src/data/galleryMusicPlaylist.json', import.meta.url), 'utf8'))
+
+function galleryAssetFileName(assetPath) {
+  const match = /^\/music\/([^/]+\.mp3)$/i.exec(assetPath)
+  if (!match) throw new Error(`Gallery track path must point to a file under /music/: ${assetPath}`)
+  try { return decodeURIComponent(match[1]) } catch { return match[1] }
+}
+
+const galleryAssets = [...new Map(galleryPlaylist.map((track, index) => {
+  const fileName = galleryAssetFileName(track.assetPath)
+  return [fileName, {
+    role: `Gallery ${index + 1}`,
+    sourceFileName: track.sourceFileName ?? fileName,
+    runtimeFileName: fileName,
+  }]
+})).values()]
+
 export const MUSIC_ASSET_MAP = Object.freeze([
   {
     role: 'Intro',
-    sourceFileName: 'Perda — In the pool (Chainsaw Man - The Movie_ Reze Arc Soundtrack 09) (www.lightaudio.ru).mp3',
+    sourceFileName: 'Perda \u2014 In the pool (Chainsaw Man - The Movie_ Reze Arc Soundtrack 09) (www.lightaudio.ru).mp3',
     runtimeFileName: 'intro-in-the-pool.mp3',
   },
-  {
-    role: 'Gallery 1',
-    sourceFileName: 'Glass_spotdown.org.mp3',
-    runtimeFileName: 'gallery-glass.mp3',
-  },
-  {
-    role: 'Gallery 2',
-    sourceFileName: 'SpotiDownloader.com - Nuvole Bianche - Ludovico Einaudi.mp3',
-    runtimeFileName: 'gallery-nuvole-bianche.mp3',
-  },
-  {
-    role: 'Gallery 3',
-    sourceFileName: 'SpotiDownloader.com - Tres Notas para Decir Te Quiero - Vicente Amigo.mp3',
-    runtimeFileName: 'gallery-tres-notas.mp3',
-  },
-  {
-    role: 'Gallery 4',
-    sourceFileName: 'SpotiDownloader.com - Je te laisserai des mots - Patrick Watson.mp3',
-    runtimeFileName: 'gallery-je-te-laisserai-des-mots.mp3',
-  },
-  {
-    role: 'Gallery 5',
-    sourceFileName: "SpotiDownloader.com - La femme d'argent - Air.mp3",
-    runtimeFileName: 'gallery-la-femme-dargent.mp3',
-  },
+  ...galleryAssets,
   {
     role: 'Outro',
     sourceFileName: 'M83_-_Outro_76602076.mp3',
@@ -43,7 +36,14 @@ export const MUSIC_ASSET_MAP = Object.freeze([
 ])
 
 const OWNERSHIP_MANIFEST_VERSION = 1
-const MUSIC_OUTPUTS = new Set(MUSIC_ASSET_MAP.map((asset) => asset.runtimeFileName))
+const MUSIC_OUTPUTS = new Set([
+  ...MUSIC_ASSET_MAP.map((asset) => asset.runtimeFileName),
+  'gallery-glass.mp3',
+  'gallery-nuvole-bianche.mp3',
+  'gallery-tres-notas.mp3',
+  'gallery-je-te-laisserai-des-mots.mp3',
+  'gallery-la-femme-dargent.mp3',
+])
 
 export function normalizeMusicSourceName(name) {
   const basename = name.replaceAll('\\', '/').split('/').at(-1) ?? name
@@ -182,6 +182,10 @@ export function syncMusicAssets({ repositoryRoot, outputDirectory, warn = (messa
     nextOwnedOutputs.set(asset.runtimeFileName, hashFile(outputPath))
     copied.push(asset.runtimeFileName)
   }
+  for (const [fileName, expectedHash] of ownedOutputs) {
+    if (nextOwnedOutputs.has(fileName)) continue
+    removeGeneratedCopy(join(output, fileName), expectedHash, warn)
+  }
   writeOwnedOutputs(ownershipPath, output, nextOwnedOutputs, warn)
   return { copied, missing }
 }
@@ -195,7 +199,7 @@ export function createMusicOfflineManifestEntries(publicMusicDirectory, base = '
     if (!stat?.isFile() || stat.isSymbolicLink()) continue
     const source = readFileSync(filePath)
     entries.push({
-      url: `${normalizedBase}music/${asset.runtimeFileName}`,
+      url: `${normalizedBase}music/${asset.runtimeFileName.split('/').map(encodeURIComponent).join('/')}`,
       kind: 'audio',
       required: false,
       bytes: source.length,

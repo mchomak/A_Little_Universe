@@ -3,28 +3,10 @@ import { createHash } from 'node:crypto'
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMusicOfflineManifestEntries, syncMusicAssets } from './sync-music-assets.mjs'
+import { createMusicOfflineManifestEntries, MUSIC_ASSET_MAP, syncMusicAssets } from './sync-music-assets.mjs'
 
-const sources = [
-  'Perda — In the pool (Chainsaw Man - The Movie_ Reze Arc Soundtrack 09) (www.lightaudio.ru).mp3',
-  'Glass_spotdown.org.mp3',
-  'SpotiDownloader.com - Nuvole Bianche - Ludovico Einaudi.mp3',
-  'SpotiDownloader.com - Tres Notas para Decir Te Quiero - Vicente Amigo.mp3',
-  'SpotiDownloader.com - Je te laisserai des mots - Patrick Watson.mp3',
-  "SpotiDownloader.com - La femme d'argent - Air.mp3",
-  'M83_-_Outro_76602076.mp3',
-]
-
-const runtimeFiles = [
-  'intro-in-the-pool.mp3',
-  'gallery-glass.mp3',
-  'gallery-nuvole-bianche.mp3',
-  'gallery-tres-notas.mp3',
-  'gallery-je-te-laisserai-des-mots.mp3',
-  'gallery-la-femme-dargent.mp3',
-  'final-m83-outro.mp3',
-]
-
+const sources = MUSIC_ASSET_MAP.map((asset) => asset.sourceFileName)
+const runtimeFiles = MUSIC_ASSET_MAP.map((asset) => asset.runtimeFileName)
 const roots: string[] = []
 
 function makeRoot(): string {
@@ -38,7 +20,7 @@ afterEach(() => {
 })
 
 describe('syncMusicAssets', () => {
-  it('copies only the seven approved sources to canonical names and prefers musics/', () => {
+  it('copies the selected sources to playlist paths and prefers musics/', () => {
     const root = makeRoot()
     const music = join(root, 'music')
     const musics = join(root, 'musics')
@@ -116,7 +98,7 @@ describe('createMusicOfflineManifestEntries', () => {
     const intro = Buffer.from('temporary intro audio fixture')
     const gallery = Buffer.from('temporary gallery audio fixture')
     writeFileSync(join(music, 'intro-in-the-pool.mp3'), intro)
-    writeFileSync(join(music, 'gallery-tres-notas.mp3'), gallery)
+    writeFileSync(join(music, runtimeFiles[8]!), gallery)
 
     const entries = createMusicOfflineManifestEntries(music, '/film/')
 
@@ -131,7 +113,7 @@ describe('createMusicOfflineManifestEntries', () => {
         cacheOnInstall: true,
       },
       {
-        url: '/film/music/gallery-tres-notas.mp3',
+        url: `/film/music/${encodeURIComponent(runtimeFiles[8]!)}`,
         kind: 'audio',
         required: false,
         bytes: gallery.length,

@@ -40,6 +40,14 @@ const music = new MusicDirector({
 const musicFilm = createFilmMusicBridge(music)
 let restore: Promise<void> | undefined
 let disposal: ReturnType<typeof setTimeout> | undefined
+let standardSiteMediaPreparation: Promise<boolean> | undefined
+function prepareStandardSiteMedia() {
+  if (!standardSiteMediaPreparation) {
+    media.setOptions({ gaze: false, recording: true, upload: false })
+    standardSiteMediaPreparation = media.prepare().catch(() => false)
+  }
+  return standardSiteMediaPreparation
+}
 type AppRoute = PreparationStep | 'film' | 'loading'
 // Film modules have already been prepared by Bootstrap; a rerun verifies resources/cache.
 const devManager = new AssetManager({ development: import.meta.env.DEV,
@@ -101,12 +109,13 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     const lifecycleOperation = operation
     clearTimeout(disposal)
     restore ??= media.restore()
+    if (!developerMode && !desktopRecording.available) void prepareStandardSiteMedia()
     return () => {
       lifecycleOperation.current++
       // StrictMode remount cancels this timer before any live service is disposed.
       disposal = setTimeout(() => { void media.dispose(); musicFilm.dispose(); music.dispose(); audio.dispose() }, 0)
     }
-  }, [])
+  }, [developerMode])
   useEffect(() => {
     if (state.scene !== 'ending') return
     const request = ++operation.current
@@ -122,7 +131,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     setStarting(true)
     setStartError(null)
     setChecked(false)
-    setRoute(withRecording ? 'checking' : 'ready')
+    setRoute(withRecording && developerMode ? 'checking' : 'ready')
     const markChecked = () => { if (request === operation.current) setChecked(true) }
     const unlockAudio = () => {
       return musicFilm.startAfterUnlock(() => audio.unlock(), state)
@@ -150,6 +159,17 @@ export function App({ preparation }: { preparation: PreparationResult }) {
             start: async () => { await desktopRecording.start(); return true },
           }
           return openGift({ audio: { unlock: unlockAudio }, media: desktopMedia, onStart: markChecked })
+        }
+
+        if (!developerMode) {
+          return openGift({
+            audio: { unlock: unlockAudio },
+            media: { getSnapshot: media.getSnapshot, prepare: prepareStandardSiteMedia, start: () => media.start() },
+            onStart: markChecked,
+          }).catch(() => {
+            // Camera or recorder startup is optional on the standard site.
+            markChecked()
+          })
         }
 
         media.setOptions({ gaze: false, recording: true, upload: false })
@@ -240,11 +260,11 @@ export function App({ preparation }: { preparation: PreparationResult }) {
       </div>
       {cinematic && <button className="cinematic-pause" type="button" data-testid="pause" aria-label={state.paused ? 'Продолжить фильм' : 'Пауза'} aria-pressed={state.paused} onClick={() => dispatch({ type: 'toggle-pause' })}>{state.paused ? 'Продолжить' : 'Ⅱ'}</button>}
     </div>}
-    {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} startError={visibleStartError} onPrepare={() => start(true)} onWithoutMedia={() => start(false)} onStart={() => start(true)} desktopRecording={desktopRecording.available} />}
+    {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} startError={visibleStartError} onPrepare={() => start(true)} onWithoutMedia={() => start(false)} onStart={() => start(true)} desktopRecording={desktopRecording.available} showMediaStatus={developerMode} />}
     <PersistentLight phase={lightPhase} interactive={lightInteractive} reducedMotion={reducedMotion} runtime={runtime} state={state} onActivate={() => dispatch({ type: 'interact' })} />
-    {!desktopRecording.available && <RecordingControls session={media} />}
+    {developerMode && !desktopRecording.available && <RecordingControls session={media} />}
     <DesktopRecordingControls session={desktopRecording} filmActive={route === 'film'} onStopViewing={stopViewingForRecovery} />
-    {!desktopRecording.available && <RecoveryPanel session={media} />}
+    {developerMode && !desktopRecording.available && <RecoveryPanel session={media} />}
     {state.reading && route === 'film' && <ReadingPanel dispatch={dispatch} />}
     {developerMode && <button className="debug-toggle" type="button" aria-expanded={debug} aria-controls="developer-panel" onClick={() => setDebug((value) => !value)}>DEV</button>}
     {developerMode && debug && <Suspense fallback={<p className="debug-loading">Загрузка Developer Mode…</p>}><DeveloperPanel state={state} dispatch={devDispatch} runtime={runtime} route={route} reducedMotion={reducedMotion} onPreload={() => devPrepare('loading')} desktopRecording={desktopRecording} musicDirector={music} /><SceneTimeline state={state} dispatch={devDispatch} runtime={runtime} route={route} onPreload={() => devPrepare('loading')} /></Suspense>}

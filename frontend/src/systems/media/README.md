@@ -4,16 +4,20 @@
 Create one instance, subscribe with `useSyncExternalStore`, and call `restore()` to
 discover earlier files without requesting devices or restoring consent.
 
-`setOptions({ gaze, recording })` only changes current consent. Both options start
-false on each reload. `prepare()` must come from the explicit permission-check
-action; it acquires front video (`facingMode: { ideal: 'user' }`) and adds audio
-only for recording. Unknown physical facing mode is reported honestly. A failed
-check returns false and never blocks film playback. No tracker is implemented.
+`setOptions({ gaze, recording })` changes the current media options. In the
+standard website, the app enables optional local recording and calls `prepare()`
+after loading, so the browser can request camera and microphone access before the
+viewer starts the film. `prepare()` acquires front video
+(`facingMode: { ideal: 'user' }`) and audio, but never starts recording. If access
+or device preparation fails, the standard website continues without recording.
+The DEV flow keeps its explicit permission-check action. Unknown physical facing
+mode is reported honestly. No tracker is implemented.
 
-Call `start()` only after the explicit gift button, with recording consent still
-true. It requires prepared, live video and audio and a supported MediaRecorder
-MIME. It never requests permissions itself. Call `stop()` on the final scene and
-from the always-available recording control. `dispose()` is application cleanup.
+The standard website calls `start()` when the viewer starts the film, only if
+preparation succeeded and recording is enabled. It requires prepared, live video
+and audio and a supported MediaRecorder MIME. It never requests permissions
+itself. Call `stop()` on the final scene and from the recording control.
+`dispose()` is application cleanup.
 Stopping releases the microphone and releases video too when gaze is disabled.
 Do not mutate or stop tracks returned by `getVideoStream()` from a scene.
 

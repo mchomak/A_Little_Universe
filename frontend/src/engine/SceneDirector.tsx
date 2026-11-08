@@ -45,6 +45,7 @@ export function SceneDirector(props: SceneProps) {
   const renderScene = useThree(({ scene: currentScene }) => currentScene)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
   const openingScene = scene === 'prologue' || scene === 'growth' || scene === 'bloom' || scene === 'identity'
+  const lilyScene = scene === 'growth' || scene === 'bloom' || scene === 'identity'
   const growthSkyScene = scene === 'growth' || scene === 'bloom' || scene === 'identity'
   const growthFallRange = useMemo(() => getGrowthSceneFrames(config.scenes.growth).fall, [config.scenes.growth])
   const nightEstablished = scene === 'bloom' || scene === 'identity'
@@ -83,7 +84,7 @@ export function SceneDirector(props: SceneProps) {
     <directionalLight position={[3, 1, -2]} intensity={lighting.fillIntensity} color={lighting.fillColor} />
     {growthSkyScene && <GrowthSky key="persistent-night-sky" runtime={runtime} fallRange={growthFallRange} nightEstablished={nightEstablished} />}
     {keepGrowthWorld && <GrowthScene key="persistent-growth-world" {...props} environmentOnly={scene !== 'growth'} nightEstablished={nightEstablished} />}
-    <Suspense fallback={null}><AnimatedLily {...props} onParticleSource={publishLilyParticleSource} onParticleSourceError={reportLilyParticleSourceError} sourceAttempt={sourceAttempt} dissolveUniforms={dissolveUniforms} /></Suspense>
+    {lilyScene && <Suspense fallback={null}><AnimatedLily {...props} onParticleSource={publishLilyParticleSource} onParticleSourceError={reportLilyParticleSourceError} sourceAttempt={sourceAttempt} dissolveUniforms={dissolveUniforms} /></Suspense>}
     <GalaxyExperience {...props} />
     {scene === 'identity' && (lilyParticleSource
       ? <LilyDissolveParticles source={lilyParticleSource} uniforms={dissolveUniforms} runtime={props.runtime} low={props.state.quality === 'low' || props.reducedMotion} reducedMotion={props.reducedMotion} onRequiredSceneDuration={updateIdentityDuration} onIdentityPreparationPending={setIdentityPreparationPending} />

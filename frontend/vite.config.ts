@@ -80,7 +80,7 @@ function offlineBuild(): Plugin {
         this.emitFile({ type: 'asset', fileName: 'scene-presets/index.json', source: seedIndex })
         bundledSeeds.push({ fileName: 'scene-presets/index.json', source: seedIndex })
         const musicAssets = createMusicOfflineManifestEntries(resolve(publicDir, 'music'), base)
-        const musicOutputFiles = new Set(musicAssets.map((asset) => asset.url.slice(base.length)))
+        const musicOutputFiles = new Set(musicAssets.map((asset) => decodeURIComponent(asset.url.slice(base.length))))
         const runtimeAssets = [...outputs, ...bundledSeeds]
           .filter((output) => !musicOutputFiles.has(output.fileName))
           .map((output) => {
