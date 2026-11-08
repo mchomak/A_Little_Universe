@@ -101,7 +101,7 @@ it('keeps the shared phone image beneath the preparation content', () => {
 it('shows one local-recording consent action without a settings screen', () => {
   const markup = renderPreparation()
 
-  expect(markup).toContain('Начать фильм и локальную запись')
+  expect(markup).toContain('Начать фильм')
   expect(markup).not.toContain('data-step="settings"')
   expect(markup).not.toContain('role="switch"')
   expect(markup).not.toContain('Изменить настройки')
@@ -114,7 +114,7 @@ it('keeps the desktop recording consent local and explicit', () => {
   expect(markup).toContain('Камера, микрофон и окно фильма будут записаны только на этом Mac.')
   expect(markup).toContain('Ничего не отправляется')
   expect(markup).toContain('data-testid="recording-consent"')
-  expect(markup).toContain('Начать фильм и локальную запись')
+  expect(markup).toContain('Начать фильм')
   expect(markup).not.toContain('role="switch"')
 })
 

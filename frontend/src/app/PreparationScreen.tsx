@@ -101,11 +101,6 @@ export function PreparationScreen({ step, session, preparation, checked, startin
           </p>}
           {mediaFailed && <p className="permission-error" role="alert" data-testid="media-error">{mediaFailureMessage}</p>}
         </div>}
-        {!hasFailure && <p className="permission-note" data-testid="local-recording-disclosure">
-          {desktopRecording
-            ? 'Камера, микрофон и окно фильма будут записаны только на этом Mac. Ничего не отправляется; macOS может запросить разрешения.'
-            : 'Камера и микрофон будут записаны только на этом устройстве. Запись останется локальной и никуда не отправится.'}
-        </p>}
         <button
           type="button"
           className="preparation-primary"
@@ -113,7 +108,7 @@ export function PreparationScreen({ step, session, preparation, checked, startin
           disabled={starting}
           onClick={startFailed ? onStart : mediaFailed ? onPrepare : onStart}
         >
-          {starting ? 'Готовим фильм…' : startFailed ? 'Повторить' : mediaFailed ? 'Повторить проверку' : 'Начать фильм и локальную запись'}
+          {starting ? 'Готовим фильм…' : startFailed ? 'Повторить' : mediaFailed ? 'Повторить проверку' : 'Начать фильм'}
           <span aria-hidden="true">→</span>
         </button>
         {(mediaFailed || giftStartFailed) && <button type="button" className="preparation-link" data-testid="continue-without-recording" disabled={starting} onClick={onWithoutMedia}>Продолжить без записи</button>}
