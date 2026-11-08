@@ -31,6 +31,24 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 
 В Vite dev и preview пресеты идут через локальный `__scene-presets` API; файлы — `frontend/scene-presets/<scope>/<id>.json`. Packaged Electron (`app://bundle`) использует `localStorage` с ключами по scope `a-little-universe.scene-presets.v1.<scope>` и встроенные seeds из `scene-presets/index.json`. Seed-файлы — входные данные фильма. Тесты пресетов используют временное/in-memory storage и не пишут в настоящие seed-файлы.
 
+## Музыка
+
+- `frontend/src/app/App.tsx` создаёт один app-lifetime `AudioDirector`, `MusicDirector` и `filmMusicBridge`. Bridge стартует Intro после существующего user-gesture `audio.unlock()` и передаёт в MusicDirector переход фазы галереи в `exit`; DEV-панель получает тот же экземпляр. `useAudioDirector.ts` обслуживает только SFX и pause/visibility/film speed.
+- `AudioDirector.ts` владеет лениво созданным общим `AudioContext`, SFX bus и отдельным music master с per-element channels. `createMusicChannel()` возвращает `null` до unlock; источник `HTMLMediaElement` кэшируется. `AudioDirector.stop()` останавливает только cue sources, поэтому жизненный цикл музыки отдельно: `MusicDirector.dispose()` снимает listeners, останавливает и очищает оба media slots и каналы. App cleanup освобождает bridge → MusicDirector → AudioDirector.
+- `MusicDirector.ts` владеет состоянием Intro/Gallery/Outro, playlist, двумя переиспользуемыми `<audio>` slots, crossfade automation, media errors и snapshot. `syncFilmState()` связывает prologue/growth/bloom/identity с Intro, gallery с плейлистом и cosmos/greeting/ending с Outro; film sync идемпотентен внутри группы. Не обновлять React по film frames и не пытаться останавливать музыку через `AudioDirector.stop()`.
+- Каталог и base-aware URL: `systems/audio/musicCatalog.ts`. `scripts/sync-music-assets.mjs` ищет исходные MP3 по нормализованному имени сначала в корневой `musics/`, затем `music/`, копирует семь сопоставленных треков в сгенерированный `frontend/public/music/` под каноническими `/music/*.mp3` именами. Отсутствующий исходник только предупреждает; необязательная музыка не блокирует старт. `npm run dev` и `npm run build` запускают синхронизацию через `predev`/`prebuild`; source/output MP3 каталоги игнорируются Git.
+- Vite `offlineBuild()` в `frontend/vite.config.ts` добавляет имеющиеся MP3 как optional `cacheOnInstall` entries в `runtime-manifest.json`; service worker кэширует их best-effort и не блокирует установку при ошибке. `musicCatalog.ts` добавляет `import.meta.env.BASE_URL`, поэтому URL работает с Vite base. Electron пакует `dist/**/*` и открывает его как `app://bundle`; MP3 остаются в `dist/music/` и идут по тем же base-prefixed путям.
+- `systems/audio/musicSettings.ts` хранит только настройки музыки под отдельным `localStorage` ключом `a-little-universe:music:v1`; нормализует некорректные значения. Не добавлять их в Composer/presets. DEV controls и snapshot находятся в `debug/DeveloperPanel.tsx`.
+- Целевые тесты: `MusicDirector.test.ts`, `AudioDirector.test.ts`, `musicCatalog.test.ts`, `musicSettings.test.ts`, `app/filmMusicBridge.test.ts`, `debug/DeveloperPanel.test.ts`, `scripts/sync-music-assets.test.ts`. Использовать fake media/scheduler и тестовое storage; не ждать окончания настоящих MP3.
+
+## Проверки интеграции музыки (2026-11-08)
+
+- Из `frontend`: `npm run test:desktop` — 42/42; `npm run test -- src/app/filmMusicBridge.test.ts src/debug/DeveloperPanel.test.ts` — 22/22.
+- Чистая база `npm run test` — 911/911 после временного stash двух несвязанных локально изменённых `PreparationScreen` файлов; они восстановлены. В текущем worktree результат 910 passed / 1 failed на существующей consent assertion.
+- `npm run check` останавливается на 17 несвязанных lint errors и 3 warnings в `scenes/GalleryScene.tsx`, `scenes/gallery/MoonlitWorld.tsx`, `scenes/gallery/planetariumTransition.tsx`.
+- `npm run build` выполняет успешный `prebuild` music sync, затем typecheck останавливается на committed Lily worker test line 102 (boolean vs literal `true`). После этого отдельный `npx vite build` проходит; проверено, что все 7 MP3 открываются offline через service worker.
+- Прямой hidden Electron `app://bundle` CDP smoke: все 7 MP3 получили status 200, Content-Type `audio/mpeg`, ненулевой размер. `node electron/bundle-smoke.cjs` завершился таймаутом: его ожидание использует старые preparation title strings; ожидаемые 404 для `scene-composer.json` и `__dev_reviews` не относятся к MP3.
+
 ## Сцены и важные точки интеграции
 
 - `images/phone_1.png` — DOM/CSS-фон загрузки 00 и сцен 01–04; он скрывается в галерее 05. Общий профиль `scenes.openingBackground.{zoom,offsetX,offsetY}`: zoom 1–3, offsets −1…1, default 1/0/0. Локальный preview DEV-панели: `http://127.0.0.1:4173/?debug`.
