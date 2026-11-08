@@ -43,6 +43,5 @@ it('publishes the configured local intro, gallery order, outro, and relative lev
   expect(MUSIC_CONFIG).toMatchObject({
     groupGains: { intro: 1, gallery: 1, outro: 1 },
     masterVolume: 1,
-    fades: { introToGallery: 8, galleryToGallery: 7, galleryLoop: 8, galleryToOutro: 10, trackTransition: 8 },
   })
 })

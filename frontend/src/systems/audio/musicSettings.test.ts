@@ -13,7 +13,9 @@ it('normalizes the independent music settings against bounded defaults', () => {
   expect(MUSIC_SETTINGS_DEFAULTS).toEqual({
     enabled: true,
     volume: 1,
-    fadeScale: 1,
+    fadeOutSeconds: 8,
+    silenceSeconds: 1,
+    fadeInSeconds: 8,
     introStartOffset: 68,
     outroStartOffset: 0,
     introGain: 1,
@@ -23,7 +25,9 @@ it('normalizes the independent music settings against bounded defaults', () => {
   expect(normalizeMusicSettings({
     enabled: false,
     volume: 2,
-    fadeScale: 0,
+    fadeOutSeconds: 0.1,
+    silenceSeconds: 40,
+    fadeInSeconds: 32,
     introStartOffset: -4,
     outroStartOffset: 900,
     introGain: Number.NaN,
@@ -32,12 +36,22 @@ it('normalizes the independent music settings against bounded defaults', () => {
   })).toEqual({
     enabled: false,
     volume: 1,
-    fadeScale: 0.25,
+    fadeOutSeconds: 0.25,
+    silenceSeconds: 10,
+    fadeInSeconds: 30,
     introStartOffset: 0,
     outroStartOffset: 600,
     introGain: 1,
     galleryGain: 0.5,
     outroGain: 0,
+  })
+})
+
+it('migrates the earlier shared fade scale into independent transition timings', () => {
+  expect(normalizeMusicSettings({ fadeScale: 2 })).toMatchObject({
+    fadeOutSeconds: 16,
+    silenceSeconds: 1,
+    fadeInSeconds: 16,
   })
 })
 

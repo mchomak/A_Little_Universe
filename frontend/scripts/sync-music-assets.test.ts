@@ -20,6 +20,14 @@ afterEach(() => {
 })
 
 describe('syncMusicAssets', () => {
+  it('maps the supplied M83 Outro source to the runtime URL used by MusicCatalog', () => {
+    expect(MUSIC_ASSET_MAP.find((asset) => asset.role === 'Outro')).toEqual({
+      role: 'Outro',
+      sourceFileName: 'M83_-_Outro_76602076.mp3',
+      runtimeFileName: 'final-m83-outro.mp3',
+    })
+  })
+
   it('copies the selected sources to playlist paths and prefers musics/', () => {
     const root = makeRoot()
     const music = join(root, 'music')

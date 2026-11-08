@@ -43,13 +43,14 @@ interface MusicSlot {
 
 interface ActiveFade {
   id: number
-  from: MusicSlot
+  from: MusicSlot | null
   to: MusicSlot
   timer: unknown | null
   stage: 'fade-out' | 'silence' | 'fade-in'
   startedAt: number
   duration: number
   fadeInDuration: number
+  silenceDuration: number
   fromGain: number
   toGain: number
 }
@@ -61,8 +62,6 @@ const browserScheduler: MusicScheduler = {
   clearTimeout: (handle) => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
   now: () => (typeof performance === 'undefined' ? Date.now() : performance.now()) / 1000,
 }
-
-const TRANSITION_SILENCE_SECONDS = 1
 
 function browserMediaElement(): HTMLAudioElement {
   if (typeof document === 'undefined') throw new Error('Audio playback requires a browser document')
@@ -217,8 +216,9 @@ export class MusicDirector {
       this.publish()
       return
     }
-    this.playSlot(this.activeSlot)
-    if (this.fade) this.playSlot(this.fade.from)
+    if (!this.fade) this.playSlot(this.activeSlot)
+    else if (this.fade.stage === 'fade-out' && this.fade.from) this.playSlot(this.fade.from)
+    else if (this.fade.stage === 'fade-in') this.playSlot(this.fade.to)
     this.publish()
   }
 
@@ -331,18 +331,14 @@ export class MusicDirector {
     this.outroFailed = false
     this.returningFromEnding = false
     this.failedTracks.clear()
-    if (from) this.beginFade(from, slot, 'trackTransition', 'intro')
-    else {
-      this.setSlotGain(slot, this.trackVolume(MUSIC_CONFIG.intro))
-      this.playSlot(slot)
-    }
+    if (from) this.beginFade(from, slot)
+    else this.startFadeIn(slot, 'intro')
     const firstGalleryTrack = MUSIC_CONFIG.gallery[0]
     if (firstGalleryTrack && !from) this.prepareTrack(this.otherSlot(slot), firstGalleryTrack)
     this.publish()
   }
 
   private startGalleryEntry(): void {
-    const wasIntro = this.playbackState === 'intro' && this.activeSlot?.track?.id === MUSIC_CONFIG.intro.id
     const from = this.activeSlot
     const next = MUSIC_CONFIG.gallery[0]
     if (!next) {
@@ -355,19 +351,16 @@ export class MusicDirector {
     this.cancelFade()
     this.failedTracks.clear()
     this.loadTrack(to, next, next.startOffset)
-    if (from?.track) this.beginFade(from, to, wasIntro ? 'introToGallery' : 'galleryToGallery', 'gallery')
+    if (from?.track) this.beginFade(from, to)
     else {
       if (from && from !== to) this.stopSlot(from)
-      this.activeSlot = to
-      this.playbackState = 'gallery'
-      this.setSlotGain(to, this.trackVolume(next))
-      this.playSlot(to)
+      this.startFadeIn(to, 'gallery')
     }
     this.prepareNextGalleryTrack()
     this.publish()
   }
 
-  private startNextGalleryTrack(immediate = false): boolean {
+  private startNextGalleryTrack(immediate = false, fadeOutDurationOverride?: number): boolean {
     const current = this.activeSlot?.track
     if (!current || current.group !== 'gallery') return false
     const currentIndex = MUSIC_CONFIG.gallery.findIndex((track) => track.id === current.id)
@@ -378,14 +371,13 @@ export class MusicDirector {
       return false
     }
     const nextTrack = MUSIC_CONFIG.gallery[nextIndex]!
-    const fadeName = currentIndex === MUSIC_CONFIG.gallery.length - 1 && nextIndex === 0 ? 'galleryLoop' : 'galleryToGallery'
     const from = this.activeSlot!
     this.cancelFade()
     const to = this.otherSlot(from)
     if (to.track?.id !== nextTrack.id || to.failed) this.loadTrack(to, nextTrack, nextTrack.startOffset)
     this.activeSlot = to
     this.playbackState = 'gallery'
-    this.beginFade(from, to, fadeName, 'gallery', immediate ? 0 : undefined)
+    this.beginFade(from, to, immediate ? 0 : fadeOutDurationOverride)
     this.prepareNextGalleryTrack()
     this.publish()
     return true
@@ -400,11 +392,8 @@ export class MusicDirector {
     this.loadTrack(to, MUSIC_CONFIG.outro, this.settings.outroStartOffset)
     this.activeSlot = to
     this.playbackState = 'outro'
-    if (from) this.beginFade(from, to, 'galleryToOutro', 'outro')
-    else {
-      this.setSlotGain(to, this.trackVolume(MUSIC_CONFIG.outro))
-      this.playSlot(to)
-    }
+    if (from) this.beginFade(from, to)
+    else this.startFadeIn(to, 'outro')
     this.stopSlot(this.otherSlot(to) === from ? null : this.otherSlot(to))
     this.publish()
   }
@@ -412,12 +401,10 @@ export class MusicDirector {
   private beginFade(
     from: MusicSlot,
     to: MusicSlot,
-    profile: keyof typeof MUSIC_CONFIG.fades,
-    nextState: MusicPlaybackState,
     fadeOutDurationOverride?: number,
   ): void {
-    const fadeInDuration = MUSIC_CONFIG.fades[profile] * this.settings.fadeScale
-    const fadeOutDuration = fadeOutDurationOverride ?? fadeInDuration
+    const fadeInDuration = this.settings.fadeInSeconds
+    const fadeOutDuration = fadeOutDurationOverride ?? this.settings.fadeOutSeconds
     this.cancelSlotAutomation(from)
     this.cancelSlotAutomation(to)
     const now = this.audioTime(from)
@@ -428,7 +415,7 @@ export class MusicDirector {
     from.currentGain = outgoing
     to.currentGain = 0
     this.activeSlot = to
-    this.playbackState = nextState
+    this.playbackState = to.track?.group ?? 'silent'
 
     const transition: ActiveFade = {
       id: ++this.fadeSerial,
@@ -439,6 +426,7 @@ export class MusicDirector {
       startedAt: now,
       duration: fadeOutDuration,
       fadeInDuration,
+      silenceDuration: this.settings.silenceSeconds,
       fromGain: outgoing,
       toGain: incoming,
     }
@@ -479,18 +467,45 @@ export class MusicDirector {
     return curve
   }
 
+  private startFadeIn(slot: MusicSlot, nextState: MusicPlaybackState): void {
+    const duration = this.settings.fadeInSeconds
+    const now = this.audioTime(slot)
+    this.setSlotGain(slot, 0)
+    const transition: ActiveFade = {
+      id: ++this.fadeSerial,
+      from: null,
+      to: slot,
+      timer: null,
+      stage: 'fade-in',
+      startedAt: now,
+      duration,
+      fadeInDuration: duration,
+      silenceDuration: 0,
+      fromGain: 0,
+      toGain: this.trackVolume(slot.track),
+    }
+    this.activeSlot = slot
+    this.playbackState = nextState
+    this.fade = transition
+    this.beginFadeIn(transition)
+  }
+
   private beginSilence(transition: ActiveFade): void {
     if (this.fade !== transition || this.disposed) return
     transition.timer = null
-    this.stopSlot(transition.from)
+    if (transition.from) this.stopSlot(transition.from)
     this.cancelSlotAutomation(transition.to, 0)
     transition.stage = 'silence'
     transition.startedAt = this.scheduler.now()
-    transition.duration = TRANSITION_SILENCE_SECONDS
+    transition.duration = transition.silenceDuration
+    if (transition.duration <= 0) {
+      this.beginFadeIn(transition)
+      return
+    }
     try {
       transition.timer = this.scheduler.setTimeout(
         () => this.beginFadeIn(transition),
-        TRANSITION_SILENCE_SECONDS * 1000,
+        transition.duration * 1000,
       )
     } catch (error) {
       this.setError(errorMessage(error, 'Could not schedule the pause between tracks'))
@@ -550,7 +565,7 @@ export class MusicDirector {
     if (fade.timer !== null) this.scheduler.clearTimeout(fade.timer)
     this.fade = null
     this.setSlotGain(fade.to, this.trackVolume(fade.to.track))
-    this.stopSlot(fade.from)
+    if (fade.from) this.stopSlot(fade.from)
     if (this.playbackState === 'gallery') this.prepareNextGalleryTrack()
     this.publish()
   }
@@ -559,16 +574,16 @@ export class MusicDirector {
     const fade = this.fade
     if (!fade) return
     if (fade.timer !== null) this.scheduler.clearTimeout(fade.timer)
-    const clockSlot = fade.stage === 'fade-out' ? fade.from : fade.to
+    const clockSlot = fade.stage === 'fade-out' && fade.from ? fade.from : fade.to
     const now = this.audioTime(clockSlot)
     const progress = fade.duration > 0 ? Math.max(0, Math.min(1, (now - fade.startedAt) / fade.duration)) : 1
-    const fromGain = fade.stage === 'fade-out' ? fade.fromGain * Math.cos(progress * Math.PI / 2) : 0
+    const fromGain = fade.stage === 'fade-out' && fade.from ? fade.fromGain * Math.cos(progress * Math.PI / 2) : 0
     const toGain = fade.stage === 'fade-in' ? fade.toGain * Math.sin(progress * Math.PI / 2) : 0
-    this.cancelSlotAutomation(fade.from, fromGain)
+    if (fade.from) this.cancelSlotAutomation(fade.from, fromGain)
     this.cancelSlotAutomation(fade.to, toGain)
     this.fade = null
     if (fade.to !== this.activeSlot) this.stopSlot(fade.to)
-    if (fade.from !== this.activeSlot) this.stopSlot(fade.from)
+    if (fade.from && fade.from !== this.activeSlot) this.stopSlot(fade.from)
   }
   private prepareNextGalleryTrack(): void {
     if (this.fade) return
@@ -615,10 +630,10 @@ export class MusicDirector {
       const index = MUSIC_CONFIG.gallery.findIndex((track) => track.id === slot.track?.id)
       const nextIndex = this.findAvailableGalleryIndex(index + 1)
       if (nextIndex >= 0) {
-        const last = index === MUSIC_CONFIG.gallery.length - 1 && nextIndex === 0
-        const profile = last ? 'galleryLoop' : 'galleryToGallery'
-        const fadeDuration = MUSIC_CONFIG.fades[profile] * this.settings.fadeScale
-        if (duration - slot.element.currentTime <= fadeDuration + TRANSITION_SILENCE_SECONDS) this.startNextGalleryTrack()
+        const remaining = Math.max(0, duration - slot.element.currentTime)
+        if (remaining <= this.settings.fadeOutSeconds + this.settings.silenceSeconds) {
+          this.startNextGalleryTrack(false, Math.min(this.settings.fadeOutSeconds, remaining))
+        }
       }
     }
     this.publish()
@@ -627,6 +642,7 @@ export class MusicDirector {
   private onEnded(slot: MusicSlot): void {
     if (this.disposed || slot !== this.activeSlot || !slot.track) return
     if (slot.track.group === 'intro') {
+      if (this.fade?.to === slot) this.cancelFade()
       this.stopSlot(slot)
       this.activeSlot = null
       this.playbackState = 'silent'
@@ -670,10 +686,7 @@ export class MusicDirector {
           const to = this.otherSlot(slot)
           this.loadTrack(to, replacement, replacement.startOffset)
           this.playbackState = 'gallery'
-          const profile = currentIndex === MUSIC_CONFIG.gallery.length - 1 && nextIndex === 0
-            ? 'galleryLoop'
-            : 'galleryToGallery'
-          this.beginFade(slot, to, profile, 'gallery', 0)
+          this.beginFade(slot, to, 0)
           this.prepareNextGalleryTrack()
         } else this.stopCurrentAsSilent()
       } else {
@@ -755,21 +768,28 @@ export class MusicDirector {
 
   private setSlotGain(slot: MusicSlot, value: number): void {
     const parameter = slot.channel?.gain.gain
-    if (!parameter) return
+    const target = Math.max(0, value)
+    if (!parameter) {
+      slot.currentGain = target
+      return
+    }
     const now = this.audioTime(slot)
     this.cancelSlotAutomation(slot)
     try {
-      parameter.setValueAtTime(Math.max(0, value), now)
+      parameter.setValueAtTime(target, now)
     } catch {
-      parameter.value = Math.max(0, value)
+      parameter.value = target
     }
-    slot.currentGain = Math.max(0, value)
+    slot.currentGain = target
   }
 
   private setAudioParam(slot: MusicSlot, value: number, now: number): void {
     const parameter = slot.channel?.gain.gain
-    if (!parameter) return
     const boundedValue = Math.max(0, value)
+    if (!parameter) {
+      slot.currentGain = boundedValue
+      return
+    }
     try { parameter.setValueAtTime(boundedValue, now) } catch { parameter.value = boundedValue }
     slot.currentGain = boundedValue
   }
@@ -785,7 +805,10 @@ export class MusicDirector {
 
   private cancelSlotAutomation(slot: MusicSlot, holdValue = this.gainValue(slot, 0)): void {
     const parameter = slot.channel?.gain.gain
-    if (!parameter) return
+    if (!parameter) {
+      slot.currentGain = holdValue
+      return
+    }
     const now = this.audioTime(slot)
     const hold = (parameter as AudioParam & { cancelAndHoldAtTime?: (time: number) => void }).cancelAndHoldAtTime
     if (hold) {

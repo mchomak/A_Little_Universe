@@ -4,6 +4,12 @@ import type { FilmRuntime } from '../engine/runtime'
 import type { DesktopRecordingSession, DesktopRecordingSnapshot, DesktopSource } from '../systems/media/DesktopRecordingSession'
 import { MusicDirector, type MusicDirectorSnapshot } from '../systems/audio/MusicDirector'
 import { getMusicSettings, subscribeMusicSettings, type MusicSettings } from '../systems/audio/musicSettings'
+import {
+  deleteMusicTransitionPreset,
+  getMusicTransitionPresets,
+  saveMusicTransitionPreset,
+  type MusicTransitionPreset,
+} from '../systems/audio/musicTransitionPresets'
 import { getSceneDuration, type SceneId } from '../engine/filmConfig'
 import {
   DEFAULT_SCENE_COMPOSER_CONFIG,
@@ -748,6 +754,9 @@ function formatMusicTime(seconds: number | null) {
 
 function MusicControls({ director }: { director: MusicDirector | undefined }) {
   const [settings, setSettings] = useState<MusicSettings>(() => getMusicSettings())
+  const [presets, setPresets] = useState<MusicTransitionPreset[]>(() => getMusicTransitionPresets())
+  const [presetName, setPresetName] = useState('')
+  const [selectedPresetName, setSelectedPresetName] = useState('')
   const subscribe = useCallback((listener: () => void) => director
     ? director.subscribe(() => listener())
     : () => undefined, [director])
@@ -757,6 +766,29 @@ function MusicControls({ director }: { director: MusicDirector | undefined }) {
   useEffect(() => subscribeMusicSettings(setSettings), [])
 
   const change = (key: keyof MusicSettings, value: number | boolean) => director?.setSettings({ [key]: value })
+  const transitionSettings = () => ({
+    fadeOutSeconds: settings.fadeOutSeconds,
+    silenceSeconds: settings.silenceSeconds,
+    fadeInSeconds: settings.fadeInSeconds,
+  })
+  const selectedPreset = presets.find((preset) => preset.name === selectedPresetName)
+  const savePreset = () => {
+    const name = presetName.trim()
+    if (!name) return
+    const next = saveMusicTransitionPreset(name, transitionSettings())
+    const savedName = next.find((preset) => preset.name.toLocaleLowerCase() === name.toLocaleLowerCase())?.name ?? name
+    setPresets(next)
+    setPresetName(savedName)
+    setSelectedPresetName(savedName)
+  }
+  const applyPreset = () => {
+    if (selectedPreset) director?.setSettings(selectedPreset.settings)
+  }
+  const deletePreset = () => {
+    if (!selectedPreset) return
+    setPresets(deleteMusicTransitionPreset(selectedPreset.name))
+    setSelectedPresetName('')
+  }
   const range = (key: Exclude<keyof MusicSettings, 'enabled'>, label: string, min: number, max: number, step: number, unit: string, scale = 1) => {
     const id = `music-${key}`
     const value = settings[key]
@@ -776,7 +808,43 @@ function MusicControls({ director }: { director: MusicDirector | undefined }) {
       {settings.enabled ? 'Музыка включена' : 'Музыка выключена'}
     </button>
     {range('volume', 'Общая громкость', 0, 1, 0.01, '%', 100)}
-    {range('fadeScale', 'Длительность перехода', 0.25, 3, 0.05, '×')}
+    {range('fadeOutSeconds', 'Затухание трека', 0.25, 30, 0.25, 'с')}
+    {range('silenceSeconds', 'Пауза между треками', 0, 10, 0.25, 'с')}
+    {range('fadeInSeconds', 'Нарастание громкости', 0.25, 30, 0.25, 'с')}
+    <div className="composer-control">
+      <label htmlFor="music-transition-preset-select">Пресет плавности</label>
+      <select
+        id="music-transition-preset-select"
+        data-testid="music-transition-preset-select"
+        value={selectedPresetName}
+        onChange={(event) => setSelectedPresetName(event.target.value)}
+      >
+        <option value="">Выберите пресет</option>
+        {presets.map((preset) => <option key={preset.name} value={preset.name}>{preset.name}</option>)}
+      </select>
+    </div>
+    <div className="composer-control">
+      <label htmlFor="music-transition-preset-name">Имя пресета плавности</label>
+      <input
+        id="music-transition-preset-name"
+        data-testid="music-transition-preset-name"
+        type="text"
+        maxLength={64}
+        value={presetName}
+        onChange={(event) => setPresetName(event.target.value)}
+      />
+    </div>
+    <div className="inspector-history">
+      <button type="button" data-testid="music-transition-preset-save" onClick={savePreset} disabled={!presetName.trim()}>
+        Сохранить пресет
+      </button>
+      <button type="button" data-testid="music-transition-preset-apply" onClick={applyPreset} disabled={!director || !selectedPreset}>
+        Применить пресет
+      </button>
+      <button type="button" data-testid="music-transition-preset-delete" onClick={deletePreset} disabled={!selectedPreset}>
+        Удалить пресет
+      </button>
+    </div>
     {range('introStartOffset', 'Смещение Intro', 0, 600, 1, 'с')}
     {range('outroStartOffset', 'Смещение Outro', 0, 600, 1, 'с')}
     {range('introGain', 'Громкость Intro', 0, 1, 0.01, '%', 100)}

@@ -77,5 +77,4 @@ export const MUSIC_CONFIG = Object.freeze({
   outro,
   groupGains: Object.freeze({ intro: 1, gallery: 1, outro: 1 }),
   masterVolume: 1,
-  fades: Object.freeze({ introToGallery: 8, galleryToGallery: 7, galleryLoop: 8, galleryToOutro: 10, trackTransition: 8 }),
 })

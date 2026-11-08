@@ -2,10 +2,15 @@ import { MUSIC_CONFIG } from './musicCatalog'
 
 export const MUSIC_SETTINGS_STORAGE_KEY = 'a-little-universe:music:v1'
 
-export interface MusicSettings {
+export interface MusicTransitionSettings {
+  fadeOutSeconds: number
+  silenceSeconds: number
+  fadeInSeconds: number
+}
+
+export interface MusicSettings extends MusicTransitionSettings {
   enabled: boolean
   volume: number
-  fadeScale: number
   introStartOffset: number
   outroStartOffset: number
   introGain: number
@@ -16,7 +21,9 @@ export interface MusicSettings {
 export const MUSIC_SETTINGS_DEFAULTS: Readonly<MusicSettings> = Object.freeze({
   enabled: true,
   volume: MUSIC_CONFIG.masterVolume,
-  fadeScale: 1,
+  fadeOutSeconds: 8,
+  silenceSeconds: 1,
+  fadeInSeconds: 8,
   introStartOffset: MUSIC_CONFIG.intro.startOffset,
   outroStartOffset: MUSIC_CONFIG.outro.startOffset,
   introGain: MUSIC_CONFIG.groupGains.intro,
@@ -42,13 +49,24 @@ function bounded(value: unknown, fallback: number, minimum: number, maximum: num
   return Math.max(minimum, Math.min(maximum, value))
 }
 
+export function normalizeMusicTransitionSettings(value: unknown): MusicTransitionSettings {
+  const source = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  // Older installs stored one multiplier; migrate it to independent fade lengths.
+  const legacyScale = bounded(source.fadeScale, 1, 0.25, 3)
+  return {
+    fadeOutSeconds: bounded(source.fadeOutSeconds, 8 * legacyScale, 0.25, 30),
+    silenceSeconds: bounded(source.silenceSeconds, 1, 0, 10),
+    fadeInSeconds: bounded(source.fadeInSeconds, 8 * legacyScale, 0.25, 30),
+  }
+}
+
 /** Normalize untrusted JSON or partial DEV updates without mutating the input. */
 export function normalizeMusicSettings(value: unknown): MusicSettings {
   const source = value && typeof value === 'object' ? value as Record<string, unknown> : {}
   return {
     enabled: typeof source.enabled === 'boolean' ? source.enabled : MUSIC_SETTINGS_DEFAULTS.enabled,
     volume: bounded(source.volume, MUSIC_SETTINGS_DEFAULTS.volume, 0, 1),
-    fadeScale: bounded(source.fadeScale, MUSIC_SETTINGS_DEFAULTS.fadeScale, 0.25, 3),
+    ...normalizeMusicTransitionSettings(source),
     introStartOffset: bounded(source.introStartOffset, MUSIC_SETTINGS_DEFAULTS.introStartOffset, 0, 600),
     outroStartOffset: bounded(source.outroStartOffset, MUSIC_SETTINGS_DEFAULTS.outroStartOffset, 0, 600),
     introGain: bounded(source.introGain, MUSIC_SETTINGS_DEFAULTS.introGain, 0, 1),

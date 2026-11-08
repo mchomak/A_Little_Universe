@@ -2,6 +2,7 @@ import { expect, it, vi } from 'vitest'
 import { initialFilmState, type FilmState } from '../../engine/film'
 import { MusicDirector } from './MusicDirector'
 import { MUSIC_CONFIG } from './musicCatalog'
+import { MUSIC_SETTINGS_DEFAULTS, type MusicSettings } from './musicSettings'
 
 class FakeMediaElement extends EventTarget {
   src = ''
@@ -18,7 +19,7 @@ class FakeMediaElement extends EventTarget {
   removeAttribute(name: string) { if (name === 'src') this.src = '' }
 }
 
-function directorHarness() {
+function directorHarness(settings?: MusicSettings) {
   const media: FakeMediaElement[] = []
   const gains: GainNode[] = []
   const channels: Array<{ dispose: ReturnType<typeof vi.fn> }> = []
@@ -58,6 +59,7 @@ function directorHarness() {
     },
     setMusicVolume,
     scheduler,
+    ...(settings ? { settings } : {}),
   })
   return { director, media, gains, channels, setMusicVolume, scheduler, scheduled }
 }
@@ -67,7 +69,7 @@ function playingFilmState(scene: FilmState['scene'] = 'prologue'): FilmState {
 }
 
 it('starts Intro at its configured offset and preserves the same playback through scenes 01–04', () => {
-  const { director, media } = directorHarness()
+  const { director, media, gains, scheduler } = directorHarness()
   const scenes: FilmState['scene'][] = ['prologue', 'growth', 'bloom', 'identity']
   scenes.forEach((scene, revision) => director.syncFilmState({ ...playingFilmState(scene), revision }))
 
@@ -75,6 +77,11 @@ it('starts Intro at its configured offset and preserves the same playback throug
   expect(media).toHaveLength(2)
   expect(media[0]).toMatchObject({ src: '/music/intro-in-the-pool.mp3', currentTime: 68, loop: false })
   expect(media[0]!.play).toHaveBeenCalledOnce()
+  expect(scheduler.setTimeout).toHaveBeenCalledWith(expect.any(Function), 8000)
+  const introCurveSpy = gains[0]!.gain.setValueCurveAtTime as unknown as ReturnType<typeof vi.fn>
+  const introCurve = introCurveSpy.mock.calls[0]![0] as Float32Array
+  expect(introCurve[0]).toBe(0)
+  expect(introCurve.at(-1)).toBeCloseTo(0.794)
   expect(media[1]!.src).toBe(MUSIC_CONFIG.gallery[0]!.url)
   director.dispose()
 })
@@ -124,8 +131,9 @@ it('does not restart a finished Intro until replay explicitly resets the film', 
 })
 
 it('applies master and group gains plus enabled pause settings without restarting the track', () => {
-  const { director, media, gains, setMusicVolume } = directorHarness()
+  const { director, media, gains, setMusicVolume, scheduled } = directorHarness()
   director.syncFilmState(playingFilmState())
+  scheduled.shift()!.callback()
   director.setSettings({ volume: 0.35, introGain: 0.5 })
   expect(setMusicVolume).toHaveBeenLastCalledWith(0.35)
   const introGain = gains[0]!.gain.setValueAtTime as unknown as ReturnType<typeof vi.fn>
@@ -177,16 +185,17 @@ it('preserves disabled pause state when resume is requested and resumes once whe
 it('fades out Intro, waits one second, then fades Gallery in before preparing the next track', () => {
   const { director, media, gains, scheduler, scheduled } = directorHarness()
   director.syncFilmState(playingFilmState())
+  scheduled.shift()!.callback()
   director.syncFilmState({ ...playingFilmState('gallery'), mode: 'exploring', revision: 2 })
 
   expect(director.getSnapshot()).toMatchObject({ state: 'gallery', currentTrack: { id: MUSIC_CONFIG.gallery[0]!.id } })
   expect(director.getSnapshot().nextTrack?.id).toBe(MUSIC_CONFIG.gallery[1]!.id)
   expect(media[1]!.play).not.toHaveBeenCalled()
   expect(scheduler.setTimeout).toHaveBeenCalledWith(expect.any(Function), 8000)
-  expect(gains[0]!.gain.setValueCurveAtTime).toHaveBeenCalledOnce()
+  expect(gains[0]!.gain.setValueCurveAtTime).toHaveBeenCalledTimes(2)
   expect(gains[1]!.gain.setValueCurveAtTime).not.toHaveBeenCalled()
   const outgoingCurveSpy = gains[0]!.gain.setValueCurveAtTime as unknown as ReturnType<typeof vi.fn>
-  const outgoingCurve = outgoingCurveSpy.mock.calls[0]![0] as Float32Array
+  const outgoingCurve = outgoingCurveSpy.mock.calls.at(-1)![0] as Float32Array
   expect(outgoingCurve[32]).toBeCloseTo(0.794 * Math.cos(Math.PI / 4))
   scheduled.shift()!.callback()
   expect(scheduler.setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 1000)
@@ -202,6 +211,45 @@ it('fades out Intro, waits one second, then fades Gallery in before preparing th
   scheduled.shift()!.callback()
   expect(director.getSnapshot().nextTrack?.id).toBe(MUSIC_CONFIG.gallery[1]!.id)
   expect(media[0]!.src).toBe(MUSIC_CONFIG.gallery[1]!.url)
+  director.dispose()
+})
+
+it('uses separate configurable fade-out, silence, and fade-in durations', () => {
+  const settings: MusicSettings = {
+    ...MUSIC_SETTINGS_DEFAULTS,
+    fadeOutSeconds: 2.5,
+    silenceSeconds: 0.5,
+    fadeInSeconds: 4.5,
+  }
+  const { director, media, scheduler, scheduled } = directorHarness(settings)
+  director.syncFilmState({ ...initialFilmState, scene: 'gallery', mode: 'exploring', revision: 1 })
+  expect(scheduler.setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 4500)
+  scheduled.shift()!.callback()
+
+  expect(director.previewNext()).toBe(true)
+  expect(scheduler.setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 2500)
+  scheduled.shift()!.callback()
+  expect(scheduler.setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 500)
+  expect(media.find((element) => element.src === MUSIC_CONFIG.gallery[1]!.url)!.play).not.toHaveBeenCalled()
+  scheduled.shift()!.callback()
+  expect(scheduler.setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 4500)
+  expect(media.find((element) => element.src === MUSIC_CONFIG.gallery[1]!.url)!.play).toHaveBeenCalledOnce()
+  director.dispose()
+})
+
+it('keeps the startup fade running when transition settings change mid-ramp', () => {
+  const settings: MusicSettings = { ...MUSIC_SETTINGS_DEFAULTS, fadeInSeconds: 5 }
+  const { director, gains, scheduled } = directorHarness(settings)
+  director.syncFilmState(playingFilmState())
+  expect(scheduled).toHaveLength(1)
+  const cancellationCount = (gains[0]!.gain.cancelScheduledValues as unknown as ReturnType<typeof vi.fn>).mock.calls.length
+
+  director.setSettings({ fadeInSeconds: 12 })
+
+  expect(scheduled).toHaveLength(1)
+  expect(gains[0]!.gain.cancelScheduledValues).toHaveBeenCalledTimes(cancellationCount)
+  const curveCalls = gains[0]!.gain.setValueCurveAtTime as unknown as ReturnType<typeof vi.fn>
+  expect(curveCalls).toHaveBeenCalledOnce()
   director.dispose()
 })
 
@@ -228,24 +276,23 @@ it('plays the gallery tracks in order, loops after La femme d’argent, and igno
   director.syncFilmState({ ...state, galleryIndex: 9, revision: 4 })
   expect(director.getSnapshot().currentTrack?.id).toBe(MUSIC_CONFIG.gallery[0]!.id)
   expect(media.map((element) => element.play.mock.calls.length)).toEqual(playCounts)
+  scheduled.shift()!.callback()
 
-  const transitions = MUSIC_CONFIG.gallery.map((_, index) => [
-    MUSIC_CONFIG.gallery[(index + 1) % MUSIC_CONFIG.gallery.length]!.id,
-    index === MUSIC_CONFIG.gallery.length - 1 ? 8000 : 7000,
-  ] as const)
-  for (const [nextId, fadeDuration] of transitions) {
+  const transitions = MUSIC_CONFIG.gallery.map((_, index) =>
+    MUSIC_CONFIG.gallery[(index + 1) % MUSIC_CONFIG.gallery.length]!.id)
+  for (const nextId of transitions) {
     const current = director.getSnapshot().currentTrack!
     const element = media.find((candidate) => candidate.src === current.url)!
     element.currentTime = element.duration - 0.5
     element.dispatchEvent(new Event('timeupdate'))
     expect(director.getSnapshot().currentTrack?.id).toBe(nextId)
-    expect(scheduler.setTimeout.mock.calls.at(-1)?.[1]).toBe(fadeDuration)
+    expect(scheduler.setTimeout.mock.calls.at(-1)?.[1]).toBe(500)
     scheduled.shift()!.callback()
     expect(scheduler.setTimeout.mock.calls.at(-1)?.[1]).toBe(1000)
     scheduled.shift()!.callback()
     const incoming = director.getSnapshot().currentTrack!
     expect(media.find((candidate) => candidate.src === incoming.url)!.play).toHaveBeenCalled()
-    expect(scheduler.setTimeout.mock.calls.at(-1)?.[1]).toBe(fadeDuration)
+    expect(scheduler.setTimeout.mock.calls.at(-1)?.[1]).toBe(8000)
     scheduled.shift()!.callback()
     expect(director.getSnapshot().currentTrack?.id).toBe(nextId)
   }
@@ -260,7 +307,7 @@ it('starts Outro on gallery exit, preserves it across final scenes, and never re
   director.handleGalleryExit(false)
 
   expect(director.getSnapshot()).toMatchObject({ state: 'outro', currentTrack: { id: 'final-m83-outro' } })
-  expect(scheduler.setTimeout.mock.calls.at(-1)?.[1]).toBe(10000)
+  expect(scheduler.setTimeout.mock.calls.at(-1)?.[1]).toBe(8000)
   scheduled.shift()!.callback()
   expect(scheduler.setTimeout.mock.calls.at(-1)?.[1]).toBe(1000)
   scheduled.shift()!.callback()
@@ -298,6 +345,7 @@ it('cancels the existing fade before a manual next-track preview', () => {
   const { director, media, gains, scheduler, scheduled } = directorHarness()
   director.syncFilmState({ ...initialFilmState, scene: 'gallery', mode: 'exploring', revision: 1 })
   const glass = media.find((candidate) => candidate.src === MUSIC_CONFIG.gallery[0]!.url)!
+  scheduled.shift()!.callback()
   glass.currentTime = glass.duration - 1
   glass.dispatchEvent(new Event('timeupdate'))
   expect(director.getSnapshot().currentTrack?.id).toBe(MUSIC_CONFIG.gallery[1]!.id)
@@ -305,9 +353,9 @@ it('cancels the existing fade before a manual next-track preview', () => {
 
   expect(director.previewNext()).toBe(true)
   expect(director.getSnapshot().currentTrack?.id).toBe(MUSIC_CONFIG.gallery[2]!.id)
-  expect(scheduler.clearTimeout).toHaveBeenCalledOnce()
+  expect(scheduler.clearTimeout).toHaveBeenCalledTimes(2)
   expect(scheduled).toHaveLength(1)
-  expect(scheduler.setTimeout).toHaveBeenCalledTimes(2)
+  expect(scheduler.setTimeout).toHaveBeenCalledTimes(3)
   expect(gains[0]!.gain.cancelScheduledValues).toHaveBeenCalled()
   expect(gains[1]!.gain.cancelScheduledValues).toHaveBeenCalled()
   director.dispose()

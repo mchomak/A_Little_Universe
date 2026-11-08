@@ -18,6 +18,7 @@ import { Preloader } from '../bootstrap/Preloader'
 import { PreparationScreen, type PreparationStep } from './PreparationScreen'
 import { openGift } from './openGift'
 import { PhoneBackground } from '../components/PhoneBackground'
+import { PortraitHandoffOverlay } from '../components/PortraitHandoffOverlay'
 import { getImplementationStatus } from './filmStatus'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { startPreparedFilm, isFilmStartupFailure, type FilmStartupError } from './filmStartup'
@@ -255,6 +256,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
       <div className="film-surface">
         <PhoneBackground active={showOpeningBackground} scene={state.scene} runtime={runtime} reducedMotion={reducedMotion} />
         <div className="viewport" role="region" aria-label="Интерактивный фильм"><FilmCanvas state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} /></div>
+        <PortraitHandoffOverlay scene={state.scene} runtime={runtime} reducedMotion={reducedMotion} />
         {!cinematic && <header className="page-header"><span className="dedication">Для Василисы</span>{import.meta.env.DEV && <span className="build-label">{implementationStatus}</span>}</header>}
         <SceneOverlay key={`${state.scene}:${state.revision}`} state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} />
       </div>
