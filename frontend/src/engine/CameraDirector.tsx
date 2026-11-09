@@ -154,6 +154,22 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       applyHandoff()
       return timeline
     }
+    if (scene === 'greeting' && previousScene === 'cosmos' && !reducedMotion) {
+      const finish = galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
+      const start = { ...p }
+      const startFov = camera instanceof PerspectiveCamera ? camera.fov : aspect < 1 ? 42 : 38
+      const finishFov = aspect < 1 ? 42 : 38
+      const cursor = { progress: 0 }
+      const settleCamera = () => {
+        const progress = getPlanetariumHandoffProgress(cursor.progress)
+        Object.assign(p, interpolateCameraPose(start, finish, progress))
+        render(startFov + (finishFov - startFov) * progress)
+      }
+      timeline.to(cursor, { progress: 1, duration: TIMING.transition, ease: 'none' }, 0)
+      timeline.eventCallback('onUpdate', settleCamera)
+      settleCamera()
+      return timeline
+    }
     // Cleaning up the finished Growth timeline rewinds its cursor and restores the seed-entry pose.
     // flowerSide is the same authored endpoint, so this keeps the camera continuous across the handoff.
     const bloomEntry = previousScene === 'growth' ? flowerSide : getBloomEntryCameraPose(previousScene, previousPose, flowerSide)

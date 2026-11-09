@@ -214,7 +214,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
       : getGalaxyMotionPhase(scene, time, current, TIMING.cosmos.duration, TIMING.greeting.duration, reducedMotion)
     const boundary = cosmosBoundaryFrame.current
     const boundaryProgress = scene === 'greeting' && boundary.valid
-      ? getPlanetariumHandoffProgress(time / 0.65) : 1
+      ? getPlanetariumHandoffProgress(time / TIMING.transition) : 1
     const blend = (from: number, to: number) => from + (to - from) * boundaryProgress
     const phaseTime = scene === 'greeting' && boundary.valid ? blend(boundary.phaseTime, calculatedPhase) : calculatedPhase
     const motionTime = scene === 'greeting' && boundary.valid ? blend(boundary.motionTime, calculatedMotion) : calculatedMotion
