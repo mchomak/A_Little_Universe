@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { gsap } from 'gsap'
-import { BackSide, CircleGeometry, Color, Group, Mesh, MeshBasicMaterial, PlaneGeometry, Points, PointsMaterial } from 'three'
+import { BackSide, CircleGeometry, Color, Group, Mesh, MeshBasicMaterial, PlaneGeometry, Points, PointsMaterial, Quaternion, Vector3 } from 'three'
 import type { SceneProps } from '../../engine/sceneTypes'
 import { TIMING } from '../../engine/filmConfig'
 import { getConfig, subscribeConfig, type SceneComposerConfig } from '../../systems/scene-config/config'
@@ -14,7 +14,7 @@ import { createNebulaClouds } from './nebulaClouds'
 import { deferGalaxyCloudDisposal } from './resourceLifecycle'
 import { createBackgroundStarsMaterial, createBlackCenterMaterial, faceBlackCenterToCamera, GALAXY_RENDER_ORDER } from './rendering'
 import { galleryMotion, gallerySnapshot, subscribeGallery } from '../gallery/controller'
-import { GALLERY_MEMORIES } from '../gallery/content'
+import { GALLERY, GALLERY_MEMORIES } from '../gallery/content'
 import { getPlanetariumGalaxyFade } from '../gallery/planetariumTransition'
 
 type GalaxySceneName = 'cosmos' | 'greeting' | 'ending'
@@ -116,6 +116,10 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
   const camera = useThree((three) => three.camera)
   const invalidate = useThree((three) => three.invalidate)
   const dpr = useThree((three) => three.viewport.dpr)
+  const cameraWorldPosition = useMemo(() => new Vector3(), [])
+  const cameraWorldDirection = useMemo(() => new Vector3(), [])
+  const cameraWorldRotation = useMemo(() => new Quaternion(), [])
+  const identityRotation = useMemo(() => new Quaternion(), [])
   const planetariumExit = state.scene === 'gallery' && gallery.phase === 'exit' && gallery.focus === GALLERY_MEMORIES.length - 1
   const planetariumRoute = planetariumExit || Boolean(state.planetariumTransition)
   const active = planetariumExit || Boolean(state.planetariumTransition) || state.scene === 'cosmos' || state.scene === 'greeting' || state.scene === 'ending'
@@ -181,6 +185,27 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
     if (galaxy.current) {
       galaxy.current.visible = active
       galaxy.current.scale.setScalar(current.compositionScale)
+      if (planetariumRoute) {
+        camera.getWorldPosition(cameraWorldPosition)
+        camera.getWorldDirection(cameraWorldDirection)
+        cameraWorldPosition.addScaledVector(cameraWorldDirection, current.cameraStartDistance)
+        camera.getWorldQuaternion(cameraWorldRotation)
+        if (planetariumExit) {
+          galaxy.current.position.copy(cameraWorldPosition)
+          galaxy.current.quaternion.copy(cameraWorldRotation)
+        } else if (state.scene === 'cosmos' && state.planetariumTransition) {
+          const transfer = Math.max(0, Math.min(1, (localTime - GALLERY.exit) / Math.max(0.001, current.cameraDuration)))
+          const easedTransfer = transfer * transfer * (3 - 2 * transfer)
+          galaxy.current.position.copy(cameraWorldPosition).multiplyScalar(1 - easedTransfer)
+          galaxy.current.quaternion.copy(cameraWorldRotation).slerp(identityRotation, easedTransfer)
+        } else {
+          galaxy.current.position.set(0, 0, 0)
+          galaxy.current.quaternion.identity()
+        }
+      } else {
+        galaxy.current.position.set(0, 0, 0)
+        galaxy.current.quaternion.identity()
+      }
     }
     if (blackCenter.current) {
       blackCenter.current.visible = active && current.blackHoleEnabled
@@ -222,7 +247,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
     }
     if (backgroundPoints.current) backgroundPoints.current.visible = active && current.backgroundStarCount > 0
     invalidate()
-  }, [active, baseMaterial, camera, clouds, invalidate, materials, palette.backgroundColor, planetariumExit, planetariumRoute, reducedMotion, scene])
+  }, [active, baseMaterial, camera, cameraWorldDirection, cameraWorldPosition, cameraWorldRotation, clouds, identityRotation, invalidate, materials, palette.backgroundColor, planetariumExit, planetariumRoute, reducedMotion, scene, state.planetariumTransition, state.scene])
 
   useLayoutEffect(() => {
     updateLiveUniforms(settings, dpr, palette, materials)
