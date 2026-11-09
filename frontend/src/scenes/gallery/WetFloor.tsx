@@ -4,6 +4,7 @@ import { Mesh } from 'three'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
 import { GALLERY_WORLD, type GalleryQuality } from './world'
 import { galleryMotion } from './controller'
+import { getPlanetariumGalleryOpacity } from './planetariumTransition'
 import { getGalleryEntryRevealAlpha } from './entryReveal'
 import { createGalleryPlanarReflectionPass } from './planarReflection'
 import { createGalleryWaterMaterial, createGalleryWaterNormalTexture, updateGalleryWaterCamera, updateGalleryWaterMaterial } from './waterMaterial'
@@ -45,7 +46,7 @@ export function WetFloor({
       settings,
       galleryMotion.time,
       reducedMotion,
-      getGalleryEntryRevealAlpha(galleryMotion.entryReveal, 'water'),
+      getGalleryEntryRevealAlpha(galleryMotion.entryReveal, 'water') * getPlanetariumGalleryOpacity(galleryMotion.exit),
     )
     const mesh = floor.current
     if (!mesh) return

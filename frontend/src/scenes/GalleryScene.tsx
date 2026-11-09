@@ -33,7 +33,7 @@ import { processMemorySignalBaselinePixels, type MemorySignalBaselineSample } fr
 import firstPhotoUrl from '../assets/start_img.jpg'
 import { ART_FONT_CATALOG, loadArtFont } from '../systems/scene-config/fontCatalog'
 import type { ArtFontId } from '../systems/scene-config/fontIds'
-import { capturePlanetariumPhotoRect, registerPlanetariumPhotoTexture, releasePlanetariumPhotoTexture } from './gallery/planetariumTransition'
+import { getPlanetariumGalleryFade, getPlanetariumGalleryOpacity } from './gallery/planetariumTransition'
 
 useLoader.preload(TextureLoader, firstPhotoUrl)
 
@@ -479,13 +479,13 @@ function frameShaderMaterial() {
     toneMapped: false,
   })
 }
-function Photo({ url, width, height, fallback, onAspect, material, planetarium = false }: { url: string; width: number; height: number; fallback: Texture | null; onAspect: (value: number) => void; material: RefObject<ShaderMaterial | null>; planetarium?: boolean }) {
+function Photo({ url, width, height, fallback, onAspect, material }: { url: string; width: number; height: number; fallback: Texture | null; onAspect: (value: number) => void; material: RefObject<ShaderMaterial | null> }) {
   const [texture, setTexture] = useState<Texture | null>(null)
   useEffect(() => {
     let active = true; let loaded: Texture | null = null
-    new TextureLoader().load(url, (value) => { if (!active) { value.dispose(); return } loaded = value; setColorSpace(value); if (planetarium) registerPlanetariumPhotoTexture(value); const image = value.image as HTMLImageElement; if (image.naturalWidth && image.naturalHeight) onAspect(image.naturalWidth / image.naturalHeight); setShaderUniform(material.current, 'map', value); setTexture(value) }, undefined, () => { if (active) setTexture(null) })
-    return () => { active = false; if (loaded) planetarium ? releasePlanetariumPhotoTexture(loaded) : loaded.dispose() }
-  }, [url, onAspect, material, planetarium])
+    new TextureLoader().load(url, (value) => { if (!active) { value.dispose(); return } loaded = value; setColorSpace(value); const image = value.image as HTMLImageElement; if (image.naturalWidth && image.naturalHeight) onAspect(image.naturalWidth / image.naturalHeight); setShaderUniform(material.current, 'map', value); setTexture(value) }, undefined, () => { if (active) setTexture(null) })
+    return () => { active = false; loaded?.dispose() }
+  }, [url, onAspect, material])
   useEffect(() => { setShaderUniform(material.current, 'map', texture ?? fallback) }, [fallback, material, texture])
   return <mesh><planeGeometry args={[width, height]} /><primitive object={material.current!} attach="material" /></mesh>
 }
@@ -664,8 +664,6 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
     visualGroup.current.position.set(0, reducedMotion ? 0 : Math.sin(m.time * 0.3 + memory.order) * 0.025 * (first ? e : 1), 0)
     visualGroup.current.scale.setScalar(1)
     visualGroup.current.rotation.set(0, 0, 0)
-    if (planetarium) capturePlanetariumPhotoRect(visualGroup.current, camera, width, height)
-
     const introVisibility = first ? 1 : Math.max(0, Math.min(1, (m.intro - memory.order * 0.15) / 1.4))
     const entryAlpha = first ? 1 : galleryEntryItemAlpha(m.entryReveal, photoEntryStepIndex ?? -1)
     const visible = first ? 1 : galleryEntryVisibility(introVisibility, entryAlpha)
@@ -701,7 +699,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
     const distanceAlpha = galleryDistanceOpacity(photoDistance)
     const photoDistanceAlpha = galleryFocusedPhotoDistanceOpacity(photoDistance, selected, focusAmount)
     const focusAlpha = galleryFocusOpacity(m.focusMix, selected)
-    const exitMix = m.exit / GALLERY.exit
+    const exitMix = getPlanetariumGalleryFade(m.exit)
     const exitOpacity = 1 - exitMix
     const alpha = visible * exitOpacity * focusAlpha * photoDistanceAlpha
     // Columns belong to the gallery architecture, so focusing a photo may fade
@@ -721,10 +719,10 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
 
     setShaderUniform(photoMaterialRef.current, 'uAlpha', alpha)
     setShaderUniform(photoMaterialRef.current, 'uBlur', galleryPhotoBlurAtFocus(photoDistance, focusAmount))
-    setShaderUniform(photoMaterialRef.current, 'uLight', galleryPhotoLightAtFocus(photoDistance, focusAmount))
+    setShaderUniform(photoMaterialRef.current, 'uLight', galleryPhotoLightAtFocus(photoDistance, focusAmount) * exitOpacity)
     setShaderUniform(frameMaterialRef.current, 'uTime', reducedMotion ? 0 : m.time)
     applyArtSettings(alpha, focusAmount)
-    if (captionMaterial.current) captionMaterial.current.opacity = visible * (0.65 + 0.35 * focusAmount) * focusAlpha * distanceAlpha * (1 - m.exit / GALLERY.exit)
+    if (captionMaterial.current) captionMaterial.current.opacity = visible * (0.65 + 0.35 * focusAmount) * focusAlpha * distanceAlpha * exitOpacity
 
   })
 
@@ -752,7 +750,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
       {memory.order === 0
         ? <FirstMemoryCard photoMaterial={photoMaterial} frameTone="moonlight" />
         : memory.image
-          ? <Photo url={memory.image} width={width} height={height} fallback={firstPhoto} onAspect={reportMainPhotoAspect} material={photoMaterialRef} planetarium={planetarium} />
+          ? <Photo url={memory.image} width={width} height={height} fallback={firstPhoto} onAspect={reportMainPhotoAspect} material={photoMaterialRef} />
           : null}
       {([-1, 1] as const).map(side => <group key={side}>
         <mesh position={[0, side * (height / 2 + 0.025), 0.01]}>
@@ -842,7 +840,7 @@ function Dust({ low, reducedMotion, settings }: { low: boolean; reducedMotion: b
   useEffect(() => () => geometry.dispose(), [geometry])
   useFrame(() => {
     setShaderUniform(material.current, 'uTime', reducedMotion ? 0 : galleryMotion.time)
-    setShaderUniform(material.current, 'uEntryOpacity', getGalleryEntryRevealAlpha(galleryMotion.entryReveal, 'clouds'))
+    setShaderUniform(material.current, 'uEntryOpacity', getGalleryEntryRevealAlpha(galleryMotion.entryReveal, 'clouds') * getPlanetariumGalleryOpacity(galleryMotion.exit))
   })
   return <points geometry={geometry} raycast={() => undefined}>
     <shaderMaterial ref={material} uniforms={{ uTime: { value: 0 }, uEntryOpacity: { value: 0 } }} vertexShader={dustVertexShader} fragmentShader={dustFragmentShader} transparent depthWrite={false} />
@@ -893,10 +891,11 @@ function MemoryThreads({ settings, low, paused, halo, photoEntryIndices }: { set
         return stepIndex === undefined ? 0 : galleryEntryItemAlpha(galleryMotion.entryReveal, stepIndex)
       }
       const entryAlpha = Math.min(photoAlpha(path.startOrder), photoAlpha(path.endOrder))
+      const exitOpacity = getPlanetariumGalleryOpacity(galleryMotion.exit)
       const material = threadMaterials[index]!
       updateMemoryThreadMaterial(material, settings, focus)
-      material.opacity *= entryAlpha
-      accentMaterials[index]!.opacity = memoryThreadOpacity(settings, focus) * 1.25 * entryAlpha
+      material.opacity *= entryAlpha * exitOpacity
+      accentMaterials[index]!.opacity = memoryThreadOpacity(settings, focus) * 1.25 * entryAlpha * exitOpacity
     })
   }, [accentMaterials, paths, photoEntryIndices, settings, threadMaterials])
   useEffect(() => { updateOpacity() }, [updateOpacity])
@@ -944,13 +943,21 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
   const titleFontFamily = loadedTitleFontId === prologueFont.id ? prologueFont.family : 'Georgia'
   const quality = state.quality === 'low' || config.global.quality === 'low' ? 'low' : 'standard'
   const skyColor = useMemo(() => new Color('#020713').lerp(new Color('#071d42'), Math.max(0, Math.min(1, settings.cloudCoolTint / 1.5))), [settings.cloudCoolTint])
+  const transitionDark = useMemo(() => new Color('#000000'), [])
+  const backgroundColor = useMemo(() => skyColor.clone(), [skyColor])
+  const fogColor = useMemo(() => skyColor.clone(), [skyColor])
   const halo = useMemo(() => canvasTexture((ctx, w, h) => { const gradient = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gradient.addColorStop(0, 'rgba(244,248,255,.34)'); gradient.addColorStop(.24, 'rgba(219,229,244,.13)'); gradient.addColorStop(1, 'rgba(206,220,239,0)'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, w, h) }, 256, 256), [])
   useEffect(() => () => halo.dispose(), [halo])
   useEffect(() => { resetGallery() }, [state.revision])
   useEffect(() => bindGalleryGestures(gl.domElement, () => state.paused), [gl, state.paused])
+  useFrame(() => {
+    const fade = getPlanetariumGalleryFade(galleryMotion.exit)
+    backgroundColor.copy(skyColor).lerp(transitionDark, fade)
+    fogColor.copy(skyColor).lerp(transitionDark, fade)
+  })
   return <>
-    <color attach="background" args={[skyColor]} />
-    <fog attach="fog" args={[skyColor, 55, 208 - settings.hazeDensity * 14]} />
+    <color attach="background" args={[backgroundColor]} />
+    <fog attach="fog" args={[fogColor, 55, 208 - settings.hazeDensity * 14]} />
     <MoonlitWorld settings={settings} quality={quality} halo={halo} reducedMotion={reducedMotion} />
     <GalleryArch settings={settings} entryIndex={entrySequence.steps.length} />
     <Dust low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
@@ -979,7 +986,7 @@ function FloorLights({ halo, low, reducedMotion, settings }: { halo: CanvasTextu
   useEffect(() => () => geometry.dispose(), [geometry])
   useFrame(() => {
     if (document.hidden) return
-    if (material.current) material.current.opacity = 0.16 * getGalleryEntryRevealAlpha(galleryMotion.entryReveal, 'water')
+    if (material.current) material.current.opacity = 0.16 * getGalleryEntryRevealAlpha(galleryMotion.entryReveal, 'water') * getPlanetariumGalleryOpacity(galleryMotion.exit)
   })
   return <points geometry={geometry} raycast={() => undefined}>
     <pointsMaterial ref={material} map={halo} color="#d8c8b3" size={0.14} transparent opacity={0} depthWrite={false} blending={AdditiveBlending} />

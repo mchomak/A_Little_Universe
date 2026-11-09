@@ -5,6 +5,7 @@ import { getGalleryEntryRevealDuration } from './entryReveal'
 type Phase = 'intro' | 'instruction' | 'explore' | 'exit'
 export type GalleryInteraction = 'walk' | 'focusing' | 'focused' | 'returning'
 export interface GallerySnapshot { phase: Phase; interaction: GalleryInteraction; focus: number | null; atEnd: boolean }
+export const PLANETARIUM_HOLD_SECONDS = 10
 const planetariumIndex = GALLERY_MEMORIES.findIndex(memory => memory.id === PLANETARIUM_GALLERY_EVENT_ID)
 const initial: GallerySnapshot = { phase: 'intro', interaction: 'walk', focus: null, atEnd: false }
 let snapshot = initial
@@ -30,15 +31,17 @@ export function galleryInstruction() { if (snapshot.phase === 'intro') publish({
 export function galleryStart() { if (snapshot.phase === 'instruction') { instructionSeen = true; publish({ ...snapshot, phase: 'explore' }) } }
 export function galleryExit() {
   const focusedPlanetarium = snapshot.focus === planetariumIndex && snapshot.interaction === 'focused'
+  if (focusedPlanetarium && galleryMotion.focusTime < PLANETARIUM_HOLD_SECONDS) return
   if (snapshot.phase !== 'explore' || (!focusedPlanetarium && (!snapshot.atEnd || snapshot.interaction !== 'walk'))) return
   const focus = GALLERY_MEMORIES.length - 1
   galleryMotion.focusIndex = focus
   galleryMotion.focusTime = 0
   galleryMotion.target = galleryMotion.progress
-  publish({ ...snapshot, phase: 'exit', focus, interaction: 'focusing' })
+  publish({ ...snapshot, phase: 'exit', focus, interaction: focusedPlanetarium ? 'focused' : 'focusing' })
 }
 export function galleryFocus(index: number | null) {
   if (snapshot.phase !== 'explore' || galleryMotion.pinching || galleryMotion.suppressClick || (index !== null && (!Number.isInteger(index) || index < 0 || index >= GALLERY_MEMORIES.length))) return
+  if (snapshot.focus === planetariumIndex && snapshot.interaction !== 'walk') return
   if (snapshot.interaction === 'walk') {
     if (index === null) return
     galleryMotion.focusIndex = index
@@ -80,8 +83,8 @@ export function advanceGallery(dt: number, reducedMotion = false, entryCount?: n
   if (targetFocusMix === 1 && 1 - m.focusMix < .001) {
     m.focusMix = 1
     if (snapshot.interaction === 'focusing') {
+      if (snapshot.focus === planetariumIndex) m.focusTime = 0
       publish({ ...snapshot, interaction: 'focused' })
-      if (snapshot.focus === planetariumIndex) galleryExit()
     }
   } else if (targetFocusMix === 0 && m.focusMix < .001) {
     m.focusMix = 0
@@ -89,4 +92,6 @@ export function advanceGallery(dt: number, reducedMotion = false, entryCount?: n
   }
   const atEnd = m.progress > GALLERY.travel - 2
   if (atEnd !== snapshot.atEnd) publish({ ...snapshot, atEnd })
+  if (snapshot.phase === 'explore' && snapshot.focus === planetariumIndex
+    && snapshot.interaction === 'focused' && m.focusTime >= PLANETARIUM_HOLD_SECONDS) galleryExit()
 }

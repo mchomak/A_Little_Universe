@@ -96,12 +96,14 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       distance, angle, galaxySettings.cameraFocusX, galaxySettings.cameraFocusY,
     )
     const previousPose = { ...p }
+    const planetariumCameraHandoff = scene === 'cosmos' && planetariumTransition
     // Cleaning up the finished Growth timeline rewinds its cursor and restores the seed-entry pose.
     // flowerSide is the same authored endpoint, so this keeps the camera continuous across the handoff.
     const bloomEntry = previousScene === 'growth' ? flowerSide : getBloomEntryCameraPose(previousScene, previousPose, flowerSide)
     const initial = scene === 'growth' ? getGrowthCameraPose(0, reducedMotion, growthSettings, growthViewportHeight)
       : scene === 'bloom' ? bloomEntry : scene === 'identity' ? flowerCloseup
-      : scene === 'cosmos' ? galaxyPose(galaxySettings.cameraStartDistance, galaxySettings.cameraStartAngle)
+      : scene === 'cosmos' ? planetariumCameraHandoff && !reducedMotion
+        ? previousPose : galaxyPose(galaxySettings.cameraStartDistance, galaxySettings.cameraStartAngle)
         : scene === 'greeting' || scene === 'ending' ? galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle) : front
     Object.assign(p, reducedMotion && scene === 'cosmos' ? galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
       : reducedMotion && scene !== 'growth' && scene !== 'bloom' ? front : initial)
@@ -137,7 +139,10 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     }
     if (scene === 'cosmos') {
       const finish = galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
-      const target = interpolateCameraPose(p, finish, 0.91)
+      const cameraStart = planetariumCameraHandoff
+        ? galaxyPose(galaxySettings.cameraStartDistance, galaxySettings.cameraStartAngle)
+        : p
+      const target = interpolateCameraPose(cameraStart, finish, 0.91)
       const ease = galaxySettings.cameraEase === 'sine' ? 'sine.inOut' : galaxySettings.cameraEase === 'power2' ? 'power2.out' : 'power3.out'
       const duration = galaxySettings.cameraDuration
       const slowdown = Math.min(galaxySettings.cameraSlowdown, duration * 0.6)

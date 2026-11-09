@@ -10,6 +10,7 @@ import { createMoonHaloTexture } from './worldTextures'
 import { GALLERY_WORLD, getGalleryAtmosphereStepCount, getGalleryCloudDrift, getGalleryCloudMassesForLayerCounts, getGalleryCloudPosition, getGalleryCloudRadii, getGalleryCloudRenderOrder, getGalleryHazeCameraFade, getGalleryHazeMasses, getGalleryMoonScatteringLayers, type GalleryQuality } from './world'
 import { WetFloor } from './WetFloor'
 import { galleryMotion } from './controller'
+import { getPlanetariumGalleryOpacity } from './planetariumTransition'
 
 type GallerySettings = SceneComposerConfig['scenes']['gallery']
 
@@ -205,8 +206,9 @@ export function MoonlitWorld({
   useEffect(() => () => cloudMaterials.forEach((material) => material.dispose()), [cloudMaterials])
   useFrame(({ camera }) => {
     const time = reducedMotion ? 0 : galleryMotion.time
-    const cloudReveal = getGalleryAtmosphereRevealAlpha(galleryMotion.entryReveal, 'clouds')
-    const moonReveal = getGalleryAtmosphereRevealAlpha(galleryMotion.entryReveal, 'moon')
+    const galleryOpacity = getPlanetariumGalleryOpacity(galleryMotion.exit)
+    const cloudReveal = getGalleryAtmosphereRevealAlpha(galleryMotion.entryReveal, 'clouds') * galleryOpacity
+    const moonReveal = getGalleryAtmosphereRevealAlpha(galleryMotion.entryReveal, 'moon') * galleryOpacity
     camera.getWorldPosition(cameraPositionScratch)
     setGalleryAtmosphereTime([...cloudMaterials, ...hazeMaterials, ...scatteringMaterials], time)
     cloudMaterials.forEach((material) => { material.uniforms.uMoonReveal!.value = moonReveal })
@@ -281,7 +283,7 @@ export function MoonlitWorld({
         camera.getWorldPosition(cameraPositionScratch)
         mesh.getWorldPosition(massPositionScratch)
         const cameraDistance = cameraPositionScratch.distanceTo(massPositionScratch)
-        const cloudReveal = getGalleryAtmosphereRevealAlpha(galleryMotion.entryReveal, 'clouds')
+        const cloudReveal = getGalleryAtmosphereRevealAlpha(galleryMotion.entryReveal, 'clouds') * getPlanetariumGalleryOpacity(galleryMotion.exit)
         setGalleryAtmosphereView(cloudMaterials[index]!, quality, mass.layer, cameraDistance, reflection, mass.moonInteraction, cloudReveal)
       }}
     >
@@ -304,7 +306,7 @@ export function MoonlitWorld({
         mesh.getWorldPosition(massPositionScratch)
         const cameraDistance = cameraPositionScratch.distanceTo(massPositionScratch)
         const cameraFade = getGalleryHazeCameraFade(cameraPositionScratch, massPositionScratch, mass.radii)
-        const cloudReveal = getGalleryAtmosphereRevealAlpha(galleryMotion.entryReveal, 'clouds')
+        const cloudReveal = getGalleryAtmosphereRevealAlpha(galleryMotion.entryReveal, 'clouds') * getPlanetariumGalleryOpacity(galleryMotion.exit)
         setGalleryAtmosphereView(hazeMaterials[index]!, quality, 'haze', cameraDistance, reflection, false, cameraFade * cloudReveal)
       }}
     >

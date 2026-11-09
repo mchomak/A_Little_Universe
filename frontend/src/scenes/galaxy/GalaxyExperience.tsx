@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { gsap } from 'gsap'
-import { BackSide, CircleGeometry, Color, Group, Mesh, MeshBasicMaterial, PlaneGeometry, Points, PointsMaterial, Vector2 } from 'three'
+import { BackSide, CircleGeometry, Color, Group, Mesh, MeshBasicMaterial, PlaneGeometry, Points, PointsMaterial } from 'three'
 import type { SceneProps } from '../../engine/sceneTypes'
 import { TIMING } from '../../engine/filmConfig'
 import { getConfig, subscribeConfig, type SceneComposerConfig } from '../../systems/scene-config/config'
@@ -15,11 +15,10 @@ import { deferGalaxyCloudDisposal } from './resourceLifecycle'
 import { createBackgroundStarsMaterial, createBlackCenterMaterial, faceBlackCenterToCamera, GALAXY_RENDER_ORDER } from './rendering'
 import { galleryMotion, gallerySnapshot, subscribeGallery } from '../gallery/controller'
 import { GALLERY_MEMORIES } from '../gallery/content'
-import { getPlanetariumPhotoFade, getPlanetariumPhotoStarMask, getPlanetariumPhotoTexture, getPlanetariumPhotoZoom } from '../gallery/planetariumTransition'
+import { getPlanetariumGalaxyFade } from '../gallery/planetariumTransition'
 
 type GalaxySceneName = 'cosmos' | 'greeting' | 'ending'
 type GalaxySettings = SceneComposerConfig['scenes']['galaxy']
-const PLANETARIUM_STAR_RENDER_ORDER = 10000
 
 function structureSettings(settings: GalaxySettings, globalQuality: 'standard' | 'low'): GalaxyGeometrySettings {
   return {
@@ -117,7 +116,6 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
   const camera = useThree((three) => three.camera)
   const invalidate = useThree((three) => three.invalidate)
   const dpr = useThree((three) => three.viewport.dpr)
-  const viewportSize = useThree((three) => three.size)
   const planetariumExit = state.scene === 'gallery' && gallery.phase === 'exit' && gallery.focus === GALLERY_MEMORIES.length - 1
   const planetariumRoute = planetariumExit || Boolean(state.planetariumTransition)
   const active = planetariumExit || Boolean(state.planetariumTransition) || state.scene === 'cosmos' || state.scene === 'greeting' || state.scene === 'ending'
@@ -167,23 +165,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
     const current = getConfig().scenes.galaxy
     const revealTime = time + (planetariumRoute ? current.galaxyRevealAt : 0)
     const revealState = getGalaxyRevealState(revealTime, current)
-    const photoTexture = planetariumRoute ? getPlanetariumPhotoTexture() : null
-    const photoMask = photoTexture ? getPlanetariumPhotoStarMask(time, current) : 0
-    const photoImage = photoTexture?.image as { naturalWidth?: number; naturalHeight?: number; width?: number; height?: number } | undefined
-    const photoWidth = photoImage?.naturalWidth || photoImage?.width || 0
-    const photoHeight = photoImage?.naturalHeight || photoImage?.height || 0
-    const photoAspect = photoWidth > 0 && photoHeight > 0 ? photoWidth / photoHeight : 1
-    const viewportAspect = viewportSize.width / Math.max(1, viewportSize.height)
-    for (const stars of [materials.disk, materials.bright]) {
-      const uniforms = stars.uniforms
-      uniforms.uPhotoMap!.value = photoTexture
-      uniforms.uPhotoMask!.value = photoMask
-      uniforms.uPhotoAspect!.value = photoAspect
-      uniforms.uViewportAspect!.value = viewportAspect
-      uniforms.uPhotoZoom!.value = getPlanetariumPhotoZoom(time)
-      const resolution = uniforms.uPhotoResolution!.value
-      if (resolution instanceof Vector2) resolution.set(viewportSize.width * dpr, viewportSize.height * dpr)
-    }
+    const transitionOpacity = planetariumExit ? getPlanetariumGalaxyFade(time) : 1
     const reveal = scene === 'cosmos' ? revealState.galaxy : 1
     const initialStars = scene === 'cosmos' ? revealState.stars : 1
     const calculatedPhaseTime = scene === 'cosmos' ? time
@@ -192,8 +174,9 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
     const phaseTime = ambientPhase.current.active ? ambientPhase.current.phaseTime : calculatedPhaseTime
     const motionTime = ambientPhase.current.active ? ambientPhase.current.motionTime
       : getGalaxyMotionPhase(scene, time, current, TIMING.cosmos.duration, TIMING.greeting.duration, reducedMotion)
-    const light = getGalaxyLight(scene, time, current, TIMING.cosmos.duration)
-    const fogOpacity = getGalaxyFogOpacity(scene, time, current, TIMING.cosmos.duration)
+    const light = getGalaxyLight(scene, time, current, TIMING.cosmos.duration) * transitionOpacity
+    const fogOpacity = getGalaxyFogOpacity(scene, time, current, TIMING.cosmos.duration) * transitionOpacity
+    baseMaterial.color.set(palette.backgroundColor).multiplyScalar(transitionOpacity)
 
     if (galaxy.current) {
       galaxy.current.visible = active
@@ -229,18 +212,17 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
       twinkleSpeed: current.twinkleSpeed,
       fogOpacity,
     })
-    const alignedPhotoStars = planetariumRoute && getPlanetariumPhotoFade(time, current) < 1 && photoMask > 0.001
     if (diskPoints.current) {
       diskPoints.current.visible = active
-      diskPoints.current.renderOrder = alignedPhotoStars ? PLANETARIUM_STAR_RENDER_ORDER : GALAXY_RENDER_ORDER.starPoints
+      diskPoints.current.renderOrder = GALAXY_RENDER_ORDER.starPoints
     }
     if (brightPoints.current) {
       brightPoints.current.visible = active && current.brightStarCount > 0
-      brightPoints.current.renderOrder = alignedPhotoStars ? PLANETARIUM_STAR_RENDER_ORDER : GALAXY_RENDER_ORDER.starPoints
+      brightPoints.current.renderOrder = GALAXY_RENDER_ORDER.starPoints
     }
     if (backgroundPoints.current) backgroundPoints.current.visible = active && current.backgroundStarCount > 0
     invalidate()
-  }, [active, camera, clouds, dpr, invalidate, materials, planetariumExit, planetariumRoute, reducedMotion, scene, viewportSize])
+  }, [active, baseMaterial, camera, clouds, invalidate, materials, palette.backgroundColor, planetariumExit, planetariumRoute, reducedMotion, scene])
 
   useLayoutEffect(() => {
     updateLiveUniforms(settings, dpr, palette, materials)

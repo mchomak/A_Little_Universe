@@ -7,6 +7,7 @@ import archModelUrl from '../../assets/gallery-arch/classical_archway_design.glb
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
 import { GALLERY_MEMORIES } from './content'
 import { galleryMotion } from './controller'
+import { getPlanetariumGalleryOpacity } from './planetariumTransition'
 import { getGalleryEntryRevealAlpha } from './entryReveal'
 import { GALLERY_WORLD } from './world'
 import { acquireGalleryArchMaterials, centerGalleryArchAtFloor, setGalleryArchOpacity } from './archModel'
@@ -63,7 +64,7 @@ export function GalleryArch({ settings, entryIndex }: { settings: GallerySetting
     group.scale.setScalar(settings.archScale)
     const distance = camera.position.distanceTo(group.position)
     const entryAlpha = getGalleryEntryRevealAlpha(galleryMotion.entryReveal, 'arch', entryIndex)
-    const opacity = galleryArchEntryOpacity(settings.archOpacity, galleryArchDistanceOpacity(distance), entryAlpha)
+    const opacity = galleryArchEntryOpacity(settings.archOpacity, galleryArchDistanceOpacity(distance), entryAlpha) * getPlanetariumGalleryOpacity(galleryMotion.exit)
     setGalleryArchOpacity(model.root, opacity)
   })
 
