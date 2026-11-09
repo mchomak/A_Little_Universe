@@ -21,6 +21,10 @@ import { getIdentityCameraMoveTarget, getIdentityCameraPullbackPose, IDENTITY_CA
   IDENTITY_CAMERA_PULLBACK_SECONDS } from './identityCamera'
 import { updateGalleryCameraPose } from './galleryCameraPose'
 
+function getRuntimeTime(runtime: SceneProps['runtime']) {
+  return runtime.time
+}
+
 /** Camera settings belong here, never inside an artistic scene module. */
 export function CameraDirector({ state, dispatch, runtime, reducedMotion }: SceneProps) {
   const camera = useThree((state) => state.camera)
@@ -99,7 +103,8 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const planetariumCameraHandoff = scene === 'cosmos' && planetariumTransition
     if (planetariumCameraHandoff) {
       const finish = galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
-      const duration = Math.min(galaxySettings.cameraDuration, TIMING.cosmos.duration - GALLERY.exit)
+      const handoffStartTime = getRuntimeTime(runtime)
+      const duration = Math.min(galaxySettings.cameraDuration, TIMING.cosmos.duration - handoffStartTime)
       if (reducedMotion || duration <= 0) {
         Object.assign(p, finish)
         render()
@@ -142,7 +147,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
         })
         render()
       }
-      timeline.to(cursor, { progress: 1, duration, ease: 'none' }, GALLERY.exit)
+      timeline.to(cursor, { progress: 1, duration, ease: 'none' }, handoffStartTime)
       timeline.eventCallback('onUpdate', applyHandoff)
       applyHandoff()
       return timeline
@@ -196,7 +201,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       if (slowdown > 0) timeline.to(p, { ...finish, duration: slowdown, ease: 'sine.out' }, duration - slowdown)
     }
     return timeline
-  }, [aspect, bloomSettings, camera, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, planetariumTransition, reducedMotion, render, revision, scene])
+  }, [aspect, bloomSettings, camera, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, planetariumTransition, reducedMotion, render, revision, runtime, scene])
   useSceneTimeline(build, { runtime })
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return

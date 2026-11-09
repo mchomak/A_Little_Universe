@@ -15,7 +15,7 @@ import { createNebulaClouds } from './nebulaClouds'
 import { deferGalaxyCloudDisposal } from './resourceLifecycle'
 import { createBackgroundStarsMaterial, createBlackCenterMaterial, faceBlackCenterToCamera, GALAXY_RENDER_ORDER } from './rendering'
 import { galleryMotion, gallerySnapshot, subscribeGallery } from '../gallery/controller'
-import { GALLERY, GALLERY_MEMORIES } from '../gallery/content'
+import { GALLERY_MEMORIES } from '../gallery/content'
 import { getPlanetariumGalaxyFade } from '../gallery/planetariumTransition'
 
 type GalaxySceneName = 'cosmos' | 'greeting' | 'ending'
@@ -119,11 +119,13 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
   const dpr = useThree((three) => three.viewport.dpr)
   const cameraWorldPosition = useMemo(() => new Vector3(), [])
   const cameraWorldDirection = useMemo(() => new Vector3(), [])
+  const cameraWorldRotation = useMemo(() => new Quaternion(), [])
   const galaxyOrigin = useMemo(() => new Vector3(), [])
   const galaxyIdentityRotation = useMemo(() => new Quaternion(), [])
   const planetariumStartTransform = useRef({
     position: new Vector3(),
     rotation: new Quaternion(),
+    time: 0,
     captured: false,
   })
   const planetariumExit = state.scene === 'gallery' && gallery.phase === 'exit' && gallery.focus === GALLERY_MEMORIES.length - 1
@@ -173,10 +175,21 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
   const draw = useCallback((localTime: number) => {
     const time = planetariumExit ? galleryMotion.exit : localTime
     const current = getConfig().scenes.galaxy
-    const handoffDuration = Math.min(current.cameraDuration, TIMING.cosmos.duration - GALLERY.exit)
+    const planetariumCosmos = state.scene === 'cosmos' && planetariumRoute
+    if (planetariumCosmos && !planetariumStartTransform.current.captured) {
+      camera.getWorldPosition(cameraWorldPosition)
+      camera.getWorldDirection(cameraWorldDirection)
+      planetariumStartTransform.current.position.copy(cameraWorldPosition).addScaledVector(cameraWorldDirection, current.cameraStartDistance)
+      camera.getWorldQuaternion(planetariumStartTransform.current.rotation)
+      planetariumStartTransform.current.time = time
+      planetariumStartTransform.current.captured = true
+    }
+    const handoffDuration = Math.min(current.cameraDuration, TIMING.cosmos.duration - planetariumStartTransform.current.time)
     const handoffProgress = !planetariumRoute ? 1
-      : reducedMotion && state.scene === 'cosmos' ? 1
-        : getPlanetariumHandoffProgress((time - GALLERY.exit) / handoffDuration)
+      : planetariumExit ? 0
+        : reducedMotion ? 1
+          : handoffDuration <= 0 ? 1
+            : getPlanetariumHandoffProgress((time - planetariumStartTransform.current.time) / handoffDuration)
     const revealTime = time + (planetariumRoute ? current.galaxyRevealAt : 0)
     const revealState = getGalaxyRevealState(revealTime, current)
     const transitionOpacity = planetariumExit ? getPlanetariumGalaxyFade(time) : 1
@@ -195,14 +208,13 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
     if (galaxy.current) {
       galaxy.current.visible = active
       galaxy.current.scale.setScalar(current.compositionScale)
-      if (planetariumRoute) {
-        if (!planetariumStartTransform.current.captured) {
-          camera.getWorldPosition(cameraWorldPosition)
-          camera.getWorldDirection(cameraWorldDirection)
-          planetariumStartTransform.current.position.copy(cameraWorldPosition).addScaledVector(cameraWorldDirection, current.cameraStartDistance)
-          camera.getWorldQuaternion(planetariumStartTransform.current.rotation)
-          planetariumStartTransform.current.captured = true
-        }
+      if (planetariumExit) {
+        camera.getWorldPosition(cameraWorldPosition)
+        camera.getWorldDirection(cameraWorldDirection)
+        galaxy.current.position.copy(cameraWorldPosition).addScaledVector(cameraWorldDirection, current.cameraStartDistance)
+        camera.getWorldQuaternion(cameraWorldRotation)
+        galaxy.current.quaternion.copy(cameraWorldRotation)
+      } else if (planetariumCosmos) {
         galaxy.current.position.copy(planetariumStartTransform.current.position).lerp(galaxyOrigin, handoffProgress)
         galaxy.current.quaternion.copy(planetariumStartTransform.current.rotation).slerp(galaxyIdentityRotation, handoffProgress)
       } else {
@@ -251,7 +263,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
     }
     if (backgroundPoints.current) backgroundPoints.current.visible = active && current.backgroundStarCount > 0
     invalidate()
-  }, [active, baseMaterial, camera, cameraWorldDirection, cameraWorldPosition, clouds, galaxyIdentityRotation, galaxyOrigin, invalidate, materials, palette.backgroundColor, planetariumExit, planetariumRoute, reducedMotion, scene, state.scene])
+  }, [active, baseMaterial, camera, cameraWorldDirection, cameraWorldPosition, cameraWorldRotation, clouds, galaxyIdentityRotation, galaxyOrigin, invalidate, materials, palette.backgroundColor, planetariumExit, planetariumRoute, reducedMotion, scene, state.scene])
 
   useLayoutEffect(() => {
     updateLiveUniforms(settings, dpr, palette, materials)
