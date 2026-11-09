@@ -13,6 +13,10 @@ export function getPlanetariumGalleryOpacity(time: number) {
   return 1 - getPlanetariumGalleryFade(time)
 }
 
+export function getPlanetariumGalleryWaterOpacity(entryOpacity: number, time: number) {
+  return entryOpacity * getPlanetariumGalleryOpacity(time)
+}
+
 /** Reveals the existing galaxy over seconds 5–10, overlapping the gallery fade. */
 export function getPlanetariumGalaxyFade(time: number) {
   return smooth(5, 10, time)

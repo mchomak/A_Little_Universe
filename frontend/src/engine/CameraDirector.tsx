@@ -7,7 +7,6 @@ import type { SceneProps } from './sceneTypes'
 import { getBloomSceneFrames, getGrowthSceneFrames } from './filmConfig'
 import { useSceneTimeline } from './useSceneTimeline'
 import type { CameraPose } from '../scenes/shared/galleryMotion'
-import { GALLERY } from '../scenes/gallery/content'
 import { galleryMotion, gallerySnapshot } from '../scenes/gallery/controller'
 import { configureCameraFarPlane } from '../scenes/gallery/camera'
 import { getGalleryNormalFov } from '../scenes/gallery/galleryCameraFit'
@@ -97,13 +96,17 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     )
     const previousPose = { ...p }
     const planetariumCameraHandoff = scene === 'cosmos' && planetariumTransition
+    if (planetariumCameraHandoff) {
+      Object.assign(p, previousPose)
+      render()
+      return timeline
+    }
     // Cleaning up the finished Growth timeline rewinds its cursor and restores the seed-entry pose.
     // flowerSide is the same authored endpoint, so this keeps the camera continuous across the handoff.
     const bloomEntry = previousScene === 'growth' ? flowerSide : getBloomEntryCameraPose(previousScene, previousPose, flowerSide)
     const initial = scene === 'growth' ? getGrowthCameraPose(0, reducedMotion, growthSettings, growthViewportHeight)
       : scene === 'bloom' ? bloomEntry : scene === 'identity' ? flowerCloseup
-      : scene === 'cosmos' ? planetariumCameraHandoff && !reducedMotion
-        ? previousPose : galaxyPose(galaxySettings.cameraStartDistance, galaxySettings.cameraStartAngle)
+      : scene === 'cosmos' ? galaxyPose(galaxySettings.cameraStartDistance, galaxySettings.cameraStartAngle)
         : scene === 'greeting' || scene === 'ending' ? galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle) : front
     Object.assign(p, reducedMotion && scene === 'cosmos' ? galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
       : reducedMotion && scene !== 'growth' && scene !== 'bloom' ? front : initial)
@@ -139,16 +142,12 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     }
     if (scene === 'cosmos') {
       const finish = galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
-      const cameraStart = planetariumCameraHandoff
-        ? galaxyPose(galaxySettings.cameraStartDistance, galaxySettings.cameraStartAngle)
-        : p
-      const target = interpolateCameraPose(cameraStart, finish, 0.91)
+      const target = interpolateCameraPose(p, finish, 0.91)
       const ease = galaxySettings.cameraEase === 'sine' ? 'sine.inOut' : galaxySettings.cameraEase === 'power2' ? 'power2.out' : 'power3.out'
       const duration = galaxySettings.cameraDuration
       const slowdown = Math.min(galaxySettings.cameraSlowdown, duration * 0.6)
-      const start = planetariumTransition ? GALLERY.exit : 0
-      timeline.to(p, { ...target, duration: duration - slowdown, ease }, start)
-      if (slowdown > 0) timeline.to(p, { ...finish, duration: slowdown, ease: 'sine.out' }, start + duration - slowdown)
+      timeline.to(p, { ...target, duration: duration - slowdown, ease })
+      if (slowdown > 0) timeline.to(p, { ...finish, duration: slowdown, ease: 'sine.out' }, duration - slowdown)
     }
     return timeline
   }, [aspect, bloomSettings, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, planetariumTransition, reducedMotion, render, revision, scene])

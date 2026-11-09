@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getPlanetariumGalaxyFade, getPlanetariumGalleryFade } from './planetariumTransition'
+import { getPlanetariumGalaxyFade, getPlanetariumGalleryFade, getPlanetariumGalleryWaterOpacity } from './planetariumTransition'
 
 describe('planetarium gallery-to-galaxy crossfade', () => {
   it('fades the gallery over the first seven seconds of the local transition', () => {
@@ -20,5 +20,11 @@ describe('planetarium gallery-to-galaxy crossfade', () => {
     const transitionTime = 6
     expect(getPlanetariumGalleryFade(transitionTime)).toBeLessThan(1)
     expect(getPlanetariumGalaxyFade(transitionTime)).toBeGreaterThan(0)
+  })
+
+  it('fades the water plane with the rest of the gallery', () => {
+    expect(getPlanetariumGalleryWaterOpacity(1, 0)).toBe(1)
+    expect(getPlanetariumGalleryWaterOpacity(0.5, 3.5)).toBeCloseTo(0.25)
+    expect(getPlanetariumGalleryWaterOpacity(1, 7)).toBe(0)
   })
 })
