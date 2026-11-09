@@ -44,13 +44,13 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
   const { scene, mode, revision, paused, reading, speed, planetariumTransition } = state
   const lastBuiltScene = useRef(scene)
   const hasBuiltScene = useRef(false)
-  const render = useCallback(() => {
+  const render = useCallback((fovOverride?: number) => {
     const p = pose.current
     const fit = aspect < 1 ? Math.min(2.5, 1 / Math.max(0.3, aspect)) : 1
     camera.position.set(p.tx + (p.x - p.tx) * fit, p.ty + (p.y - p.ty) * fit, p.tz + (p.z - p.tz) * fit)
     camera.lookAt(p.tx, p.ty, p.tz)
     if (camera instanceof PerspectiveCamera) {
-      const fov = aspect < 1 ? 42 : 38
+      const fov = fovOverride ?? (aspect < 1 ? 42 : 38)
       camera.setFocalLength(camera.getFilmHeight() / (2 * Math.tan(fov * Math.PI / 360)))
       camera.updateProjectionMatrix()
     }
@@ -64,7 +64,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const bloomFrames = getBloomSceneFrames(bloomSettings)
     const flowerCloseup = getBloomCloseupPose(bloomSettings)
     const bloomApproach = scene === 'bloom' ? getBloomCameraApproach(mode, bloomSettings, bloomFrames.opening) : null
-    const timeline = gsap.timeline({ onUpdate: render })
+    const timeline = gsap.timeline({ onUpdate: () => render() })
     const previousScene = hasBuiltScene.current ? lastBuiltScene.current : null
     if (scene === 'gallery') {
       if (galleryRevision.current !== revision) {
@@ -103,6 +103,8 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const planetariumCameraHandoff = scene === 'cosmos' && planetariumTransition
     if (planetariumCameraHandoff) {
       const finish = galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
+      const finishFov = aspect < 1 ? 42 : 38
+      const startFov = camera instanceof PerspectiveCamera ? camera.fov : finishFov
       const handoffStartTime = getRuntimeTime(runtime)
       const duration = Math.min(galaxySettings.cameraDuration, TIMING.cosmos.duration - handoffStartTime)
       if (reducedMotion || duration <= 0) {
@@ -145,7 +147,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
           x: position.x, y: position.y, z: position.z,
           tx: target.x, ty: target.y, tz: target.z,
         })
-        render()
+        render(startFov + (finishFov - startFov) * progress)
       }
       timeline.to(cursor, { progress: 1, duration, ease: 'none' }, handoffStartTime)
       timeline.eventCallback('onUpdate', applyHandoff)
