@@ -1,5 +1,5 @@
 import { advanceGallery, galleryMotion } from '../scenes/gallery/controller'
-import { GALLERY, GALLERY_MEMORIES, galleryPhotoYaw } from '../scenes/gallery/content'
+import { GALLERY, GALLERY_MEMORIES, PLANETARIUM_GALLERY_EVENT_ID, galleryPhotoYaw } from '../scenes/gallery/content'
 import { getGalleryPhotoPosition } from '../scenes/gallery/archPlacement'
 import { createGalleryEntrySequence, type GalleryEntrySequence } from '../scenes/gallery/entryReveal'
 import { GALLERY_WORLD } from '../scenes/gallery/world'
@@ -53,9 +53,14 @@ export function updateGalleryCameraPose(
   const memory = GALLERY_MEMORIES[motion.focusIndex]!
   const [x, y, z] = getGalleryPhotoPosition(GALLERY_MEMORIES, memory, settings, GALLERY_WORLD.floor.y)
   const focal = motion.focusMix
+  const planetariumFocus = memory.id === PLANETARIUM_GALLERY_EVENT_ID
   const collageFrame = getGalleryCollageCameraFrame(memory, settings, getGalleryPhotoAspectProfile(memory.id))
-  const fittedFocusDistance = getGalleryCollageFocusDistance(collageFrame, aspect, getGalleryNormalFov(aspect, eased))
-  const oppositePhotoDistance = memory.images[3] && settings.galleryLayoutVariant === 'between-columns'
+  const fittedFocusDistance = getGalleryCollageFocusDistance(
+    collageFrame,
+    aspect,
+    planetariumFocus ? 70 : getGalleryNormalFov(aspect, eased),
+  )
+  const oppositePhotoDistance = !planetariumFocus && memory.images[3] && settings.galleryLayoutVariant === 'between-columns'
     ? Math.max(MIN_FOCUS_DISTANCE, Math.abs(x) * 2 - OPPOSITE_PHOTO_CLEARANCE)
     : Number.POSITIVE_INFINITY
   const targetFocusDistance = focal > 0.001

@@ -181,4 +181,40 @@ describe('gallery camera layout switching', () => {
 
     expect(memory.side * (frame.camera.x - oppositePhoto[0])).toBeGreaterThan(0.75)
   })
+
+  it('backs the planetarium camera away enough to fit the complete collage and caption', () => {
+    const memory = GALLERY_MEMORIES.find(candidate => candidate.id === '2026_10_Planetarium')!
+    galleryFocus(null)
+    advanceGallery(2)
+    galleryFocus(memory.order)
+    advanceGallery(10)
+
+    const settings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery
+    const aspect = 16 / 10
+    const pose = { x: 0, y: 0, z: 5.6, tx: 0, ty: 0, tz: 0 }
+    let focusDistance = 4.8
+    let focusCenter: readonly [number, number] = [0, 0]
+    let frame!: ReturnType<typeof updateGalleryCameraPose>
+
+    for (let step = 0; step < 48; step += 1) {
+      frame = updateGalleryCameraPose(pose, settings, {
+        delta: 0.05,
+        speed: 1,
+        paused: true,
+        reducedMotion: false,
+        aspect,
+        focusDistance,
+        focusCenter,
+      })
+      focusDistance = frame.focusDistance
+      focusCenter = frame.focusCenter
+    }
+
+    const fittedDistance = getGalleryCollageFocusDistance(
+      frame.collageFrame,
+      aspect,
+      70,
+    )
+    expect(frame.focusDistance).toBeCloseTo(fittedDistance, 1)
+  })
 })
