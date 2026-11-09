@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react'
 import { gsap } from 'gsap'
 import { PerspectiveCamera } from 'three'
 import type { SceneProps } from './sceneTypes'
-import { getBloomSceneFrames, getGrowthSceneFrames } from './filmConfig'
+import { getBloomSceneFrames, getGrowthSceneFrames, TIMING } from './filmConfig'
 import { useSceneTimeline } from './useSceneTimeline'
 import type { CameraPose } from '../scenes/shared/galleryMotion'
 import { galleryMotion, gallerySnapshot } from '../scenes/gallery/controller'
@@ -15,7 +15,7 @@ import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
 import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthViewportHeight } from '../scenes/growth/seedProcedure'
 import { getBloomCameraApproach, getBloomCloseupPose, getBloomEntryCameraPose } from './bloomCamera'
-import { galaxyCameraPose, interpolateCameraPose } from '../scenes/galaxy/camera'
+import { galaxyCameraPose, getPlanetariumHandoffProgress, interpolateCameraPose } from '../scenes/galaxy/camera'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { getIdentityCameraMoveTarget, getIdentityCameraPullbackPose, IDENTITY_CAMERA_PULLBACK_DISTANCE,
   IDENTITY_CAMERA_PULLBACK_SECONDS } from './identityCamera'
@@ -98,8 +98,21 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const previousPose = { ...p }
     const planetariumCameraHandoff = scene === 'cosmos' && planetariumTransition
     if (planetariumCameraHandoff) {
-      Object.assign(p, previousPose)
-      render()
+      const finish = galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
+      const duration = Math.min(galaxySettings.cameraDuration, TIMING.cosmos.duration - GALLERY.exit)
+      if (reducedMotion || duration <= 0) {
+        Object.assign(p, finish)
+        render()
+        return timeline
+      }
+      const cursor = { progress: 0 }
+      const applyHandoff = () => {
+        Object.assign(p, interpolateCameraPose(previousPose, finish, getPlanetariumHandoffProgress(cursor.progress)))
+        render()
+      }
+      timeline.to(cursor, { progress: 1, duration, ease: 'none' }, GALLERY.exit)
+      timeline.eventCallback('onUpdate', applyHandoff)
+      applyHandoff()
       return timeline
     }
     // Cleaning up the finished Growth timeline rewinds its cursor and restores the seed-entry pose.

@@ -10,11 +10,12 @@ import { createGalaxyGeometry, updateGalaxyColors, type GalaxyGeometrySettings }
 import { applyGalaxyFrameMaterials, createCoreMaterial, createFogMaterial, createGasMaterial, createStarMaterial, createSunMaterial, type GalaxyUniforms } from './shaders'
 import { advanceGalaxyAmbientPhase, getGalaxyFogOpacity, getGalaxyLight, getGalaxyMotionPhase, getGalaxyRevealState } from './animation'
 import { getGalaxyRenderPalette } from './palette'
+import { getPlanetariumHandoffProgress } from './camera'
 import { createNebulaClouds } from './nebulaClouds'
 import { deferGalaxyCloudDisposal } from './resourceLifecycle'
 import { createBackgroundStarsMaterial, createBlackCenterMaterial, faceBlackCenterToCamera, GALAXY_RENDER_ORDER } from './rendering'
 import { galleryMotion, gallerySnapshot, subscribeGallery } from '../gallery/controller'
-import { GALLERY_MEMORIES } from '../gallery/content'
+import { GALLERY, GALLERY_MEMORIES } from '../gallery/content'
 import { getPlanetariumGalaxyFade } from '../gallery/planetariumTransition'
 
 type GalaxySceneName = 'cosmos' | 'greeting' | 'ending'
@@ -119,6 +120,8 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
   const cameraWorldPosition = useMemo(() => new Vector3(), [])
   const cameraWorldDirection = useMemo(() => new Vector3(), [])
   const cameraWorldRotation = useMemo(() => new Quaternion(), [])
+  const galaxyOrigin = useMemo(() => new Vector3(), [])
+  const galaxyIdentityRotation = useMemo(() => new Quaternion(), [])
   const planetariumExit = state.scene === 'gallery' && gallery.phase === 'exit' && gallery.focus === GALLERY_MEMORIES.length - 1
   const planetariumRoute = planetariumExit || Boolean(state.planetariumTransition)
   const active = planetariumExit || Boolean(state.planetariumTransition) || state.scene === 'cosmos' || state.scene === 'greeting' || state.scene === 'ending'
@@ -166,6 +169,10 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
   const draw = useCallback((localTime: number) => {
     const time = planetariumExit ? galleryMotion.exit : localTime
     const current = getConfig().scenes.galaxy
+    const handoffDuration = Math.min(current.cameraDuration, TIMING.cosmos.duration - GALLERY.exit)
+    const handoffProgress = !planetariumRoute ? 1
+      : reducedMotion && state.scene === 'cosmos' ? 1
+        : getPlanetariumHandoffProgress((time - GALLERY.exit) / handoffDuration)
     const revealTime = time + (planetariumRoute ? current.galaxyRevealAt : 0)
     const revealState = getGalaxyRevealState(revealTime, current)
     const transitionOpacity = planetariumExit ? getPlanetariumGalaxyFade(time) : 1
@@ -189,11 +196,11 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
         camera.getWorldDirection(cameraWorldDirection)
         cameraWorldPosition.addScaledVector(cameraWorldDirection, current.cameraStartDistance)
         camera.getWorldQuaternion(cameraWorldRotation)
-        galaxy.current.position.copy(cameraWorldPosition)
-        galaxy.current.quaternion.copy(cameraWorldRotation)
+        galaxy.current.position.copy(cameraWorldPosition).lerp(galaxyOrigin, handoffProgress)
+        galaxy.current.quaternion.copy(cameraWorldRotation).slerp(galaxyIdentityRotation, handoffProgress)
       } else {
-        galaxy.current.position.set(0, 0, 0)
-        galaxy.current.quaternion.identity()
+        galaxy.current.position.copy(galaxyOrigin)
+        galaxy.current.quaternion.copy(galaxyIdentityRotation)
       }
     }
     if (blackCenter.current) {
@@ -236,7 +243,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
     }
     if (backgroundPoints.current) backgroundPoints.current.visible = active && current.backgroundStarCount > 0
     invalidate()
-  }, [active, baseMaterial, camera, cameraWorldDirection, cameraWorldPosition, cameraWorldRotation, clouds, invalidate, materials, palette.backgroundColor, planetariumExit, planetariumRoute, reducedMotion, scene])
+  }, [active, baseMaterial, camera, cameraWorldDirection, cameraWorldPosition, cameraWorldRotation, clouds, galaxyIdentityRotation, galaxyOrigin, invalidate, materials, palette.backgroundColor, planetariumExit, planetariumRoute, reducedMotion, scene, state.scene])
 
   useLayoutEffect(() => {
     updateLiveUniforms(settings, dpr, palette, materials)

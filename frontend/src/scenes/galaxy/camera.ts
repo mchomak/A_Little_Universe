@@ -22,3 +22,9 @@ export function interpolateCameraPose(from: CameraPose, to: CameraPose, progress
     tz: from.tz + (to.tz - from.tz) * p,
   }
 }
+
+/** Smoothstep shared by the planetarium camera and galaxy transform handoff. */
+export function getPlanetariumHandoffProgress(progress: number): number {
+  const p = Number.isFinite(progress) ? Math.min(1, Math.max(0, progress)) : 0
+  return p * p * (3 - 2 * p)
+}
