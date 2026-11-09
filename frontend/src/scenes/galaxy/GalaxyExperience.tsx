@@ -119,9 +119,13 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
   const dpr = useThree((three) => three.viewport.dpr)
   const cameraWorldPosition = useMemo(() => new Vector3(), [])
   const cameraWorldDirection = useMemo(() => new Vector3(), [])
-  const cameraWorldRotation = useMemo(() => new Quaternion(), [])
   const galaxyOrigin = useMemo(() => new Vector3(), [])
   const galaxyIdentityRotation = useMemo(() => new Quaternion(), [])
+  const planetariumStartTransform = useRef({
+    position: new Vector3(),
+    rotation: new Quaternion(),
+    captured: false,
+  })
   const planetariumExit = state.scene === 'gallery' && gallery.phase === 'exit' && gallery.focus === GALLERY_MEMORIES.length - 1
   const planetariumRoute = planetariumExit || Boolean(state.planetariumTransition)
   const active = planetariumExit || Boolean(state.planetariumTransition) || state.scene === 'cosmos' || state.scene === 'greeting' || state.scene === 'ending'
@@ -192,15 +196,19 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
       galaxy.current.visible = active
       galaxy.current.scale.setScalar(current.compositionScale)
       if (planetariumRoute) {
-        camera.getWorldPosition(cameraWorldPosition)
-        camera.getWorldDirection(cameraWorldDirection)
-        cameraWorldPosition.addScaledVector(cameraWorldDirection, current.cameraStartDistance)
-        camera.getWorldQuaternion(cameraWorldRotation)
-        galaxy.current.position.copy(cameraWorldPosition).lerp(galaxyOrigin, handoffProgress)
-        galaxy.current.quaternion.copy(cameraWorldRotation).slerp(galaxyIdentityRotation, handoffProgress)
+        if (!planetariumStartTransform.current.captured) {
+          camera.getWorldPosition(cameraWorldPosition)
+          camera.getWorldDirection(cameraWorldDirection)
+          planetariumStartTransform.current.position.copy(cameraWorldPosition).addScaledVector(cameraWorldDirection, current.cameraStartDistance)
+          camera.getWorldQuaternion(planetariumStartTransform.current.rotation)
+          planetariumStartTransform.current.captured = true
+        }
+        galaxy.current.position.copy(planetariumStartTransform.current.position).lerp(galaxyOrigin, handoffProgress)
+        galaxy.current.quaternion.copy(planetariumStartTransform.current.rotation).slerp(galaxyIdentityRotation, handoffProgress)
       } else {
         galaxy.current.position.copy(galaxyOrigin)
         galaxy.current.quaternion.copy(galaxyIdentityRotation)
+        if (state.scene !== 'greeting' && state.scene !== 'ending') planetariumStartTransform.current.captured = false
       }
     }
     if (blackCenter.current) {
@@ -243,7 +251,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
     }
     if (backgroundPoints.current) backgroundPoints.current.visible = active && current.backgroundStarCount > 0
     invalidate()
-  }, [active, baseMaterial, camera, cameraWorldDirection, cameraWorldPosition, cameraWorldRotation, clouds, galaxyIdentityRotation, galaxyOrigin, invalidate, materials, palette.backgroundColor, planetariumExit, planetariumRoute, reducedMotion, scene, state.scene])
+  }, [active, baseMaterial, camera, cameraWorldDirection, cameraWorldPosition, clouds, galaxyIdentityRotation, galaxyOrigin, invalidate, materials, palette.backgroundColor, planetariumExit, planetariumRoute, reducedMotion, scene, state.scene])
 
   useLayoutEffect(() => {
     updateLiveUniforms(settings, dpr, palette, materials)

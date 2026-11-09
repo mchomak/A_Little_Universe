@@ -2,7 +2,7 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useSyncExternalStore } from 'react'
 import { gsap } from 'gsap'
-import { PerspectiveCamera } from 'three'
+import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
 import type { SceneProps } from './sceneTypes'
 import { getBloomSceneFrames, getGrowthSceneFrames, TIMING } from './filmConfig'
 import { useSceneTimeline } from './useSceneTimeline'
@@ -15,7 +15,7 @@ import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
 import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthViewportHeight } from '../scenes/growth/seedProcedure'
 import { getBloomCameraApproach, getBloomCloseupPose, getBloomEntryCameraPose } from './bloomCamera'
-import { galaxyCameraPose, getPlanetariumHandoffProgress, interpolateCameraPose } from '../scenes/galaxy/camera'
+import { galaxyCameraPose, getPlanetariumHandoffProgress } from '../scenes/galaxy/camera'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { getIdentityCameraMoveTarget, getIdentityCameraPullbackPose, IDENTITY_CAMERA_PULLBACK_DISTANCE,
   IDENTITY_CAMERA_PULLBACK_SECONDS } from './identityCamera'
@@ -105,9 +105,41 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
         render()
         return timeline
       }
+      const startCameraPosition = camera.getWorldPosition(new Vector3())
+      const startCameraDirection = camera.getWorldDirection(new Vector3())
+      const startGalaxyCenter = startCameraPosition.addScaledVector(startCameraDirection, galaxySettings.cameraStartDistance)
+      const startGalaxyRotation = camera.getWorldQuaternion(new Quaternion())
+      const finishTarget = new Vector3(galaxySettings.cameraFocusX, galaxySettings.cameraFocusY, 0)
+      const finishOffset = new Vector3(
+        finish.x - finishTarget.x,
+        finish.y - finishTarget.y,
+        finish.z - finishTarget.z,
+      )
+      const sphericalFinishOffset = new Vector3(
+        0,
+        Math.sin(galaxySettings.cameraEndAngle) * galaxySettings.cameraEndDistance,
+        Math.cos(galaxySettings.cameraEndAngle) * galaxySettings.cameraEndDistance,
+      )
+      const finishFocusCorrection = finishOffset.sub(sphericalFinishOffset)
+      const target = new Vector3()
+      const offset = new Vector3()
+      const position = new Vector3()
+      const galaxyRotation = new Quaternion()
+      const identityRotation = new Quaternion()
       const cursor = { progress: 0 }
       const applyHandoff = () => {
-        Object.assign(p, interpolateCameraPose(previousPose, finish, getPlanetariumHandoffProgress(cursor.progress)))
+        const progress = getPlanetariumHandoffProgress(cursor.progress)
+        const distance = galaxySettings.cameraStartDistance
+          + (galaxySettings.cameraEndDistance - galaxySettings.cameraStartDistance) * progress
+        const angle = galaxySettings.cameraEndAngle * progress
+        target.copy(startGalaxyCenter).lerp(finishTarget, progress)
+        galaxyRotation.copy(startGalaxyRotation).slerp(identityRotation, progress)
+        offset.set(0, Math.sin(angle) * distance, Math.cos(angle) * distance).applyQuaternion(galaxyRotation)
+        position.copy(target).add(offset).addScaledVector(finishFocusCorrection, progress)
+        Object.assign(p, {
+          x: position.x, y: position.y, z: position.z,
+          tx: target.x, ty: target.y, tz: target.z,
+        })
         render()
       }
       timeline.to(cursor, { progress: 1, duration, ease: 'none' }, GALLERY.exit)
@@ -164,7 +196,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       if (slowdown > 0) timeline.to(p, { ...finish, duration: slowdown, ease: 'sine.out' }, duration - slowdown)
     }
     return timeline
-  }, [aspect, bloomSettings, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, planetariumTransition, reducedMotion, render, revision, scene])
+  }, [aspect, bloomSettings, camera, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, planetariumTransition, reducedMotion, render, revision, scene])
   useSceneTimeline(build, { runtime })
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return
