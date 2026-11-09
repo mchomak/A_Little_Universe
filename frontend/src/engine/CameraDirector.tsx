@@ -15,7 +15,7 @@ import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
 import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthViewportHeight } from '../scenes/growth/seedProcedure'
 import { getBloomCameraApproach, getBloomCloseupPose, getBloomEntryCameraPose } from './bloomCamera'
-import { galaxyCameraPose, getPlanetariumHandoffProgress } from '../scenes/galaxy/camera'
+import { galaxyCameraPose, getPlanetariumHandoffProgress, interpolateCameraPose } from '../scenes/galaxy/camera'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { getIdentityCameraMoveTarget, getIdentityCameraPullbackPose, IDENTITY_CAMERA_PULLBACK_DISTANCE,
   IDENTITY_CAMERA_PULLBACK_SECONDS } from './identityCamera'

@@ -1,4 +1,4 @@
-import { AdditiveBlending, Camera, MeshBasicMaterial, Object3D, PointsMaterial } from 'three'
+import { AdditiveBlending, Camera, MeshBasicMaterial, Object3D, PointsMaterial, Quaternion } from 'three'
 
 export const GALAXY_RENDER_ORDER = {
   backgroundStars: -3,
@@ -21,8 +21,16 @@ export function createBlackCenterMaterial() {
 }
 
 /** Keep the central silhouette round at every CameraDirector pose. */
+const cameraWorldQuaternion = new Quaternion()
+const inverseParentWorldQuaternion = new Quaternion()
+
 export function faceBlackCenterToCamera(center: Object3D, camera: Camera) {
-  center.quaternion.copy(camera.quaternion)
+  camera.getWorldQuaternion(cameraWorldQuaternion)
+  center.quaternion.copy(cameraWorldQuaternion)
+  if (center.parent) {
+    center.parent.getWorldQuaternion(inverseParentWorldQuaternion).invert()
+    center.quaternion.premultiply(inverseParentWorldQuaternion)
+  }
 }
 
 /** The configured background brightness is the only attenuation applied to these stars. */

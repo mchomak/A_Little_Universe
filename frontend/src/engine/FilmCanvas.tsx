@@ -1,11 +1,22 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { Canvas, useThree } from '@react-three/fiber'
 import { CameraDirector } from './CameraDirector'
 import { SceneDirector } from './SceneDirector'
 import { GraphicsBoundary } from '../components/GraphicsBoundary'
 import { GraphicsFallback } from '../components/GraphicsFallback'
 import type { SceneProps } from './sceneTypes'
 import { getConfig, subscribeConfig, type SceneComposerConfig } from '../systems/scene-config/config'
+import { observeWebGLContext } from './webglContextEvents'
+
+function WebGLContextEvents({ onLost, onRestored }: { onLost: () => void; onRestored: () => void }) {
+  const canvas = useThree(({ gl }) => gl.domElement)
+  const invalidate = useThree(({ invalidate }) => invalidate)
+  useEffect(() => observeWebGLContext(canvas, onLost, () => {
+    onRestored()
+    invalidate()
+  }), [canvas, invalidate, onLost, onRestored])
+  return null
+}
 
 function getFilmCanvasDprBounds(config: SceneComposerConfig, quality: 'standard' | 'low'): [number, number] {
   const min = config.global.dprMin
@@ -26,32 +37,26 @@ export function FilmCanvas(props: SceneProps) {
     }
   }, [props.state.quality])
   const dpr = getFilmCanvasDprBounds(config, filmQualityOverride ?? config.global.quality)
-
-  useEffect(() => {
-    if (!canvas) return
-    const onLost = (event: Event) => {
-      event.preventDefault()
-      setLost(true)
-    }
-    canvas.addEventListener('webglcontextlost', onLost)
-    return () => canvas.removeEventListener('webglcontextlost', onLost)
-  }, [canvas])
-
-  if (lost) return <GraphicsFallback />
+  const handleContextLost = useCallback(() => setLost(true), [])
+  const handleContextRestored = useCallback(() => setLost(false), [])
 
   return (
-    <GraphicsBoundary>
-      <Canvas
-        frameloop="demand"
-        dpr={dpr}
-        camera={{ position: [0, 0, 5.6], fov: 38, near: 0.05, far: 100 }}
-        gl={{ antialias: true, alpha: true, powerPreference: 'default' }}
-        onCreated={({ gl }) => setCanvas(gl.domElement)}
-        fallback={<GraphicsFallback hidden={canvas !== null} />}
-      >
-        <CameraDirector {...props} />
-        <SceneDirector {...props} />
-      </Canvas>
-    </GraphicsBoundary>
+    <div className="film-canvas-shell">
+      <GraphicsBoundary>
+        <Canvas
+          frameloop="demand"
+          dpr={dpr}
+          camera={{ position: [0, 0, 5.6], fov: 38, near: 0.05, far: 100 }}
+          gl={{ antialias: true, alpha: true, powerPreference: 'default' }}
+          onCreated={({ gl }) => setCanvas(gl.domElement)}
+          fallback={<GraphicsFallback hidden={canvas !== null} />}
+        >
+          <WebGLContextEvents onLost={handleContextLost} onRestored={handleContextRestored} />
+          <CameraDirector {...props} />
+          <SceneDirector {...props} />
+        </Canvas>
+      </GraphicsBoundary>
+      {lost && <div className="graphics-fallback-overlay"><GraphicsFallback /></div>}
+    </div>
   )
 }

@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest'
-import { Object3D, PerspectiveCamera, Vector3 } from 'three'
+import { Group, Object3D, PerspectiveCamera, Quaternion, Vector3 } from 'three'
 import { createBackgroundStarsMaterial, createBlackCenterMaterial, faceBlackCenterToCamera, GALAXY_RENDER_ORDER } from './rendering'
 import { deferGalaxyCloudDisposal } from './resourceLifecycle'
 
@@ -29,7 +29,26 @@ it('keeps the black center circular by matching the active camera orientation', 
   const discNormal = new Vector3(0, 0, 1).applyQuaternion(disc.quaternion)
   const cameraDirection = camera.getWorldDirection(new Vector3())
   expect(discNormal.dot(cameraDirection)).toBeCloseTo(-1, 6)
-  expect(disc.quaternion.equals(camera.quaternion)).toBe(true)
+  expect(disc.quaternion.angleTo(camera.quaternion)).toBeCloseTo(0, 6)
+})
+
+it('keeps the black center facing the camera when its galaxy parent rotates', () => {
+  const galaxy = new Group()
+  galaxy.rotation.set(0.18, 0.62, -0.21)
+  const disc = new Object3D()
+  galaxy.add(disc)
+  const camera = new PerspectiveCamera()
+  camera.position.set(4, 3, 7)
+  camera.lookAt(0, 0, 0)
+  galaxy.updateMatrixWorld(true)
+  camera.updateMatrixWorld(true)
+
+  faceBlackCenterToCamera(disc, camera)
+  galaxy.updateMatrixWorld(true)
+
+  const discWorldNormal = new Vector3(0, 0, 1).applyQuaternion(disc.getWorldQuaternion(new Quaternion()))
+  const cameraDirection = camera.getWorldDirection(new Vector3())
+  expect(discWorldNormal.dot(cameraDirection)).toBeCloseTo(-1, 6)
 })
 
 it('lets the background brightness setting control the full star opacity', () => {

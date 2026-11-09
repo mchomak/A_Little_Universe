@@ -10,7 +10,7 @@ import { createGalaxyGeometry, updateGalaxyColors, type GalaxyGeometrySettings }
 import { applyGalaxyFrameMaterials, createCoreMaterial, createFogMaterial, createGasMaterial, createStarMaterial, createSunMaterial, type GalaxyUniforms } from './shaders'
 import { advanceGalaxyAmbientPhase, getGalaxyFogOpacity, getGalaxyLight, getGalaxyMotionPhase, getGalaxyRevealState } from './animation'
 import { getGalaxyRenderPalette } from './palette'
-import { getPlanetariumHandoffProgress } from './camera'
+import { getPlanetariumHandoffProgress, getPlanetariumHandoffProgressAtTime } from './camera'
 import { createNebulaClouds } from './nebulaClouds'
 import { deferGalaxyCloudDisposal } from './resourceLifecycle'
 import { createBackgroundStarsMaterial, createBlackCenterMaterial, faceBlackCenterToCamera, GALAXY_RENDER_ORDER } from './rendering'
@@ -192,7 +192,10 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
       camera.getWorldDirection(cameraWorldDirection)
       planetariumStartTransform.current.position.copy(cameraWorldPosition).addScaledVector(cameraWorldDirection, current.cameraStartDistance)
       camera.getWorldQuaternion(planetariumStartTransform.current.rotation)
-      planetariumStartTransform.current.time = time
+      // `draw(0)` is called when the timeline is built, but the shared cosmos
+      // clock enters at GALLERY.exit (10s). Capture that actual clock time so
+      // the galaxy and CameraDirector begin their handoff on the same frame.
+      planetariumStartTransform.current.time = runtime.time
       planetariumStartTransform.current.captured = true
     }
     const handoffDuration = Math.min(current.cameraDuration, TIMING.cosmos.duration - planetariumStartTransform.current.time)
@@ -200,7 +203,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
       : planetariumExit ? 0
         : reducedMotion ? 1
           : handoffDuration <= 0 ? 1
-            : getPlanetariumHandoffProgress((time - planetariumStartTransform.current.time) / handoffDuration)
+            : getPlanetariumHandoffProgressAtTime(time, planetariumStartTransform.current.time, handoffDuration)
     const revealTime = time + (planetariumRoute ? current.galaxyRevealAt : 0)
     const revealState = getGalaxyRevealState(revealTime, current)
     const transitionOpacity = planetariumExit ? getPlanetariumGalaxyFade(time) : 1
@@ -301,7 +304,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
       boundary.valid = false
     }
     invalidate()
-  }, [active, baseMaterial, camera, cameraWorldDirection, cameraWorldPosition, cameraWorldRotation, clouds, galaxyIdentityRotation, galaxyOrigin, invalidate, materials, palette.backgroundColor, planetariumExit, planetariumRoute, reducedMotion, scene, state.scene])
+  }, [active, baseMaterial, camera, cameraWorldDirection, cameraWorldPosition, cameraWorldRotation, clouds, galaxyIdentityRotation, galaxyOrigin, invalidate, materials, palette.backgroundColor, planetariumExit, planetariumRoute, reducedMotion, runtime, scene, state.scene])
 
   useLayoutEffect(() => {
     updateLiveUniforms(settings, dpr, palette, materials)

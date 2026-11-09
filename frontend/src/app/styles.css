@@ -33,6 +33,9 @@ h1 { font-size: clamp(2.6rem, 5.4vw, 5.7rem); line-height: 1.08; letter-spacing:
 .film-surface { position: absolute; inset: 0; overflow: hidden; }
 .viewport { position: absolute; inset: 0; }
 .viewport > div { height: 100%; }
+.film-canvas-shell { position: relative; width: 100%; height: 100%; }
+.graphics-fallback-overlay { position: absolute; z-index: 3; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; background: #080914e8; }
+.graphics-fallback-overlay .graphics-fallback { width: min(100%, 32rem); margin: 0; }
 .universe[data-scene='gallery'] .film-surface { touch-action: none; }
 .universe[data-scene='bloom'] .viewport { touch-action: none; }
 .page-header { position: absolute; inset: max(20px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) auto max(24px, env(safe-area-inset-left)); display: flex; justify-content: space-between; gap: 1rem; font-size: 0.875rem; pointer-events: none; }

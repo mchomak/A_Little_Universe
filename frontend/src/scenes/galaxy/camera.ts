@@ -28,3 +28,9 @@ export function getPlanetariumHandoffProgress(progress: number): number {
   const p = Number.isFinite(progress) ? Math.min(1, Math.max(0, progress)) : 0
   return p * p * (3 - 2 * p)
 }
+
+/** Convert the shared scene-clock time into handoff progress, including non-zero scene entry times. */
+export function getPlanetariumHandoffProgressAtTime(time: number, startTime: number, duration: number): number {
+  if (!Number.isFinite(duration) || duration <= 0) return 1
+  return getPlanetariumHandoffProgress((time - startTime) / duration)
+}
