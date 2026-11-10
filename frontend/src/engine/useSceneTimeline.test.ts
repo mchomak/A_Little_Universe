@@ -1,6 +1,7 @@
 import { gsap } from 'gsap'
 import { expect, it } from 'vitest'
-import { createFilmRuntime } from './runtime'
+import { createFilmClock, createFilmRuntime } from './runtime'
+import { initialFilmState } from './film'
 import { createSceneTimeline } from './useSceneTimeline'
 
 it('scrubs a real paused timeline and reverts/unsubscribes across StrictMode remounts', () => {
@@ -72,4 +73,47 @@ it('keeps galaxy camera frames continuous through greeting, its first phrase, an
   )
   expect(cameraFrame()).toEqual(settledGreetingFrame)
   ending.dispose()
+})
+
+it('does not rewind the outgoing galaxy camera when the next scene clock publishes zero', () => {
+  const runtime = createFilmRuntime()
+  const camera = { distance: 6.4 }
+  const cosmosClock = createFilmClock({
+    state: { ...initialFilmState, scene: 'cosmos', mode: 'playing', elapsed: 25.99, revision: 1 },
+    runtime,
+    dispatch: () => {},
+  })
+  const cosmos = createSceneTimeline(
+    () => gsap.timeline().to(camera, { distance: 16, duration: 10, ease: 'none' }),
+    runtime,
+    () => {
+      const lastFrame = camera.distance
+      return () => { camera.distance = lastFrame }
+    },
+    'cosmos',
+  )
+  const lastCosmosFrame = camera.distance
+  expect(lastCosmosFrame).toBe(16)
+
+  // useFilm creates the greeting clock before the separate R3F root has
+  // disposed its outgoing cosmos timeline.
+  const greetingClock = createFilmClock({
+    state: { ...initialFilmState, scene: 'greeting', mode: 'playing', elapsed: 0, revision: 2 },
+    runtime,
+    dispatch: () => {},
+  })
+  expect(camera.distance).toBe(lastCosmosFrame)
+  cosmos.dispose()
+  expect(camera.distance).toBe(lastCosmosFrame)
+
+  const greeting = createSceneTimeline(
+    () => gsap.timeline().to(camera, { distance: 16, duration: 0.7, ease: 'none' }),
+    runtime,
+    undefined,
+    'greeting',
+  )
+  expect(camera.distance).toBe(lastCosmosFrame)
+  greeting.dispose()
+  greetingClock.dispose()
+  cosmosClock.dispose()
 })

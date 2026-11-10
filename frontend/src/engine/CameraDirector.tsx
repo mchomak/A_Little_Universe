@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useSyncExternalStore } from 'react'
 import { gsap } from 'gsap'
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
-import { createCameraPoseRestorer } from './cameraPoseContinuity'
+import { createCameraPoseRestorer, getCameraTimelineRevision } from './cameraPoseContinuity'
 import type { SceneProps } from './sceneTypes'
 import { getBloomSceneFrames, getGrowthSceneFrames, TIMING } from './filmConfig'
 import { useSceneTimeline } from './useSceneTimeline'
@@ -43,6 +43,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
   const galleryFocusDistance = useRef(4.8)
   const galleryFocusCenter = useRef<[number, number]>([0, 0])
   const { scene, mode, revision, paused, reading, speed, planetariumTransition } = state
+  const cameraTimelineRevision = getCameraTimelineRevision(scene, revision)
   const lastBuiltScene = useRef(scene)
   const hasBuiltScene = useRef(false)
   const render = useCallback((fovOverride?: number) => {
@@ -75,7 +76,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     const timeline = gsap.timeline({ onUpdate: () => render() })
     const previousScene = hasBuiltScene.current ? lastBuiltScene.current : null
     if (scene === 'gallery') {
-      if (galleryRevision.current !== revision) {
+      if (galleryRevision.current !== cameraTimelineRevision) {
         if (!reducedMotion) {
           // Match the first card's handoff frame; GalleryScene then carries it
           // smoothly from the Scene 04 photo plane into the gallery layout.
@@ -95,7 +96,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
         }
         galleryFocusDistance.current = 4.8
         galleryFocusCenter.current = [0, 0]
-        galleryRevision.current = revision
+        galleryRevision.current = cameraTimelineRevision
       }
       lastBuiltScene.current = scene
       hasBuiltScene.current = true
@@ -231,8 +232,8 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       if (slowdown > 0) timeline.to(p, { ...finish, duration: slowdown, ease: 'sine.out' }, duration - slowdown)
     }
     return timeline
-  }, [aspect, bloomSettings, camera, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, planetariumTransition, reducedMotion, render, revision, runtime, scene])
-  useSceneTimeline(build, { runtime, preserveOnRevert: preservePoseOnRevert })
+  }, [aspect, bloomSettings, camera, cameraTimelineRevision, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, planetariumTransition, reducedMotion, render, runtime, scene])
+  useSceneTimeline(build, { runtime, preserveOnRevert: preservePoseOnRevert, scene })
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return
     const restoreFarPlane = configureCameraFarPlane(camera, scene)

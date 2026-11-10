@@ -3,6 +3,8 @@ import { filmDuration, type FilmAction, type FilmState } from './film'
 
 export interface FilmRuntime {
   readonly time: number
+  /** Scene associated with the latest canonical frame publication. */
+  readonly scene: FilmState['scene'] | null
   /** Canonical scene time while playing; continues only as decorative time at the prologue gate. */
   readonly presentationTime: number
   readonly held: boolean
@@ -13,7 +15,7 @@ export interface FilmRuntime {
   subscribeHold(listener: () => void): () => void
 }
 export interface WritableFilmRuntime extends FilmRuntime {
-  publish(time: number, presentationTime?: number): void
+  publish(time: number, presentationTime?: number, scene?: FilmState['scene']): void
   publishPresentation(time: number): void
 }
 
@@ -62,7 +64,7 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
           runtime.publishPresentation(ambientOffset + timeline.time())
           return
         }
-        runtime.publish(clock.time, initial.mode === 'transitioning' ? presentationStart + clock.time - start : clock.time)
+        runtime.publish(clock.time, initial.mode === 'transitioning' ? presentationStart + clock.time - start : clock.time, initial.scene)
         const stamp = now()
         if (!waiting && (stamp - lastDispatch >= 100 || clock.time >= endpoint)) {
           lastDispatch = stamp
@@ -74,7 +76,7 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
     timeline.to(clock, { time: endpoint, duration, ease: 'none' })
   })
   timeline.time(Math.max(0, initial.elapsed - start), true)
-  runtime.publish(initial.elapsed, waiting || initial.mode === 'transitioning' || ambientEnding ? presentationStart : initial.elapsed)
+  runtime.publish(initial.elapsed, waiting || initial.mode === 'transitioning' || ambientEnding ? presentationStart : initial.elapsed, initial.scene)
   const sync = (next: FilmState) => {
     if (disposed || next.revision !== revision) return
     state = next
@@ -102,6 +104,7 @@ export function createFilmClock({ state: initial, dispatch, runtime, visibility,
 export function createFilmRuntime(): WritableFilmRuntime {
   let time = 0
   let presentationTime = 0
+  let scene: FilmState['scene'] | null = null
   let holds = 0
   const holdListeners = new Set<() => void>()
   const listeners = new Set<(time: number) => void>()
@@ -113,6 +116,7 @@ export function createFilmRuntime(): WritableFilmRuntime {
   }
   return {
     get time() { return time },
+    get scene() { return scene },
     get presentationTime() { return presentationTime },
     get held() { return holds > 0 },
     hold() {
@@ -139,10 +143,11 @@ export function createFilmRuntime(): WritableFilmRuntime {
       return () => { presentationListeners.delete(listener) }
     },
     publishPresentation,
-    publish(value, presentation = value) {
+    publish(value, presentation = value, nextScene) {
       if (!Number.isFinite(value) || !Number.isFinite(presentation)) return
       time = Math.max(0, value)
       presentationTime = Math.max(0, presentation)
+      if (nextScene !== undefined) scene = nextScene
       for (const listener of listeners) listener(time)
       for (const listener of presentationListeners) listener(presentationTime)
     },
