@@ -1,7 +1,126 @@
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
+import { Quaternion, Vector3 } from 'three'
+import { getPlanetariumHandoffProgress } from './camera'
 
 type Settings = SceneComposerConfig['scenes']['galaxy']
 export type GalaxyAnimationScene = 'cosmos' | 'greeting' | 'ending'
+
+export interface GalaxyBoundaryFrame {
+  valid: boolean
+  motionTime: number
+  phaseTime: number
+  light: number
+  fogOpacity: number
+  reveal: number
+  firstStars: number
+  position: Vector3
+  rotation: Quaternion
+}
+
+export interface GalaxyFrameValues {
+  motionTime: number
+  phaseTime: number
+  light: number
+  fogOpacity: number
+  reveal: number
+  firstStars: number
+  boundaryProgress: number
+  diskBrightness: number
+  brightBrightness: number
+  gasReveal: number
+  coreBrightness: number
+}
+
+export interface GalaxyFrameOptions {
+  boundary?: GalaxyBoundaryFrame
+  reducedMotion?: boolean
+  revealTimeOffset?: number
+  boundaryTransitionDuration?: number
+  motionTime?: number
+  phaseTime?: number
+  transitionOpacity?: number
+}
+
+/** Resolve the material inputs once so the persistent galaxy can hand off between scene clocks. */
+export function getGalaxyFrameValues(
+  scene: GalaxyAnimationScene,
+  time: number,
+  settings: Settings,
+  cosmosDuration: number,
+  greetingDuration: number,
+  options: GalaxyFrameOptions = {},
+): GalaxyFrameValues {
+  const revealTime = time + (options.revealTimeOffset ?? 0)
+  const revealState = getGalaxyRevealState(revealTime, settings)
+  const reveal = scene === 'cosmos' ? revealState.galaxy : 1
+  const firstStars = scene === 'cosmos' ? revealState.stars : 1
+  const calculatedPhaseTime = scene === 'cosmos' ? time
+    : scene === 'greeting' ? cosmosDuration + time
+      : cosmosDuration + greetingDuration + time
+  const calculatedPhase = options.phaseTime ?? calculatedPhaseTime
+  const calculatedMotion = options.motionTime ?? getGalaxyMotionPhase(
+    scene, time, settings, cosmosDuration, greetingDuration, options.reducedMotion,
+  )
+  const boundary = options.boundary
+  const boundaryProgress = scene === 'greeting' && boundary?.valid
+    ? getPlanetariumHandoffProgress(time / (options.boundaryTransitionDuration ?? 0.7)) : 1
+  const blend = (from: number, to: number) => from + (to - from) * boundaryProgress
+  const transitionOpacity = options.transitionOpacity ?? 1
+  const motionTime = scene === 'greeting' && boundary?.valid ? blend(boundary.motionTime, calculatedMotion) : calculatedMotion
+  const phaseTime = scene === 'greeting' && boundary?.valid ? blend(boundary.phaseTime, calculatedPhase) : calculatedPhase
+  const light = (scene === 'greeting' && boundary?.valid
+    ? blend(boundary.light, getGalaxyLight(scene, time, settings, cosmosDuration))
+    : getGalaxyLight(scene, time, settings, cosmosDuration)) * transitionOpacity
+  const fogOpacity = (scene === 'greeting' && boundary?.valid
+    ? blend(boundary.fogOpacity, getGalaxyFogOpacity(scene, time, settings, cosmosDuration))
+    : getGalaxyFogOpacity(scene, time, settings, cosmosDuration)) * transitionOpacity
+  const visibleReveal = scene === 'greeting' && boundary?.valid ? blend(boundary.reveal, reveal) : reveal
+  const visibleStars = scene === 'greeting' && boundary?.valid ? blend(boundary.firstStars, firstStars) : firstStars
+
+  return {
+    motionTime,
+    phaseTime,
+    light,
+    fogOpacity,
+    reveal: visibleReveal,
+    firstStars: visibleStars,
+    boundaryProgress,
+    diskBrightness: settings.brightness * settings.exposure * light,
+    brightBrightness: settings.brightStarIntensity * settings.exposure * light,
+    gasReveal: settings.nebulaEnabled ? Math.max(visibleReveal, visibleStars * 0.14) : 0,
+    coreBrightness: settings.exposure * light,
+  }
+}
+
+export function captureGalaxyBoundaryFrame(
+  boundary: GalaxyBoundaryFrame,
+  frame: GalaxyFrameValues,
+  position: Vector3,
+  rotation: Quaternion,
+) {
+  boundary.motionTime = frame.motionTime
+  boundary.phaseTime = frame.phaseTime
+  boundary.light = frame.light
+  boundary.fogOpacity = frame.fogOpacity
+  boundary.reveal = frame.reveal
+  boundary.firstStars = frame.firstStars
+  boundary.position.copy(position)
+  boundary.rotation.copy(rotation)
+  boundary.valid = true
+}
+
+export function applyGalaxyBoundaryTransform(
+  boundary: GalaxyBoundaryFrame,
+  origin: Vector3,
+  identityRotation: Quaternion,
+  progress: number,
+  position: Vector3,
+  rotation: Quaternion,
+) {
+  const p = Math.max(0, Math.min(1, progress))
+  position.copy(boundary.position).lerp(origin, p)
+  rotation.copy(boundary.rotation).slerp(identityRotation, p)
+}
 
 function smooth(start: number, end: number, time: number) {
   const x = Math.max(0, Math.min(1, (time - start) / Math.max(0.001, end - start)))

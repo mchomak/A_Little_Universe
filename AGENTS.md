@@ -57,6 +57,7 @@ Current user instructions take priority over this file. Keep scene-by-scene impl
 - `AnimatedLily` — один GLB для сцен 02–04. VFX-настройки — `scenes.growth.{lilyBudGlow,lilyLeafMaterial,growthVortex}` и `scenes.bloom.lilyBloomPollen`; их runtime анимируется по film time.
 - Галерея 05 использует общие `FilmCanvas`, камеру и `galleryMotion.time`; камера карточек/фото берётся из `frontend/src/engine/galleryCameraPose.ts`. Reveal дополнительных фото: `frontend/src/scenes/shared/progressivePhotoReveal.ts` и `frontend/src/scenes/gallery/collage.ts`; reveal только для фокусной памяти, слот ждёт текстуру. События — `frontend/src/scenes/gallery/catalog.ts`, подписи — `frontend/src/data/galleryCaptions.json`, фото — `images/<event ID>/`. Учитывать reduced motion, повторную смену фокуса и освобождение GPU-ресурсов.
 - Переход из последней карточки `2026_10_Planetarium` в Galaxy использует live texture `1.jpg` и `PlanetariumTransitionOverlay` внутри `SceneDirector` с общей камерой/канвой. Транзитный флаг устанавливается только `galleryExit()` в explore у конца галереи при interaction `walk`; DEV-jump в cosmos оставляет обычный маршрут. Сохранять один renderer/camera и существующие слои Galaxy.
+- На стыке Cosmos → Greeting `GalaxyExperience` сохраняет видимые параметры и трансформ последнего кадра; его callbacks сверяют сцену с `runtime.scene`, чтобы сброс часов и очистка старой анимации не обнуляли раскрытие галактики. Исключение — отображение планетарного перехода во время выхода из галереи.
 
 ## Команды из корня проекта (PowerShell 5)
 

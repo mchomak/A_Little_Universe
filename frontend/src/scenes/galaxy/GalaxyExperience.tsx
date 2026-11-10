@@ -5,12 +5,12 @@ import { BackSide, CircleGeometry, Color, Group, Mesh, MeshBasicMaterial, PlaneG
 import type { SceneProps } from '../../engine/sceneTypes'
 import { TIMING } from '../../engine/filmConfig'
 import { getConfig, subscribeConfig, type SceneComposerConfig } from '../../systems/scene-config/config'
-import { useSceneAnimation } from '../shared/animation'
+import { isSceneFrameAllowed, useSceneAnimation } from '../shared/animation'
 import { createGalaxyGeometry, updateGalaxyColors, type GalaxyGeometrySettings } from './generateGalaxy'
 import { applyGalaxyFrameMaterials, createCoreMaterial, createFogMaterial, createGasMaterial, createStarMaterial, createSunMaterial, type GalaxyUniforms } from './shaders'
-import { advanceGalaxyAmbientPhase, getGalaxyFogOpacity, getGalaxyLight, getGalaxyMotionPhase, getGalaxyRevealState } from './animation'
+import { advanceGalaxyAmbientPhase, applyGalaxyBoundaryTransform, captureGalaxyBoundaryFrame, getGalaxyFrameValues, getGalaxyMotionPhase } from './animation'
 import { getGalaxyRenderPalette } from './palette'
-import { getPlanetariumHandoffProgress, getPlanetariumHandoffProgressAtTime, getPlanetariumHandoffStartTime } from './camera'
+import { getPlanetariumHandoffProgressAtTime, getPlanetariumHandoffStartTime } from './camera'
 import { createNebulaClouds } from './nebulaClouds'
 import { deferGalaxyCloudDisposal } from './resourceLifecycle'
 import { createBackgroundStarsMaterial, createBlackCenterMaterial, faceBlackCenterToCamera, GALAXY_RENDER_ORDER } from './rendering'
@@ -203,29 +203,22 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
         : reducedMotion ? 1
           : handoffDuration <= 0 ? 1
             : getPlanetariumHandoffProgressAtTime(time, planetariumStartTransform.current.time, handoffDuration)
-    const revealTime = time + (planetariumRoute ? current.galaxyRevealAt : 0)
-    const revealState = getGalaxyRevealState(revealTime, current)
     const transitionOpacity = planetariumExit ? getPlanetariumGalaxyFade(time) : 1
-    const reveal = scene === 'cosmos' ? revealState.galaxy : 1
-    const initialStars = scene === 'cosmos' ? revealState.stars : 1
-    const calculatedPhaseTime = scene === 'cosmos' ? time
-      : scene === 'greeting' ? TIMING.cosmos.duration + time
-        : TIMING.cosmos.duration + TIMING.greeting.duration + time
-    const calculatedPhase = ambientPhase.current.active ? ambientPhase.current.phaseTime : calculatedPhaseTime
-    const calculatedMotion = ambientPhase.current.active ? ambientPhase.current.motionTime
-      : getGalaxyMotionPhase(scene, time, current, TIMING.cosmos.duration, TIMING.greeting.duration, reducedMotion)
     const boundary = cosmosBoundaryFrame.current
-    const boundaryProgress = scene === 'greeting' && boundary.valid
-      ? getPlanetariumHandoffProgress(time / TIMING.transition) : 1
-    const blend = (from: number, to: number) => from + (to - from) * boundaryProgress
-    const phaseTime = scene === 'greeting' && boundary.valid ? blend(boundary.phaseTime, calculatedPhase) : calculatedPhase
-    const motionTime = scene === 'greeting' && boundary.valid ? blend(boundary.motionTime, calculatedMotion) : calculatedMotion
-    const light = (scene === 'greeting' && boundary.valid ? blend(boundary.light, getGalaxyLight(scene, time, current, TIMING.cosmos.duration))
-      : getGalaxyLight(scene, time, current, TIMING.cosmos.duration)) * transitionOpacity
-    const fogOpacity = (scene === 'greeting' && boundary.valid ? blend(boundary.fogOpacity, getGalaxyFogOpacity(scene, time, current, TIMING.cosmos.duration))
-      : getGalaxyFogOpacity(scene, time, current, TIMING.cosmos.duration)) * transitionOpacity
-    const visibleReveal = scene === 'greeting' && boundary.valid ? blend(boundary.reveal, reveal) : reveal
-    const visibleStars = scene === 'greeting' && boundary.valid ? blend(boundary.firstStars, initialStars) : initialStars
+    const frame = getGalaxyFrameValues(scene, time, current, TIMING.cosmos.duration, TIMING.greeting.duration, {
+      boundary,
+      reducedMotion,
+      revealTimeOffset: planetariumRoute ? current.galaxyRevealAt : 0,
+      boundaryTransitionDuration: TIMING.transition,
+      ...(ambientPhase.current.active ? {
+        motionTime: ambientPhase.current.motionTime,
+        phaseTime: ambientPhase.current.phaseTime,
+      } : {}),
+      transitionOpacity,
+    })
+    const { motionTime, phaseTime, light, fogOpacity, boundaryProgress } = frame
+    const visibleReveal = frame.reveal
+    const visibleStars = frame.firstStars
     baseMaterial.color.set(palette.backgroundColor).multiplyScalar(transitionOpacity)
 
     if (galaxy.current) {
@@ -240,8 +233,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
         galaxy.current.position.copy(planetariumStartTransform.current.position).lerp(galaxyOrigin, handoffProgress)
         galaxy.current.quaternion.copy(planetariumStartTransform.current.rotation).slerp(galaxyIdentityRotation, handoffProgress)
       } else if (scene === 'greeting' && boundary.valid) {
-        galaxy.current.position.copy(boundary.position).lerp(galaxyOrigin, boundaryProgress)
-        galaxy.current.quaternion.copy(boundary.rotation).slerp(galaxyIdentityRotation, boundaryProgress)
+        applyGalaxyBoundaryTransform(boundary, galaxyOrigin, galaxyIdentityRotation, boundaryProgress, galaxy.current.position, galaxy.current.quaternion)
       } else {
         galaxy.current.position.copy(galaxyOrigin)
         galaxy.current.quaternion.copy(galaxyIdentityRotation)
@@ -267,13 +259,13 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
     clouds.setOpacity(current.backgroundGasBrightness * light * Math.min(1.5, current.backgroundGasDensity / 0.34))
     applyGalaxyFrameMaterials(materials, {
       motionTime, phaseTime, reveal: visibleReveal, firstStars: visibleStars,
-      diskBrightness: current.brightness * current.exposure * light,
-      brightBrightness: current.brightStarIntensity * current.exposure * light,
+      diskBrightness: frame.diskBrightness,
+      brightBrightness: frame.brightBrightness,
       nebulaBrightness: current.nebulaBrightness,
       sceneLight: light,
-      gasReveal: current.nebulaEnabled ? Math.max(visibleReveal, visibleStars * 0.14) : 0,
+      gasReveal: frame.gasReveal,
       coreReveal: visibleReveal,
-      coreBrightness: current.exposure * light,
+      coreBrightness: frame.coreBrightness,
       coreGlow: current.coreGlow,
       twinkleSpeed: current.twinkleSpeed,
       fogOpacity,
@@ -288,15 +280,7 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
     }
     if (backgroundPoints.current) backgroundPoints.current.visible = active && current.backgroundStarCount > 0
     if (scene === 'cosmos' && galaxy.current) {
-      boundary.motionTime = motionTime
-      boundary.phaseTime = phaseTime
-      boundary.light = light
-      boundary.fogOpacity = fogOpacity
-      boundary.reveal = visibleReveal
-      boundary.firstStars = visibleStars
-      boundary.position.copy(galaxy.current.position)
-      boundary.rotation.copy(galaxy.current.quaternion)
-      boundary.valid = true
+      captureGalaxyBoundaryFrame(boundary, frame, galaxy.current.position, galaxy.current.quaternion)
     } else if (scene === 'greeting' && boundaryProgress >= 1) {
       boundary.valid = false
     } else if (scene === 'ending') {
@@ -305,17 +289,23 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
     invalidate()
   }, [active, baseMaterial, camera, cameraWorldDirection, cameraWorldPosition, cameraWorldRotation, clouds, galaxyIdentityRotation, galaxyOrigin, invalidate, materials, palette.backgroundColor, planetariumExit, planetariumRoute, reducedMotion, runtime, scene, state.scene])
 
+  const sceneDraw = useCallback((time: number) => {
+    const allowPlanetariumGalleryFrame = planetariumExit && runtime.scene === 'gallery'
+    if (!isSceneFrameAllowed(runtime, scene, allowPlanetariumGalleryFrame)) return
+    draw(time)
+  }, [draw, planetariumExit, runtime, scene])
+
   useLayoutEffect(() => {
     updateLiveUniforms(settings, dpr, palette, materials)
     baseMaterial.color.set(palette.backgroundColor)
-    draw(scene === 'ending' ? runtime.presentationTime : runtime.time)
+    sceneDraw(scene === 'ending' ? runtime.presentationTime : runtime.time)
     invalidate()
-  }, [baseMaterial, dpr, draw, invalidate, materials, palette, runtime, scene, settings])
+  }, [baseMaterial, dpr, invalidate, materials, palette, runtime, scene, sceneDraw, settings])
   useLayoutEffect(() => { updateGalaxyColors(geometry.disk, palette) }, [geometry, palette])
 
   const duration = scene === 'cosmos' ? TIMING.cosmos.duration : TIMING.greeting.duration
-  useSceneAnimation(runtime, duration, draw)
-  useFrame(() => { if (planetariumExit) draw(galleryMotion.exit) })
+  useSceneAnimation(runtime, duration, sceneDraw, scene)
+  useFrame(() => { if (planetariumExit) sceneDraw(galleryMotion.exit) })
   useEffect(() => {
     const ambient = ambientPhase.current
     if (state.scene === 'prologue' || state.scene === 'cosmos') {
@@ -339,12 +329,12 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
       const next = advanceGalaxyAmbientPhase(ambient.motionTime, ambient.phaseTime, delta, getConfig().scenes.galaxy, reducedMotion)
       ambient.motionTime = next.motionTime
       ambient.phaseTime = next.phaseTime
-      draw(runtime.time)
+      sceneDraw(runtime.time)
     }
     gsap.ticker.add(tick)
     tick()
     return () => { gsap.ticker.remove(tick); ambient.active = false }
-  }, [draw, reducedMotion, runtime, state.scene])
+  }, [reducedMotion, runtime, sceneDraw, state.scene])
 
   return <>
     <group ref={galaxy} visible={active}>

@@ -7,17 +7,40 @@ import { useSceneTimeline } from '../../engine/useSceneTimeline'
 
 export { ramp, smooth } from './progress'
 
+/** Ignore stale callbacks from a scene whose props have not yet caught up to the shared film clock. */
+export function createSceneDraw(
+  runtime: FilmRuntime,
+  scene: FilmRuntime['scene'] | undefined,
+  draw: (time: number) => void,
+  allowForeignScene: () => boolean = () => false,
+) {
+  return (time: number) => {
+    if (!isSceneFrameAllowed(runtime, scene, allowForeignScene())) return
+    draw(time)
+  }
+}
+
+export function isSceneFrameAllowed(runtime: FilmRuntime, scene: FilmRuntime['scene'] | undefined, allowForeignScene = false) {
+  return !scene || !runtime.scene || runtime.scene === scene || allowForeignScene
+}
+
+export function createSceneAnimationTimeline(duration: number, draw: (time: number) => void, invalidate: () => void = () => {}) {
+  const cursor = { time: 0 }
+  draw(0)
+  invalidate()
+  return gsap.timeline({ onUpdate: () => { draw(cursor.time); invalidate() } })
+    .to(cursor, { time: duration, duration, ease: 'none' })
+}
+
 /** Runtime owns the clock; this callback changes Three objects without React frame state. */
-export function useSceneAnimation(runtime: FilmRuntime, duration: number, draw: (time: number) => void) {
+export function useSceneAnimation(runtime: FilmRuntime, duration: number, draw: (time: number) => void, scene?: Exclude<FilmRuntime['scene'], null>) {
   const invalidate = useThree((state) => state.invalidate)
-  const build = useCallback(() => {
-    const cursor = { time: 0 }
-    draw(0)
-    invalidate()
-    return gsap.timeline({ onUpdate: () => { draw(cursor.time); invalidate() } })
-      .to(cursor, { time: duration, duration, ease: 'none' })
-  }, [draw, duration, invalidate])
-  useSceneTimeline(build, { runtime })
+  const sceneDraw = useCallback((time: number) => {
+    if (!isSceneFrameAllowed(runtime, scene)) return
+    draw(time)
+  }, [draw, runtime, scene])
+  const build = useCallback(() => createSceneAnimationTimeline(duration, sceneDraw, invalidate), [duration, invalidate, sceneDraw])
+  useSceneTimeline(build, { runtime, scene: scene ?? null })
 }
 
 export function fade(object: Object3D | null, opacity: number) {
