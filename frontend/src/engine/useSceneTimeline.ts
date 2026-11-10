@@ -3,7 +3,11 @@ import { gsap } from 'gsap'
 import type { FilmRuntime } from './runtime'
 
 /** Non-React lifecycle seam used by the hook and verified with real GSAP objects. */
-export function createSceneTimeline(build: () => gsap.core.Timeline, runtime: FilmRuntime) {
+export function createSceneTimeline(
+  build: () => gsap.core.Timeline,
+  runtime: FilmRuntime,
+  preserveOnRevert?: () => () => void,
+) {
   let timeline!: gsap.core.Timeline
   const context = gsap.context(() => { timeline = build().pause() })
   const scrub = (time: number) => { timeline.time(time, false) }
@@ -16,7 +20,9 @@ export function createSceneTimeline(build: () => gsap.core.Timeline, runtime: Fi
       if (disposed) return
       disposed = true
       unsubscribe()
+      const restore = preserveOnRevert?.()
       context.revert()
+      restore?.()
     },
   }
 }
@@ -30,6 +36,8 @@ interface TimelineOptions {
 interface RuntimeTimelineOptions {
   runtime: FilmRuntime
   reducedMotion?: boolean
+  /** Restore shared scene state after GSAP reverts its timeline targets. */
+  preserveOnRevert?: () => () => void
 }
 
 /** The scene supplies a stable builder. Every setup owns exactly one GSAP context. */
@@ -39,13 +47,14 @@ export function useSceneTimeline(
 ) {
   const timeline = useRef<gsap.core.Timeline | null>(null)
   const runtime = 'runtime' in options ? options.runtime : undefined
+  const preserveOnRevert = 'runtime' in options ? options.preserveOnRevert : undefined
   const paused = 'paused' in options ? options.paused : true
   const revision = 'revision' in options ? options.revision : 0
   const reducedMotion = options.reducedMotion ?? false
 
   useLayoutEffect(() => {
     if (runtime) {
-      const scene = createSceneTimeline(build, runtime)
+      const scene = createSceneTimeline(build, runtime, preserveOnRevert)
       timeline.current = scene.timeline
       return () => {
         scene.dispose()
@@ -62,7 +71,7 @@ export function useSceneTimeline(
       context.revert()
       timeline.current = null
     }
-  }, [build, reducedMotion, revision, runtime])
+  }, [build, preserveOnRevert, reducedMotion, revision, runtime])
 
   useLayoutEffect(() => {
     if (runtime) return

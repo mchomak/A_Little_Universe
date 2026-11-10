@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useSyncExternalStore } from 'react'
 import { gsap } from 'gsap'
 import { PerspectiveCamera, Quaternion, Vector3 } from 'three'
+import { createCameraPoseRestorer } from './cameraPoseContinuity'
 import type { SceneProps } from './sceneTypes'
 import { getBloomSceneFrames, getGrowthSceneFrames, TIMING } from './filmConfig'
 import { useSceneTimeline } from './useSceneTimeline'
@@ -56,6 +57,13 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     }
     invalidate()
   }, [aspect, camera, invalidate])
+  const preservePoseOnRevert = useCallback(() => {
+    if (scene !== 'gallery') return createCameraPoseRestorer(pose.current, camera, render)
+    // Gallery motion owns the live Three camera directly, so preserve its stored
+    // pose without rendering that pose over the active gallery camera.
+    const currentPose = { ...pose.current }
+    return () => { Object.assign(pose.current, currentPose) }
+  }, [camera, render, scene])
 
   const build = useCallback(() => {
     const p = pose.current
@@ -179,8 +187,10 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       : scene === 'bloom' ? bloomEntry : scene === 'identity' ? flowerCloseup
       : scene === 'cosmos' ? galaxyPose(galaxySettings.cameraStartDistance, galaxySettings.cameraStartAngle)
         : scene === 'greeting' || scene === 'ending' ? galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle) : front
-    Object.assign(p, reducedMotion && scene === 'cosmos' ? galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
-      : reducedMotion && scene !== 'growth' && scene !== 'bloom' ? front : initial)
+    const reducedMotionPose = scene === 'cosmos' || scene === 'greeting' || scene === 'ending'
+      ? galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
+      : scene === 'growth' || scene === 'bloom' ? initial : front
+    Object.assign(p, reducedMotion ? reducedMotionPose : initial)
     render()
     if (scene === 'growth') {
       const cursor = { time: 0 }
@@ -222,7 +232,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     }
     return timeline
   }, [aspect, bloomSettings, camera, galaxySettings, growthSettings, growthViewportHeight, identitySettings, mode, planetariumTransition, reducedMotion, render, revision, runtime, scene])
-  useSceneTimeline(build, { runtime })
+  useSceneTimeline(build, { runtime, preserveOnRevert: preservePoseOnRevert })
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return
     const restoreFarPlane = configureCameraFarPlane(camera, scene)
