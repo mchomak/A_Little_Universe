@@ -34,3 +34,8 @@ export function getPlanetariumHandoffProgressAtTime(time: number, startTime: num
   if (!Number.isFinite(duration) || duration <= 0) return 1
   return getPlanetariumHandoffProgress((time - startTime) / duration)
 }
+
+/** The gallery handoff enters Cosmos at an authored scene time before the shared clock updates. */
+export function getPlanetariumHandoffStartTime(fromGallery: boolean, sceneEntryTime: number, runtimeTime: number): number {
+  return fromGallery && Number.isFinite(sceneEntryTime) ? sceneEntryTime : runtimeTime
+}

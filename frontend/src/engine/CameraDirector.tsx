@@ -15,7 +15,7 @@ import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
 import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthViewportHeight } from '../scenes/growth/seedProcedure'
 import { getBloomCameraApproach, getBloomCloseupPose, getBloomEntryCameraPose } from './bloomCamera'
-import { galaxyCameraPose, getPlanetariumHandoffProgress, interpolateCameraPose } from '../scenes/galaxy/camera'
+import { galaxyCameraPose, getPlanetariumHandoffProgress, getPlanetariumHandoffStartTime, interpolateCameraPose } from '../scenes/galaxy/camera'
 import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { getIdentityCameraMoveTarget, getIdentityCameraPullbackPose, IDENTITY_CAMERA_PULLBACK_DISTANCE,
   IDENTITY_CAMERA_PULLBACK_SECONDS } from './identityCamera'
@@ -105,7 +105,9 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
       const finish = galaxyPose(galaxySettings.cameraEndDistance, galaxySettings.cameraEndAngle)
       const finishFov = aspect < 1 ? 42 : 38
       const startFov = camera instanceof PerspectiveCamera ? camera.fov : finishFov
-      const handoffStartTime = getRuntimeTime(runtime)
+      // Entering from the gallery starts Cosmos at GALLERY.exit. The shared
+      // runtime still holds the gallery clock during this first layout pass.
+      const handoffStartTime = getPlanetariumHandoffStartTime(previousScene === 'gallery', GALLERY.exit, getRuntimeTime(runtime))
       const duration = Math.min(galaxySettings.cameraDuration, TIMING.cosmos.duration - handoffStartTime)
       if (reducedMotion || duration <= 0) {
         Object.assign(p, finish)

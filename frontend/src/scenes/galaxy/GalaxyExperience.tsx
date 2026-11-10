@@ -10,12 +10,12 @@ import { createGalaxyGeometry, updateGalaxyColors, type GalaxyGeometrySettings }
 import { applyGalaxyFrameMaterials, createCoreMaterial, createFogMaterial, createGasMaterial, createStarMaterial, createSunMaterial, type GalaxyUniforms } from './shaders'
 import { advanceGalaxyAmbientPhase, getGalaxyFogOpacity, getGalaxyLight, getGalaxyMotionPhase, getGalaxyRevealState } from './animation'
 import { getGalaxyRenderPalette } from './palette'
-import { getPlanetariumHandoffProgress, getPlanetariumHandoffProgressAtTime } from './camera'
+import { getPlanetariumHandoffProgress, getPlanetariumHandoffProgressAtTime, getPlanetariumHandoffStartTime } from './camera'
 import { createNebulaClouds } from './nebulaClouds'
 import { deferGalaxyCloudDisposal } from './resourceLifecycle'
 import { createBackgroundStarsMaterial, createBlackCenterMaterial, faceBlackCenterToCamera, GALAXY_RENDER_ORDER } from './rendering'
 import { galleryMotion, gallerySnapshot, subscribeGallery } from '../gallery/controller'
-import { GALLERY_MEMORIES } from '../gallery/content'
+import { GALLERY, GALLERY_MEMORIES } from '../gallery/content'
 import { getPlanetariumGalaxyFade } from '../gallery/planetariumTransition'
 
 type GalaxySceneName = 'cosmos' | 'greeting' | 'ending'
@@ -192,10 +192,9 @@ export function GalaxyExperience({ state, runtime, reducedMotion }: SceneProps) 
       camera.getWorldDirection(cameraWorldDirection)
       planetariumStartTransform.current.position.copy(cameraWorldPosition).addScaledVector(cameraWorldDirection, current.cameraStartDistance)
       camera.getWorldQuaternion(planetariumStartTransform.current.rotation)
-      // `draw(0)` is called when the timeline is built, but the shared cosmos
-      // clock enters at GALLERY.exit (10s). Capture that actual clock time so
-      // the galaxy and CameraDirector begin their handoff on the same frame.
-      planetariumStartTransform.current.time = runtime.time
+      // Cosmos enters from Gallery at this exact scene time. During this first
+      // layout pass the shared runtime may still hold the Gallery clock value.
+      planetariumStartTransform.current.time = getPlanetariumHandoffStartTime(planetariumCosmos, GALLERY.exit, runtime.time)
       planetariumStartTransform.current.captured = true
     }
     const handoffDuration = Math.min(current.cameraDuration, TIMING.cosmos.duration - planetariumStartTransform.current.time)
