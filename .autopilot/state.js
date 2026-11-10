@@ -11,61 +11,61 @@ window.STATE =
   "memoryFile": "AGENTS.md",
   "skillDir": "C:/Users/McHomak/.agents/skills/autopilot",
   "startedAt": "2026-11-10T18:11:06+03:00",
-  "updatedAt": "2026-11-10T18:56:52+03:00",
-  "finishedAt": "2026-11-10T18:56:52+03:00",
+  "updatedAt": "2026-11-10T19:35:42+03:00",
+  "finishedAt": "2026-11-10T19:35:42+03:00",
   "stages": [
     {
       "id": "preflight",
       "status": "done",
-      "startedAt": "2026-11-10T18:41:08+03:00",
-      "finishedAt": "2026-11-10T18:41:08+03:00"
+      "startedAt": "2026-11-10T19:09:40+03:00",
+      "finishedAt": "2026-11-10T19:09:40+03:00"
     },
     {
       "id": "manifest",
       "status": "done",
-      "startedAt": "2026-11-10T18:41:08+03:00",
-      "finishedAt": "2026-11-10T18:41:08+03:00"
+      "startedAt": "2026-11-10T19:09:40+03:00",
+      "finishedAt": "2026-11-10T19:09:40+03:00"
     },
     {
       "id": "briefing",
       "status": "done",
-      "startedAt": "2026-11-10T18:41:08+03:00",
-      "finishedAt": "2026-11-10T18:41:08+03:00"
+      "startedAt": "2026-11-10T19:09:40+03:00",
+      "finishedAt": "2026-11-10T19:09:40+03:00"
     },
     {
       "id": "spec",
       "status": "done",
-      "startedAt": "2026-11-10T18:41:08+03:00",
-      "finishedAt": "2026-11-10T18:42:05+03:00"
+      "startedAt": "2026-11-10T19:09:40+03:00",
+      "finishedAt": "2026-11-10T19:10:43+03:00"
     },
     {
       "id": "plan",
       "status": "done",
-      "startedAt": "2026-11-10T18:42:05+03:00",
-      "finishedAt": "2026-11-10T18:42:05+03:00"
+      "startedAt": "2026-11-10T19:10:43+03:00",
+      "finishedAt": "2026-11-10T19:10:43+03:00"
     },
     {
       "id": "build",
       "status": "done",
-      "startedAt": "2026-11-10T18:42:05+03:00",
-      "finishedAt": "2026-11-10T18:55:15+03:00"
+      "startedAt": "2026-11-10T19:10:43+03:00",
+      "finishedAt": "2026-11-10T19:35:42+03:00"
     },
     {
       "id": "review",
       "status": "done",
-      "startedAt": "2026-11-10T18:55:15+03:00",
-      "finishedAt": "2026-11-10T18:55:15+03:00"
+      "startedAt": "2026-11-10T19:35:42+03:00",
+      "finishedAt": "2026-11-10T19:35:42+03:00"
     },
     {
       "id": "final",
       "status": "done",
-      "startedAt": "2026-11-10T18:55:15+03:00",
-      "finishedAt": "2026-11-10T18:56:52+03:00"
+      "startedAt": "2026-11-10T19:35:42+03:00",
+      "finishedAt": "2026-11-10T19:35:42+03:00"
     }
   ],
   "requirements": {
-    "total": 4,
-    "done": 4,
+    "total": 5,
+    "done": 5,
     "inTicket": 0,
     "inSpec": 0,
     "placeholder": 0,
@@ -75,24 +75,16 @@ window.STATE =
   "tickets": [],
   "singlePass": {
     "status": "done",
-    "startedAt": "2026-11-10T18:42:05+03:00",
-    "files": [
-      "frontend/src/engine/CameraDirector.tsx",
-      "frontend/src/engine/cameraPoseContinuity.ts",
-      "frontend/src/engine/cameraTimelineRevision.test.ts",
-      "frontend/src/engine/runtime.ts",
-      "frontend/src/engine/useSceneTimeline.ts",
-      "frontend/src/engine/useSceneTimeline.test.ts"
-    ],
+    "startedAt": "2026-11-10T19:10:43+03:00",
+    "finishedAt": "2026-11-10T19:35:42+03:00",
+    "commit": "091846b",
     "tests": {
-      "passed": 18,
+      "passed": 13,
       "failed": 0
-    },
-    "finishedAt": "2026-11-10T18:56:52+03:00",
-    "commit": "655454a"
+    }
   },
   "tests": {
-    "passed": 931,
+    "passed": 934,
     "failed": 1
   },
   "debt": {
@@ -102,13 +94,13 @@ window.STATE =
   },
   "additions": [],
   "concerns": [
-    "Existing PreparationScreen consent test fails; existing Lily test typecheck error."
+    "Existing PreparationScreen consent test fails; pre-existing Lily test typecheck error. Galaxy unit lifecycle test does not mount full R3F component; browser playback verified directly."
   ],
   "reviewers": {},
   "blind": {
-    "checked": 2,
-    "matched": 2,
+    "checked": 1,
+    "matched": 1,
     "mismatches": [],
-    "note": "Camera distance sampled in live debug across the greeting transition; lifecycle also covered with real GSAP and clocks."
+    "note": "Video flash reproduced as reveal 1 to 0 to 1; after fix 615 consecutive live playback frames held reveal at 1."
   }
 };
