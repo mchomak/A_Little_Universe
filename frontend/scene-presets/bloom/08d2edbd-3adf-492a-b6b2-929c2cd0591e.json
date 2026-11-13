@@ -1,0 +1,33 @@
+{
+  "formatVersion": 1,
+  "configSchemaVersion": 26,
+  "id": "08d2edbd-3adf-492a-b6b2-929c2cd0591e",
+  "name": "3_1",
+  "scope": "bloom",
+  "savedAt": "2026-11-13T00:21:18.979Z",
+  "scene": {
+    "flowerBloomDuration": 16,
+    "cameraApproachDuration": 10.7,
+    "cameraBloomSync": 0.67,
+    "cameraFinalDistance": 2.45,
+    "cameraFinalHeight": 2.7,
+    "cameraTargetX": 0.27,
+    "cameraTargetY": 1.16,
+    "textPositionX": 0.1,
+    "textPositionY": 0.52,
+    "textSize": 36,
+    "textColor": "#C7AD77",
+    "textWritingDuration": 4.2,
+    "textParticleCount": 1800,
+    "lilyBloomPollen": {
+      "enabled": true,
+      "particleCount": 568,
+      "particleSize": 2.9,
+      "glowIntensity": 1.05,
+      "riseSpeed": 0.235,
+      "spreadRadius": 0.59,
+      "lifetime": 3.8,
+      "innerCupGlow": 0.25
+    }
+  }
+}

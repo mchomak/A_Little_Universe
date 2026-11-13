@@ -1,0 +1,11 @@
+{
+  "formatVersion": 1,
+  "configSchemaVersion": 26,
+  "id": "7e346cfe-18a8-41f1-a362-21683b8e0bd0",
+  "name": "8_1",
+  "scope": "greeting",
+  "savedAt": "2026-11-13T01:19:54.921Z",
+  "scene": {
+    "crawlSpeed": 30
+  }
+}
