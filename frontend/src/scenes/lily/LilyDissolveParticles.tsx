@@ -10,7 +10,7 @@ import type { LilySurfaceSource } from './particleSource'
 import { toLilyPortraitAppearanceSettings, toLilyPortraitUniformScales } from './portraitIntegration'
 import { APPROVED_PORTRAIT_SETTINGS, applyApprovedPortraitAppearance, loadApprovedPortrait } from './approvedPortrait'
 import { createLilyGeometryWorkerRequest, sampleLilySurfaceForWorker, serializeLilyPortraitTargets, type LilyGeometryWorkerSuccess } from './lilyGeometryWorkerClient'
-import { createLilyParticleGeometrySetup, lilyParticlePreparation, type LilyParticleGeometrySetup } from './lilyParticlePreparation'
+import { createLilyParticleGeometrySetup, lilyParticlePreparation, LILY_PORTRAIT_ANIMATION_LIMIT_SECONDS, type LilyParticleGeometrySetup } from './lilyParticlePreparation'
 import { ParticlePreparationStatus } from './ParticlePreparationStatus'
 import { LilyPortraitPhotoReveal } from './LilyPortraitPhotoReveal'
 
@@ -192,7 +192,7 @@ function ReadyLilyDissolveParticles({ source, uniforms, reducedMotion, runtime, 
   useLayoutEffect(() => {
     const sync = (time: number) => {
       const portraitStart = settings.portraitStartProgress * settings.dissolveDuration
-      const portraitDuration = Math.min(settings.portraitDuration, Math.max(2, TIMING.identity.duration - portraitStart))
+      const portraitDuration = Math.min(settings.portraitDuration, Math.max(2, LILY_PORTRAIT_ANIMATION_LIMIT_SECONDS - portraitStart))
       updateLilyPortraitSettings(uniforms, time, {
         portraitStart,
         portraitDuration,

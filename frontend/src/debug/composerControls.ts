@@ -28,6 +28,7 @@ export type ComposerFieldPath =
   | `scenes.gallery.${keyof SceneComposerConfig['scenes']['gallery'] & string}`
   | `scenes.gallery.cloudLayers.${keyof SceneComposerConfig['scenes']['gallery']['cloudLayers'] & string}.${keyof SceneComposerConfig['scenes']['gallery']['cloudLayers']['far'] & string}`
   | `scenes.galaxy.${keyof SceneComposerConfig['scenes']['galaxy'] & string}`
+  | `scenes.greeting.${keyof SceneComposerConfig['scenes']['greeting'] & string}`
 
 export type ComposerImportResult =
   | { ok: true; config: SceneComposerConfig }
@@ -64,7 +65,7 @@ export async function importComposerJson(source: string): Promise<ComposerImport
   if ('global' in root && !isRecord(root.global)) return { ok: false, reason: 'document' }
   if ('scenes' in root && !isRecord(root.scenes)) return { ok: false, reason: 'document' }
   const scenes = isRecord(root.scenes) ? root.scenes : {}
-  for (const section of ['openingBackground', 'preload', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy']) {
+  for (const section of ['openingBackground', 'preload', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy', 'greeting']) {
     if (section in scenes && !isRecord(scenes[section])) return { ok: false, reason: 'document' }
   }
 

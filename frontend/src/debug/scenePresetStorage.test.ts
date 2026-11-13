@@ -25,6 +25,19 @@ describe('packaged scene preset storage', () => {
     expect(backing.values.size).toBe(1)
   })
 
+  it('persists greeting speed across storage instances without touching old scene presets', async () => {
+    const backing = memoryStorage()
+    const store = createScenePresetStorage(backing)
+    const oldPreset = captureScenePreset(DEFAULT_SCENE_COMPOSER_CONFIG, 'growth', 'Рост')
+    const greeting = captureScenePreset(DEFAULT_SCENE_COMPOSER_CONFIG, 'greeting', 'Поздравление')
+    const changed = { ...greeting, scene: { crawlSpeed: 12 } }
+    await store.save(oldPreset)
+    await store.save(changed)
+    const reopened = createScenePresetStorage(backing)
+    expect(await reopened.read('greeting', greeting.id)).toEqual(changed)
+    expect(await reopened.read('growth', oldPreset.id)).toEqual(oldPreset)
+  })
+
   it('replaces by stable id and rejects a preset from a different scene scope', async () => {
     const store = createScenePresetStorage(memoryStorage())
     const preset = captureScenePreset(DEFAULT_SCENE_COMPOSER_CONFIG, 'growth', 'Рост')

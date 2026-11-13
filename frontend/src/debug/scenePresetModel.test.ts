@@ -2,7 +2,7 @@ import { expect, it } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, getConfig, normalizeConfig, resetConfig, updateConfig, type SceneComposerConfig } from '../systems/scene-config/config'
 import { captureScenePreset, parseScenePreset, scenePresetPatch, type ScenePresetScope } from './scenePresetModel'
 
-const presetScopes: ScenePresetScope[] = ['preload', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy']
+const presetScopes: ScenePresetScope[] = ['preload', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy', 'greeting']
 
 it('captures only the selected scene and keeps its internal config keys', () => {
   const config = {
@@ -289,3 +289,35 @@ it('applies a partial preset without changing unrelated branches or retaining un
   }
 })
 
+
+it('preserves old gallery presets and round-trips new caption controls', async () => {
+  await resetConfig('all')
+  try {
+    const oldPreset = parseScenePreset({
+      formatVersion: 1, configSchemaVersion: 26, id: 'gallery-old', name: 'Old gallery',
+      scope: 'gallery', savedAt: '2026-11-03T10:00:00.000Z',
+      scene: { captionFontSize: 38, moonBrightness: 1.2 },
+    }, 'gallery', normalizeConfig)
+    await updateConfig(scenePresetPatch(oldPreset, 'gallery'))
+    expect(getConfig().scenes.gallery).toMatchObject({ captionFontSize: 38, moonBrightness: 1.2, captionLineCharacters: 62, captionTitleLetterSpacing: 1 })
+    await updateConfig({ scenes: { gallery: { captionFontSize: 70, captionLineCharacters: 35, captionTitleLetterSpacing: 2.5 } } })
+    const saved = captureScenePreset(getConfig(), 'gallery', 'Updated gallery')
+    const reloaded = parseScenePreset(JSON.parse(JSON.stringify(saved)), 'gallery', normalizeConfig)
+    await resetConfig('all')
+    await updateConfig(scenePresetPatch(reloaded, 'gallery'))
+    expect(getConfig().scenes.gallery).toMatchObject({ captionFontSize: 70, captionLineCharacters: 35, captionTitleLetterSpacing: 2.5, moonBrightness: 1.2 })
+  } finally {
+    await resetConfig('all')
+  }
+})
+
+
+it('loads old configurations with the original greeting speed and saves a new greeting preset independently', () => {
+  const oldConfig = normalizeConfig({ schemaVersion: 26, scenes: { gallery: { cloudLayerCount: 5 } } })
+  expect(oldConfig.scenes.greeting.crawlSpeed).toBe(26)
+  const changed = normalizeConfig({ ...oldConfig, scenes: { ...oldConfig.scenes, greeting: { crawlSpeed: 12 } } })
+  const preset = captureScenePreset(changed, 'greeting', 'Медленное письмо')
+  expect(parseScenePreset(preset, 'greeting', normalizeConfig).scene).toEqual({ crawlSpeed: 12 })
+  expect(scenePresetPatch(preset, 'greeting')).toEqual({ scenes: { greeting: { crawlSpeed: 12 } } })
+  expect(() => parseScenePreset({ ...preset, scene: { crawlSpeed: 999 } }, 'greeting', normalizeConfig)).toThrow()
+})

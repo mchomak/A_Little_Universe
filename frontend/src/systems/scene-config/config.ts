@@ -7,7 +7,7 @@ export type QualityProfile = 'standard' | 'low'
 export type ScenePresetId = 'moonlit-letter' | 'stardust' | 'vasilisa-cinematic'
 export type GalaxyPalette = 'vasilisa' | 'spore' | 'ember' | 'emerald' | 'ice' | 'rose' | 'custom'
 export type SeedQuality = 'low' | 'standard' | 'high'
-export type ConfigResetScope = 'all' | 'global' | 'openingBackground' | 'preload' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy' | 'preset'
+export type ConfigResetScope = 'all' | 'global' | 'openingBackground' | 'preload' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy' | 'greeting' | 'preset'
 
 export interface GalleryCloudLayerSettings {
   count: number
@@ -302,6 +302,8 @@ export interface SceneComposerConfig {
       collagePhotoScale: number
       collagePhotoGap: number
       captionFontSize: number
+      captionLineCharacters: number
+      captionTitleLetterSpacing: number
       moonBrightness: number
       moonSize: number
       cloudDriftVariation: number
@@ -339,6 +341,7 @@ export interface SceneComposerConfig {
       moonHaloRadius: number
       moonGodRaysIntensity: number
     }>
+    greeting: Readonly<{ crawlSpeed: number }>
     galaxy: Readonly<{
       quality: SeedQuality
       seed: string
@@ -506,7 +509,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       collageParticleCount: 90000, collageParticleSize: 2.6, collageNoiseStrength: 0.035, collageDepth: 0.42,
       collageGlow: 1, collageAssembleDuration: 5, collageRevealDuration: 2.5, collageStaggerDelay: 0.14,
       collagePhotoScale: 0.9, collagePhotoGap: 0.3,
-      captionFontSize: 29,
+      captionFontSize: 29, captionLineCharacters: 62, captionTitleLetterSpacing: 1,
       moonBrightness: 0.8, moonSize: 1.2,
       cloudDriftVariation: 0.65,
       cloudLayers: {
@@ -528,6 +531,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       moonTargetX: 0, moonTargetY: 5.2, moonTargetZ: -34, moonHaloRadius: 1.7,
       moonGodRaysIntensity: 0.12,
     },
+    greeting: { crawlSpeed: 26 },
     galaxy: {
       quality: 'standard', seed: 'andromeda', starCount: 32000, arms: 5, radius: 8.2,
       spin: 4.6, armWidth: 0.16, randomness: 0.065, randomnessPower: 3.6, coreSize: 0.24, coreDensity: 0.2,
@@ -604,6 +608,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
   const rawGrowthInput = asRecord(scenesInput?.growth)
   const bloomInput = asRecord(scenesInput?.bloom)
   const identityInput = asRecord(scenesInput?.identity)
+  const greetingInput = asRecord(scenesInput?.greeting)
   const rawGalleryInput = asRecord(scenesInput?.gallery)
   // Schema v9 allowed at most 12 cloud banks; expand that old default while
   // preserving deliberate lower values, including zero.
@@ -882,6 +887,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
     },
     gallery: normalizeGallery(galleryInput),
     galaxy: normalizeGalaxy(galaxySettingsInput),
+    greeting: { crawlSpeed: numberValue(greetingInput?.crawlSpeed, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.greeting.crawlSpeed, 8, 80) },
   }
   if (scenes.identity.portraitMinTurns > scenes.identity.portraitMaxTurns) {
     scenes.identity.portraitMaxTurns = scenes.identity.portraitMinTurns
@@ -959,7 +965,9 @@ function normalizeGallery(input: Record<string, unknown> | undefined): SceneComp
     collageStaggerDelay: numberValue(input?.collageStaggerDelay, d.collageStaggerDelay, 0, 0.5),
     collagePhotoScale: numberValue(input?.collagePhotoScale, d.collagePhotoScale, 0.5, 1),
     collagePhotoGap: numberValue(input?.collagePhotoGap, d.collagePhotoGap, 0.1, 1.5),
-    captionFontSize: numberValue(input?.captionFontSize, d.captionFontSize, 20, 40, true),
+    captionFontSize: numberValue(input?.captionFontSize, d.captionFontSize, 20, 80, true),
+    captionLineCharacters: numberValue(input?.captionLineCharacters, d.captionLineCharacters, 20, 100, true),
+    captionTitleLetterSpacing: numberValue(input?.captionTitleLetterSpacing, d.captionTitleLetterSpacing, 0, 6),
     moonBrightness: numberValue(input?.moonBrightness, d.moonBrightness, 0, 2),
     moonSize: numberValue(input?.moonSize, d.moonSize, 0.4, 1.8),
     cloudDriftVariation: numberValue(input?.cloudDriftVariation, d.cloudDriftVariation, 0, 1),

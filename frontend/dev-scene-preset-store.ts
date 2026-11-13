@@ -5,7 +5,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin, ViteDevServer } from 'vite'
 import { parseScenePreset, type ScenePresetScope, type ScenePresetV1 } from './src/debug/scenePresetModel'
 
-const scopes = new Set<ScenePresetScope>(['preload', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy'])
+const scopes = new Set<ScenePresetScope>(['preload', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy', 'greeting'])
 const validId = (value: string) => /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(value)
 const safeName = (value: unknown): value is string => typeof value === 'string' && !!value.trim() && value.trim().length <= 80 && ![...value].some(char => char.charCodeAt(0) < 32)
 const fileId = (value: string) => value.trim().toLocaleLowerCase('ru-RU').normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 80)

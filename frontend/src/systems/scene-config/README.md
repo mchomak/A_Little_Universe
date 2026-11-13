@@ -103,6 +103,8 @@ Lily settings are stored under `scenes.growth.lilyBudGlow`, `scenes.growth.lilyL
 | Scene 02 seed trail and impact | Trail intensity / spread / lifetime / lift speed / count; impact strength / radius / particles / lifetime | 0–2 (1.2) / 0–0.5 m (0.36) / 0.15–2 s (1) / 0.1–2 m/s (0.8) / 12–128 (60); 0–1 (0.6) / 0.1–1.2 m (0.72) / 0–180 (64) / 0.2–1.6 s (0.85) |
 | Scene 02 moon scattering | Intensity | 0–1.5 (0.35) |
 | Scene 02 clouds | Count / density / scale / drift / opacity / light; size / light / path / shape / depth variation | 0–24 integer (18) / 0–2 (0.8) / 0.4–2 (1) / 0–2 (0.3) / 0–1 (0.42) / 0–2 (0.7); each variation 0–1 (0.72 / 0.55 / 0.65 / 0.65 / 0.65) |
+| Gallery captions | Font size / approximate characters per line / title letter spacing | 20–80 px (29) / 20–100 (62) / 0–6 px (1). Width grows with text size; the focused camera uses the same layout. Old presets retain their values and get defaults for missing fields. |
+| Scene 08 greeting | Letter crawl speed | 8–80 px/s (26). Saved with the `greeting` scene preset; changes recalculate the scroll duration while preserving the current position. |
 | Galaxy Geometry | Star count, arms, radius, spin | 8000–90000 integer (32000), 2–8 integer (5), 4–14 (8.2), 0.2–18 (4.6 radians) |
 | Galaxy Geometry | Seed | String, 1–64 characters (default `andromeda`) |
 | Galaxy Geometry | Arm width / randomness / randomness power | 0–0.5 (0.16) / 0–0.3 (0.065) / 0.1–8 (3.6) |
@@ -128,3 +130,5 @@ The only accepted art font IDs are `great-vibes`, `marck-script`, `bad-script`, 
 
 
 
+
+Scene 08 uses `scenes.greeting.crawlSpeed` (8–80 pixels/second, default 26) for the letter crawl. Its `greeting` scene preset is independent of the galaxy and other scenes. Changing the speed during playback preserves the current scroll position; the film speed still applies separately. Old configurations without the field use the original default.

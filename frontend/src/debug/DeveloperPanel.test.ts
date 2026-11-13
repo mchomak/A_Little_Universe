@@ -607,5 +607,5 @@ it('exposes ten bounded collage controls in one collapsed DEV section', () => {
   expect(section?.[1]).toContain('Длительность сборки · 5 с')
   expect(section?.[1]).toContain('Длительность проявления фото · 2,5 с')
   expect(markup).toContain('<summary>Подписи под фото</summary>')
-  expect(markup).toMatch(/id="composer-scenes-gallery-captionFontSize"[^>]*min="20" max="40" step="1" value="29"/)
+  expect(markup).toMatch(/id="composer-scenes-gallery-captionFontSize"[^>]*min="20" max="80" step="1" value="29"/)
 })

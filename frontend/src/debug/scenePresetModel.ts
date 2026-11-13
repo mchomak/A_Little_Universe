@@ -1,6 +1,6 @@
 import type { SceneComposerConfig, SceneComposerConfigPatch } from '../systems/scene-config/config'
 
-export type ScenePresetScope = 'preload' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy'
+export type ScenePresetScope = 'preload' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy' | 'greeting'
 
 export interface ScenePresetV1 {
   formatVersion: 1
@@ -32,7 +32,7 @@ export class ScenePresetValidationError extends Error {
   }
 }
 
-const presetScopes = new Set<ScenePresetScope>(['preload', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy'])
+const presetScopes = new Set<ScenePresetScope>(['preload', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy', 'greeting'])
 const openingScopes = new Set<ScenePresetScope>(['preload', 'prologue', 'growth', 'bloom', 'identity'])
 const safeIdPattern = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
 const currentConfigSchemaVersion = 26

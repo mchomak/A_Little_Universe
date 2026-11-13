@@ -31,7 +31,7 @@ export default function SceneTimeline({ state, dispatch, runtime, route, onPrelo
     const measure = () => {
       const crawl = document.querySelector<HTMLElement>('.greeting-overlay .credits-crawl')
       const viewport = document.querySelector<HTMLElement>('.greeting-overlay')
-      if (crawl && viewport) setCreditsScrollDuration(getCreditsScrollDuration(crawl.scrollHeight, viewport.clientHeight))
+      if (crawl && viewport) setCreditsScrollDuration(getCreditsScrollDuration(crawl.scrollHeight, viewport.clientHeight, config.scenes.greeting.crawlSpeed))
     }
     measure()
     const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure)
@@ -41,7 +41,7 @@ export default function SceneTimeline({ state, dispatch, runtime, route, onPrelo
     if (viewport) observer?.observe(viewport)
     window.addEventListener('resize', measure)
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure) }
-  }, [state.scene])
+  }, [state.scene, config.scenes.greeting.crawlSpeed])
   const frames = timelineFrames(state.scene, config, creditsScrollDuration, state.returnToEnding)
   const index = activeFrameIndex(frames, state.elapsed)
   const nextFrame = frames[index + 1]

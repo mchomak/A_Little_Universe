@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type Dispatch } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ChangeEvent, type Dispatch } from 'react'
 import type { FilmAction, FilmState } from '../engine/film'
 import type { FilmRuntime } from '../engine/runtime'
 import type { DesktopRecordingSession, DesktopRecordingSnapshot, DesktopSource } from '../systems/media/DesktopRecordingSession'
@@ -524,7 +524,9 @@ const GALLERY_COLLAGE_CONTROLS: readonly NumericControl[] = [
 ]
 
 const GALLERY_CAPTION_CONTROLS: readonly NumericControl[] = [
-  { path: 'scenes.gallery.captionFontSize', label: 'Размер текста подписей', unit: 'px', min: 20, max: 40, step: 1 },
+  { path: 'scenes.gallery.captionFontSize', label: 'Размер текста подписей', unit: 'px', min: 20, max: 80, step: 1 },
+  { path: 'scenes.gallery.captionLineCharacters', label: 'Ширина подписи', unit: 'симв.', min: 20, max: 100, step: 1 },
+  { path: 'scenes.gallery.captionTitleLetterSpacing', label: 'Интервал между буквами заголовка', unit: 'px', min: 0, max: 6, step: 0.25 },
 ]
 
 const GALLERY_CLOUD_GROUPS: readonly { id?: string; name: string; controls: readonly NumericControl[] }[] = [
@@ -981,7 +983,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
     await commitGalaxySettings(selectGalaxyPalette(getConfig().scenes.galaxy, palette))
   }
 
-  const resetScope = async (scope: 'global' | 'openingBackground' | 'preload' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy') => {
+  const resetScope = async (scope: 'global' | 'openingBackground' | 'preload' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'galaxy' | 'greeting') => {
     const before = getConfig()
     const result = await resetComposerScope(scope)
     if (!result.ok) {
@@ -1064,9 +1066,9 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const font = (scene: 'prologue', label: string) => <FontControl path={`scenes.${scene}.fontFamily`} label={label} value={config.scenes[scene].fontFamily} onChange={(path, value) => { void changeField(path, value) }} onReset={(path) => { void resetField(path) }} />
   const title = INSPECTOR_SCENE_LABELS[selected]
   const hasSceneControls = selected === 'preload' || selected === 'prologue'
-    || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'gallery' || selected === 'cosmos'
+    || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'gallery' || selected === 'cosmos' || selected === 'greeting'
   const currentScope: InspectorScope | undefined = selected === 'cosmos' ? 'galaxy'
-    : selected === 'preload' || selected === 'prologue' || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'gallery'
+    : selected === 'preload' || selected === 'prologue' || selected === 'growth' || selected === 'bloom' || selected === 'identity' || selected === 'gallery' || selected === 'greeting'
       ? selected : undefined
   const currentSnapshots = currentScope ? snapshots[currentScope] : undefined
   const remember = (slot: 'A' | 'B') => {
@@ -1164,6 +1166,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
             {selected !== active && <p>Перейдите в эту сцену для сравнения.</p>}
           </>}
         </details>}
+        {selected === 'greeting' && <details open><summary>Прокрутка поздравления</summary>{range({ path: 'scenes.greeting.crawlSpeed', label: 'Скорость прокрутки письма', unit: 'пикс./с', min: 8, max: 80, step: 1 })}</details>}
         {selected === 'preload' && <details open><summary>Свечение и движение</summary>{PRELOAD_CONTROLS.map(range)}</details>}
         {selected === 'prologue' && PROLOGUE_GROUPS.map(group => <details key={group.name} open={group.name === 'Типографика'}>
           <summary>{group.name}</summary>
@@ -1299,7 +1302,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           else history.record(scope, section(before, scope), section(next, scope))
           setHistoryRevision(value => value + 1)
         }} />}
-        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
+        {hasSceneControls ? <button type="button" onClick={() => { void resetScope(selected === 'cosmos' ? 'galaxy' : selected as 'preload' | 'prologue' | 'growth' | 'bloom' | 'identity' | 'gallery' | 'greeting') }}>Сбросить сцену</button> : <p>Для этой сцены пока нет связанных параметров.</p>}
       </details>
       <details className="inspector-section"><summary>Диагностика</summary>
         <div className="dev-actions"><button type="button" data-testid="dev-preload" onClick={onPreload}>Проверить загрузку</button></div>

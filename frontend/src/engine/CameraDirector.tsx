@@ -11,7 +11,7 @@ import type { CameraPose } from '../scenes/shared/galleryMotion'
 import { galleryMotion, gallerySnapshot } from '../scenes/gallery/controller'
 import { GALLERY } from '../scenes/gallery/content'
 import { configureCameraFarPlane } from '../scenes/gallery/camera'
-import { getGalleryNormalFov } from '../scenes/gallery/galleryCameraFit'
+import { getGalleryFocusFov, getGalleryNormalFov } from '../scenes/gallery/galleryCameraFit'
 import { wakeOnVisible } from '../scenes/gallery/visibility'
 import { firstMemoryCamera } from '../scenes/shared/firstMemoryFrame'
 import { getGrowthBloomEntryCameraPose, getGrowthCameraPose, getGrowthViewportHeight } from '../scenes/growth/seedProcedure'
@@ -262,8 +262,7 @@ export function CameraDirector({ state, dispatch, runtime, reducedMotion }: Scen
     camera.lookAt(...target)
     if (camera instanceof PerspectiveCamera) {
       const normalFov = getGalleryNormalFov(aspect, eased)
-      const fitHeight = Math.max(collageFrame.height, collageFrame.width / Math.max(.3, aspect))
-      const fitFov = Math.max(4, Math.min(70, 2 * Math.atan(fitHeight / (2 * focused.distance * .75)) * 180 / Math.PI))
+      const fitFov = getGalleryFocusFov(collageFrame, aspect, focused.distance)
       const fov = normalFov + (fitFov - normalFov) * focal
       camera.setFocalLength(camera.getFilmHeight() / (2 * Math.tan(fov * Math.PI / 360))); camera.updateProjectionMatrix()
     }

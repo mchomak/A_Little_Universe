@@ -32,6 +32,13 @@ describe('local scene preset store', () => {
     expect((await send('', 'PUT', replacement)).status).toBe(201)
     expect(JSON.parse(await readFile(path.join(root, 'scene-presets', 'growth', 'growth-test.json'), 'utf8')).name).toBe('Long growth')
   })
+  it('saves and reloads greeting speed through the local API', async () => {
+    const greeting = { ...sample, id: 'greeting-test', scope: 'greeting', scene: { crawlSpeed: 12 } }
+    delete (greeting as Partial<typeof greeting>).openingBackground
+    expect((await send('', 'PUT', greeting)).status).toBe(201)
+    expect(await (await send('/greeting-test?scope=greeting')).json()).toEqual(greeting)
+    expect((await (await send('?scope=growth')).json()).presets).toHaveLength(1)
+  })
   it('rejects foreign origins, unknown scopes, oversized documents, and invalid files', async () => {
     expect((await send('', 'PUT', sample, 'https://example.org')).status).toBe(403)
     expect((await send('?scope=../../other')).status).toBe(400)

@@ -1,5 +1,5 @@
 import { getGalleryCollagePhotoLayout, type GalleryCollageSlot } from './collage'
-import { getGalleryCaptionLayout, GALLERY_CAPTION_GAP, GALLERY_CAPTION_PLANE_WIDTH } from './captionLayout'
+import { getGalleryCaptionLayout, GALLERY_CAPTION_GAP } from './captionLayout'
 import type { GalleryLayoutVariant, GalleryMemory } from './content'
 
 export interface GalleryPhotoAspectProfile {
@@ -22,6 +22,7 @@ interface GalleryCollageCameraSettings {
   readonly collagePhotoScale: number
   readonly collagePhotoGap: number
   readonly captionFontSize?: number
+  readonly captionLineCharacters?: number
   readonly galleryLayoutVariant?: GalleryLayoutVariant
 }
 
@@ -91,10 +92,10 @@ export function getGalleryCollageCameraFrame(
   })
 
   if (memory.title.trim() || memory.caption.trim()) {
-    const captionHeight = getGalleryCaptionLayout(memory.title, memory.caption, settings.captionFontSize).worldHeight
-    minX = Math.min(minX, -GALLERY_CAPTION_PLANE_WIDTH / 2)
-    maxX = Math.max(maxX, GALLERY_CAPTION_PLANE_WIDTH / 2)
-    minY = Math.min(minY, -mainHeight / 2 - GALLERY_CAPTION_GAP - captionHeight)
+    const caption = getGalleryCaptionLayout(memory.title, memory.caption, settings.captionFontSize, settings.captionLineCharacters)
+    minX = Math.min(minX, -caption.worldWidth / 2)
+    maxX = Math.max(maxX, caption.worldWidth / 2)
+    minY = Math.min(minY, -mainHeight / 2 - GALLERY_CAPTION_GAP - caption.worldHeight)
   }
 
   const centerX = (minX + maxX) / 2
@@ -134,4 +135,12 @@ export function getGalleryNormalFov(viewportAspect: number, easedOpening: number
   const portraitFov = Math.min(82, Math.max(70, 2 * Math.atan(5.1 / (10.65 * aspect)) * 180 / Math.PI))
   const initialFov = aspect < 1 ? 42 : 38
   return initialFov + ((aspect < 1 ? portraitFov : 48) - initialFov) * eased
+}
+
+/** Widen the focus view when the opposite photo prevents the camera from backing away. */
+export function getGalleryFocusFov(frame: Readonly<GalleryCollageCameraFrame>, viewportAspect: number, distance: number): number {
+  const aspect = Number.isFinite(viewportAspect) ? Math.max(0.3, viewportAspect) : 1
+  const safeDistance = Number.isFinite(distance) ? Math.max(0.01, distance) : MIN_COLLAGE_CAMERA_DISTANCE
+  const fitHeight = Math.max(frame.height, frame.width / aspect)
+  return Math.max(4, Math.min(140, 2 * Math.atan(fitHeight / (2 * safeDistance * 0.75)) * 180 / Math.PI))
 }

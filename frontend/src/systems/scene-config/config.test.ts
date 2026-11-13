@@ -263,12 +263,12 @@ it('keeps collage settings within their inclusive DEV limits', () => {
 
 it('provides a bounded gallery caption font size', () => {
   const minimum = normalizeConfig({ schemaVersion: 24, scenes: { gallery: { captionFontSize: 20 } } })
-  const maximum = normalizeConfig({ schemaVersion: 24, scenes: { gallery: { captionFontSize: 40 } } })
-  const outOfRange = normalizeConfig({ schemaVersion: 24, scenes: { gallery: { captionFontSize: 41 } } })
+  const maximum = normalizeConfig({ schemaVersion: 24, scenes: { gallery: { captionFontSize: 80 } } })
+  const outOfRange = normalizeConfig({ schemaVersion: 24, scenes: { gallery: { captionFontSize: 81 } } })
 
   expect(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.gallery.captionFontSize).toBe(29)
   expect(minimum.scenes.gallery.captionFontSize).toBe(20)
-  expect(maximum.scenes.gallery.captionFontSize).toBe(40)
+  expect(maximum.scenes.gallery.captionFontSize).toBe(80)
   expect(outOfRange.scenes.gallery.captionFontSize).toBe(29)
 })
 

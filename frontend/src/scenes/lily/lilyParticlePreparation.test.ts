@@ -5,6 +5,14 @@ import type { LilySurfaceSource } from './particleSource'
 import type { LilyGeometryWorkerRequest, LilyGeometryWorkerSuccess } from './lilyGeometryWorkerClient'
 
 describe('lily particle preparation inputs', () => {
+  it('preserves configured long portrait routes when the scene hold is shortened', () => {
+    const config = { ...DEFAULT_SCENE_COMPOSER_CONFIG, scenes: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes,
+      identity: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes.identity, dissolveDuration: 18, portraitStartProgress: 1, portraitDuration: 16 } } }
+    const setup = createLilyParticleGeometrySetup({ config, width: 1280, height: 636, reducedMotion: false, bloomClipDuration: 16 })
+    expect(setup.portrait.start).toBe(18)
+    expect(setup.portrait.duration).toBe(16)
+  })
+
   it('changes the cache key when a worker camera or trajectory input changes', () => {
     const base = createLilyParticleGeometrySetup({
       config: DEFAULT_SCENE_COMPOSER_CONFIG,
@@ -95,7 +103,7 @@ describe('lily particle preparation inputs', () => {
       sample: () => [0, 0, 0],
     }
     const captureSource = vi.fn(async () => ({ source, bloomClipDuration: 16 }))
-    const createWorker = vi.fn(() => ({ promise: Promise.resolve({ ok: true, attributes: {} }), cancel: vi.fn() }))
+    const createWorker = vi.fn(() => ({ promise: Promise.resolve<LilyGeometryWorkerSuccess>({ ok: true, attributes: {} }), cancel: vi.fn() }))
     const manager = new LilyParticlePreparationManager({
       loadPortrait: async () => ({ width: 1, height: 1, points: [] }),
       captureSource,
@@ -214,7 +222,7 @@ describe('lily particle preparation inputs', () => {
       captureSource,
       createWorker: (payload) => {
         workerPayloads.push(payload)
-        return { promise: Promise.resolve({ ok: true, attributes: {} }), cancel: vi.fn() }
+        return { promise: Promise.resolve<LilyGeometryWorkerSuccess>({ ok: true, attributes: {} }), cancel: vi.fn() }
       },
     }
     const manager = new LilyParticlePreparationManager(dependencies)
@@ -251,7 +259,7 @@ describe('lily particle preparation inputs', () => {
       loadPortrait: async () => ({ width: 1, height: 1, points: [] }),
       captureSource,
       getSourceSignature: (duration) => `${poseRevision}:${duration}`,
-      createWorker: () => ({ promise: Promise.resolve({ ok: true, attributes: {} }), cancel: vi.fn() }),
+      createWorker: () => ({ promise: Promise.resolve<LilyGeometryWorkerSuccess>({ ok: true, attributes: {} }), cancel: vi.fn() }),
     })
     const input = {
       config: { ...DEFAULT_SCENE_COMPOSER_CONFIG, scenes: { ...DEFAULT_SCENE_COMPOSER_CONFIG.scenes,

@@ -256,7 +256,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
       <div className="film-surface">
         <PhoneBackground active={showOpeningBackground} scene={state.scene} runtime={runtime} reducedMotion={reducedMotion} />
         <div className="viewport" role="region" aria-label="Интерактивный фильм"><FilmCanvas state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} /></div>
-        <PortraitHandoffOverlay scene={state.scene} runtime={runtime} reducedMotion={reducedMotion} />
+        <PortraitHandoffOverlay scene={state.scene} runtime={runtime} reducedMotion={reducedMotion} identityDuration={state.identityDuration} />
         {!cinematic && <header className="page-header"><span className="dedication">Для Василисы</span>{import.meta.env.DEV && <span className="build-label">{implementationStatus}</span>}</header>}
         <SceneOverlay key={`${state.scene}:${state.revision}`} state={state} dispatch={dispatch} runtime={runtime} reducedMotion={reducedMotion} />
       </div>

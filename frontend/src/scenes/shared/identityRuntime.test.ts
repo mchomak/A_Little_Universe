@@ -10,7 +10,8 @@ import { createLilyDissolveUniforms, createLilyParticleMaterial, updateLilyPortr
 
 it('scrubs identity frames on the shared clock, holds pause, changes speed and replays cleanly', () => {
   const runtime = createFilmRuntime()
-  const state = { ...initialFilmState, scene: 'identity' as const, mode: 'playing' as const, elapsed: 0, paused: true, revision: 2 }
+  // Late portrait preparation can extend the shortened base scene beyond 25s.
+  const state = { ...initialFilmState, scene: 'identity' as const, mode: 'playing' as const, elapsed: 0, paused: true, revision: 2, identityDuration: 34 }
   const clock = createFilmClock({ state, runtime, dispatch: () => {} })
   let frame = identityFrame(0)
   const cursor = { time: 0 }

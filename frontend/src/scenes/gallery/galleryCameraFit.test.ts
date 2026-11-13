@@ -1,7 +1,7 @@
 import { PerspectiveCamera, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 import {
-  getGalleryCollageCameraFrame,
+  getGalleryCollageCameraFrame, getGalleryFocusFov,
   getGalleryCollageFocusDistance,
   clearGalleryPhotoAspects,
   getGalleryPhotoAspectProfile,
@@ -108,6 +108,18 @@ describe('gallery collage camera fit', () => {
     const larger = getGalleryCollageCameraFrame(exhibit, { ...settings, captionFontSize: 40 })
 
     expect(larger.height).toBeGreaterThan(standard.height)
+  })
+
+  it('widens the focus view when a larger caption cannot fit at the constrained camera distance', () => {
+    const exhibit = { ...memory(3), caption: 'Тёплые воспоминания об этом дне. '.repeat(9) }
+    const frame = getGalleryCollageCameraFrame(exhibit, { ...settings, captionFontSize: 80, captionLineCharacters: 30 })
+    const distance = 5
+    const aspect = 16 / 9
+    const fov = getGalleryFocusFov(frame, aspect, distance)
+    const visibleHeight = 2 * distance * Math.tan(fov * Math.PI / 360) * 0.75
+    expect(fov).toBeGreaterThan(70)
+    expect(fov).toBeLessThan(140)
+    expect(visibleHeight).toBeGreaterThanOrEqual(Math.max(frame.height, frame.width / aspect) - 1e-9)
   })
 
   it('centers the camera on a three-photo B frame to keep the selected image inside the corridor fade range', () => {

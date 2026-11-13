@@ -3,7 +3,7 @@ import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../systems/scene-config/config'
 import { captureScenePreset, type ScenePresetScope } from './scenePresetModel'
 import { exportScenePresetJson, importScenePresetJson, saveScenePreset, usesPackagedPresetStorage } from './scenePresetApi'
 
-const scopes: ScenePresetScope[] = ['preload', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy']
+const scopes: ScenePresetScope[] = ['preload', 'prologue', 'growth', 'bloom', 'identity', 'gallery', 'galaxy', 'greeting']
 
 it('uses persistent packaged storage only for the trusted Electron origin', () => {
   expect(usesPackagedPresetStorage('app:', 'bundle')).toBe(true)

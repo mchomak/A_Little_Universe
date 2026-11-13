@@ -5,7 +5,7 @@ import { galleryColumnOpacity, galleryDistanceOpacity, galleryEntryItemAlpha, ga
 import { createGalleryEntrySequence, getGalleryEntryRevealAlpha } from './gallery/entryReveal'
 import { galleryPhotoBlurAtFocus, galleryPhotoLightAtFocus } from './gallery/artDirection'
 import { createFrameParticleGeometry } from './gallery/frameParticles'
-import { getGalleryCaptionLayout, GALLERY_CAPTION_CANVAS_WIDTH, GALLERY_CAPTION_GAP, GALLERY_CAPTION_HORIZONTAL_PADDING, GALLERY_CAPTION_PLANE_WIDTH, type GalleryCaptionLayout } from './gallery/captionLayout'
+import { getGalleryCaptionLayout, GALLERY_CAPTION_GAP, GALLERY_CAPTION_HORIZONTAL_PADDING, type GalleryCaptionLayout } from './gallery/captionLayout'
 import { createGalleryDustGeometry, getGalleryDustCount } from './gallery/dust'
 import type { GalleryArtSettings } from './gallery/reflections'
 import { createMemoryThreadAccentGeometry, createMemoryThreadGeometry, createMemoryThreadMaterial, createMemoryThreadPaths, GALLERY_MEMORY_RENDER_ORDER, GALLERY_THREAD_RENDER_ORDER, memoryThreadOpacity, updateMemoryThreadMaterial } from './gallery/threads'
@@ -31,8 +31,6 @@ import { MoonlitWorld } from './gallery/MoonlitWorld'
 import { createProgressivePhotoRevealMap, progressivePhotoRevealGLSL } from './shared/progressivePhotoReveal'
 import { processMemorySignalBaselinePixels, type MemorySignalBaselineSample } from '../iris-lab/memorySignalBaseline'
 import firstPhotoUrl from '../assets/start_img.jpg'
-import { ART_FONT_CATALOG, loadArtFont } from '../systems/scene-config/fontCatalog'
-import type { ArtFontId } from '../systems/scene-config/fontIds'
 import { getPlanetariumGalleryFade, getPlanetariumGalleryOpacity } from './gallery/planetariumTransition'
 
 useLoader.preload(TextureLoader, firstPhotoUrl)
@@ -42,14 +40,15 @@ function canvasTexture(draw: (ctx: CanvasRenderingContext2D, w: number, h: numbe
   const ctx = canvas.getContext('2d')!; draw(ctx, w, h)
   const texture = new CanvasTexture(canvas); texture.colorSpace = SRGBColorSpace; return texture
 }
-function captionTexture(layout: GalleryCaptionLayout, titleFontFamily: string) {
+function captionTexture(layout: GalleryCaptionLayout, titleLetterSpacing: number) {
   return canvasTexture((ctx, width) => {
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
     let y = layout.verticalPadding
     if (layout.titleLines.length) {
       ctx.fillStyle = '#d8c5b7'
-      ctx.font = `400 ${layout.titleFontSize}px "${titleFontFamily}", Georgia, serif`
+      ctx.font = `italic ${layout.titleFontSize}px Georgia, serif`
+      ctx.letterSpacing = `${titleLetterSpacing}px`
       for (const line of layout.titleLines) {
         ctx.fillText(line, width / 2, y, width - GALLERY_CAPTION_HORIZONTAL_PADDING * 2)
         y += layout.titleLineHeight
@@ -59,12 +58,13 @@ function captionTexture(layout: GalleryCaptionLayout, titleFontFamily: string) {
       if (layout.titleLines.length) y += layout.sectionGap
       ctx.fillStyle = '#f5dbc9'
       ctx.font = `${layout.bodyFontSize}px Georgia, serif`
+      ctx.letterSpacing = '0px'
       for (const line of layout.captionLines) {
         ctx.fillText(line, width / 2, y, width - GALLERY_CAPTION_HORIZONTAL_PADDING * 2)
         y += layout.bodyLineHeight
       }
     }
-  }, GALLERY_CAPTION_CANVAS_WIDTH, layout.canvasHeight)
+  }, layout.canvasWidth, layout.canvasHeight)
 }
 function setColorSpace(texture: Texture) { texture.colorSpace = SRGBColorSpace; texture.needsUpdate = true }
 function getFocusedGalleryOrder() { return gallerySnapshot().focus }
@@ -491,7 +491,7 @@ function Photo({ url, width, height, fallback, onAspect, material }: { url: stri
 }
 function setMaterialAlpha(saved: { material: Material; opacity: number; transparent: boolean; depthWrite: boolean }, alpha: number) { saved.material.opacity = saved.opacity * alpha; saved.material.transparent = alpha < 1 || saved.transparent; saved.material.depthWrite = alpha < 1 ? false : saved.depthWrite }
 function setFocusFog(material: Material, focus: boolean) { if (material instanceof MeshBasicMaterial && material.fog === focus) { material.fog = !focus; material.needsUpdate = true } }
-function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily, firstMemoryHandoff, photoEntryStepIndex, supportEntryStepIndices }: { memory: GalleryMemory; reducedMotion: boolean; halo: CanvasTexture; paused: boolean; settings: GalleryArtSettings; titleFontFamily: string; firstMemoryHandoff: ReturnType<typeof getFirstMemoryHandoffPose>; photoEntryStepIndex?: number | undefined; supportEntryStepIndices?: ReadonlyMap<number, number> | undefined }) {
+function Memory({ memory, reducedMotion, halo, paused, settings, firstMemoryHandoff, photoEntryStepIndex, supportEntryStepIndices }: { memory: GalleryMemory; reducedMotion: boolean; halo: CanvasTexture; paused: boolean; settings: GalleryArtSettings; firstMemoryHandoff: ReturnType<typeof getFirstMemoryHandoffPose>; photoEntryStepIndex?: number | undefined; supportEntryStepIndices?: ReadonlyMap<number, number> | undefined }) {
   const materials = useRef<{ material: Material; opacity: number; transparent: boolean; depthWrite: boolean }[]>([])
   const group = useRef<Group>(null)
   const supportGroup = useRef<Group>(null)
@@ -506,8 +506,8 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
   const photoNormal = useMemo(() => new Vector3(), [])
   const moonColor = useMemo(() => new Color(), [])
   const firstPhoto = useLoader(TextureLoader, firstPhotoUrl)
-  const captionLayout = useMemo(() => getGalleryCaptionLayout(memory.title, memory.caption, settings.captionFontSize), [memory.caption, memory.title, settings.captionFontSize])
-  const caption = useMemo(() => captionLayout.canvasHeight ? captionTexture(captionLayout, titleFontFamily) : null, [captionLayout, titleFontFamily])
+  const captionLayout = useMemo(() => getGalleryCaptionLayout(memory.title, memory.caption, settings.captionFontSize, settings.captionLineCharacters), [memory.caption, memory.title, settings.captionFontSize, settings.captionLineCharacters])
+  const caption = useMemo(() => captionLayout.canvasHeight ? captionTexture(captionLayout, settings.captionTitleLetterSpacing) : null, [captionLayout, settings.captionTitleLetterSpacing])
   const photoMaterial = useMemo(() => photoShaderMaterial(firstPhoto), [firstPhoto])
   const photoMaterialRef = useRef(photoMaterial)
   const frameMaterial = useMemo(() => frameShaderMaterial(), [])
@@ -789,7 +789,7 @@ function Memory({ memory, reducedMotion, halo, paused, settings, titleFontFamily
         paused={paused}
       />)}
       <points geometry={frameParticles}><primitive object={frameMaterial} attach="material" /></points>
-      {caption && <mesh position={[0, -height / 2 - GALLERY_CAPTION_GAP - captionLayout.worldHeight / 2, 0.02]}><planeGeometry args={[GALLERY_CAPTION_PLANE_WIDTH, captionLayout.worldHeight]} /><meshBasicMaterial ref={captionMaterial} map={caption} transparent opacity={0.65} depthWrite={false} toneMapped={false} />
+      {caption && <mesh position={[0, -height / 2 - GALLERY_CAPTION_GAP - captionLayout.worldHeight / 2, 0.02]}><planeGeometry args={[captionLayout.worldWidth, captionLayout.worldHeight]} /><meshBasicMaterial ref={captionMaterial} map={caption} transparent opacity={0.65} depthWrite={false} toneMapped={false} />
       </mesh>}
       </group>
     </group>
@@ -931,16 +931,6 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
     }
     return indices
   }, [entrySequence])
-  const prologueFont = ART_FONT_CATALOG.find(({ id }) => id === config.scenes.prologue.fontFamily) ?? ART_FONT_CATALOG[0]!
-  const [loadedTitleFontId, setLoadedTitleFontId] = useState<ArtFontId | null>(null)
-  useEffect(() => {
-    let active = true
-    void loadArtFont(prologueFont.id).then((loaded) => {
-      if (active) setLoadedTitleFontId(loaded ? prologueFont.id : null)
-    })
-    return () => { active = false }
-  }, [prologueFont.id])
-  const titleFontFamily = loadedTitleFontId === prologueFont.id ? prologueFont.family : 'Georgia'
   const quality = state.quality === 'low' || config.global.quality === 'low' ? 'low' : 'standard'
   const skyColor = useMemo(() => new Color('#020713').lerp(new Color('#071d42'), Math.max(0, Math.min(1, settings.cloudCoolTint / 1.5))), [settings.cloudCoolTint])
   const transitionDark = useMemo(() => new Color('#000000'), [])
@@ -961,7 +951,7 @@ export function GalleryScene({ state, reducedMotion }: SceneProps) {
     <MoonlitWorld settings={settings} quality={quality} halo={halo} reducedMotion={reducedMotion} />
     <GalleryArch settings={settings} entryIndex={entrySequence.steps.length} />
     <Dust low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
-    {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} titleFontFamily={titleFontFamily} firstMemoryHandoff={firstMemoryHandoff} photoEntryStepIndex={entrySequence.photoIndices.get(memory.order)} supportEntryStepIndices={supportEntryStepIndices.get(memory.order)} />)}
+    {GALLERY_MEMORIES.map(memory => <Memory key={memory.id} memory={memory} reducedMotion={reducedMotion} halo={halo} paused={state.paused} settings={settings} firstMemoryHandoff={firstMemoryHandoff} photoEntryStepIndex={entrySequence.photoIndices.get(memory.order)} supportEntryStepIndices={supportEntryStepIndices.get(memory.order)} />)}
     <MemoryThreads settings={settings} low={quality === 'low'} paused={state.paused} halo={halo} photoEntryIndices={entrySequence.photoIndices} />
     <FloorLights halo={halo} low={quality === 'low'} reducedMotion={reducedMotion} settings={settings} />
   </>

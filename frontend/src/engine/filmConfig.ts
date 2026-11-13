@@ -8,7 +8,7 @@ export const TIMING = {
   prologue: { duration: 18, seed: [0, 2], first: [2, 5.5], second: [7, 10.5], hold: [10.5, 12.5], dissolve: [12.5, 16], prompt: 18 },
   growth: { duration: 22.8, formation: [0, 3.2], fall: [3.2, 11.2], landing: [11.2, 11.7], moonlight: [11.7, 13.2], handoff: [11.9, 12.65], sprout: [12.65, 20.9], stem: [16.7, 20.9], settle: [20.9, 22.8] },
   bloom: { duration: 22, opening: [0, 16], contemplate: [16, 22] },
-  identity: { duration: 34, flower: [0, 4], particles: [4, 8], name: [8, 13], morph: [13, 17], portrait: [17, 23], photo: [23, 34], caption: [28, 34] },
+  identity: { duration: 25, flower: [0, 4], particles: [4, 8], name: [8, 13], morph: [13, 17], portrait: [17, 23], photo: [23, 34], caption: [28, 34] },
   gallery: { duration: 0, move: 1.2 },
   cosmos: { duration: 26, iris: [0, 5], particles: [5, 11], spiral: [11, 15], settle: [22, 26] },
   greeting: { duration: 300, crawlSpeed: 26, postDissolvePause: 1 },

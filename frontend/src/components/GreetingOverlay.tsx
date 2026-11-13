@@ -60,9 +60,9 @@ export function GreetingOverlay({ state, dispatch, runtime, reducedMotion }: Pro
     const viewportHeight = viewport.getBoundingClientRect().height
     const contentHeight = element.getBoundingClientRect().height
     geometry.current = { startY: viewportHeight + 24, distance: viewportHeight + contentHeight + 48 }
-    crawlTween.current?.resize(getCreditsScrollDuration(contentHeight, viewportHeight))
+    crawlTween.current?.resize(getCreditsScrollDuration(contentHeight, viewportHeight, config.scenes.greeting.crawlSpeed))
     if (!crawlTween.current) renderProgress(0)
-  }, [renderProgress])
+  }, [renderProgress, config.scenes.greeting.crawlSpeed])
 
   const startCrawl = useCallback((time: number, seekExisting = false) => {
     if (crawlTween.current) {
@@ -74,7 +74,7 @@ export function GreetingOverlay({ state, dispatch, runtime, reducedMotion }: Pro
     const viewportHeight = section.current?.getBoundingClientRect().height ?? 0
     const contentHeight = crawl.current?.getBoundingClientRect().height ?? 0
     const startAt = state.returnToEnding ? 0 : frames.credits[0]
-    const duration = getCreditsScrollDuration(contentHeight, viewportHeight)
+    const duration = getCreditsScrollDuration(contentHeight, viewportHeight, config.scenes.greeting.crawlSpeed)
     crawlTween.current = createCreditsCrawlTween({
       time,
       startAt,
@@ -92,8 +92,10 @@ export function GreetingOverlay({ state, dispatch, runtime, reducedMotion }: Pro
       },
     })
     setCrawlVisibility(true)
-  }, [dispatch, frames.credits, measureCrawl, renderProgress, setCrawlVisibility, state.returnToEnding, state.speed, state.paused, state.reading])
+  }, [dispatch, frames.credits, measureCrawl, renderProgress, setCrawlVisibility, state.returnToEnding, state.speed, state.paused, state.reading, config.scenes.greeting.crawlSpeed])
 
+  const startCrawlRef = useRef(startCrawl)
+  useLayoutEffect(() => { startCrawlRef.current = startCrawl }, [startCrawl])
   useLayoutEffect(() => { elapsedRef.current = state.elapsed }, [state.elapsed])
 
   useLayoutEffect(() => {
@@ -104,14 +106,14 @@ export function GreetingOverlay({ state, dispatch, runtime, reducedMotion }: Pro
         setCrawlVisibility(false)
         return
       }
-      startCrawl(time, seekExisting)
+      startCrawlRef.current(time, seekExisting)
     }
     syncToTime(elapsedRef.current, true)
     const unsubscribe = runtime.subscribeFrame((time) => {
       if (time >= startAt && !crawlStartedRef.current) syncToTime(time, true)
     })
     return unsubscribe
-  }, [frames.credits, runtime, setCrawlVisibility, startCrawl, state.revision, state.returnToEnding])
+  }, [frames.credits, runtime, setCrawlVisibility, state.revision, state.returnToEnding])
 
   useLayoutEffect(() => {
     window.dispatchEvent(new Event('greeting-layout'))

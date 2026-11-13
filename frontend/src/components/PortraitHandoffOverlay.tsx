@@ -5,12 +5,10 @@ import { TIMING } from '../engine/filmConfig'
 import portraitUrl from '../assets/start_img.jpg'
 import './portrait-handoff-overlay.css'
 
-const OVERLAY_START = TIMING.identity.duration - 0.9
 const OVERLAY_FADE_IN = 0.2
-const VEIL_START = TIMING.identity.duration - 0.45
 const VEIL_FADE_IN = 0.45
 
-export function PortraitHandoffOverlay({ scene, runtime, reducedMotion }: { scene: SceneId; runtime: FilmRuntime; reducedMotion: boolean }) {
+export function PortraitHandoffOverlay({ scene, runtime, reducedMotion, identityDuration = TIMING.identity.duration }: { scene: SceneId; runtime: FilmRuntime; reducedMotion: boolean; identityDuration?: number | undefined }) {
   const overlay = useRef<HTMLDivElement>(null)
   const veil = useRef<HTMLDivElement>(null)
 
@@ -20,13 +18,15 @@ export function PortraitHandoffOverlay({ scene, runtime, reducedMotion }: { scen
     if (!element || !backdrop) return
 
     if (scene === 'identity') {
+      const overlayStart = identityDuration - 0.9
+      const veilStart = identityDuration - 0.45
       const update = (time: number) => {
         const portraitProgress = reducedMotion
-          ? Number(time >= OVERLAY_START)
-          : Math.max(0, Math.min(1, (time - OVERLAY_START) / OVERLAY_FADE_IN))
+          ? Number(time >= overlayStart)
+          : Math.max(0, Math.min(1, (time - overlayStart) / OVERLAY_FADE_IN))
         const veilProgress = reducedMotion
-          ? Number(time >= VEIL_START)
-          : Math.max(0, Math.min(1, (time - VEIL_START) / VEIL_FADE_IN))
+          ? Number(time >= veilStart)
+          : Math.max(0, Math.min(1, (time - veilStart) / VEIL_FADE_IN))
         element.style.transition = 'none'
         element.style.opacity = String(portraitProgress)
         backdrop.style.transition = 'none'
@@ -62,7 +62,7 @@ export function PortraitHandoffOverlay({ scene, runtime, reducedMotion }: { scen
     element.style.opacity = '0'
     backdrop.style.transition = 'none'
     backdrop.style.opacity = '0'
-  }, [reducedMotion, runtime, scene])
+  }, [identityDuration, reducedMotion, runtime, scene])
 
   return <>
     <div ref={veil} className="portrait-handoff-veil" aria-hidden="true" />

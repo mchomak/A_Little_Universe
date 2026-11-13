@@ -66,6 +66,7 @@ it('starts Bloom automatically after the growth settle and keeps configured clip
 
 it('extends the active Identity clock for a long portrait route and rejects its stale endpoint', () => {
   const identity: FilmState = { ...initialFilmState, scene: 'identity', mode: 'playing' }
+  expect(filmDuration(identity)).toBe(25)
   const extended = filmReducer(identity, {
     type: 'extend-identity-duration', duration: 40, time: 12.3, revision: identity.revision,
   })

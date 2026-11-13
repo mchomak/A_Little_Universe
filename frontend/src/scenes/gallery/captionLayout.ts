@@ -22,7 +22,9 @@ export interface GalleryCaptionLayout {
   bodyLineHeight: number
   verticalPadding: number
   sectionGap: number
+  canvasWidth: number
   canvasHeight: number
+  worldWidth: number
   worldHeight: number
 }
 
@@ -54,26 +56,28 @@ function wrapText(text: string, maxCharacters: number): string[] {
 }
 
 /** Uses the same stable line breaks for the canvas texture and the focused camera bounds. */
-export function getGalleryCaptionLayout(title: string, caption: string, bodyFontSize = GALLERY_CAPTION_BODY_FONT_SIZE): GalleryCaptionLayout {
-  const safeBodyFontSize = Number.isFinite(bodyFontSize) ? Math.max(20, Math.min(40, bodyFontSize)) : GALLERY_CAPTION_BODY_FONT_SIZE
+export function getGalleryCaptionLayout(title: string, caption: string, bodyFontSize = GALLERY_CAPTION_BODY_FONT_SIZE, lineCharacters = CAPTION_MAX_CHARACTERS): GalleryCaptionLayout {
+  const safeBodyFontSize = Number.isFinite(bodyFontSize) ? Math.max(20, Math.min(80, bodyFontSize)) : GALLERY_CAPTION_BODY_FONT_SIZE
+  const safeLineCharacters = Number.isFinite(lineCharacters) ? Math.max(20, Math.min(100, Math.round(lineCharacters))) : CAPTION_MAX_CHARACTERS
   const scale = safeBodyFontSize / GALLERY_CAPTION_BODY_FONT_SIZE
   const titleFontSize = Math.round(GALLERY_CAPTION_TITLE_FONT_SIZE * scale)
   const titleLineHeight = Math.round(GALLERY_CAPTION_TITLE_LINE_HEIGHT * scale)
   const bodyLineHeight = Math.round(GALLERY_CAPTION_BODY_LINE_HEIGHT * scale)
   const verticalPadding = Math.max(8, Math.round(GALLERY_CAPTION_VERTICAL_PADDING * scale))
   const sectionGap = Math.round(GALLERY_CAPTION_SECTION_GAP * scale)
-  const cacheKey = `${title}\u0000${caption}\u0000${safeBodyFontSize}`
+  const cacheKey = `${title}\u0000${caption}\u0000${safeBodyFontSize}\u0000${safeLineCharacters}`
   const cached = layouts.get(cacheKey)
   if (cached) return cached
 
-  const titleLines = wrapText(title.toLocaleUpperCase('ru-RU'), Math.max(28, Math.round(TITLE_MAX_CHARACTERS / scale)))
-  const captionLines = wrapText(caption, Math.max(34, Math.round(CAPTION_MAX_CHARACTERS / scale)))
+  const titleLines = wrapText(title, Math.max(18, Math.round(TITLE_MAX_CHARACTERS * safeLineCharacters / CAPTION_MAX_CHARACTERS)))
+  const captionLines = wrapText(caption, safeLineCharacters)
   const textHeight = titleLines.length * titleLineHeight
     + captionLines.length * bodyLineHeight
     + (titleLines.length && captionLines.length ? sectionGap : 0)
   const canvasHeight = textHeight > 0
     ? textHeight + verticalPadding * 2
     : 0
+  const canvasWidth = Math.ceil(GALLERY_CAPTION_HORIZONTAL_PADDING * 2 + (GALLERY_CAPTION_CANVAS_WIDTH - GALLERY_CAPTION_HORIZONTAL_PADDING * 2) * scale * safeLineCharacters / CAPTION_MAX_CHARACTERS)
   const layout = {
     titleLines,
     captionLines,
@@ -83,7 +87,9 @@ export function getGalleryCaptionLayout(title: string, caption: string, bodyFont
     bodyLineHeight,
     verticalPadding,
     sectionGap,
+    canvasWidth,
     canvasHeight,
+    worldWidth: canvasWidth * GALLERY_CAPTION_PLANE_WIDTH / GALLERY_CAPTION_CANVAS_WIDTH,
     worldHeight: canvasHeight * GALLERY_CAPTION_PLANE_WIDTH / GALLERY_CAPTION_CANVAS_WIDTH,
   }
   layouts.set(cacheKey, layout)

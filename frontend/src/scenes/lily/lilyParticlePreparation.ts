@@ -3,7 +3,6 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import metadata from '../../assets/scene04-portrait-approved-v2.json'
 import { LILY_MODEL_URL } from '../../assets/lily/lilyAsset'
-import { TIMING } from '../../engine/filmConfig'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
 import { APPROVED_PORTRAIT_SETTINGS, loadApprovedPortrait } from './approvedPortrait'
 import { LilyAnimationPlayer } from './animationPlayer'
@@ -22,6 +21,9 @@ import {
 
 type IdentitySettings = SceneComposerConfig['scenes']['identity']
 type BloomSettings = SceneComposerConfig['scenes']['bloom']
+
+// Preserve the original animation limit independently of the shorter scene hold.
+export const LILY_PORTRAIT_ANIMATION_LIMIT_SECONDS = 34
 
 export interface LilyParticlePreparationInput {
   config: SceneComposerConfig
@@ -130,7 +132,7 @@ function getWorkerSettings(identity: IdentitySettings, bloom: BloomSettings) {
     reducedMotion: false,
   }
   const portraitStart = identity.portraitStartProgress * identity.dissolveDuration
-  const portraitDuration = Math.min(identity.portraitDuration, Math.max(2, TIMING.identity.duration - portraitStart))
+  const portraitDuration = Math.min(identity.portraitDuration, Math.max(2, LILY_PORTRAIT_ANIMATION_LIMIT_SECONDS - portraitStart))
   const portrait: LilyGeometryWorkerPortraitOptions = {
     width: APPROVED_PORTRAIT_SOURCE.source.width,
     height: APPROVED_PORTRAIT_SOURCE.source.height,
