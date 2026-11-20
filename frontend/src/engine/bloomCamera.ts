@@ -24,8 +24,8 @@ export function getBloomCloseupPose(settings: Pick<BloomCameraSettings, 'cameraT
     x: settings.cameraTargetX + settings.cameraFinalDistance * 0.28,
     y: settings.cameraFinalHeight,
     z: settings.cameraFinalDistance,
-    tx: settings.cameraTargetX - 0.2,
-    ty: settings.cameraTargetY + 0.12,
+    tx: settings.cameraTargetX - 0.38,
+    ty: settings.cameraTargetY - 0.08,
     tz: 0,
   }
 }
