@@ -21,7 +21,7 @@ export function getBloomCameraApproach(mode: FilmState['mode'], settings: BloomC
 /** World-space close-up centered on the GLB flower cup. CameraDirector owns its motion. */
 export function getBloomCloseupPose(settings: Pick<BloomCameraSettings, 'cameraTargetX' | 'cameraTargetY' | 'cameraFinalDistance' | 'cameraFinalHeight'>): CameraPose {
   return {
-    x: settings.cameraTargetX,
+    x: settings.cameraTargetX + settings.cameraFinalDistance * 0.28,
     y: settings.cameraFinalHeight,
     z: settings.cameraFinalDistance,
     tx: settings.cameraTargetX,

@@ -24,7 +24,6 @@ import { getConfig, subscribeConfig } from '../systems/scene-config/config'
 import { startPreparedFilm, isFilmStartupFailure, type FilmStartupError } from './filmStartup'
 import { LilyParticlePreparationBanner } from './LilyParticlePreparationBanner'
 import { createLilyParticlePreparationSeedKey, getLilyFilmSurfaceDimensions, lilyParticlePreparation, prepareLilyParticleGeometryForStart, subscribeLilyFilmSurfaceDimensions } from '../scenes/lily/lilyParticlePreparation'
-import { LILY_MODEL_RUNTIME_ASSET, preloadLilyModel } from '../assets/lily/lilyAsset'
 import { isDeveloperMode } from '../debug/developerMode'
 import { DesktopRecordingSession } from '../systems/media/DesktopRecordingSession'
 import { DesktopRecordingControls } from '../components/DesktopRecordingControls'
@@ -52,7 +51,6 @@ function prepareStandardSiteMedia() {
 type AppRoute = PreparationStep | 'film' | 'loading'
 // Film modules have already been prepared by Bootstrap; a rerun verifies resources/cache.
 const devManager = new AssetManager({ development: import.meta.env.DEV,
-  ...(import.meta.env.DEV ? { manifest: { version: 'development-lily', assets: [LILY_MODEL_RUNTIME_ASSET] } } : {}),
   loadModules: async () => FilmCanvas })
 const DeveloperPanel = lazy(() => import('../debug/DeveloperPanel'))
 const SceneTimeline = lazy(() => import('../debug/SceneTimeline'))
@@ -103,7 +101,6 @@ export function App({ preparation }: { preparation: PreparationResult }) {
   const retryParticlePreparation = useCallback(() => {
     void lilyParticlePreparation.retry(getParticlePreparationInput()).catch(() => undefined)
   }, [getParticlePreparationInput])
-  useEffect(() => { preloadLilyModel() }, [])
   useEffect(() => { if (state.scene === 'prologue') resetGalleryInstruction() }, [state.scene, state.revision])
 
   useEffect(() => {

@@ -316,8 +316,12 @@ function createActivationReader(clip: AnimationClip, source: GrowthParticleSourc
 
 /** Finds each birth moment from the actual GLB morph or scale channel. */
 export function getGrowthVfxBirthTime(clip: AnimationClip, source: GrowthParticleSource, activationThreshold: number): number {
-  const activation = createActivationReader(clip, source)
   const threshold = clamp(activationThreshold)
+  if (clip.tracks.length === 0) {
+    const start = source === 'stem' ? 0 : source === 'leafA' ? 0.2 : source === 'leafB' ? 0.3 : 0.55
+    return clip.duration * (start + (1 - start) * threshold)
+  }
+  const activation = createActivationReader(clip, source)
   if (activation(0) >= threshold) return 0
   if (activation(clip.duration) < threshold) return clip.duration
   let low = 0, high = clip.duration
@@ -407,7 +411,7 @@ interface ParticleSeed {
   color: Color
 }
 
-function createParticleSeeds(clip: AnimationClip): ParticleSeed[] {
+function createParticleSeeds(clip: AnimationClip | null): ParticleSeed[] {
   return Array.from({ length: PARTICLE_CAPACITY }, (_, index) => {
     const selector = unit(index + 10)
     const source = selector < 0.5 ? 'stem' : selector < 0.65 ? 'leafA' : selector < 0.8 ? 'leafB' : 'bud'
@@ -429,7 +433,7 @@ function createParticleSeeds(clip: AnimationClip): ParticleSeed[] {
       // A second stable sample thins only the earliest stem stream without creating
       // frame-to-frame randomness or biasing the retained points toward either end.
       densitySample: unit(index + 3600),
-      birthTime: getGrowthVfxBirthTime(clip, source, phaseThreshold),
+      birthTime: clip ? getGrowthVfxBirthTime(clip, source, phaseThreshold) : 9 * ((source === 'stem' ? 0 : source === 'leafA' ? 0.2 : source === 'leafB' ? 0.3 : 0.55) + (source === 'stem' ? 1 : source === 'leafA' ? 0.8 : source === 'leafB' ? 0.7 : 0.45) * phaseThreshold),
       life: 0.72 + unit(index + 600) * 0.56,
       size: unit(index + 900),
       speed: 0.8 + unit(index + 1500) * 0.4,
@@ -479,7 +483,7 @@ function createBloomPollenSeeds(): BloomPollenParticleSeed[] {
 function getPollenAnchorVertexIndices(mesh: Mesh): Uint32Array {
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
   const pollenMaterialIndices = new Set(materials.flatMap((material, index) =>
-    /anther|filament/i.test(material.name) ? [index] : []))
+    /pollen sac/i.test(mesh.name) || /anther|filament/i.test(material.name) ? [index] : []))
   if (!pollenMaterialIndices.size) return new Uint32Array()
 
   const position = mesh.geometry.getAttribute('position')
@@ -522,9 +526,10 @@ function sampleMeshSurface(mesh: Mesh | null | undefined, sample: number, parent
   const position = mesh.geometry.getAttribute('position')
   if (!position || position.count === 0) return false
   const index = mesh.geometry.getIndex()
-  const triangleCount = Math.floor((index?.count ?? position.count) / 3)
+  const drawStart = Math.max(0, mesh.geometry.drawRange.start)
+  const triangleCount = Math.floor(Math.min((index?.count ?? position.count) - drawStart, mesh.geometry.drawRange.count) / 3)
   if (!triangleCount) return false
-  const tri = Math.floor(unit(sample * 7.17 + 42) * triangleCount) * 3
+  const tri = drawStart + Math.floor(unit(sample * 7.17 + 42) * triangleCount) * 3
   const ids = [index ? index.getX(tri) : tri, index ? index.getX(tri + 1) : tri + 1, index ? index.getX(tri + 2) : tri + 2]
   const u = Math.sqrt(unit(sample * 13.1 + 5)), v = unit(sample * 17.7 + 7)
   const wa = 1 - u, wb = u * (1 - v), wc = u * v
@@ -538,13 +543,18 @@ function sampleMeshSurface(mesh: Mesh | null | undefined, sample: number, parent
 
 function getStemCurve(mesh: Mesh | null, parent: Group, positions: Vector3[], binsData: {
   sumX: Float64Array; sumY: Float64Array; sumZ: Float64Array; count: Uint16Array; radius: Float32Array; point: Vector3
-  posed: Float32Array; parentInverse: Matrix4; meshToLocal: Matrix4
+  posed: Float32Array; used: Uint8Array; parentInverse: Matrix4; meshToLocal: Matrix4
 }): number {
   if (!mesh) return 0
   const attribute = mesh.geometry.getAttribute('position')
   if (!attribute) return 0
   const bins = positions.length
-  const { sumX, sumY, sumZ, count, radius, point, posed, parentInverse, meshToLocal } = binsData
+  const { sumX, sumY, sumZ, count, radius, point, posed, used, parentInverse, meshToLocal } = binsData
+  used.fill(0)
+  const indices = mesh.geometry.getIndex()
+  const start = Math.max(0, mesh.geometry.drawRange.start)
+  const end = Math.min(indices?.count ?? attribute.count, start + mesh.geometry.drawRange.count)
+  for (let i = start; i < end; i++) used[indices ? indices.getX(i) : i] = 1
   sumX.fill(0); sumY.fill(0); sumZ.fill(0); count.fill(0)
   mesh.updateWorldMatrix(true, false)
   parent.updateWorldMatrix(true, false)
@@ -553,6 +563,7 @@ function getStemCurve(mesh: Mesh | null, parent: Group, positions: Vector3[], bi
   let minY = Infinity, maxY = -Infinity
   // Morph targets are evaluated by getVertexPosition, so the curve is the posed stem.
   for (let index = 0; index < attribute.count; index++) {
+    if (!used[index]) continue
     mesh.getVertexPosition(index, point)
     point.applyMatrix4(meshToLocal)
     const offset = index * 3
@@ -562,6 +573,7 @@ function getStemCurve(mesh: Mesh | null, parent: Group, positions: Vector3[], bi
   if (!Number.isFinite(minY) || maxY - minY < 0.008) return 0
   const height = maxY - minY
   for (let index = 0; index < attribute.count; index++) {
+    if (!used[index]) continue
     const offset = index * 3
     point.set(posed[offset]!, posed[offset + 1]!, posed[offset + 2]!)
     const normalized = clamp((point.y - minY) / height)
@@ -582,6 +594,7 @@ function getStemCurve(mesh: Mesh | null, parent: Group, positions: Vector3[], bi
   // camera-facing stem surface instead of disappearing inside the GLB mesh.
   radius.fill(0)
   for (let index = 0; index < attribute.count; index++) {
+    if (!used[index]) continue
     const offset = index * 3
     point.set(posed[offset]!, posed[offset + 1]!, posed[offset + 2]!)
     const normalized = clamp((point.y - minY) / height)
@@ -648,7 +661,7 @@ function findCurveProgress(point: Vector3, curve: Vector3[]): number {
   return nearest / Math.max(1, curve.length - 1)
 }
 
-export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: AnimationClip): LilyGrowthVfx {
+export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: AnimationClip | null = null): LilyGrowthVfx {
   const geometry = new BufferGeometry()
   const positions = new Float32Array(TOTAL_POINTS * 3)
   const sizes = new Float32Array(TOTAL_POINTS)
@@ -674,7 +687,7 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
   const base = model.getObjectByName('VFX_StemBase') ?? model.getObjectByName('Lily_Root')
   const stem = findMesh(model, 'Stem')
   const leaves = [findMesh(model, 'Leaf_A'), findMesh(model, 'Leaf_B')]
-  const leafPivots = [model.getObjectByName('Leaf_A_Pivot'), model.getObjectByName('Leaf_B_Pivot')]
+  const leafPivots = [model.getObjectByName('Leaf_A_Pivot') ?? leaves[0], model.getObjectByName('Leaf_B_Pivot') ?? leaves[1]]
   const leafAxisSigns = leaves.map(leaf => {
     const positions = leaf?.geometry.getAttribute('position')
     if (!positions) return -1
@@ -685,7 +698,7 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
     }
     return Math.abs(minY) > Math.abs(maxY) ? -1 : 1
   })
-  const bud = findMesh(model, 'Petals') ?? findMesh(model, 'Calyx')
+  const bud = findMesh(model, 'Petals') ?? findMesh(model, 'Petals_Inner_1') ?? findMesh(model, 'Calyx')
   const head = model.getObjectByName('Head_Root')
   const cup = model.getObjectByName('Flower_Interior')
   const anthers: PollenAnchorMesh[] = []
@@ -708,7 +721,7 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
   const binsData = {
     sumX: new Float64Array(curve.length), sumY: new Float64Array(curve.length), sumZ: new Float64Array(curve.length),
     count: new Uint16Array(curve.length), radius: new Float32Array(curve.length), point: new Vector3(), posed: new Float32Array(stemVertexCount * 3),
-    parentInverse: new Matrix4(), meshToLocal: new Matrix4(),
+    used: new Uint8Array(stemVertexCount), parentInverse: new Matrix4(), meshToLocal: new Matrix4(),
   }
   const seeds = createParticleSeeds(growthClip)
   const vortexSeeds = createGrowthVortexSeeds()
@@ -771,7 +784,7 @@ export function createLilyGrowthVfx(parent: Group, model: Group, growthClip: Ani
       const pivot = leafPivots[index]
       const leaf = leaves[index]
       const scale = pivot?.scale.y ?? 0
-      const youngFolded = leaf?.morphTargetInfluences?.[0] ?? 1
+      const youngFolded = leaf?.morphTargetInfluences?.[0] ?? 0
       leafActivation[index] = getLeafGrowthActivation(scale, youngFolded)
       const direction = leafDirections[index]!
       if (leaf) {

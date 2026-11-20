@@ -25,8 +25,8 @@ export const seedSurfaceVertex = `
       + cos(angle * 5.0 - position.y * 3.1) * 0.021;
     vec3 organic = position;
     organic.x *= 1.0 + irregular;
-    organic.z *= 1.0 + irregular * 0.78;
-    organic.x += 0.024 * sin(angle * 2.0 + position.y * 3.0) * mid;
+    organic.z *= (1.0 + irregular * 0.78) * 0.72;
+    organic.x += (0.045 + 0.024 * sin(angle * 2.0 + position.y * 3.0)) * mid;
     organic.z += 0.018 * cos(angle * 3.0 - position.y * 2.0) * mid;
     organic.y += 0.014 * sin(angle * 2.0 + position.y * 4.0 + time * 0.18) * mid;
     vec4 p = modelViewMatrix * vec4(organic, 1.0);
@@ -65,10 +65,14 @@ export const seedFragment = `
     float vein = pow(0.5 + 0.5 * cos(vUv.x * 50.265 + sin(vUv.y * 4.0) * 0.8), 24.0);
     float fine = pow(0.5 + 0.5 * cos(vUv.x * 106.23 + vUv.y * 2.0), 38.0);
     float tips = pow(abs(vUv.y - 0.5) * 2.0, 8.0);
-    vec3 pearl = mix(vec3(0.97, 0.81, 0.84), vec3(1.0, 0.96, 0.94), smoothstep(0.08, 0.92, vUv.y));
-    float shimmer = 0.99 + 0.01 * sin(time * 2.2) + grain * 0.006;
-    float body = 0.55 + rim * 0.22 + vein * 0.06 + fine * 0.02 + tips * 0.1;
-    gl_FragColor = vec4(pearl * shimmer, opacity * body);
+    vec3 normal = normalize(vNormal);
+    float light = 0.36 + 0.64 * max(dot(normal, normalize(vec3(-0.45, 0.65, 0.62))), 0.0);
+    float mottling = 0.94 + 0.06 * sin(vUv.x * 71.0 + sin(vUv.y * 37.0)) * sin(vUv.y * 93.0);
+    vec3 kernel = mix(vec3(0.38, 0.24, 0.19), vec3(0.70, 0.53, 0.42), smoothstep(0.05, 0.95, vUv.y));
+    vec3 surface = kernel * light * mottling + vec3(0.19, 0.13, 0.10) * rim;
+    surface += vec3(0.05, 0.035, 0.025) * (vein + fine + tips * 0.3 + grain * 0.1);
+    gl_FragColor = vec4(surface, opacity);
+
   }
 `
 export const haloFragment = `

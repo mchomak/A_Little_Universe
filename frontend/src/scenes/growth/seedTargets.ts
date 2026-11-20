@@ -18,7 +18,7 @@ export function createSeedTargets(count: number, seed: number, freeFraction: num
     targets[offset] = Math.cos(angle) * crossSection * 0.37 * organicWidth
       + Math.sin((vertical + 1) * Math.PI * 0.5) * 0.035
     targets[offset + 1] = y
-    targets[offset + 2] = Math.sin(angle) * crossSection * 0.31 * (1 - vertical * 0.035)
+    targets[offset + 2] = Math.sin(angle) * crossSection * 0.27 * (1 - vertical * 0.035)
     targets[offset + 3] = random() < clamp(freeFraction, 0, 0.2) ? 0 : 1
   }
   return targets

@@ -133,9 +133,10 @@ void main() {
   float falloff = pow(max(0.0, 1.0 - radius), 2.2);
   if (falloff < 0.003) discard;
 
-  float bodyFade = 1.0 - smoothstep(0.72, 1.02, uFormationProgress);
+  float bodyFade = 1.0 - smoothstep(uFormationDuration + 0.12, uFormationDuration + 0.9, uTime);
   float tailFade = 1.0 - smoothstep(uFormationDuration + 0.14, uFormationDuration + 0.95, uTime);
-  float reveal = mix(bodyFade, tailFade, vFree);
+  float settledGlow = mix(1.0, 0.14, smoothstep(0.48, 1.0, uFormationProgress));
+  float reveal = mix(bodyFade * settledGlow, tailFade, vFree);
   vec3 color = mix(uPearlColor, uRoseColor, smoothstep(0.42, 0.9, vSeed));
   color = mix(color, uLavenderColor, step(0.925, vSeed) * 0.76);
   color = mix(color, uRoseColor, smoothstep(0.32, 0.95, vSpeed) * (1.0 - vFree) * 0.45);

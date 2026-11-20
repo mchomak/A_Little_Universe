@@ -3,13 +3,11 @@ import { AssetManager } from '../systems/assets/AssetManager'
 import { Preloader } from './Preloader'
 import type { PreparationResult } from '../systems/assets/AssetManager'
 import { getConfig } from '../systems/scene-config/config'
-import { LILY_MODEL_RUNTIME_ASSET } from '../assets/lily/lilyAsset'
 
 let filmModule: typeof import('../app/App') | undefined
 const manager = new AssetManager({
   bundled: location.protocol === 'app:' && location.hostname === 'bundle',
   development: import.meta.env.DEV,
-  ...(import.meta.env.DEV ? { manifest: { version: 'development-lily', assets: [LILY_MODEL_RUNTIME_ASSET] } } : {}),
   loadModules: async () => { filmModule = await import('../app/App') },
   preparePortrait: async () => {
     const preparation = await import('../scenes/lily/lilyParticlePreparation')

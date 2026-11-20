@@ -15,7 +15,7 @@ export interface LilySurfaceSource extends LilyParticleSource {
 export function lilyDissolvePart(name: string, materialNames: readonly string[] = []): number {
   const isCenterMaterial = materialNames.some((materialName) => /anther|filament|pistil/i.test(materialName))
   return name.startsWith('Petals') ? 0
-    : name === 'Flower_Details' || name === 'Calyx' || isCenterMaterial ? 1 : 2
+    : name === 'Flower_Details' || name === 'Calyx' || /^(filament|pollen sac|style|stigma lobe)/i.test(name) || isCenterMaterial ? 1 : 2
 }
 
 interface SurfaceMesh {
@@ -23,6 +23,7 @@ interface SurfaceMesh {
   part: number
   positions: NonNullable<ReturnType<Mesh['geometry']['getAttribute']>>
   index: ReturnType<Mesh['geometry']['getIndex']>
+  start: number
   vertexCount: number
 }
 
@@ -33,8 +34,8 @@ interface SurfaceCaptureOptions {
 }
 
 /**
- * Capture a posed Lily GLB as a deterministic, area-weighted surface sampler.
- * Call after applying the final Bloom clip to capture that authored pose.
+ * Capture a posed lily as a deterministic, area-weighted surface sampler.
+ * Call after applying the final bloom pose to capture that authored pose.
  */
 export function createLilyGeometryParticleSource(root: Object3D): LilySurfaceSource {
   const steps = createSurfaceCaptureSteps(root, Number.MAX_SAFE_INTEGER)
@@ -61,15 +62,17 @@ export async function createLilyGeometryParticleSourceAsync(root: Object3D, opti
 function* createSurfaceCaptureSteps(root: Object3D, chunkSize: number): Generator<void, LilySurfaceSource> {
   root.updateWorldMatrix(true, true)
   const meshes: SurfaceMesh[] = []
-  root.traverse((object) => {
+  root.traverseVisible((object) => {
     if (!(object instanceof Mesh)) return
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     const geometry = object.geometry
     const positions = geometry.getAttribute('position')
     if (!positions || positions.count < 3) return
     const index = geometry.getIndex()
+    const start = Math.max(0, geometry.drawRange.start)
+    const end = Math.min(index?.count ?? positions.count, start + geometry.drawRange.count)
     meshes.push({ mesh: object, part: lilyDissolvePart(object.name, materials.map((material) => material.name)), positions, index,
-      vertexCount: index?.count ?? positions.count })
+      start, vertexCount: Math.max(0, end - start) })
   })
 
   const triangleCapacity = meshes.reduce((total, mesh) => total + Math.floor(mesh.vertexCount / 3), 0)
@@ -82,7 +85,7 @@ function* createSurfaceCaptureSteps(root: Object3D, chunkSize: number): Generato
   const edgeA = new Vector3(), edgeB = new Vector3()
 
   for (const item of meshes) {
-    for (let offset = 0; offset + 2 < item.vertexCount; offset += 3) {
+    for (let offset = item.start; offset + 2 < item.start + item.vertexCount; offset += 3) {
       const ia = item.index ? item.index.getX(offset) : offset
       const ib = item.index ? item.index.getX(offset + 1) : offset + 1
       const ic = item.index ? item.index.getX(offset + 2) : offset + 2

@@ -1,13 +1,9 @@
-import { Group } from 'three'
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import metadata from '../../assets/scene04-portrait-approved-v2.json'
-import { LILY_MODEL_URL } from '../../assets/lily/lilyAsset'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
 import { APPROVED_PORTRAIT_SETTINGS, loadApprovedPortrait } from './approvedPortrait'
-import { LilyAnimationPlayer } from './animationPlayer'
+import { createProceduralLily } from './procedural/plant'
 import { createLilyGeometryParticleSourceAsync, type LilySurfaceSource } from './particleSource'
-import { getLilyParticleSourceSignature, createLilyParticleModelWrapper, seekLilyBloomEndpoint } from './lilyParticlePose'
+import { getLilyParticleSourceSignature, createLilyParticleModelWrapper } from './lilyParticlePose'
 import { toLilyPortraitCaptureSettings } from './portraitIntegration'
 import {
   createLilyGeometryWorkerRequest,
@@ -151,7 +147,7 @@ function getWorkerSettings(identity: IdentitySettings, bloom: BloomSettings) {
   return { cameraSettings, portrait }
 }
 
-/** A key for the exact settings that the worker consumes, before the GLB is loaded. */
+/** A key for the exact settings that the worker consumes, before the surface is captured. */
 export function createLilyParticlePreparationSeedKey(input: LilyParticlePreparationInput) {
   const width = asFiniteDimension(input.width)
   const height = asFiniteDimension(input.height)
@@ -160,7 +156,7 @@ export function createLilyParticlePreparationSeedKey(input: LilyParticlePreparat
   const cameraSettings = { ...settings.cameraSettings, aspect: width / height, reducedMotion: input.reducedMotion }
   return JSON.stringify([
     GEOMETRY_CACHE_VERSION,
-    LILY_MODEL_URL,
+    getLilyParticleSourceSignature(1),
     APPROVED_PORTRAIT_SOURCE.binarySha256,
     width,
     height,
@@ -195,25 +191,20 @@ function abortError() {
   return error
 }
 
-async function captureLilySurfaceForPreparation(isCancelled: () => boolean): Promise<LilyPreparedSurface> {
-  const loader = new GLTFLoader()
-  const gltf = await loader.loadAsync(LILY_MODEL_URL)
+export async function captureLilySurfaceForPreparation(isCancelled: () => boolean): Promise<LilyPreparedSurface> {
   if (isCancelled()) throw abortError()
-  const model = clone(gltf.scene) as Group
-  const wrapper = createLilyParticleModelWrapper(model)
-  const clip = gltf.animations.find((animation) => animation.name === 'Bloom')
-  if (!clip) throw new Error('Bloom animation is missing from the lily model.')
-  const player = new LilyAnimationPlayer(model, gltf.animations)
+  const plant = createProceduralLily({ textures: false })
+  const wrapper = createLilyParticleModelWrapper(plant.object)
   try {
-    seekLilyBloomEndpoint(player, clip)
-    const captured = await createLilyGeometryParticleSourceAsync(model, { isCancelled })
+    plant.setPose(1, 1)
+    const captured = await createLilyGeometryParticleSourceAsync(plant.object, { isCancelled, chunkSize: 4096 })
     return {
-      source: { ...captured, signature: getLilyParticleSourceSignature(clip.duration) },
-      bloomClipDuration: clip.duration,
+      source: { ...captured, signature: getLilyParticleSourceSignature(1) },
+      bloomClipDuration: 1,
     }
   } finally {
-    player.dispose()
     wrapper.clear()
+    plant.dispose()
   }
 }
 

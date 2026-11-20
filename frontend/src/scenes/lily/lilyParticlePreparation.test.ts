@@ -1,3 +1,7 @@
+import { createProceduralLily } from './procedural/plant'
+import { createLilyGeometryParticleSource } from './particleSource'
+import { createLilyParticleModelWrapper } from './lilyParticlePose'
+import { captureLilySurfaceForPreparation } from './lilyParticlePreparation'
 import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_SCENE_COMPOSER_CONFIG } from '../../systems/scene-config/config'
 import { createLilyParticleGeometrySetup, LilyParticlePreparationManager, prepareLilyParticleGeometryForStart, type LilyParticlePreparationDependencies } from './lilyParticlePreparation'
@@ -311,4 +315,20 @@ describe('lily particle preparation inputs', () => {
     expect(retried.status).toBe('ready')
     expect(retried.geometry).toBe(expected)
   })
+})
+
+
+it('prepares the same final posed surface as the rendered procedural plant', async () => {
+  const plant = createProceduralLily({ textures: false })
+  const wrapper = createLilyParticleModelWrapper(plant.object)
+  try {
+    plant.setPose(1, 1)
+    const visible = createLilyGeometryParticleSource(plant.object)
+    const prepared = await captureLilySurfaceForPreparation(() => false)
+    expect(prepared.source.center).toEqual(visible.center)
+    expect(prepared.source.radius).toBe(visible.radius)
+    for (let index = 0; index < 100; index++) {
+      expect(prepared.source.sampleSurface(index, 100)).toEqual(visible.sampleSurface(index, 100))
+    }
+  } finally { wrapper.clear(); plant.dispose() }
 })

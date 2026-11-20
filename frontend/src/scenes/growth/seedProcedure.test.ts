@@ -237,6 +237,40 @@ describe('scene 02 seed procedure', () => {
     expect(Math.abs(beforeImpact.y - afterImpact.y)).toBeLessThan(0.01)
   })
 
+  it('keeps the falling seed inside the frame with startup and extreme pursuit settings', () => {
+    const base = getConfig().scenes.growth
+    const presets = [
+      { ...base, seedFallDuration: 8, seedFallAcceleration: 4.4, seedFallHeight: 5.03, seedCameraLag: 0.2, seedCameraFollowSpeed: 3 },
+      { ...base, seedFallDuration: 1.8, seedFallAcceleration: 5, seedFallHeight: 6.4, seedCameraLag: 0.8, seedCameraFollowSpeed: 0.1 },
+    ]
+    const aspect = 16 / 10
+    const viewportHeight = getGrowthViewportHeight(1600, 1000)
+    for (const settings of presets) {
+      const [start, end] = getGrowthFrames(settings).fall
+      let previousY = getGrowthCameraPose(start, false, settings, viewportHeight).y
+      for (let i = 0; i <= 1000; i += 1) {
+        const time = start + (end - start) * i / 1000
+        const seed = getSeedPose(time, viewportHeight, false, settings)
+        const camera = getGrowthCameraPose(time, false, settings, viewportHeight)
+        const center = seed.anchor[1] + getSeedShellCenterY(seed)
+        const top = projectWorldY(center + seed.seedSize * SEED_SHELL_HALF_HEIGHT, camera, aspect)
+        const bottom = projectWorldY(center - seed.seedSize * SEED_SHELL_HALF_HEIGHT, camera, aspect)
+        expect(top).toBeGreaterThan(0)
+        expect(bottom).toBeLessThan(1)
+        expect(Math.abs(camera.y - previousY)).toBeLessThan(0.15)
+        previousY = camera.y
+      }
+    }
+  })
+
+  it('keeps the mature bud tip in the 16:10 growth frame', () => {
+    const settings = getConfig().scenes.growth
+    const viewportHeight = getGrowthViewportHeight(1600, 1000)
+    const camera = getGrowthBloomEntryCameraPose(settings, false, viewportHeight)
+    expect(projectWorldY(1.85, camera, 16 / 10)).toBeGreaterThan(0.04)
+    expect(projectWorldY(1.85, camera, 16 / 10)).toBeLessThan(0.5)
+  })
+
   it('slows the seed spin smoothly to a stable orientation at contact', () => {
     const base = getConfig().scenes.growth
     const settings = { ...base, seedSpinSpeed: 2, seedWobbleAmplitude: 0.3 } as GrowthSettings
@@ -315,6 +349,18 @@ describe('scene 02 seed procedure', () => {
     expect(bloomEntry).toEqual(growthExit)
     expect(Math.abs(growthExit.z - beforeExit.z)).toBeLessThan(0.01)
     expect(Math.abs(growthExit.ty - beforeExit.ty)).toBeLessThan(0.01)
+  })
+
+  it('raises the camera with the shoot and settles before the bloom handoff', () => {
+    const settings = getConfig().scenes.growth
+    const frames = getGrowthFrames(settings)
+    const start = getGrowthCameraPose(frames.handoff[1], false, settings)
+    const middle = getGrowthCameraPose((frames.handoff[1] + frames.model[1]) / 2, false, settings)
+    const grown = getGrowthCameraPose(frames.model[1], false, settings)
+    expect(middle.ty).toBeGreaterThan(start.ty)
+    expect(grown.ty).toBeGreaterThan(middle.ty)
+    expect(getGrowthCameraPose(frames.duration, false, settings).ty).toBeCloseTo(grown.ty)
+    expect(getGrowthCameraPose(frames.duration, false, settings).z).toBeCloseTo(grown.z)
   })
 
   it('keeps a dim seed core until the lily stem has time to appear', () => {
