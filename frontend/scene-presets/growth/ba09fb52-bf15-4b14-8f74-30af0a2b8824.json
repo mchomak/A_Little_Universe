@@ -40,6 +40,7 @@
     "vfxParticleTint": "#FFF4E8",
     "seedScale": 0.9,
     "flowerGrowthDuration": 9,
+    "lilyRotation": 0,
     "islandRadius": 1,
     "islandThickness": 0.1,
     "islandDepth": 0.74,
