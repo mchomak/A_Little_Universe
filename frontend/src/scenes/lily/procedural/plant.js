@@ -288,8 +288,8 @@ export function createProceduralLily(options = {}) {
     head.visible = bud > .0003
     head.position.copy(stemPoint(growth))
     head.rotation.order = 'ZXY'
-    head.rotation.set(.13 + .082 * bud + .45 * opening, -.04 - .07 * opening,
-      .088 + .13 * sin(bud * PI) + .21 * opening)
+    head.rotation.set(.13 + .082 * bud + .65 * opening, -.04 - .07 * opening,
+      .088 + .13 * sin(bud * PI) + .10 * opening)
     head.scale.set(bud * (.58 + .42 * bud), bud, bud * (.58 + .42 * bud))
     petal.color.copy(green).lerp(ripe, smooth(.285,.535,t))
     for (let i = 0; i < 6; ++i) {
