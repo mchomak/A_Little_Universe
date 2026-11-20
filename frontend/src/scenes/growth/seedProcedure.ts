@@ -138,13 +138,6 @@ export function getGrowthProgress(time: number, range: readonly [number, number]
   return Number.isFinite(time) ? progress(time, range) : 0
 }
 
-/** Keeps the seed fully visible through contact, then fades it as deterministic impact fragments take over. */
-export function getSeedShatterOpacity(time: number, impactTime: number, impactLifetime: number, reducedMotion: boolean): number {
-  if (reducedMotion) return 1
-  const fadeDuration = Math.min(0.18, Math.max(0.08, impactLifetime * 0.2))
-  return 1 - getGrowthProgress(time, [impactTime, impactTime + fadeDuration])
-}
-
 /** A pure sampled pose: replay, backward seek and viewport updates never depend on history. */
 export function getSeedPose(time: number, viewportHeight: number, reducedMotion: boolean, settings: GrowthSettings = DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth): SeedPose {
   const { formation, fall, landing, handoff, moonlight, sprout } = getGrowthFrames(settings)
@@ -231,8 +224,18 @@ export function getGrowthCameraPose(time: number, reducedMotion: boolean, settin
   const remainingDrop = Math.max(0.001, fallDistance - baselineDrop)
   const pathFollow = time < thresholdTime ? 0 : smooth((trackingDrop - baselineDrop) / remainingDrop)
   const response = 1 - Math.exp(-settings.seedCameraFollowSpeed * Math.max(0, time - thresholdTime))
-  const follow = pathFollow * response
-  const settle = progress(time, [frames.handoff[1], frames.duration])
+  const delayedFollow = pathFollow * response
+  // Lag and response remain artistic controls, but cannot leave a fast seed
+  // behind the camera. Blend into a framing floor before it nears the edge.
+  const fallProgress = clamp01((time - frames.fall[0]) / fallDuration)
+  const actualDrop = fallDistance * getSeedFallProgress(fallProgress, settings.seedFallAcceleration)
+  const framingFloor = Math.max(0, (actualDrop - viewportHeight * 0.22) / (fallDistance + 0.1))
+  const difference = framingFloor - delayedFollow
+  const blend = 0.002
+  const correction = framingFloor <= 0 || difference <= -blend ? 0
+    : difference >= blend ? difference : (difference + blend) ** 2 / (4 * blend)
+  const follow = Math.min(1, delayedFollow + correction)
+  const settle = progress(time, [frames.handoff[1], frames.model[1]])
   const parallax = Math.sin(Math.max(0, trackingTime) * 0.72) * 0.025 * follow * (1 - settle)
   const followY = startY + (SEED_ROOT[1] + 0.25 - startY) * follow
   const followTargetY = startY + (SEED_ROOT[1] - 0.1 - startY) * follow

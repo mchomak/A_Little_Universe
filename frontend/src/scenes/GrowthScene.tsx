@@ -1,11 +1,11 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { useThree } from '@react-three/fiber'
-import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, DoubleSide, GLSL3, Group, MeshBasicMaterial, RawShaderMaterial, Sphere, Vector2, Vector3, type Mesh, type ShaderMaterial } from 'three'
+import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, GLSL3, Group, MeshBasicMaterial, RawShaderMaterial, Sphere, Vector2, Vector3, type Mesh, type ShaderMaterial } from 'three'
 import type { SceneProps } from '../engine/sceneTypes'
 import { getBloomSceneFrames } from '../engine/filmConfig'
 import { getIdentityEnvironmentOpacity, shouldMountGrowthClouds } from '../engine/sceneContinuity'
 import { useSceneAnimation } from './shared/animation'
-import { getGrowthFrames, getGrowthViewportHeight, getSeedCorePose, getSeedFallHeightMultiplier, getSeedParticleCount, getSeedPose, getSeedShellCenterY, getSeedShatterOpacity, sampleSeedParticleSeeds, SEED_ROOT, SEED_SHELL_HALF_HEIGHT, type GrowthSettings } from './growth/seedProcedure'
+import { getGrowthFrames, getGrowthViewportHeight, getSeedCorePose, getSeedFallHeightMultiplier, getSeedParticleCount, getSeedPose, getSeedShellCenterY, sampleSeedParticleSeeds, SEED_ROOT, SEED_SHELL_HALF_HEIGHT, type GrowthSettings } from './growth/seedProcedure'
 import { coreFragment, haloFragment, impactWaveFragment, particleFragment, particleVertex, seedFragment, seedSurfaceVertex, surfaceVertex } from './growth/seedShaders'
 import { createSeedParticleReferences } from './growth/seedTargets'
 import { RecStudioParticleSimulation } from './growth/recstudioSimulation'
@@ -67,7 +67,7 @@ function SeedMatter({ count, settings, runtime, simulationRef, syncRef, gpuReady
     uniforms.uTime!.value = Math.max(0, time)
     uniforms.uFormationProgress!.value = Math.min(1, Math.max(0, time / nextSettings.formationDuration))
     uniforms.uFormationDuration!.value = nextSettings.formationDuration
-    uniforms.uOpacity!.value = nextSettings.particleOpacity * opacityRef.current
+    uniforms.uOpacity!.value = nextSettings.particleOpacity * opacityRef.current * 0.35
     ;(uniforms.uPearlColor!.value as Color).set(nextSettings.pearlColor)
     ;(uniforms.uRoseColor!.value as Color).set(nextSettings.roseColor)
     ;(uniforms.uLavenderColor!.value as Color).set(nextSettings.lavenderColor)
@@ -221,7 +221,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
     const frames = growthFrames
     const poseTime = environmentOnly ? frames.duration : time
     const pose = getSeedPose(poseTime, height, reducedMotion, growthSettings)
-    const seedVisualOpacity = pose.seedOpacity * getSeedShatterOpacity(time, frames.fall[1], growthSettings.seedImpactLifetime, reducedMotion)
+    const seedVisualOpacity = pose.seedOpacity
     seedMatterOpacity.current = seedVisualOpacity
     const worldOpacity = identityScene ? getIdentityEnvironmentOpacity(time, config.scenes.identity.dissolveDuration) : 1
     environmentOpacity.current = worldOpacity
@@ -229,7 +229,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
     moonlightProgress.current = pose.moonlight
     if (!environmentOnly) {
       matterSyncRef.current?.(time, growthSettings)
-      for (const [material, opacity] of [[orbit.current, pose.orbitOpacity * 0.86], [trail.current, pose.trailOpacity], [sparks.current, pose.sparkOpacity]] as const) {
+      for (const [material, opacity] of [[orbit.current, pose.orbitOpacity * 0.86], [trail.current, pose.trailOpacity], [sparks.current, pose.sparkOpacity * 0.3]] as const) {
         if (material) {
           material.uniforms.time!.value = time
           material.uniforms.opacity!.value = opacity
@@ -267,16 +267,16 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
         coreAnchor.current.visible = pose.coreOpacity > 0.001
       }
       if (shell.current) {
-        const shellReveal = pose.formation * (0.26 + 0.74 * pose.formation)
+        const shellReveal = Math.max(0, (pose.formation - 0.35) / 0.65) ** 2
         shell.current.uniforms.opacity!.value = shellReveal * seedVisualOpacity * 0.82
         shell.current.uniforms.time!.value = time
       }
       if (core.current) {
-        core.current.uniforms.opacity!.value = pose.coreOpacity
+        core.current.uniforms.opacity!.value = pose.coreOpacity * (1 - 0.88 * pose.formation * (1 - pose.coreAfterimage))
         core.current.uniforms.time!.value = time
         core.current.uniforms.intensity!.value = growthSettings.coreGlow
       }
-      if (halo.current) halo.current.uniforms.opacity!.value = pose.coreOpacity * (0.28 + pose.formation * 0.38)
+      if (halo.current) halo.current.uniforms.opacity!.value = pose.coreOpacity * (0.28 - pose.formation * 0.20)
     }
     if (mound.current) {
       mound.current.visible = pose.mound > 0.001
@@ -304,7 +304,7 @@ export function GrowthScene({ state, runtime, reducedMotion, environmentOnly = f
         <SeedMatter count={particleCount} settings={growthSettings} runtime={runtime} simulationRef={simulationRef} syncRef={matterSyncRef} opacityRef={seedMatterOpacity} onStatus={setMatterStatus} gpuReady={gpuStatus === 'ready'} />
         <mesh>
           <latheGeometry args={[profile, low ? 32 : 64]} />
-          <shaderMaterial ref={shell} vertexShader={seedSurfaceVertex} fragmentShader={seedFragment} uniforms={shellUniforms} transparent depthWrite={false} side={DoubleSide} toneMapped={false} />
+          <shaderMaterial ref={shell} vertexShader={seedSurfaceVertex} fragmentShader={seedFragment} uniforms={shellUniforms} transparent depthWrite={false} toneMapped={false} />
         </mesh>
       </group>
       <group ref={coreAnchor} visible={false}>

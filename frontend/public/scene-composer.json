@@ -62,6 +62,7 @@
       },
       "seedScale": 0.8,
       "flowerGrowthDuration": 9,
+      "lilyRotation": 0,
       "islandRadius": 0.82,
       "islandThickness": 0.12,
       "islandDepth": 0.72,

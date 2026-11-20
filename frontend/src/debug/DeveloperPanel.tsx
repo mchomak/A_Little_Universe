@@ -38,12 +38,6 @@ import { comparisonPointValid, type ComparisonPoint } from './inspectorCompare'
 import { editGalaxyColor, getGalaxyColors, selectGalaxyPalette, type GalaxyColorKey } from '../scenes/galaxy/palette'
 import ScenePresetControls from './ScenePresetControls'
 import { captureScenePreset, scenePresetPatch, type ScenePresetScope } from './scenePresetModel'
-import {
-  getLilyMaterialSnapshot,
-  setLilyMaterialMode,
-  subscribeLilyMaterialExperiment,
-  type LilyMaterialStateSnapshot,
-} from '../scenes/lily/materialPolishState'
 
 type NumericControl = {
   path: ComposerFieldPath
@@ -884,7 +878,6 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
   const [fontLoading, setFontLoading] = useState(false)
   const fontRequest = useRef(0)
   const config = useSyncExternalStore(subscribeConfig, getConfig, getConfig)
-  const lilyMaterialExperiment = useSyncExternalStore<LilyMaterialStateSnapshot>(subscribeLilyMaterialExperiment, getLilyMaterialSnapshot, getLilyMaterialSnapshot)
   const fps = useApproximateRafFps()
   const [history] = useState(createInspectorHistory)
   const [historyRevision, setHistoryRevision] = useState(0)
@@ -1214,18 +1207,9 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           </details>
         </>}
         {selected === 'bloom' && <details open><summary>Анимация раскрытия</summary>
+          {range({ path: 'scenes.growth.lilyRotation', label: 'Поворот лилии вокруг оси', unit: '°', min: -180, max: 180, step: 1 })}
           <details open><summary>Камера · плавное приближение</summary>{BLOOM_CONTROLS.map(range)}</details>
           <p>Раскрытие начинается автоматически после короткой паузы роста. Камера плавно приближается к цветку.</p>
-        </details>}
-        {import.meta.env.DEV && route === 'film' && active === 'bloom' && selected === 'bloom' && <details open>
-          <summary>Материалы лилии · A/B</summary>
-          <div role="group" aria-label="Сравнение материалов лилии" className="inspector-history">
-            <button type="button" aria-pressed={lilyMaterialExperiment.mode === 'original'} onClick={() => setLilyMaterialMode('original')}>Исходный</button>
-            <button type="button" aria-pressed={lilyMaterialExperiment.mode === 'enhanced'} onClick={() => setLilyMaterialMode('enhanced')}>Улучшенный</button>
-          </div>
-          <p>Сравнивайте в том же кадре и при том же освещении; переключение не перезапускает анимацию.</p>
-          {lilyMaterialExperiment.mode === 'enhanced' && lilyMaterialExperiment.status === 'loading' && <p role="status">Загружаются текстуры…</p>}
-          {lilyMaterialExperiment.mode === 'enhanced' && lilyMaterialExperiment.status === 'error' && <p role="status">Не удалось загрузить текстуры; продолжает отображаться исходный материал.</p>}
         </details>}
         {selected === 'bloom' && <details><summary>Пыльца при раскрытии лилии</summary>
           <label className="composer-control"><input id="composer-scenes-bloom-lilyBloomPollen-enabled" type="checkbox" checked={config.scenes.bloom.lilyBloomPollen.enabled} onChange={event => { void changeField('scenes.bloom.lilyBloomPollen.enabled', event.target.checked) }} /> Включить пыльцу</label>

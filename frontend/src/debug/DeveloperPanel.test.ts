@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, it } from 'vitest'
 import { initialFilmState } from '../engine/film'
 import { DEFAULT_SCENE_COMPOSER_CONFIG, updateConfig } from '../systems/scene-config/config'
-import { resetLilyMaterialExperiment } from '../scenes/lily/materialPolishState'
 import DeveloperPanel, { readSceneDisclosureOpen, rememberSceneDisclosureOpen } from './DeveloperPanel'
 import { reviewFilmModeLabel, reviewPriorityLabel, reviewSceneLabel, reviewStatusLabel } from './useReviewNotes'
 import SceneTimeline from './SceneTimeline'
@@ -253,38 +252,6 @@ it('exposes the Lily bloom pollen controls in Scene 03', () => {
   expect(markup.match(/ id="composer-scenes-bloom-flowerBloomDuration"/g)).toHaveLength(1)
   expect(markup).not.toContain('composer-scenes-growth-cloudLayers-far-count')
   expect(markup).not.toContain('composer-scenes-growth-cloudLayers-sides-offsetX')
-})
-
-it('exposes the Original/Enhanced A/B switch only while DEV scene 03 is active', () => {
-  resetLilyMaterialExperiment()
-  const bloomMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
-    state: { ...initialFilmState, scene: 'bloom' },
-    dispatch: () => undefined,
-    reducedMotion: false,
-    onPreload: () => undefined,
-    route: 'film',
-  }))
-  expect(bloomMarkup).toContain('Материалы лилии · A/B')
-  expect(bloomMarkup).toMatch(/aria-pressed="true">Исходный<\/button>/)
-  expect(bloomMarkup).toMatch(/aria-pressed="false">Улучшенный<\/button>/)
-
-  const growthMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
-    state: { ...initialFilmState, scene: 'growth' },
-    dispatch: () => undefined,
-    reducedMotion: false,
-    onPreload: () => undefined,
-    route: 'film',
-  }))
-  expect(growthMarkup).not.toContain('Материалы лилии · A/B')
-
-  const settingsMarkup = renderToStaticMarkup(createElement(DeveloperPanel, {
-    state: { ...initialFilmState, scene: 'bloom' },
-    dispatch: () => undefined,
-    reducedMotion: false,
-    onPreload: () => undefined,
-    route: 'settings',
-  }))
-  expect(settingsMarkup).not.toContain('Материалы лилии · A/B')
 })
 
 it('exposes bounded portrait assembly controls in the Scene 04 Inspector', () => {

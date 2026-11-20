@@ -1,13 +1,9 @@
-import { Group } from 'three'
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import metadata from '../../assets/scene04-portrait-approved-v2.json'
-import { LILY_MODEL_URL } from '../../assets/lily/lilyAsset'
 import type { SceneComposerConfig } from '../../systems/scene-config/config'
 import { APPROVED_PORTRAIT_SETTINGS, loadApprovedPortrait } from './approvedPortrait'
-import { LilyAnimationPlayer } from './animationPlayer'
+import { createProceduralLily } from './procedural/plant'
 import { createLilyGeometryParticleSourceAsync, type LilySurfaceSource } from './particleSource'
-import { getLilyParticleSourceSignature, createLilyParticleModelWrapper, seekLilyBloomEndpoint } from './lilyParticlePose'
+import { getLilyParticleSourceSignature, createLilyParticleModelWrapper } from './lilyParticlePose'
 import { toLilyPortraitCaptureSettings } from './portraitIntegration'
 import {
   createLilyGeometryWorkerRequest,
@@ -91,7 +87,7 @@ export interface LilyParticlePreparationRecord {
 
 export interface LilyParticlePreparationDependencies {
   loadPortrait(): ReturnType<typeof loadApprovedPortrait>
-  captureSource(isCancelled: () => boolean): Promise<LilyPreparedSurface>
+  captureSource(isCancelled: () => boolean, rotation?: number): Promise<LilyPreparedSurface>
   getSourceSignature?(bloomClipDuration: number): string
   createWorker(payload: LilyGeometryWorkerPayload): LilyGeometryWorkerRequest
 }
@@ -151,7 +147,7 @@ function getWorkerSettings(identity: IdentitySettings, bloom: BloomSettings) {
   return { cameraSettings, portrait }
 }
 
-/** A key for the exact settings that the worker consumes, before the GLB is loaded. */
+/** A key for the exact settings that the worker consumes, before the surface is captured. */
 export function createLilyParticlePreparationSeedKey(input: LilyParticlePreparationInput) {
   const width = asFiniteDimension(input.width)
   const height = asFiniteDimension(input.height)
@@ -160,7 +156,7 @@ export function createLilyParticlePreparationSeedKey(input: LilyParticlePreparat
   const cameraSettings = { ...settings.cameraSettings, aspect: width / height, reducedMotion: input.reducedMotion }
   return JSON.stringify([
     GEOMETRY_CACHE_VERSION,
-    LILY_MODEL_URL,
+    getLilyParticleSourceSignature(1, input.config.scenes.growth.lilyRotation),
     APPROVED_PORTRAIT_SOURCE.binarySha256,
     width,
     height,
@@ -184,7 +180,7 @@ export function createLilyParticleGeometrySetup(
     reducedMotion: input.reducedMotion,
   }
   const seedKey = createLilyParticlePreparationSeedKey(input)
-  const sourceSignature = input.sourceSignature ?? getLilyParticleSourceSignature(input.bloomClipDuration)
+  const sourceSignature = input.sourceSignature ?? getLilyParticleSourceSignature(input.bloomClipDuration, input.config.scenes.growth.lilyRotation)
   const key = JSON.stringify([seedKey, sourceSignature])
   return { key, seedKey, count: identity.particleCount, cameraSettings, portrait: settings.portrait }
 }
@@ -195,25 +191,20 @@ function abortError() {
   return error
 }
 
-async function captureLilySurfaceForPreparation(isCancelled: () => boolean): Promise<LilyPreparedSurface> {
-  const loader = new GLTFLoader()
-  const gltf = await loader.loadAsync(LILY_MODEL_URL)
+export async function captureLilySurfaceForPreparation(isCancelled: () => boolean, rotation = 0): Promise<LilyPreparedSurface> {
   if (isCancelled()) throw abortError()
-  const model = clone(gltf.scene) as Group
-  const wrapper = createLilyParticleModelWrapper(model)
-  const clip = gltf.animations.find((animation) => animation.name === 'Bloom')
-  if (!clip) throw new Error('Bloom animation is missing from the lily model.')
-  const player = new LilyAnimationPlayer(model, gltf.animations)
+  const plant = createProceduralLily({ textures: false })
+  const wrapper = createLilyParticleModelWrapper(plant.object, rotation)
   try {
-    seekLilyBloomEndpoint(player, clip)
-    const captured = await createLilyGeometryParticleSourceAsync(model, { isCancelled })
+    plant.setPose(1, 1)
+    const captured = await createLilyGeometryParticleSourceAsync(plant.object, { isCancelled, chunkSize: 4096 })
     return {
-      source: { ...captured, signature: getLilyParticleSourceSignature(clip.duration) },
-      bloomClipDuration: clip.duration,
+      source: { ...captured, signature: getLilyParticleSourceSignature(1, rotation) },
+      bloomClipDuration: 1,
     }
   } finally {
-    player.dispose()
     wrapper.clear()
+    plant.dispose()
   }
 }
 
@@ -252,8 +243,8 @@ export class LilyParticlePreparationManager {
 
   prepare(input: LilyParticlePreparationInput): Promise<LilyParticlePreparationRecord> {
     const seedKey = createLilyParticlePreparationSeedKey(input)
-    if (this.active?.record.seedKey === seedKey && this.isRecordSourceCurrent(this.active.record)) return this.active.promise
-    const reusableSurface = this.getReusableSurface()
+    if (this.active?.record.seedKey === seedKey && this.isRecordSourceCurrent(this.active.record, input.config.scenes.growth.lilyRotation)) return this.active.promise
+    const reusableSurface = this.getReusableSurface(input.config.scenes.growth.lilyRotation)
     this.cancelActive(false)
 
     const record: LilyParticlePreparationRecord = { seedKey, status: 'preparing' }
@@ -281,12 +272,12 @@ export class LilyParticlePreparationManager {
     try {
       const [portrait, captured] = await Promise.all([
         this.dependencies.loadPortrait(),
-        reusableSurface ? Promise.resolve(reusableSurface) : this.dependencies.captureSource(isCancelled),
+        reusableSurface ? Promise.resolve(reusableSurface) : this.dependencies.captureSource(isCancelled, input.config.scenes.growth.lilyRotation),
       ])
       if (isCancelled()) throw abortError()
 
       const setup = createLilyParticleGeometrySetup({ ...input, bloomClipDuration: captured.bloomClipDuration })
-      const posedSource = { ...captured.source, signature: this.getSourceSignature(captured.bloomClipDuration) }
+      const posedSource = { ...captured.source, signature: this.getSourceSignature(captured.bloomClipDuration, input.config.scenes.growth.lilyRotation) }
       this.capturedSurface = { source: posedSource, bloomClipDuration: captured.bloomClipDuration }
       active.record.key = setup.key
       active.record.bloomClipDuration = captured.bloomClipDuration
@@ -324,19 +315,19 @@ export class LilyParticlePreparationManager {
     }
   }
 
-  private getSourceSignature(bloomClipDuration: number) {
-    return this.dependencies.getSourceSignature?.(bloomClipDuration) ?? getLilyParticleSourceSignature(bloomClipDuration)
+  private getSourceSignature(bloomClipDuration: number, rotation = 0) {
+    return this.dependencies.getSourceSignature?.(bloomClipDuration) ?? getLilyParticleSourceSignature(bloomClipDuration, rotation)
   }
 
-  private isRecordSourceCurrent(record: LilyParticlePreparationRecord) {
+  private isRecordSourceCurrent(record: LilyParticlePreparationRecord, rotation: number) {
     return !record.source || record.bloomClipDuration === undefined
-      || record.source.signature === this.getSourceSignature(record.bloomClipDuration)
+      || record.source.signature === this.getSourceSignature(record.bloomClipDuration, rotation)
   }
 
-  private getReusableSurface(): LilyPreparedSurface | null {
+  private getReusableSurface(rotation: number): LilyPreparedSurface | null {
     const captured = this.capturedSurface
     if (!captured) return null
-    if (captured.source.signature !== this.getSourceSignature(captured.bloomClipDuration)) {
+    if (captured.source.signature !== this.getSourceSignature(captured.bloomClipDuration, rotation)) {
       this.capturedSurface = null
       return null
     }

@@ -278,6 +278,7 @@ it('projects positive XZ swirl clockwise in the elevated camera view', () => {
   const camera = new PerspectiveCamera(38, 4 / 3, 0.1, 100)
   camera.position.set(end.x, end.y, end.z)
   camera.lookAt(end.tx, end.ty, end.tz)
+  camera.updateMatrixWorld()
 
   const center = new Vector3(start.tx, start.ty, start.tz)
   const material = createLilyParticleMaterial(createLilyDissolveUniforms())

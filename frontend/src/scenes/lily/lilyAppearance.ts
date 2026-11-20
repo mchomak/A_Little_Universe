@@ -37,7 +37,7 @@ export function createLilyAppearanceUniforms(): LilyAppearanceUniforms {
 
 /** Resolve the two authored leaves and petal head without changing GLB names or geometry. */
 export function lilyAppearancePart(name: string, materialNames: readonly string[], dissolvePart: number): LilyAppearancePart {
-  if (/anther|filament|pistil|flower[_ ]?(interior|details)|calyx/i.test(`${name} ${materialNames.join(' ')}`)) return 'center'
+  if (/anther|filament|pistil|pollen sac|style|stigma lobe|flower[_ ]?(interior|details)|calyx/i.test(`${name} ${materialNames.join(' ')}`)) return 'center'
   if (/leaf|foliage/i.test(`${name} ${materialNames.join(' ')}`)) return 'leaf'
   return dissolvePart === 0 ? 'bud' : 'other'
 }

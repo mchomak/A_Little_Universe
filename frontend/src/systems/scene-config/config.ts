@@ -169,6 +169,7 @@ export interface SceneComposerConfig {
       growthVortex: Readonly<LilyGrowthVortexSettings>
       seedScale: number
       flowerGrowthDuration: number
+      lilyRotation: number
       islandRadius: number
       islandThickness: number
       islandDepth: number
@@ -434,7 +435,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
       coreIntensity: 1, innerGlowRadius: 16, outerGlowRadius: 95, phraseResponse: 0.12,
       touchIntensity: 0.55, touchDuration: 0.85, waveStrength: 0.14, waveRadius: 70,
       atmosphereDensity: 42, hazeIntensity: 0.035, spaceDepth: 0.35, driftSpeed: 0.035,
-      secondFontScale: 0.86, textGap: 34, textGlow: 0.22, copyVariant: 'legacy',
+      secondFontScale: 0.86, textGap: 34, textGlow: 0.22, copyVariant: 'awakening',
       particleSizeMin: 0.6, particleSizeMax: 1.8, particleGlow: 0.95,
     },
     growth: {
@@ -456,7 +457,7 @@ export const DEFAULT_SCENE_COMPOSER_CONFIG: SceneComposerConfig = deepFreeze({
         orbitRadius: 0.42, rotationSpeed: 1.55, verticalSpread: 0.9, spiralTightness: 1.4,
         dissipationDuration: 2.3, dissipationSpread: 1.35, color: '#EBD4A7',
       },
-      seedScale: 1, flowerGrowthDuration: 9,
+      seedScale: 1, flowerGrowthDuration: 9, lilyRotation: 0,
       islandRadius: 0.82, islandThickness: 0.24, islandDepth: 0.58, islandRoughness: 0.5,
       grassDensity: 360, grassHeight: 0.14, windStrength: 1, windSpeed: 0.8,
       seedOrbitCount: 3, seedOrbitRadius: 0.4, seedOrbitTilt: 0.62, seedOrbitSpeed: 0.85,
@@ -774,6 +775,7 @@ export function normalizeConfig(input: unknown): SceneComposerConfig {
       },
       seedScale: numberValue(growthInput?.seedScale, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.seedScale, 0.65, 1.4),
       flowerGrowthDuration: numberValue(growthInput?.flowerGrowthDuration, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.flowerGrowthDuration, 4, 14),
+      lilyRotation: numberValue(growthInput?.lilyRotation, 0, -180, 180),
       islandRadius: numberValue(growthInput?.islandRadius, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandRadius, 0.55, 1.05),
       islandThickness: numberValue(growthInput?.islandThickness, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandThickness, 0.1, 0.55),
       islandDepth: numberValue(growthInput?.islandDepth, DEFAULT_SCENE_COMPOSER_CONFIG.scenes.growth.islandDepth, 0.25, 1.4),

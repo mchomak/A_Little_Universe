@@ -93,3 +93,33 @@ it('cancels asynchronous surface capture at a yield boundary', async () => {
   geometry.dispose()
   material.dispose()
 })
+
+
+it('classifies procedural floral center meshes separately from foliage', () => {
+  for (const name of ['Filament 1', 'Pollen sac', 'Style', 'Stigma lobe']) {
+    expect(lilyDissolvePart(name)).toBe(1)
+  }
+  expect(lilyDissolvePart('Petals_Inner_1')).toBe(0)
+  expect(lilyDissolvePart('Leaf_A')).toBe(2)
+})
+
+
+it('samples only visible triangles within the draw range', () => {
+  const geometry = new BufferGeometry()
+  geometry.setAttribute('position', new BufferAttribute(new Float32Array([
+    0, 0, 0, 1, 0, 0, 0, 1, 0,
+    100, 0, 0, 101, 0, 0, 100, 1, 0,
+  ]), 3))
+  geometry.setDrawRange(0, 3)
+  const material = new MeshBasicMaterial()
+  const mesh = new Mesh(geometry, material)
+  const hidden = new Mesh(geometry, material)
+  hidden.position.x = 200
+  hidden.visible = false
+  const root = new Group()
+  root.add(mesh, hidden)
+  const source = createLilyGeometryParticleSource(root)
+  for (let index = 0; index < 20; index++) expect(source.sample(index, 20)[0]).toBeLessThan(2)
+  geometry.dispose()
+  material.dispose()
+})
