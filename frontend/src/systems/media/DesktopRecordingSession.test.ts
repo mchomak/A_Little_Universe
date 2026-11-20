@@ -96,6 +96,29 @@ function harness(options: {
 }
 
 describe('DesktopRecordingSession', () => {
+  it('starts the three automatic sources without display-media user activation', async () => {
+    const h = harness()
+    Object.assign(h.bridge, { automaticCaptureSource: async () => 'window:1:0' })
+    const getUserMedia = vi.fn(async () => makeStream().stream)
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } })
+    try {
+      await h.session.startAutomatically()
+      expect(getUserMedia).toHaveBeenCalledTimes(3)
+      expect(getUserMedia).toHaveBeenCalledWith(expect.objectContaining({ video: expect.objectContaining({ mandatory: expect.objectContaining({ chromeMediaSourceId: 'window:1:0' }) }) }))
+      expect(h.session.getSnapshot().status).toBe('recording')
+      await h.session.stop()
+    } finally { vi.unstubAllGlobals() }
+  })
+
+  it('does not capture when macOS permissions are unavailable', async () => {
+    const capture = vi.fn(async () => makeStream().stream)
+    const h = harness({ capture })
+    Object.assign(h.bridge, { automaticCaptureSource: async () => null })
+    await h.session.startAutomatically()
+    expect(capture).not.toHaveBeenCalled()
+    expect(h.session.getSnapshot().status).toBe('idle')
+  })
+
   it('persists each recorder start offset after its own delayed segment-open IPC', async () => {
     let monotonic = 0
     const gates = { camera: deferred<void>(), microphone: deferred<void>(), screen: deferred<void>() }

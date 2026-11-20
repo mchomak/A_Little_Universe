@@ -25,7 +25,7 @@ function verifyResourceDirectory(directory) {
   for (const executable of [ffmpeg, ffprobe]) {
     if (!fs.existsSync(executable) || !fs.statSync(executable).isFile()) fail(`Missing bundled executable: ${executable}`)
     fs.accessSync(executable, fs.constants.X_OK)
-    run('lipo', ['-verify_arch', 'arm64', executable])
+    run('lipo', [executable, '-verify_arch', 'arm64'])
   }
   for (const noticePath of requiredNoticePaths(directory, source)) {
     if (!fs.existsSync(noticePath)) fail(`Missing bundled FFmpeg notice/source: ${noticePath}`)

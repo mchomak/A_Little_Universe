@@ -2,7 +2,8 @@ import { expect, it, vi } from 'vitest'
 import { initialFilmState } from '../engine/film'
 import { createFilmMusicBridge } from './filmMusicBridge'
 
-it('starts Intro after the existing audio unlock initiated by the film start gesture', async () => {
+it('starts Intro five seconds after the film begins', async () => {
+  vi.useFakeTimers()
   const director = {
     syncFilmState: vi.fn(),
     handleGalleryExit: vi.fn(),
@@ -17,6 +18,11 @@ it('starts Intro after the existing audio unlock initiated by the film start ges
   expect(unlock).toHaveBeenCalledOnce()
   expect(director.syncFilmState).not.toHaveBeenCalled()
   await expect(start).resolves.toBe(true)
+  expect(director.syncFilmState).not.toHaveBeenCalled()
+  bridge.syncFilmState({ ...initialFilmState, scene: 'prologue', mode: 'playing', revision: 1 })
+  vi.advanceTimersByTime(4999)
+  expect(director.syncFilmState).not.toHaveBeenCalled()
+  vi.advanceTimersByTime(1)
   expect(director.syncFilmState).toHaveBeenCalledWith({
     ...initialFilmState,
     scene: 'prologue',
@@ -24,6 +30,8 @@ it('starts Intro after the existing audio unlock initiated by the film start ges
     elapsed: 0,
     revision: 1,
   })
+  bridge.dispose()
+  vi.useRealTimers()
 })
 
 it('forwards one gallery exit at a time with the return-to-ending flag', () => {
@@ -56,3 +64,18 @@ it('forwards one gallery exit at a time with the return-to-ending flag', () => {
   bridge.dispose()
 })
 
+
+it('cancels delayed Intro if the film enters another scene', async () => {
+  vi.useFakeTimers()
+  const director = { syncFilmState: vi.fn(), handleGalleryExit: vi.fn() }
+  const gallery = { snapshot: () => ({ phase: 'intro' as const }), subscribe: () => () => undefined }
+  const bridge = createFilmMusicBridge(director, gallery)
+  await bridge.startAfterUnlock(() => Promise.resolve(true), initialFilmState)
+  const galleryState = { ...initialFilmState, scene: 'gallery' as const, mode: 'exploring' as const }
+  bridge.syncFilmState(galleryState)
+  vi.advanceTimersByTime(5000)
+  expect(director.syncFilmState).toHaveBeenCalledOnce()
+  expect(director.syncFilmState).toHaveBeenCalledWith(galleryState)
+  bridge.dispose()
+  vi.useRealTimers()
+})

@@ -76,7 +76,7 @@ if ! file "${OUTPUT_DIR}/ffmpeg" | grep -q 'arm64'; then
   echo "FFmpeg did not produce an Apple arm64 executable." >&2
   exit 1
 fi
-lipo -verify_arch arm64 "${OUTPUT_DIR}/ffmpeg"
+lipo "${OUTPUT_DIR}/ffmpeg" -verify_arch arm64
 "${OUTPUT_DIR}/ffmpeg" -hide_banner -version | grep -q "ffmpeg version ${VERSION}"
 "${OUTPUT_DIR}/ffprobe" -hide_banner -version | grep -q "ffprobe version ${VERSION}"
 "${OUTPUT_DIR}/ffmpeg" -hide_banner -buildconf 2>&1 | grep -q -- '--disable-gpl'

@@ -49,13 +49,13 @@ describe('prologue frames', () => {
 
   it('offers the previous personal wording as a configuration choice', () => {
     expect(getPrologueCopy({ copyVariant: 'awakening' }).second).toBe('И решил начать с одной маленькой искры.')
-    expect(getPrologueCopy({ copyVariant: 'legacy' }).second).toBe('И решил, что ты заслуживаешь чего-то особенного:')
+    expect(getPrologueCopy({ copyVariant: 'legacy' }).second).toBe('И решил начать с одной маленькой искры.')
   })
 
   it('uses the approved phrases in the default prologue copy', () => {
     const copy = getPrologueCopy(DEFAULT_SCENE_COMPOSER_CONFIG.scenes.prologue)
     expect(copy.first).toBe('Я долго думал, что тебе подарить…')
-    expect(copy.second).toBe('И решил, что ты заслуживаешь чего-то особенного:')
+    expect(copy.second).toBe('И решил начать с одной маленькой искры.')
   })
 
   it('leaves the invitation free of text dust before the gate opens', () => {

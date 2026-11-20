@@ -271,7 +271,7 @@ export const SCENES: Record<SceneId, SceneConfig> = {
 export const COPY = {
   prologueFirst: 'Я долго думал, что тебе подарить…',
   prologueSecond: 'И решил начать с одной маленькой искры.',
-  prologueSecondLegacy: 'И решил, что ты заслуживаешь чего-то особенного:',
+  prologueSecondLegacy: 'И решил начать с одной маленькой искры.',
   seedPrompt: 'Прикоснись к свету', name: 'ВАСИЛИСА',
   portrait: 'Портрет — временный placeholder', photo: 'Фотография — временный placeholder',
   photoCaption: 'С этого всё началось', greetingTitle: 'С днём рождения, Василиса!',

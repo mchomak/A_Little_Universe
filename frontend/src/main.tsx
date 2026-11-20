@@ -1,6 +1,7 @@
-﻿import { StrictMode } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Bootstrap } from './bootstrap/Bootstrap'
+import './systems/media/desktopRecording'
 import './app/styles.css'
 
 const root = createRoot(document.getElementById('root')!)

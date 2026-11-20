@@ -21,6 +21,15 @@ export function createFilmMusicBridge(director: FilmMusicDirector, gallery: Gall
   let disposed = false
   let filmState: FilmState | null = null
   let galleryPhase = gallery.snapshot().phase
+  let introTimer: ReturnType<typeof setTimeout> | null = null
+  let pendingIntroState: FilmState | null = null
+  let introArmed = false
+  const cancelIntro = () => {
+    if (introTimer !== null) clearTimeout(introTimer)
+    introTimer = null
+    pendingIntroState = null
+    introArmed = false
+  }
   const onGalleryChange = () => {
     if (disposed) return
     const nextPhase = gallery.snapshot().phase
@@ -33,30 +42,43 @@ export function createFilmMusicBridge(director: FilmMusicDirector, gallery: Gall
   const syncFilmState = (state: FilmState) => {
     if (disposed) return
     filmState = state
+    if (introArmed && state.scene === 'prologue' && state.mode !== 'ready') {
+      introArmed = false
+      pendingIntroState = state
+      introTimer = setTimeout(() => {
+        const nextState = pendingIntroState
+        introTimer = null
+        pendingIntroState = null
+        if (nextState && !disposed) syncFilmState(nextState)
+      }, 5000)
+      return
+    }
+    if (introArmed && state.mode === 'ready') return
+    if (introArmed) cancelIntro()
+    if (introTimer !== null) {
+      if (state.scene === 'prologue' && state.mode === 'ready') return
+      if (state.scene === 'prologue') { pendingIntroState = state; return }
+      cancelIntro()
+    }
     director.syncFilmState(state)
   }
   return {
     syncFilmState,
-    startAfterUnlock(unlock, state) {
+    startAfterUnlock(unlock) {
       let unlocked: Promise<boolean>
       try { unlocked = unlock() } catch { unlocked = Promise.resolve(false) }
       return unlocked.catch(() => false).then((ready) => {
-        if (ready) syncFilmState({
-          ...state,
-          scene: 'prologue',
-          mode: 'playing',
-          elapsed: 0,
-          paused: false,
-          reading: false,
-          revision: state.revision + 1,
-          returnToEnding: false,
-        })
+        if (ready && !disposed) {
+          cancelIntro()
+          introArmed = true
+        }
         return ready
       })
     },
     dispose() {
       if (disposed) return
       disposed = true
+      cancelIntro()
       unsubscribeGallery()
       filmState = null
     },

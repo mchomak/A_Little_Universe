@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { isDeveloperMode } from './developerMode'
 
 describe('desktop developer panel access', () => {
-  it('keeps the DEV tools available inside the packaged desktop application', () => {
-    expect(isDeveloperMode(false, new URL('app://bundle/index.html'))).toBe(true)
+  it('hides DEV tools inside the packaged desktop application', () => {
+    expect(isDeveloperMode(false, new URL('app://bundle/index.html'))).toBe(false)
   })
 
   it('keeps production preview access opt-in', () => {

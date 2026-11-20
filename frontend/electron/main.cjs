@@ -1,4 +1,4 @@
-const { app, BrowserWindow, desktopCapturer, ipcMain, net, protocol, session, shell, webContents } = require('electron')
+const { app, BrowserWindow, desktopCapturer, ipcMain, net, protocol, session, shell, systemPreferences, webContents } = require('electron')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 const { appScheme, canCheckMediaPermission, canRequestMedia, isAppOrigin, resolveBundlePath } = require('./runtime-path.cjs')
@@ -8,6 +8,7 @@ const { RecordingRecoveryScheduler } = require('./recording-recovery-scheduler.c
 const { installRecordingHandlers } = require('./recording-ipc.cjs')
 const { createAppWindowCaptureHandler } = require('./media-capture.cjs')
 const { getRecordingRoot } = require('./recording-path.cjs')
+const { requestRecordingPermissions } = require('./permission-setup.cjs')
 
 const APP_ENTRY = 'app://bundle/index.html'
 const DEVELOPMENT_URL = process.env.ALU_DEV_SERVER_URL
@@ -135,6 +136,11 @@ function createMainWindow() {
     event.preventDefault()
     window.setTitle('A Little Universe for You')
   })
+  window.on('close', (event) => {
+    if (DEVELOPMENT_URL || window.__recordingCloseReady || !window.__recordingCloseHandlerReady) return
+    event.preventDefault()
+    window.webContents.send('recording:closing')
+  })
   window.once('closed', () => recoveryScheduler?.setBusy('film', false))
   window.once('ready-to-show', () => {
     if (process.env.ALU_SMOKE_HIDE_WINDOW !== '1') window.show()
@@ -146,7 +152,33 @@ function createMainWindow() {
   return window
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  if (process.platform === 'darwin' && process.argv.includes('--setup-recording-permissions')) {
+    try {
+      app.focus({ steal: true })
+      await requestRecordingPermissions(systemPreferences)
+    } catch (error) {
+      console.error('Could not request recording permissions.', error)
+    } finally {
+      app.quit()
+    }
+    return
+  }
+
+  ipcMain.handle('recording:automatic-capture-source', (event) => {
+    if (!isAppOrigin(event.senderFrame?.url ?? '')) throw new Error('Untrusted capture request')
+    if (process.platform === 'darwin' && ['camera', 'microphone', 'screen'].some((kind) => systemPreferences.getMediaAccessStatus(kind) !== 'granted')) return null
+    const window = BrowserWindow.fromWebContents(event.sender)
+    return window && !window.isDestroyed() ? window.getMediaSourceId() : null
+  })
+  ipcMain.on('recording:close-handler-ready', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (window && isAppOrigin(event.sender.getURL())) window.__recordingCloseHandlerReady = true
+  })
+  ipcMain.on('recording:close-ready', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (window && isAppOrigin(event.sender.getURL())) { window.__recordingCloseReady = true; window.close() }
+  })
   registerMediaPermissions()
   void registerRecordingIpc().catch((error) => console.error('Could not scan local recording sessions for recovery.', error))
   if (!DEVELOPMENT_URL) installBundledProtocol()

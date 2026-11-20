@@ -4,7 +4,7 @@ export function isDeveloperMode(development = import.meta.env.DEV,
   if (development) return true
   const currentLocation = location ?? (typeof window === 'undefined' ? undefined : window.location)
   if (!currentLocation) return false
-  if (currentLocation.protocol === 'app:' && currentLocation.hostname === 'bundle') return true
+  if (currentLocation.protocol === 'app:' && currentLocation.hostname === 'bundle') return false
   const isLocalHost = currentLocation.hostname === 'localhost'
     || currentLocation.hostname === '127.0.0.1'
     || currentLocation.hostname === '::1'

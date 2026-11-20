@@ -3,6 +3,9 @@ const { contextBridge, ipcRenderer } = require('electron')
 const invoke = (channel) => (payload) => ipcRenderer.invoke(channel, payload)
 contextBridge.exposeInMainWorld('desktopRecording', Object.freeze({
   available: true,
+  automaticCaptureSource: invoke('recording:automatic-capture-source'),
+  onClosing: (callback) => { ipcRenderer.on('recording:closing', callback); ipcRenderer.send('recording:close-handler-ready') },
+  closeReady: () => ipcRenderer.send('recording:close-ready'),
   createSession: invoke('recording:create-session'),
   openSegment: invoke('recording:open-segment'),
   markSegmentStarted: invoke('recording:mark-segment-started'),

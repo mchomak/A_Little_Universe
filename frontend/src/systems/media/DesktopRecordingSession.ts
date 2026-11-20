@@ -30,6 +30,9 @@ interface DesktopRecordingStatus {
 
 interface DesktopBridge {
   available: boolean
+  automaticCaptureSource?(): Promise<string | null>
+  onClosing?(callback: () => void): void
+  closeReady?(): void
   createSession(): Promise<{ id: string; directory: string; startedAt: number }>
   openSegment(value: { sessionId: string; source: DesktopSource; sequence: number; mimeType: string; startedAt: number; timelineMs: number }): Promise<unknown>
   markSegmentStarted(value: { sessionId: string; source: DesktopSource; sequence: number; startedAt: number; timelineMs: number }): Promise<void>
@@ -92,11 +95,12 @@ export const DISPLAY_CAPTURE_OPTIONS: DisplayMediaStreamOptions = {
   video: { width: { max: 1920 }, height: { max: 1080 }, frameRate: { max: 24 } },
 }
 
-function browserCapture(source: DesktopSource): Promise<MediaStream> {
+function browserCapture(source: DesktopSource, automaticSource?: string): Promise<MediaStream> {
   const devices = navigator.mediaDevices
   if (!devices) return Promise.reject(new Error('Медиазахват недоступен в этой версии приложения.'))
   if (source === 'camera') return devices.getUserMedia({ audio: false, video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 24, max: 30 } } })
   if (source === 'microphone') return devices.getUserMedia({ video: false, audio: { echoCancellation: true, noiseSuppression: true } })
+  if (automaticSource) return devices.getUserMedia({ audio: false, video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: automaticSource, maxWidth: 1920, maxHeight: 1080, maxFrameRate: 24 } } as unknown as MediaTrackConstraints })
   if (!devices.getDisplayMedia) return Promise.reject(new Error('Захват окна недоступен в этой версии приложения.'))
   return devices.getDisplayMedia(DISPLAY_CAPTURE_OPTIONS)
 }
@@ -146,6 +150,8 @@ export class DesktopRecordingSession {
   private readyGeneration = -1
   private finalizedGeneration = -1
   private stopRequested = false
+  private automaticSource: string | undefined
+  private closing = false
 
   constructor(options: { bridge?: DesktopBridge; environment?: Environment } = {}) {
     this.bridge = options.bridge ?? (typeof window === 'undefined' ? undefined : window.desktopRecording)
@@ -180,7 +186,18 @@ export class DesktopRecordingSession {
     if (this.bridge && sessionId) void this.bridge.reportError({ sessionId, source, message }).catch(() => undefined)
   }
 
-  /** Must be called directly from the informed-consent click to retain getDisplayMedia's user activation. */
+  async startAutomatically(): Promise<void> {
+    const source = await this.bridge?.automaticCaptureSource?.()
+    if (!source || this.closing) return
+    this.automaticSource = source
+    try { await this.start() } finally { this.automaticSource = undefined }
+  }
+
+  installCloseHandler() {
+    this.bridge?.onClosing?.(() => { this.closing = true; void this.stop().finally(() => this.bridge?.closeReady?.()) })
+  }
+
+  /** Interactive development capture retains getDisplayMedia user activation. */
   start(): Promise<void> {
     if (!this.available) return Promise.reject(new Error('Desktop recording is unavailable.'))
     if (this.startup) return this.startup
@@ -204,7 +221,7 @@ export class DesktopRecordingSession {
     // particular, no disk or permission await precedes getDisplayMedia().
     const requests = Object.fromEntries(SOURCES.map((source) => {
       this.sourceStatus(source, 'starting')
-      try { return [source, this.environment.capture(source)] }
+      try { return [source, (this.automaticSource ? browserCapture(source, this.automaticSource) : this.environment.capture(source))] }
       catch (error) { return [source, Promise.reject(error)] }
     })) as Record<DesktopSource, Promise<MediaStream>>
     // Capture can reject while createSession is still pending. Mark every

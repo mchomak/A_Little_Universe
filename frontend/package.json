@@ -20,7 +20,7 @@
     "desktop:dev": "node electron/dev.cjs",
     "desktop:ffmpeg:mac": "bash scripts/build-ffmpeg-macos-arm64.sh",
     "test:desktop": "node --test electron/*.test.cjs",
-    "build:mac:dir": "npm run build && node electron/verify-macos-ffmpeg.cjs && electron-builder --mac dir --arm64",
+    "build:mac:dir": "npm run build && node electron/verify-macos-ffmpeg.cjs && electron-builder --mac dir --arm64 && cp 'scripts/Настроить доступ к записи.command' release/mac-arm64/",
     "smoke:desktop": "npm run build && node electron/bundle-smoke.cjs"
   },
   "devDependencies": {
@@ -74,9 +74,9 @@
       ],
       "category": "public.app-category.entertainment",
       "extendInfo": {
-        "NSCameraUsageDescription": "A Little Universe for You uses the camera to record your reaction after you confirm.",
-        "NSMicrophoneUsageDescription": "A Little Universe for You uses the microphone to record audio after you confirm.",
-        "NSScreenCaptureUsageDescription": "A Little Universe for You records the film window after you confirm."
+        "NSCameraUsageDescription": "A Little Universe for You uses the camera to record your reaction locally.",
+        "NSMicrophoneUsageDescription": "A Little Universe for You uses the microphone to record audio locally.",
+        "NSScreenCaptureUsageDescription": "A Little Universe for You records the film window locally."
       },
       "extraResources": [
         {

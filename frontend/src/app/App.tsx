@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore, type Dispatch } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore, type Dispatch } from 'react'
 import { FilmCanvas } from '../engine/FilmCanvas'
 import { resetGalleryInstruction } from '../scenes/gallery/controller'
 import { useFilm } from '../engine/useFilm'
@@ -26,13 +26,12 @@ import { LilyParticlePreparationBanner } from './LilyParticlePreparationBanner'
 import { createLilyParticlePreparationSeedKey, getLilyFilmSurfaceDimensions, lilyParticlePreparation, prepareLilyParticleGeometryForStart, subscribeLilyFilmSurfaceDimensions } from '../scenes/lily/lilyParticlePreparation'
 import { LILY_MODEL_RUNTIME_ASSET, preloadLilyModel } from '../assets/lily/lilyAsset'
 import { isDeveloperMode } from '../debug/developerMode'
-import { DesktopRecordingSession } from '../systems/media/DesktopRecordingSession'
+import { desktopRecording } from '../systems/media/desktopRecording'
 import { DesktopRecordingControls } from '../components/DesktopRecordingControls'
 import { createFilmMusicBridge } from './filmMusicBridge'
 
 // Application-lifetime ownership survives scene changes and StrictMode effect replay.
 const media = new MediaSession()
-const desktopRecording = new DesktopRecordingSession()
 const audio = new AudioDirector()
 const music = new MusicDirector({
   createMusicChannel: (element) => audio.createMusicChannel(element),
@@ -147,6 +146,10 @@ export function App({ preparation }: { preparation: PreparationResult }) {
             desktopRecording.available ? desktopRecording.stop() : Promise.resolve(),
           ])
           return cleanup.then(() => audioUnlock).then(markChecked)
+        }
+
+        if (desktopRecording.available && !developerMode) {
+          return unlockAudio().then(markChecked)
         }
 
         if (desktopRecording.available) {
@@ -265,7 +268,7 @@ export function App({ preparation }: { preparation: PreparationResult }) {
     {route === 'loading' ? <Preloader manager={devManager} onReady={onReloadReady} /> : route !== 'film' && <PreparationScreen step={route} session={media} preparation={prepared} checked={checked} starting={starting} startError={visibleStartError} onPrepare={() => start(true)} onWithoutMedia={() => start(false)} onStart={() => start(true)} desktopRecording={desktopRecording.available} showMediaStatus={developerMode} />}
     <PersistentLight phase={lightPhase} interactive={lightInteractive} reducedMotion={reducedMotion} runtime={runtime} state={state} onActivate={() => dispatch({ type: 'interact' })} />
     {developerMode && !desktopRecording.available && <RecordingControls session={media} />}
-    <DesktopRecordingControls session={desktopRecording} filmActive={route === 'film'} onStopViewing={stopViewingForRecovery} />
+    {developerMode && <DesktopRecordingControls session={desktopRecording} filmActive={route === 'film'} onStopViewing={stopViewingForRecovery} />}
     {developerMode && !desktopRecording.available && <RecoveryPanel session={media} />}
     {state.reading && route === 'film' && <ReadingPanel dispatch={dispatch} />}
     {developerMode && <button className="debug-toggle" type="button" aria-expanded={debug} aria-controls="developer-panel" onClick={() => setDebug((value) => !value)}>DEV</button>}
