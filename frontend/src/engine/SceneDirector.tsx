@@ -14,6 +14,7 @@ import { GreetingScene } from '../scenes/GreetingScene'
 import { EndingScene } from '../scenes/EndingScene'
 import { AnimatedLily } from '../scenes/lily/AnimatedLily'
 import type { LilySurfaceSource } from '../scenes/lily/particleSource'
+import { getLilyParticleSourceSignature } from '../scenes/lily/lilyParticlePose'
 import { LilyDissolveParticles } from '../scenes/lily/LilyDissolveParticles'
 import { ParticlePreparationStatus } from '../scenes/lily/ParticlePreparationStatus'
 import { createLilyDissolveUniforms } from '../scenes/lily/dissolve'
@@ -57,7 +58,7 @@ export function SceneDirector(props: SceneProps) {
   const dissolveUniforms = useMemo(() => createLilyDissolveUniforms(), [])
   const publishLilyParticleSource = useCallback((source: LilySurfaceSource) => {
     setLilyParticleSourceError(false)
-    setLilyParticleSource((current) => current ?? source)
+    setLilyParticleSource(source)
   }, [])
   const reportLilyParticleSourceError = useCallback(() => setLilyParticleSourceError(true), [])
   const retryLilyParticleSource = useCallback(() => {
@@ -83,9 +84,9 @@ export function SceneDirector(props: SceneProps) {
     <directionalLight position={[3, 1, -2]} intensity={lighting.fillIntensity} color={lighting.fillColor} />
     {growthSkyScene && <GrowthSky key="persistent-night-sky" runtime={runtime} fallRange={growthFallRange} nightEstablished={nightEstablished} />}
     {keepGrowthWorld && <GrowthScene key="persistent-growth-world" {...props} environmentOnly={scene !== 'growth'} nightEstablished={nightEstablished} />}
-    {lilyScene && <Suspense fallback={null}><AnimatedLily {...props} onParticleSource={publishLilyParticleSource} onParticleSourceError={reportLilyParticleSourceError} sourceAttempt={sourceAttempt} dissolveUniforms={dissolveUniforms} /></Suspense>}
+    {lilyScene && <Suspense fallback={null}><AnimatedLily key={config.scenes.growth.lilyRotation} {...props} onParticleSource={publishLilyParticleSource} onParticleSourceError={reportLilyParticleSourceError} sourceAttempt={sourceAttempt} dissolveUniforms={dissolveUniforms} /></Suspense>}
     <GalaxyExperience {...props} />
-    {scene === 'identity' && (lilyParticleSource
+    {scene === 'identity' && (lilyParticleSource && lilyParticleSource.signature === getLilyParticleSourceSignature(1, config.scenes.growth.lilyRotation)
       ? <LilyDissolveParticles source={lilyParticleSource} uniforms={dissolveUniforms} runtime={props.runtime} low={props.state.quality === 'low' || props.reducedMotion} reducedMotion={props.reducedMotion} onRequiredSceneDuration={updateIdentityDuration} onIdentityPreparationPending={setIdentityPreparationPending} />
       : lilyParticleSourceError
         ? <IdentitySourceError runtime={props.runtime} onRetry={retryLilyParticleSource} />

@@ -318,13 +318,13 @@ describe('lily particle preparation inputs', () => {
 })
 
 
-it('prepares the same final posed surface as the rendered procedural plant', async () => {
+it.each([0, 90, -45])('prepares the rendered flower surface at %i degrees', async (rotation) => {
   const plant = createProceduralLily({ textures: false })
-  const wrapper = createLilyParticleModelWrapper(plant.object)
+  const wrapper = createLilyParticleModelWrapper(plant.object, rotation)
   try {
     plant.setPose(1, 1)
     const visible = createLilyGeometryParticleSource(plant.object)
-    const prepared = await captureLilySurfaceForPreparation(() => false)
+    const prepared = await captureLilySurfaceForPreparation(() => false, rotation)
     expect(prepared.source.center).toEqual(visible.center)
     expect(prepared.source.radius).toBe(visible.radius)
     for (let index = 0; index < 100; index++) {

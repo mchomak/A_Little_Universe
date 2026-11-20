@@ -149,7 +149,7 @@ function AnimatedLilyInstance({ state, runtime, reducedMotion, onParticleSource,
     if (currentPreparation.status === 'preparing' && currentPreparation.key === setup.seedKey) return
     // An independent pose cannot change while asynchronous capture yields.
     let cancelled = false
-    void captureLilySurfaceForPreparation(() => cancelled).then(({ source }) => {
+    void captureLilySurfaceForPreparation(() => cancelled, config.scenes.growth.lilyRotation).then(({ source }) => {
       if (cancelled) return
       setLilySurfaceBounds(dissolveUniforms, source)
       particleSourceRef.current = source
@@ -215,7 +215,7 @@ function AnimatedLilyInstance({ state, runtime, reducedMotion, onParticleSource,
     return subscribeLilyAnimationClock(runtime, sync)
   }, [draw, model, runtime, state.scene, state.mode, reducedMotion])
 
-  return <group ref={wrapperRef} position={LILY_PARTICLE_MODEL_POSITION} scale={LILY_PARTICLE_MODEL_SCALE}>
+  return <group ref={wrapperRef} position={LILY_PARTICLE_MODEL_POSITION} scale={LILY_PARTICLE_MODEL_SCALE} rotation-y={config.scenes.growth.lilyRotation * Math.PI / 180}>
     <primitive ref={modelRef} object={model} dispose={null} />
   </group>
 }

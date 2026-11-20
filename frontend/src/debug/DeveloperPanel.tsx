@@ -1207,6 +1207,7 @@ export default function DeveloperPanel({ state, dispatch, runtime, reducedMotion
           </details>
         </>}
         {selected === 'bloom' && <details open><summary>Анимация раскрытия</summary>
+          {range({ path: 'scenes.growth.lilyRotation', label: 'Поворот лилии вокруг оси', unit: '°', min: -180, max: 180, step: 1 })}
           <details open><summary>Камера · плавное приближение</summary>{BLOOM_CONTROLS.map(range)}</details>
           <p>Раскрытие начинается автоматически после короткой паузы роста. Камера плавно приближается к цветку.</p>
         </details>}
